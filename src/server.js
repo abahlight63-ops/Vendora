@@ -35,6 +35,16 @@ app.use( // parse JSON bodies…
   })
 );
 
+// CORS — split deploy only: lets the Vercel frontend (different origin) call
+// this API WITH cookies. Skipped when FRONTEND_URL is unset (same-origin mode).
+// MODULE: `cors` (npm i cors) — sets Access-Control-Allow-Origin/credentials headers.
+const FRONTEND_URL = (process.env.FRONTEND_URL || '').replace(/\/$/, ''); // e.g. https://vendora.vercel.app (no trailing slash!)
+if (FRONTEND_URL) {
+  const cors = require('cors'); // lazy require (only needed for split deploy)
+  app.use(cors({ origin: FRONTEND_URL, credentials: true })); // origin = exact Vercel URL (browsers reject '*' + credentials!); credentials:true = allow session cookie cross-site
+}
+const isSplit = !!FRONTEND_URL; // true on Render (Vercel frontend), false locally (!! forces boolean)
+
 // Sessions — MODULE `express-session` (npm i express-session): reads the session
 // cookie, loads the session from the store, attaches it as req.session.
 const session = require('express-session'); // session middleware factory
@@ -44,7 +54,9 @@ app.use(
     store: new PgSessionStore(), // where sessions live (Postgres, survives restarts)
     resave: false, // don't rewrite unchanged sessions (saves DB writes)
     saveUninitialized: false, // don't create sessions for guests (saves DB rows)
-    cookie: { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 }, // httpOnly = JS can't steal it (XSS-safe); 7-day login
+    cookie: isSplit
+      ? { httpOnly: true, secure: true, sameSite: 'none', maxAge: 7 * 24 * 60 * 60 * 1000 } // SPLIT: cross-site cookies REQUIRE Secure + SameSite=None (HTTPS only — Render/Vercel both are!)
+      : { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 }, // SAME-ORIGIN: Lax is safer (CSRF-resistant) + works on http://localhost
   })
 );
 

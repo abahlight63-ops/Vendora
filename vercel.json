@@ -1,0 +1,13 @@
+{
+  // Vercel config: build the Vite frontend ONLY (backend lives on Render).
+  // - buildCommand: vite build → dist/ (uses vite.config.js outDir).
+  // - outputDirectory: what Vercel serves as static files.
+  // - rewrites: SPA fallback — EVERY route (/dashboard, /billing…) serves
+  //   index.html so React Router resolves client-side (else Vercel 404s on
+  //   refresh/deep links!). Backend /api/* calls go to VITE_API_URL (Render),
+  //   NOT through Vercel — no api rewrites needed.
+  // Env to set in Vercel dashboard: VITE_API_URL=https://<your-render-app>.onrender.com
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}

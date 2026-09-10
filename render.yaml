@@ -1,0 +1,63 @@
+# ══ render.yaml — ONE-CLICK DEPLOY RECIPE (Infrastructure-as-Code!) ══
+# WHAT: Render's Blueprint file: describes the web service (runtime, plan,
+# build/start commands, health check, env vars) so deploys are repeatable.
+# HOW: dashboard → New → Blueprint → select this repo. Render reads this file.
+# LESSON: value: = baked-in default (safe, non-secret). sync: false = SECRET:
+# Render prompts YOU for the value (dashboard or CLI) — it NEVER lives in git!
+# generateValue: true = Render invents a random secret (sessions, admin key).
+# healthCheckPath: /health must return 200 or Render restarts the service.
+# Secrets are NEVER in this file — Render will prompt you for each value,
+# or you paste them under Environment in the dashboard.
+services:
+  - type: web
+    name: vendora
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: node src/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: ADMIN_API_KEY
+        generateValue: true
+      - key: AI_PROVIDER
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: Vendora <onboarding@resend.dev>
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_WHATSAPP_NUMBER
+        sync: false
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PRICE_MONTHLY_NAIRA
+        value: 7500
+      - key: PRICE_YEARLY_NAIRA
+        value: 50000
+      - key: PRICE_LIFETIME_NAIRA
+        value: 100000
+      - key: BANK_NAME
+        sync: false
+      - key: BANK_ACCOUNT_NUMBER
+        sync: false
+      - key: BANK_ACCOUNT_NAME
+        sync: false
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: OWNER_WHATSAPP
+        sync: false

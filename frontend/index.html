@@ -1,0 +1,27 @@
+<!-- ── frontend/index.html ──────────────────────────────────────────
+  WHAT: the ONLY HTML file. Everything React renders goes inside #root.
+  Vite injects built JS/CSS here at build time; dev serves main.jsx directly.
+  Each tag explained: charset (UTF-8 everywhere, no mojibake) · viewport
+  (mobile scaling! without it phones render desktop-width) · title (tab text)
+  · description (Google snippet = free SEO) · theme-color (browser chrome tint
+  on mobile) · icon (tab favicon) · preconnect (early-connect to Google Fonts
+  = faster first paint) · #root (React mount point) · module script (Vite entry).
+  LESSON: React apps ship ONE html file (SPA = Single Page App); "pages" are
+  just JS swapping DOM inside #root while the URL changes (BrowserRouter). -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vendora — AI WhatsApp Sales Assistant</title>
+<meta name="description" content="Vendora turns your WhatsApp number into a 24/7 AI sales rep — instant answers in English or Pidgin, straight from your catalog." />
+<meta name="theme-color" content="#0d1f16" />
+<link rel="icon" type="image/png" href="/logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+</head>
+<body>
+<div id="root"></div>
+<script type="module" src="/src/main.jsx"></script>
+</body>
+</html>

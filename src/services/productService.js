@@ -1,0 +1,67 @@
+// ── src/services/productService.js ─────────────────────────────────
+// WHAT: the catalog's data-access layer. Controllers NEVER write product SQL —
+// they call these three functions (separation of concerns: routes → controllers
+// → services → db). No npm modules — just our db pool + SQL.
+
+/**
+ * Product catalog service — the knowledge base the AI answers from.
+ * Products belong to a business and are updated by the owner
+ * (via admin API, seed script, or LEARN: messages).
+ */
+const db = require('../db'); // shared pool (../ = up one folder from services/ to src/)
+
+async function getProducts(businessId) {
+  const { rows } = await db.query( // simple filtered list, oldest first (stable order for the AI prompt)
+    `SELECT id, name, price, description, available
+     FROM products WHERE business_id = $1 ORDER BY id`,
+    [businessId] // $1 = safe parameter (SQL injection impossible)
+  );
+  return rows; // array (possibly empty) — caller decides what "empty" means
+}
+
+async function upsertProducts(businessId, products) {
+  // UPSERT = UPdate or inSERT: same product name twice UPDATES the price (that's
+  // why re-sending "LEARN: Blue gown ₦50,000" changes the price instead of duplicating).
+  const saved = []; // collect results to return
+  for (const p of products) { // for...of + await = sequential (safe: later writes see earlier ones)
+    const existing = await db.query( // look for same name, case-insensitive (LOWER both sides)
+      `SELECT id FROM products
+       WHERE business_id = $1 AND LOWER(name) = LOWER($2) LIMIT 1`,
+      [businessId, p.name]
+    );
+    if (existing.rows.length > 0) { // FOUND → UPDATE in place (keeps the same id/history)
+      const { rows } = await db.query(
+        `UPDATE products
+         SET price = $1, description = $2, available = COALESCE($3, true), updated_at = now()
+         WHERE id = $4 RETURNING id, name, price, description, available`, // COALESCE($3,true) = NULL availability means "in stock"; RETURNING hands back the row
+        [p.price || null, p.description || null, p.available ?? true, existing.rows[0].id] // ?? = nullish: undefined/null → true, but false STAYS false (|| would break that!)
+      );
+      saved.push(rows[0]); // push the updated row
+    } else { // NOT FOUND → INSERT fresh
+      const { rows } = await db.query(
+        `INSERT INTO products (business_id, name, price, description, available)
+         VALUES ($1, $2, $3, $4, COALESCE($5, true))
+         RETURNING id, name, price, description, available`,
+        [businessId, p.name, p.price || null, p.description || null, p.available ?? true]
+      );
+      saved.push(rows[0]); // push the new row
+    }
+  }
+  return saved; // array of saved rows (webhook formats these into the "✅ Catalog updated" message)
+}
+
+/** Format the catalog for the AI prompt. Empty string if no products. */
+function formatCatalog(products) {
+  if (!products || products.length === 0) return '(no products listed yet)'; // guard: AI must see SOMETHING (it then says it has nothing / hands off)
+  return products
+    .map((p) => { // each product → multi-line block…
+      const status = p.available === false ? 'OUT OF STOCK' : 'available'; // === false (not !p.available): NULL/undefined still count as available
+      const bits = [`- ${p.name} [${status}]`]; // "- Blue gown [available]" (backticks interpolate)
+      if (p.price) bits.push(`  Price: ${p.price}`); // only include lines that exist (no "Price: null" noise)
+      if (p.description) bits.push(`  Details: ${p.description}`);
+      return bits.join('\n'); // block lines → one string
+    })
+    .join('\n'); // blocks → whole catalog text for the system prompt
+}
+
+module.exports = { getProducts, upsertProducts, formatCatalog }; // the catalog API

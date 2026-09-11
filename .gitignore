@@ -1,6 +1,9 @@
 node_modules
 .env
+.env.bak
 dist/
+*.log
+.srv*.log
 .aidiag.js
 .aitest.js
 .botcheck.js

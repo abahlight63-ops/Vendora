@@ -59,7 +59,7 @@ function verifyPassword(password, stored) {
 async function findUserByEmail(email) {
   const { rows } = await db.query( // JOIN users→businesses so login immediately knows the shop name
     `SELECT u.*, b.name AS business_name FROM users u
-     JOIN businesses b ON b.id = u.business_id // ON = how the two tables link (foreign key)
+     JOIN businesses b ON b.id = u.business_id -- ON = how the two tables link (foreign key)
      WHERE LOWER(u.email) = LOWER($1) LIMIT 1`, // LOWER both sides = case-insensitive login
     [email]
   );
@@ -69,8 +69,10 @@ async function findUserByEmail(email) {
 async function createUser(businessId, email, password) {
   const verifyToken = crypto.randomBytes(32).toString('hex'); // 32 random bytes → unguessable 64-char token
   const emailSent = await sendVerificationEmail(email, verifyToken); // try the email (false in dev mode)
-  // If no Resend key (dev mode) or send failed, auto-verify so nothing blocks
-  const verified = emailSent ? false : true; // ternary: sent → must click (false); not sent → auto true
+  // SECURITY RULE: auto-verify ONLY when no key is configured (local dev).
+  // Key present but send FAILED → stay UNVERIFIED (else a Resend outage lets
+  // anyone register without email access — fail CLOSED in production!).
+  const verified = emailSent ? false : !process.env.RESEND_API_KEY; // sent → must click (false); no key → auto true; failed send → false!
   const { rows } = await db.query(
     `INSERT INTO users (business_id, email, password_hash, verified, verify_token)
      VALUES ($1, $2, $3, $4, $5)
@@ -82,8 +84,8 @@ async function createUser(businessId, email, password) {
 
 async function verifyByToken(token) {
   const { rows } = await db.query( // UPDATE…RETURNING = flip the flag AND get the email in one round-trip…
-    `UPDATE users SET verified = true, verify_token = NULL // NULL the token so the link can't be reused (one-time use!)
-     WHERE verify_token = $1 AND verified = false // AND guards: only unverified accounts with THIS token
+    `UPDATE users SET verified = true, verify_token = NULL -- NULL the token so the link can't be reused (one-time use!)
+     WHERE verify_token = $1 AND verified = false -- AND guards: only unverified accounts with THIS token
      RETURNING email`,
     [token]
   );
@@ -100,4 +102,96 @@ async function resendVerification(email) {
   return { sent }; // controller picks the message from this flag
 }
 
-module.exports = { hashPassword, verifyPassword, findUserByEmail, createUser, verifyByToken, resendVerification }; // export all six for controllers
+// ---- OTP registration (6-digit email codes, scrypt-hashed like passwords) ----
+// WHY hash OTPs: the users table may leak (backups, logs) — a plain code there
+// lets anyone verify any account. Hash = useless to thieves, verifiable by us.
+function makeOTP() {
+  let code = ''; // 6 digits, crypto-random (NOT Math.random — predictable!)
+  for (let i = 0; i < 6; i++) code += String(crypto.randomInt(0, 10)); // randomInt = uniform 0–9 (no modulo bias!)
+  return code;
+}
+
+async function sendOTPEmail(email, code) { // pretty code email via Resend (same provider — no new dependency!)…
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return false; // dev mode: caller auto-verifies (same convention as links!)
+  const from = process.env.EMAIL_FROM || 'Vendora <onboarding@resend.dev>';
+  const html = ` // big digits, plain words (grandma-proof email!)…
+    <div style="font-family:Segoe UI,sans-serif;max-width:520px;margin:auto;padding:24px;background:#f6faf8;border-radius:14px;text-align:center;">
+      <h2 style="color:#075E54;">Your Vendora code</h2>
+      <p style="color:#333;">Enter this code to verify your email:</p>
+      <div style="font-size:42px;font-weight:800;letter-spacing:12px;color:#0d1f16;margin:18px 0;">${code}</div>
+      <p style="color:#777;font-size:.85rem;">Expires in 10 minutes. Didn't ask for this? Ignore it.</p>
+    </div>`;
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from, to: [email], subject: `${code} — your Vendora code`, html }), // code in SUBJECT = visible without opening (phone notifications show it!)
+  });
+  if (!res.ok) {
+    console.error('Resend OTP failed:', res.status, await res.text());
+    return false;
+  }
+  return true;
+}
+
+async function issueOTP(email) { // create + send a fresh code (invalidates any previous one!)…
+  const user = await findUserByEmail(email);
+  if (!user) return { sent: false, reason: 'nouser' }; // unknown email (controller 404s — no enumeration beyond what signup already leaks)
+  if (user.verified) return { sent: true, already: true }; // verified? nothing to do (idempotent!)
+  const code = makeOTP(); // the plain code (lives ONLY in this function + the email — never stored!)
+  const sent = await sendOTPEmail(email, code);
+  await db.query( // store HASH + 10-min expiry + reset attempts (even if email FAILED — auto rules below decide)…
+    'UPDATE users SET otp_hash = $1, otp_expires = now() + make_interval(mins => 10), otp_attempts = 0 WHERE id = $2', // make_interval(mins => 10) = now+10min; attempts reset (fresh code, fresh chances!)
+    [hashPassword(code), user.id] // hashPassword REUSED (salt:hash — same machinery as passwords, zero new crypto!)
+  );
+  const auto = sent ? false : !process.env.RESEND_API_KEY; // SECURITY: auto-verify only with NO key (dev); key-present failure → must use link fallback, NOT free pass!
+  return { sent, auto };
+}
+
+async function verifyOTP(email, code) { // check a submitted code…
+  const user = await findUserByEmail(email);
+  if (!user) return { ok: false }; // unknown (same shape as wrong — no enumeration!)
+  if (user.verified) return { ok: true, already: true }; // already done (idempotent!)
+  const { rows } = await db.query('SELECT otp_hash, otp_expires, otp_attempts FROM users WHERE id = $1', [user.id]); // fresh read (attempts change per try!)
+  const r = rows[0];
+  if (!r || !r.otp_hash || !r.otp_expires) return { ok: false }; // no active code (never issued / already burned)
+  if (new Date(r.otp_expires) < new Date()) return { ok: false, expired: true }; // past 10-min window (frontend offers resend!)
+  if (Number(r.otp_attempts) >= 5) return { ok: false, locked: true }; // 5 wrong tries = burned (brute-force guard: 6 digits = 1M combos, 5 tries ≈ 0% chance!)
+  if (!verifyPassword(String(code).trim(), r.otp_hash)) { // wrong code? (trim whitespace — mobile keyboards add spaces!)
+    await db.query('UPDATE users SET otp_attempts = otp_attempts + 1 WHERE id = $1', [user.id]); // count the try (SQL-side increment = race-safe!)
+    return { ok: false, left: 5 - (Number(r.otp_attempts) + 1) }; // attempts LEFT (UX: "3 tries left" beats silent failure!)
+  }
+  await db.query('UPDATE users SET verified = true, otp_hash = NULL, otp_expires = NULL, otp_attempts = 0 WHERE id = $1', [user.id]); // SUCCESS: verify + BURN the code (NULL hash = single-use!) + reset counter
+  return { ok: true, user }; // user object returned (controller logs them straight in!)
+}
+
+// ---- Forgot password (email LINK, 1-hour token — links beat typing for resets!) ----
+async function issueReset(email) { // create a reset token (always "succeeds" publicly — no enumeration!)…
+  const user = await findUserByEmail(email);
+  if (!user) return { sent: true }; // unknown email: PRETEND success (don't reveal who has accounts — enumeration defense!)
+  const token = crypto.randomBytes(32).toString('hex'); // 256-bit unguessable token (same strength as verify links!)
+  await db.query('UPDATE users SET reset_token = $1, reset_expires = now() + make_interval(hours => 1) WHERE id = $2', [token, user.id]); // 1-hour window (short-lived secrets!)
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return { sent: true, devToken: token }; // dev mode: RETURN the token (frontend can display it — local testing without email!)
+  const base = process.env.PUBLIC_BASE_URL || 'http://localhost:3000'; // links must be PUBLIC (localhost links die in real inboxes!)
+  const link = `${base}/reset?token=${token}`; // the reset page route (frontend Reset.jsx reads ?token=)
+  const from = process.env.EMAIL_FROM || 'Vendora <onboarding@resend.dev>';
+  const html = `<div style="font-family:Segoe UI,sans-serif;max-width:520px;margin:auto;padding:24px;background:#f6faf8;border-radius:14px;"><h2 style="color:#075E54;">Reset your password</h2><p style="color:#333;">Click below (expires in 1 hour):</p><p style="text-align:center;margin:26px 0;"><a href="${link}" style="background:#25D366;color:#04120c;padding:13px 28px;border-radius:10px;text-decoration:none;font-weight:700;">Set a new password</a></p><p style="color:#999;font-size:.8rem;">Didn't ask? Ignore it — your password stays.</p></div>`;
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from, to: [email], subject: 'Reset your Vendora password', html }),
+  });
+  if (!res.ok) console.error('Resend reset failed:', res.status, await res.text()); // log only (public response stays "sent" — enumeration defense even on failure!)
+  return { sent: true };
+}
+
+async function resetPassword(token, password) { // consume a reset token + set new password…
+  if (!token || !password || password.length < 8) return { ok: false }; // validate BOTH (length rule matches signup!)
+  const { rows } = await db.query('SELECT id FROM users WHERE reset_token = $1 AND reset_expires > now() LIMIT 1', [token]); // token must exist AND be unexpired (SQL-side expiry = no timezone bugs!)
+  if (rows.length === 0) return { ok: false }; // bad/expired/used (all look identical — no enumeration!)
+  await db.query('UPDATE users SET password_hash = $1, reset_token = NULL, reset_expires = NULL WHERE id = $2', [hashPassword(password), rows[0].id]); // new hash + BURN token (one-time use — replay attacks dead!)
+  return { ok: true };
+}
+
+module.exports = { hashPassword, verifyPassword, findUserByEmail, createUser, verifyByToken, resendVerification, makeOTP, sendOTPEmail, issueOTP, verifyOTP, issueReset, resetPassword }; // export all six for controllers

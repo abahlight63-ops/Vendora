@@ -82,6 +82,170 @@ async function deleteBusiness(req, res) {
   res.status(204).send(); // 204 = success, empty body
 }
 
+// ---- Admin session auth (separate from owner login!) ----
+// The ONLY gate for /admin UI + these endpoints (besides x-admin-key header).
+// Password lives in env ADMIN_PASSWORD — never in code, never in git.
+async function adminLogin(req, res) {
+  const expected = process.env.ADMIN_PASSWORD; // set this in .env / Render env (long random string!)
+  if (!expected) return res.status(503).json({ error: 'Admin login is not configured (set ADMIN_PASSWORD).' }); // 503 = server not ready (honest, not "wrong password"!)
+  const { password } = req.body || {}; // JSON body { password }
+  if (typeof password !== 'string' || password.length === 0) return res.status(400).json({ error: 'Password required.' }); // guard clause
+  const a = Buffer.from(password); // Buffers for timing-safe compare (same anti-timing-attack habit as webhooks!)
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !require('crypto').timingSafeEqual(a, b)) { // WRONG password → same shape every time (no "user exists" leaks — there's only YOU anyway!)
+    return res.status(401).json({ error: 'Wrong password.' }); // 401 (generic message — don't hint at config state!)
+  }
+  req.session.isAdmin = true; // stamp the SESSION (PgSessionStore persists it — survives restarts, works multi-server!)
+  res.json({ ok: true }); // frontend hides the gate, shows the dashboard
+}
+
+function adminLogout(req, res) {
+  req.session.isAdmin = false; // flip the flag (keep the session itself — owner login underneath is untouched!)
+  res.json({ ok: true });
+}
+
+// Middleware: pass if admin session flag OR legacy x-admin-key header.
+function requireAdmin(req, res, next) {
+  if (req.session && req.session.isAdmin) return next(); // UI path (password login)…
+  const expected = process.env.ADMIN_API_KEY; // …or API path (scripts/integrations)…
+  if (expected && req.get('x-admin-key') === expected) return next();
+  return res.status(401).json({ error: 'Admin only.' }); // everyone else (including logged-in OWNERS) → 401
+}
+
+// ---- Overview stats: users, tiers, money, activity ----
+async function adminStats(req, res) {
+  const users = await db.query('SELECT COUNT(*)::int c FROM users'); // total accounts
+  const biz = await db.query( // businesses by tier + trial/active splits (planService logic mirrored in SQL for speed)…
+    `SELECT COUNT(*)::int AS total,
+      COUNT(*) FILTER (WHERE subscription_status = 'active')::int AS active,
+      COUNT(*) FILTER (WHERE subscription_status = 'trialing')::int AS trialing,
+      COUNT(*) FILTER (WHERE subscription_status = 'pending')::int AS pending,
+      COUNT(*) FILTER (WHERE currency = 'USD')::int AS usd
+     FROM businesses`
+  );
+  const money = await db.query( // revenue ledger: collected (active) vs awaiting (pending), split by currency…
+    `SELECT COALESCE(SUM(amount) FILTER (WHERE status = 'active' AND currency = 'NGN'), 0)::bigint AS ngn_kobo,
+            COALESCE(SUM(amount) FILTER (WHERE status = 'active' AND currency = 'USD'), 0)::bigint AS usd_cents,
+            COALESCE(SUM(amount) FILTER (WHERE status = 'active' AND created_at >= date_trunc('month', now())), 0)::bigint AS month_all
+     FROM payments`
+  ); // COALESCE(SUM…),0) = NULL (no rows) → 0 (JSON-friendly!); minor units preserved (divide by 100 in UI!)
+  const chats = await db.query( // today's chat volume + flags (support load at a glance)…
+    `SELECT COUNT(*)::int AS today,
+      COUNT(*) FILTER (WHERE needs_human)::int AS flagged
+     FROM conversations WHERE updated_at >= CURRENT_DATE`
+  );
+  const complaints = await db.query( // open support tickets (badge count for the tab!)…
+    `SELECT COUNT(*)::int AS open FROM complaints WHERE status = 'open'`
+  );
+  res.json({ users: users.rows[0].c, ...biz.rows[0], ...money.rows[0], ...chats.rows[0], complaints: complaints.rows[0].open }); // spread-merge five single-row results into ONE object (frontend reads it flat!)
+}
+
+// ---- Users: every account + business, newest first ----
+async function adminUsers(req, res) {
+  const { rows } = await db.query( // JOIN users→businesses (one row per account WITH shop context)…
+    `SELECT u.id, u.email, u.verified, u.created_at,
+            b.id AS business_id, b.name AS business_name, b.whatsapp_number,
+            b.subscription_status, b.subscription_expires, b.currency
+     FROM users u LEFT JOIN businesses b ON b.id = u.business_id
+     ORDER BY u.id DESC LIMIT 200`, // LEFT JOIN (not INNER): orphaned users still show (data hygiene visibility!); 200 cap
+  );
+  res.json(rows);
+}
+
+// ---- Manually verify a user's email (support action) ----
+async function adminVerifyUser(req, res) {
+  const { rowCount } = await db.query( // flip verified + burn any token (same end-state as clicking the email link!)…
+    'UPDATE users SET verified = true, verify_token = NULL WHERE id = $1',
+    [req.params.id] // :id from URL (admin acts on ANY id — that's the point!)
+  );
+  if (rowCount === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ ok: true });
+}
+
+// ---- Transfer approval queue: pending bank transfers awaiting human eyes ----
+async function transferQueue(req, res) {
+  const { rows } = await db.query( // pending payments + WHO (join business for context)…
+    `SELECT p.id, p.business_id, p.plan, p.currency, p.amount, p.reference, p.created_at,
+            b.name AS business_name, b.whatsapp_number, b.owner_number, u.email
+     FROM payments p
+     LEFT JOIN businesses b ON b.id = p.business_id
+     LEFT JOIN users u ON u.business_id = p.business_id
+     WHERE p.method = 'transfer' AND p.status = 'pending'
+     ORDER BY p.created_at ASC`, // ASC = oldest first (FIFO: first reporter, first served — fairness!)
+  );
+  res.json(rows);
+}
+
+// ---- Approve a transfer: mark ledger active + extend subscription like Paystack ----
+async function transferApprove(req, res) {
+  const billingController = require('./billingController'); // reuse PLANS table (single price/day truth — never duplicate!)
+  const { rows } = await db.query('SELECT * FROM payments WHERE id = $1', [req.params.id]); // load the payment…
+  const pay = rows[0];
+  if (!pay) return res.status(404).json({ error: 'Not found' });
+  if (pay.status !== 'pending') return res.status(400).json({ error: `Already ${pay.status} — refusing double-activation.` }); // idempotency guard (double-clicking Approve can't grant 2× days!)
+  const days = billingController.PLANS[pay.plan] ? billingController.PLANS[pay.plan].days : 30; // plan → days (same table the webhook uses!)
+  await db.query( // same activation SQL shape as the Paystack webhook (consistent semantics!)…
+    `UPDATE businesses
+     SET subscription_status = 'active',
+         subscription_expires = GREATEST(COALESCE(subscription_expires, now()), now()) + make_interval(days => $1)
+     WHERE id = $2`,
+    [days, pay.business_id]
+  );
+  await db.query("UPDATE payments SET status = 'active' WHERE id = $1", [req.params.id]); // ledger flips pending → active (revenue counts it now!)
+  res.json({ ok: true, days }); // days echoed (UI confirms "+30 days")
+}
+
+// ---- Reject a transfer: mark rejected (business falls back to free — never deleted!) ----
+async function transferReject(req, res) {
+  const { rows } = await db.query('SELECT * FROM payments WHERE id = $1', [req.params.id]);
+  const pay = rows[0];
+  if (!pay) return res.status(404).json({ error: 'Not found' });
+  if (pay.status !== 'pending') return res.status(400).json({ error: `Already ${pay.status}.` }); // same idempotency guard
+  await db.query("UPDATE payments SET status = 'rejected' WHERE id = $1", [req.params.id]); // ledger only (business row untouched — subscription_status stays pending → owner sees "activation in progress"?? NO — flip it back so UI is honest!)
+  await db.query("UPDATE businesses SET subscription_status = 'expired' WHERE id = $1 AND subscription_status = 'pending'", [pay.business_id]); // pending → expired (free tier keeps working — nothing deleted, nothing paused!)
+  res.json({ ok: true });
+}
+
+// ---- Complaints: list all tickets (newest first) ----
+async function complaintList(req, res) {
+  const { rows } = await db.query( // join business for WHO (name + number at a glance)…
+    `SELECT c.*, b.name AS business_name, b.whatsapp_number
+     FROM complaints c LEFT JOIN businesses b ON b.id = c.business_id
+     ORDER BY CASE WHEN c.status = 'open' THEN 0 ELSE 1 END, c.updated_at DESC`, // CASE in ORDER BY: open tickets FIRST, then newest (support triage order!)
+  );
+  res.json(rows);
+}
+
+// ---- Reply to a complaint (email + store reply + mark answered) ----
+async function complaintReply(req, res) {
+  const { reply } = req.body || {}; // admin's answer text (required)…
+  if (!reply || typeof reply !== 'string' || !reply.trim()) return res.status(400).json({ error: 'Reply text required.' }); // guard clause
+  const { rows } = await db.query('SELECT * FROM complaints WHERE id = $1', [req.params.id]); // load ticket…
+  const ticket = rows[0];
+  if (!ticket) return res.status(404).json({ error: 'Not found' });
+  await db.query("UPDATE complaints SET reply = $1, status = 'answered', updated_at = now() WHERE id = $2", [reply.trim(), req.params.id]); // store reply + flip status + bump timestamp (owner sees it in Help history!)
+  try { // email the owner (best-effort: ticket is STORED regardless — email failing must not lose the reply!)…
+    const u = await db.query('SELECT email FROM users WHERE business_id = $1 ORDER BY id ASC LIMIT 1', [ticket.business_id]); // oldest account = owner email…
+    const key = process.env.RESEND_API_KEY; // …via Resend (same provider as verification — no new dependency!)…
+    if (key && u.rows[0]?.email) { // …only if configured AND address known…
+      const from = process.env.EMAIL_FROM || 'Vendora <onboarding@resend.dev>';
+      await fetch('https://api.resend.com/emails', { // POST email (same shape as authService — consistency!)
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from, to: [u.rows[0].email], subject: `Re: ${ticket.subject || 'your support request'} — Vendora`, html: `<div style="font-family:Segoe UI,sans-serif;max-width:520px;margin:auto;padding:24px;"><p style="color:#333;">${reply.trim().replace(/</g, '&lt;')}</p></div>` }), // .replace(/</g) escapes HTML (admin typing <script> can't break the email!)
+      });
+    }
+  } catch (e) { console.error('complaint email error:', e.message); } // email failed → log only (reply already saved = support continuity preserved!)
+  res.json({ ok: true });
+}
+
+// ---- Resolve a complaint (no reply needed / done) ----
+async function complaintResolve(req, res) {
+  const { rowCount } = await db.query("UPDATE complaints SET status = 'resolved', updated_at = now() WHERE id = $1", [req.params.id]);
+  if (rowCount === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ ok: true });
+}
+
 // Ad earnings overview: per-click totals from our own tracking.
 // Per-VIEW earnings live in the network dashboard (Monetag etc.).
 async function adStats(req, res) {
@@ -104,4 +268,16 @@ module.exports = {
   listBusinessProducts,
   deleteBusiness,
   adStats,
+  adminLogin,
+  adminLogout,
+  requireAdmin,
+  adminStats,
+  adminUsers,
+  adminVerifyUser,
+  transferQueue,
+  transferApprove,
+  transferReject,
+  complaintList,
+  complaintReply,
+  complaintResolve,
 }; // routes/adminRoutes.js wires all seven (behind x-admin-key in server.js)

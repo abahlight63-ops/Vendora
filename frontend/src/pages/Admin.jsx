@@ -1,0 +1,207 @@
+// ── frontend/src/pages/Admin.jsx ──────────────────────────────────
+// WHAT: YOUR private console (direct URL /admin only — NOT in the sidebar, so
+// owners never stumble in). Password gate → tabs: Overview (stats), Users
+// (search + verify), Revenue (payments ledger), Transfers (approve/reject),
+// Complaints (reply/resolve). All session-authed (server checks isAdmin).
+// React patterns: gate state, tab state, per-tab loaders, confirm() on
+// destructive actions, pop() confirmations, fmt helpers for money/dates.
+import { useEffect, useState } from 'react';
+import { api, fmtDate, pop, toast } from '../lib/api.js';
+import { money } from '../lib/money.js';
+
+const TABS = [['stats', 'Overview'], ['users', 'Users'], ['revenue', 'Revenue'], ['transfers', 'Transfers'], ['complaints', 'Complaints']]; // [key, label] pairs (data-driven tabs = add a tab = add a row + panel!)
+
+export default function Admin() {
+  const [gate, setGate] = useState('checking'); // 'checking' | 'locked' | 'open' (three gate states — never flash the console to strangers!)
+  const [pw, setPw] = useState(''); // password draft (controlled input, never stored beyond this submit!)
+  const [tab, setTab] = useState('stats'); // active tab key
+  const [d, setD] = useState(null); // tab data (shape depends on tab — single state, reused!)
+
+  async function check() { // probe: are we already admin? (reload-safe: session persists!)
+    const { ok } = await api('/api/admin/stats'); // stats = cheapest authed probe (any 401 → locked!)
+    setGate(ok ? 'open' : 'locked'); // ok → straight in (no password re-entry after reload!)
+    if (ok) load('stats'); // auto-load first tab (gate open + empty = fetch now!)
+  }
+  useEffect(() => { check(); }, []); // [] = mount-only probe
+
+  async function login() { // password submit…
+    if (!pw) return toast('Enter the admin password', 'err'); // guard: blank submit
+    const { ok, data } = await api('/api/admin/login', { method: 'POST', body: JSON.stringify({ password: pw }) }); // session.isAdmin set server-side on success…
+    setPw(''); // clear the field EITHER way (never leave a password in the DOM!)
+    if (ok) { setGate('open'); load('stats'); toast('Welcome back, boss.'); } // …in → load first tab (toast, not pop — minor moment!)
+    else toast(data.error || 'Wrong password', 'err'); // generic backend message (never leaks config state!)
+  }
+
+  async function load(t) { // tab loader: one endpoint per tab (switch re-fetches = always fresh!)…
+    setTab(t); setD(null); // set tab + null data (null renders skeletons — consistent loading UX!)
+    const urls = { stats: '/api/admin/stats', users: '/api/admin/users', revenue: '/api/admin/stats', transfers: '/api/admin/transfers', complaints: '/api/admin/complaints' }; // tab → endpoint map (revenue reuses stats + payments list below? stats covers totals; transfers tab shows the money ACTIONS)
+    const { ok, data } = await api(urls[t]); // fetch…
+    if (ok) setD(data); // …store (array or object — panels branch on tab, not shape!)
+    else toast(data.error || 'Load failed', 'err'); // session expired mid-use → toast (re-login via reload → gate re-checks!)
+  }
+
+  async function act(url, body, msg) { // generic ACTION helper: POST → pop → reload tab (approve/reject/verify/resolve all flow through here!)
+    const { ok, data } = await api(url, { method: 'POST', body: body ? JSON.stringify(body) : '{}' }); // body optional (approve needs none; reply needs {reply})
+    if (ok) { pop('ok', 'Done!', msg || 'Action recorded.'); load(tab); } // success popup + FRESH data (list reflects the change instantly!)
+    else pop('err', 'Failed', data.error || 'Try again.'); // backend reason shown (already-touched guards explain themselves!)
+  }
+
+  if (gate !== 'open') { // GATE (locked OR checking): password card (same glass style as Login — familiar!)
+    return (
+      <div className="auth-wrap">
+        <div className="auth-card glass" style={{ maxWidth: 420 }}>
+          <div className="auth-pane">
+            <h1>Admin only</h1> {/* plain title (no branding fanfare — obscurity is a feature here!) */}
+            <p className="switch-note">{gate === 'checking' ? 'Checking access…' : 'This area is private. Enter the admin password.'}</p>
+            {gate === 'locked' && ( // password form ONLY when confirmed locked (checking shows text alone — no flash of inputs!)
+              <>
+                <label>Admin password</label>
+                <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="••••••••" autoComplete="current-password" onKeyDown={(e) => { if (e.key === 'Enter') login(); }} /> {/* Enter submits (same keyboard habit as Login!) */}
+                <button className="btn login-cta" onClick={login}>Unlock console</button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return ( // CONSOLE (gate open)…
+    <>
+      <div className="page-head"><div><h1>Admin console</h1><p>Private — users, revenue, transfers, complaints. No owner ever sees this page.</p></div></div>
+      <div className="card"> {/* tab bar (same button pattern as Chats filters!) */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {TABS.map(([k, l]) => ( // destructure pairs; active tab solid, rest ghost…
+            <button key={k} className={'btn sm ' + (tab === k ? '' : 'ghost')} onClick={() => load(k)}>{l}</button>
+          ))}
+        </div>
+      </div>
+      {!d ? <div className="card"><div className="skel" /></div> : tab === 'stats' ? <Stats d={d} /> // null → skeleton; else panel per tab (ternary chain!)
+        : tab === 'users' ? <Users rows={d} refresh={() => load('users')} act={act} />
+        : tab === 'revenue' ? <Revenue d={d} />
+        : tab === 'transfers' ? <Transfers rows={d} act={act} />
+        : <Complaints rows={d} act={act} />}
+    </>
+  );
+}
+
+function Stat({ n, l, good }) { // tiny tile (local component — lowercase file, uppercase fn: still a component!)
+  return <div className={'stat' + (good === false ? ' warn' : ' good')}><div className="num">{n}</div><div className="lbl">{l}</div></div>; // good=false → gold (needs attention), else green
+}
+
+function Stats({ d }) { // OVERVIEW: users, tiers, money, activity, tickets (reads the merged adminStats object!)
+  return (
+    <>
+      <div className="grid4">
+        <Stat n={d.users} l="Total users" />
+        <Stat n={d.active} l="Pro active" />
+        <Stat n={d.trialing} l="On trial" />
+        <Stat n={d.pending} l="Awaiting payment" good={d.pending === 0 ? true : false} /> {/* pending>0 = gold (money waiting on YOU!) */}
+      </div>
+      <div className="grid4" style={{ marginTop: 14 }}>
+        <Stat n={'₦' + (Number(d.ngn_kobo || 0) / 100).toLocaleString()} l="Collected (NGN)" /> {/* minor units ÷ 100 (kobo→naira; integers in DB, pretty in UI!) */}
+        <Stat n={'$' + (Number(d.usd_cents || 0) / 100).toLocaleString()} l="Collected (USD)" />
+        <Stat n={d.today} l="Chats today" />
+        <Stat n={d.complaints} l="Open tickets" good={d.complaints === 0} /> {/* open>0 = gold (someone needs YOU!) */}
+      </div>
+      <p className="hint" style={{ marginTop: 10 }}>Collected = active payments only. Per-view ad money lives in your Monetag/Adsterra dashboards; per-click sponsor totals: Admin → Revenue uses /api/ads/stats with x-admin-key.</p> {/* honest scope note (where each Naira is counted!) */}
+    </>
+  );
+}
+
+function Users({ rows, refresh, act }) { // USERS: search + verify + inspect (200 newest)…
+  const [q, setQ] = useState(''); // search draft (client-side filter — 200 rows filter instantly, no backend needed!)
+  const list = rows.filter((u) => !q.trim() || (u.email + ' ' + (u.business_name || '') + ' ' + (u.whatsapp_number || '')).toLowerCase().includes(q.trim().toLowerCase())); // concatenate searchable fields, lowercase both sides (simple contains-search!)
+  return (
+    <div className="card">
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search email, business, number…" style={{ marginBottom: 12 }} /> {/* live filter input (no button — types-as-you-type!) */}
+      <div className="table-wrap"><table>
+        <thead><tr><th>User</th><th>Business</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          {list.map((u) => ( // key={u.id} stable DB ids…
+            <tr key={u.id}>
+              <td><b>{u.email}</b><br /><span className="hint">{u.verified ? 'verified' : 'UNVERIFIED'} · {fmtDate(u.created_at)}</span></td> {/* verified flag + signup date (support context!) */}
+              <td>{u.business_name || '—'}<br /><span className="hint">{u.whatsapp_number || ''} · {u.subscription_status || ''} {u.currency ? `(${u.currency})` : ''}</span></td> {/* shop + number + plan + currency */}
+              <td>{!u.verified ? <button className="btn ghost sm" onClick={() => { if (confirm(`Verify ${u.email}?`)) act(`/api/admin/users/${u.id}/verify`, null, `${u.email} verified.`); }}>Verify</button> : <span className="pill ok">ok</span>}</td> {/* unverified → Verify button (confirm() guards mis-taps!); verified → green pill */}
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+    </div>
+  );
+}
+
+function Revenue({ d }) { // REVENUE: collected totals + where transfer money sits (transfers tab acts on it)…
+  return (
+    <div className="card">
+      <h2>Subscription revenue (ledger)</h2>
+      <p className="desc">Active payments only — pending transfers count after approval.</p>
+      <div className="grid3">
+        <div className="stat good"><div className="num">₦{(Number(d.ngn_kobo || 0) / 100).toLocaleString()}</div><div className="lbl">NGN collected</div></div>
+        <div className="stat good"><div className="num">${(Number(d.usd_cents || 0) / 100).toLocaleString()}</div><div className="lbl">USD collected</div></div>
+        <div className="stat"><div className="num">₦{(Number(d.month_all || 0) / 100).toLocaleString()}</div><div className="lbl">This month (all)</div></div>
+      </div>
+      <p className="hint" style={{ marginTop: 10 }}>Per-click sponsor earnings: call <b>GET /api/ads/stats</b> with your admin key. Per-view network earnings: Monetag/Adsterra dashboards.</p>
+    </div>
+  );
+}
+
+function Transfers({ rows, act }) { // TRANSFERS: FIFO approval queue (empty = celebrated!)…
+  if (!rows.length) return <div className="card"><div className="empty"><b>Queue clear</b>No pending transfers. Money verified as fast as it arrives.</div></div>; // empty state SELLS the calm (not just blank!)
+  return (
+    <div className="card">
+      <div className="table-wrap"><table>
+        <thead><tr><th>Who</th><th>Plan</th><th>Amount</th><th>Reported</th><th></th></tr></thead>
+        <tbody>
+          {rows.map((t) => ( // key={t.id} payment ids…
+            <tr key={t.id}>
+              <td><b>{t.business_name || '—'}</b><br /><span className="hint">{t.email || ''} · {t.whatsapp_number || ''}</span></td> {/* who + contacts (verify the credit against THESE!) */}
+              <td>{t.plan} ({t.currency})<br /><span className="hint">{t.reference || ''}</span></td> {/* plan + audit tag */}
+              <td><b>{money(t.amount / 100, t.currency)}</b></td> {/* minor→major units via money() (single formatter everywhere!) */}
+              <td><span className="hint">{fmtDate(t.created_at)}</span></td>
+              <td style={{ whiteSpace: 'nowrap' }}><button className="btn sm" onClick={() => { if (confirm(`Approve ${t.plan} for ${t.business_name}?`)) act(`/api/admin/transfers/${t.id}/approve`, null, 'Plan activated.'); }}>Approve</button> <button className="btn ghost sm" onClick={() => { if (confirm(`Reject transfer from ${t.business_name}?`)) act(`/api/admin/transfers/${t.id}/reject`, null, 'Transfer rejected.'); }}>Reject</button></td> {/* confirm() on BOTH (money moves on click — mis-taps cost real days!); nowrap keeps buttons together */}
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+    </div>
+  );
+}
+
+function Complaints({ rows, act }) { // COMPLAINTS: open-first tickets with inline reply box…
+  const [replying, setReplying] = useState(null); // ticket id with open reply box (null = none; ONE box at a time!)
+  const [text, setText] = useState(''); // reply draft (shared state — one box means one draft is fine!)
+  async function send(id) { // submit reply…
+    if (!text.trim()) return toast('Write a reply first', 'err'); // guard: blank replies
+    await act(`/api/admin/complaints/${id}/reply`, { reply: text.trim() }, 'Reply sent + emailed.'); // act() pops + reloads (list shows "answered" instantly!)
+    setReplying(null); setText(''); // close box + clear draft (fresh for next ticket!)
+  }
+  return (
+    <div className="qa-list">
+      {rows.length === 0 && <div className="card"><div className="empty"><b>No complaints</b>Silence is golden — or nobody found the form yet.</div></div>} {/* && empty state (honest humor, zero dev-talk!) */}
+      {rows.map((c) => ( // key={c.id} ticket ids…
+        <div key={c.id} className="card">
+          <div className="card-head"><h2>{c.subject || 'Support request'}</h2><span className={'pill ' + (c.status === 'open' ? 'flag' : c.status === 'answered' ? 'info' : 'ok')}>{c.status}</span></div> {/* status pill: gold open / blue answered / green resolved */}
+          <p className="hint">{c.business_name || ''} · {c.whatsapp_number || ''} · {fmtDate(c.created_at)}</p> {/* who + when (triage context!) */}
+          <p style={{ marginTop: 8 }}>{c.body}</p> {/* the complaint itself */}
+          {c.reply && <div className="learn-box light" style={{ fontFamily: 'var(--font)', marginTop: 8 }}><b>Your reply:</b> {c.reply}</div>} {/* && conditional: past reply shown (no double-answering blind!) */}
+          {replying === c.id ? ( // reply box open for THIS ticket?…
+            <>
+              <label style={{ marginTop: 10 }}>Reply (also emailed to the owner)</label>
+              <textarea value={text} onChange={(e) => setText(e.target.value)} rows="3" placeholder="Hi! Here's the fix…" />
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <button className="btn sm" onClick={() => send(c.id)}>Send reply</button>
+                <button className="btn ghost sm" onClick={() => { setReplying(null); setText(''); }}>Cancel</button>
+              </div>
+            </>
+          ) : ( // …else action row (Reply opens box; Resolve closes without reply)…
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              <button className="btn ghost sm" onClick={() => { setReplying(c.id); setText(''); }}>Reply</button>
+              {c.status !== 'resolved' && <button className="btn ghost sm" onClick={() => act(`/api/admin/complaints/${c.id}/resolve`, null, 'Ticket resolved.')}>Resolve</button>} {/* && conditional: resolved tickets hide Resolve (can't double-resolve!) */}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}

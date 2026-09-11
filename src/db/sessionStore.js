@@ -29,9 +29,9 @@ class PgSessionStore extends Store { // `extends` = inherit get/set/destroy cont
       // CREATE TABLE IF NOT EXISTS = safe to run on every boot (a migration in code)
       await db.query(`
         CREATE TABLE IF NOT EXISTS sessions (
-          sid TEXT PRIMARY KEY, // session id = the random string in the cookie
-          sess JSONB NOT NULL, // the session object (userId, businessId…) as JSON
-          expires TIMESTAMPTZ NOT NULL // when the cookie/session dies
+          sid TEXT PRIMARY KEY, -- session id = the random string in the cookie
+          sess JSONB NOT NULL, -- the session object (userId, businessId…) as JSON
+          expires TIMESTAMPTZ NOT NULL -- when the cookie/session dies
         );
         CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires);
       `);

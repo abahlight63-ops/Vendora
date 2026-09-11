@@ -323,16 +323,16 @@ It is ${now} (business local time, ${tz}).
 
 Business info:
 - Name: ${business.name}
-- Opening hours: ${business.hours || 'not provided'} // || fallback when owner left it blank
+- Opening hours: ${business.hours || 'not provided'}
 - Tone: ${business.tone || 'friendly and helpful'}
 
 FAQ:
-${(business.faq || []).map((f) => `Q: ${f.question}\nA: ${f.answer}`).join('\n') || '(none)'} // each FAQ → Q:/A: lines, or "(none)"
+${(business.faq || []).map((f) => `Q: ${f.question}\nA: ${f.answer}`).join('\n') || '(none)'}
 
 PRODUCT CATALOG (the single source of truth for products, prices, availability):
 ${catalog}
-${pro && business.profile_snapshot ? `\nVERIFIED BUSINESS PROFILE (synced from the owner's WhatsApp Business profile — treat items here as confirmed available):\n${business.profile_snapshot}\n` : ''} // nested template: Pro + synced snapshot → extra trusted section, else empty string
-${transcript ? `\nRECENT CONVERSATION WITH THIS CUSTOMER (oldest first — use it for context, pronouns, and follow-up questions):\n${transcript}\n` : ''} // history only if it exists
+${pro && business.profile_snapshot ? `\nVERIFIED BUSINESS PROFILE (synced from the owner's WhatsApp Business profile — treat items here as confirmed available):\n${business.profile_snapshot}\n` : ''}
+${transcript ? `\nRECENT CONVERSATION WITH THIS CUSTOMER (oldest first — use it for context, pronouns, and follow-up questions):\n${transcript}\n` : ''}
 
 Rules:
 1. LANGUAGE: Match the customer's language and style exactly. If they write in Pidgin
@@ -350,8 +350,9 @@ Rules:
    NEED_HUMAN: <brief reason>
 6. Keep replies short and WhatsApp-friendly (1-5 sentences, plain text, no markdown).
 7. If a product the customer wants is out of stock, say so honestly and offer alternatives from the catalog.
-${maxDisc > 0 ? `8. SMARTDEAL NEGOTIATION: The owner allows you to offer up to ${maxDisc}% off${minOrder ? ` on orders worth at least ₦${minOrder.toLocaleString()}` : ''} ONLY when the customer hesitates, complains about price, or says it's too expensive AND they clearly want to buy. Offer it once, as a special one-time price — never volunteer discounts to happy customers, never exceed ${maxDisc}%. Phrase it like the owner is doing them a favour.` : '8. Do NOT offer any discounts — the owner has not enabled negotiation.'} // ternary picks the discount rule; toLocaleString() = 15000 → "15,000"
-${image ? '9. The customer also sent a PHOTO. Look at it, describe briefly what you see, and match it to the closest product(s) in the catalog (replacement, matching item, or exact match). If nothing in the catalog matches, use NEED_HUMAN.' : ''}`; // vision rule only when a photo exists
+8. PERSONAL CHIT-CHAT: if the message is purely social with zero buying signal (greetings alone, jokes, "lol", "where are you", memes, personal banter), do NOT pitch products — respond with exactly: NEED_HUMAN: personal chat, no sales intent. A friend saying hi must never get a sales pitch.
+${maxDisc > 0 ? `9. SMARTDEAL NEGOTIATION: The owner allows you to offer up to ${maxDisc}% off${minOrder ? ` on orders worth at least ₦${minOrder.toLocaleString()}` : ''} ONLY when the customer hesitates, complains about price, or says it's too expensive AND they clearly want to buy. Offer it once, as a special one-time price — never volunteer discounts to happy customers, never exceed ${maxDisc}%. Phrase it like the owner is doing them a favour.` : '9. Do NOT offer any discounts — the owner has not enabled negotiation.'}
+${image ? '10. The customer also sent a PHOTO. Look at it, describe briefly what you see, and match it to the closest product(s) in the catalog (replacement, matching item, or exact match). If nothing in the catalog matches, use NEED_HUMAN.' : ''}`; // vision rule only when a photo exists
 
   const userPrompt = `Customer message: "${customerMessage}"${image ? '\n(A photo is attached — analyze it.)' : ''}\n\nRespond per your rules.`; // the actual user turn
 

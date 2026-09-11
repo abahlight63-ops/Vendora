@@ -80,7 +80,8 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
     try { // try/catch: unreachable server throws — must show why, never hang on "Please wait…"!
       const { ok, data } = await api('/api/auth/signup', { method: 'POST', body: JSON.stringify({ name: f.name.trim(), whatsapp_number: f.wa.trim(), owner_number: f.wa.trim(), hours: f.hours.trim(), email: f.email.trim(), password: f.password }) }); // owner_number = same as business number initially (editable later in Profile!); password raw
       setBusy(false);
-      if (ok && data.user) { setMsg('Account created — setting up your assistant…'); setMsgErr(false); afterAuth('/onboarding'); return; } // success = ok AND a user object (empty-200 from bad hosting config won't fake a login!)
+      if (ok && data.user) { setMsg('Account created — setting up your assistant…'); setMsgErr(false); afterAuth('/onboarding'); return; } // dev auto-login path (no Resend key): user object present → straight in!
+      if (ok && data.needsOTP) { setOtpEmail(data.email || f.email.trim()); setOtp(''); setMsg(''); setMsgErr(false); switchMode('otp'); return; } // OTP path: stash the email, clear code draft, flip to the code screen (NO session yet — unverified gets nothing!)
       fail((data.errors || [data.error || 'Signup failed — check your details and try again.']).join('; ')); // backend sends errors ARRAY (validation!) or single error — handle both, join with '; '
     } catch { // server unreachable (no backend deployed, offline…) → plain-language message, button unlocked!
       setBusy(false);
@@ -98,6 +99,54 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
     }
   }
   function switchMode(m) { setMode(m); setMsg(''); setMsgErr(false); setNeedsVerify(false); setShowPw(false); } // mode switch RESETS all transient state (no leaking signup errors into login view!)
+  const [otpEmail, setOtpEmail] = useState(''); // address the code went to (stashed at signup — OTP screen posts with it!)
+  const [otp, setOtp] = useState(''); // 6-digit draft (controlled; digits enforced below, not just trusted!)
+  const [cool, setCool] = useState(0); // resend cooldown seconds (anti-spam + anti-cost: every resend = a Resend email!)
+  useEffect(() => { // countdown ticker: decrements while >0 (effect re-arms per second — setTimeout chain, cleaned up each run!)…
+    if (cool <= 0) return; // …0 = no timer needed (early return BEFORE creating anything!)
+    const t = setTimeout(() => setCool(cool - 1), 1000); // tick…
+    return () => clearTimeout(t); // …cleanup (unmount/mode-switch cancels mid-countdown!)
+  }, [cool]); // [cool] dep = re-arm every second while counting
+  async function verifyOtp() { // submit the code…
+    const code = otp.replace(/\D/g, '').slice(0, 6); // strip non-digits (paste "12 34 56" still works!) + cap 6
+    if (code.length !== 6) return fail('Enter the 6-digit code from your email.'); // client guard (fail() paints red — no wasted request!)
+    if (busy) return; setBusy(true); setMsg(''); setMsgErr(false);
+    try {
+      const { ok, data } = await api('/api/auth/verify-otp', { method: 'POST', body: JSON.stringify({ email: otpEmail, code }) });
+      setBusy(false);
+      if (ok) { setMsg('Verified — setting up your assistant…'); setMsgErr(false); afterAuth('/onboarding'); return; } // verified = logged in (session stamped!) → tour!
+      fail(data.error || 'Wrong code — try again.'); // expired/locked/left-count messages arrive HERE (backend crafts each one!)
+    } catch { setBusy(false); fail("Can't reach the Vendora server. Check your internet connection and try again."); } // unreachable → plain message (same guard as login/signup!)
+  }
+  async function resendCode() { // fresh code (burns the old one server-side!)…
+    if (busy || cool > 0) return; // locked while busy OR cooling down (double-tap protection + cost control!)
+    setBusy(true); setMsg(''); setMsgErr(false);
+    try {
+      const { ok, data } = await api('/api/auth/otp-resend', { method: 'POST', body: JSON.stringify({ email: otpEmail }) });
+      setBusy(false);
+      if (ok && data.auto) { setMsg('Email service is off (dev) — verified! Please sign in.'); setMsgErr(false); return; } // dev auto-path (no Resend key → nothing to type!)
+      if (ok) { setMsg(data.message || 'New code sent — check your inbox.'); setMsgErr(false); setCool(60); setOtp(''); return; } // success → 60s cooldown + clear draft (old code is DEAD server-side!)
+      fail(data.error || 'Could not resend — try again.');
+    } catch { setBusy(false); fail("Can't reach the Vendora server. Check your internet connection and try again."); }
+  }
+  async function sendLink() { // FALLBACK: "email didn't arrive? send a LINK instead" (token flow — works even when OTP emails land in spam!)…
+    if (busy) return; setBusy(true); setMsg(''); setMsgErr(false);
+    try {
+      const { ok, data } = await api('/api/auth/otp-link', { method: 'POST', body: JSON.stringify({ email: otpEmail }) });
+      setBusy(false);
+      setMsg(data.message || data.error || (ok ? 'Link sent — check your inbox.' : 'Could not send — try again.')); // backend message wins (knows Resend state!)
+      setMsgErr(!ok);
+    } catch { setBusy(false); fail("Can't reach the Vendora server. Check your internet connection and try again."); }
+  }
+  async function forgotSend() { // FORGOT path: email → reset link (always "sent" — enumeration-safe by design!)…
+    if (busy) return; setBusy(true); setMsg(''); setMsgErr(false);
+    try {
+      const { data } = await api('/api/auth/forgot', { method: 'POST', body: JSON.stringify({ email: f.email.trim() }) }); // uses the LOGIN email field (no extra input needed!)
+      setBusy(false);
+      setMsg((data && data.devToken ? `Dev mode — your reset token: ${data.devToken}. ` : '') + 'If that email has an account, a reset link is on its way.'); // devToken shown ONLY in dev (prod never leaks it!)
+      setMsgErr(false);
+    } catch { setBusy(false); fail("Can't reach the Vendora server. Check your internet connection and try again."); }
+  }
 
   return (
     <div className="auth-wrap"> {/* fullscreen gradient stage (CSS radial background) */}
@@ -119,6 +168,22 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
             <span className="trial-badge">14 DAYS FREE</span>
             <div><b>{mode === 'login' ? 'Your trial is waiting.' : 'Start selling tonight.'}</b><span>No card required · Cancel anytime</span></div> {/* headline flips with mode */}
           </div>
+          {mode === 'otp' ? (<> {/* OTP screen: shown after signup (no session yet — code IS the key!) */}
+            <h1>Check your email</h1>
+            <p className="switch-note">We sent a 6-digit code to <b>{otpEmail}</b>. It expires in 10 minutes.</p>
+            <label>6-digit code</label>
+            <input className="otp-input" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="••••••" inputMode="numeric" autoComplete="one-time-code" maxLength={6} onKeyDown={(e) => { if (e.key === 'Enter') verifyOtp(); }} /> {/* replace(/\D/g) strips non-digits AS YOU TYPE (paste-friendly!); autoComplete="one-time-code" = phones offer SMS-style autofill! */}
+            <button className="btn login-cta" disabled={busy} onClick={verifyOtp}>{busy ? <span className="spinner" /> : null}{busy ? 'Checking…' : 'Verify →'}</button>
+            <p className="auth-toggle">Didn't get it? <a onClick={resendCode}>{cool > 0 ? `Resend in ${cool}s` : 'Resend code'}</a> · <a onClick={sendLink}>Send a link instead</a></p> {/* cooldown gate + LINK fallback (two escape hatches — nobody gets stuck!) */}
+            <p className="auth-toggle"><a onClick={() => switchMode('login')}>Back to sign in</a></p>
+          </>) : mode === 'forgot' ? (<> {/* FORGOT screen: email → reset link (always "sent" — enumeration-safe!) */}
+            <h1>Reset password</h1>
+            <p className="switch-note">Enter your account email — if it exists, a 1-hour reset link is on its way.</p>
+            <label>Email</label>
+            <input value={f.email} onChange={set('email')} type="email" placeholder="you@business.com" autoComplete="email" onKeyDown={(e) => { if (e.key === 'Enter') forgotSend(); }} />
+            <button className="btn login-cta" disabled={busy} onClick={forgotSend}>{busy ? <span className="spinner" /> : null}{busy ? 'Sending…' : 'Send reset link'}</button>
+            <p className="auth-toggle"><a onClick={() => switchMode('login')}>Back to sign in</a></p>
+          </>) : (<> {/* login/signup form (existing — wrapped so otp/forgot replace it!) */}
           <h1>{mode === 'login' ? 'Welcome back' : 'Create your account'}</h1> {/* ternaries everywhere = one form, two personalities */}
           <p className="switch-note">{mode === 'login' ? 'Your assistant has been holding the fort.' : 'Join shops answering customers 24/7.'}</p>
           {mode === 'signup' && (<> {/* && conditional BLOCK: signup-only fields (fragment groups 3 field sets without wrapper div!) */}
@@ -145,6 +210,8 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
             <DemoChat /> {/* mobile ALSO gets the demo (auth-side hidden on phones, so duplicate here for small screens!) */}
           </div>
           <p className="auth-hint">Cards · Transfer · USSD via Paystack — only after your free days<br /><a href="/faq">FAQ</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p> {/* trust footer + legal links (plain <a href> = full navigation, fine for public pages) */}
+          </>)} {/* close the login/signup wrapper (otp/forgot branches above replace it!) */}
+          {mode === 'login' && <p className="auth-toggle"><a onClick={() => switchMode('forgot')}>Forgot password?</a></p>} {/* && conditional: forgot link ONLY on login (signup users don't have passwords to forget yet!) */}
         </div>
       </div>
     </div>

@@ -78,6 +78,52 @@ async function handleInbound(req, res) {
       return res.status(200).send('');
     }
 
+    // ---- PAUSE / RESUME commands (owner only, anytime) ----
+    // Lets the owner silence the bot from WhatsApp itself: PAUSE stops all
+    // replies, RESUME restarts, PAUSE <number> silences one chat (takeover).
+    // WHY: the shop number doubles as a personal line — friends chatting must
+    // never get product pitches fighting the owner's own conversation.
+    const upperBody = Body.trim().toUpperCase(); // normalize once: case + padding proof
+    const isOwner = business.owner_number && From === business.owner_number; // owner-only gate (customers can't pause YOUR bot!)
+    if (isOwner && (upperBody === 'PAUSE' || upperBody === 'RESUME' || upperBody.startsWith('PAUSE '))) {
+      if (upperBody === 'RESUME') { // resume everything…
+        await db.query('UPDATE businesses SET bot_enabled = true WHERE id = $1', [business.id]); // …global switch on…
+        await db.query('UPDATE conversations SET bot_paused = false WHERE business_id = $1', [business.id]); // …plus every taken-over chat released
+        await whatsappService.sendWhatsAppReply(From, '✅ Bot resumed — I reply to customers again. Send PAUSE anytime to silence me.');
+        return res.status(200).send('');
+      }
+      const target = Body.trim().slice(5).trim(); // "PAUSE <digits>" → the digits (slice(5) strips "PAUSE")
+      if (target) { // per-chat takeover: find the chat by number fragment…
+        const { rows: found } = await db.query( // LIKE match: owner types last digits, we find the chat (avoids full-number typing!)
+          "SELECT id, customer_number FROM conversations WHERE business_id = $1 AND customer_number LIKE '%' || $2 || '%' ORDER BY updated_at DESC LIMIT 1",
+          [business.id, target.replace(/\D/g, '')] // replace(/\D/g,'') strips non-digits (spaces/dashes/+ tolerated)
+        );
+        if (found.length === 0) { // no chat matches → say so (don't silently fail!)
+          await whatsappService.sendWhatsAppReply(From, `No recent chat matches "${target}". Check the number and try PAUSE <digits> again, or send PAUSE alone to silence everything.`);
+          return res.status(200).send('');
+        }
+        await db.query('UPDATE conversations SET bot_paused = true WHERE id = $1', [found[0].id]); // silence THIS chat (inbox "Take over" does the same visually!)
+        await whatsappService.sendWhatsAppReply(From, `🔇 Bot paused for ${found[0].customer_number}. Chat freely — send RESUME to hand back.`);
+        return res.status(200).send('');
+      }
+      await db.query('UPDATE businesses SET bot_enabled = false WHERE id = $1', [business.id]); // bare PAUSE → global kill-switch
+      await whatsappService.sendWhatsAppReply(From, '🔇 Bot paused everywhere. Customers are logged but get no replies. Send RESUME to restart, or PAUSE <digits> for one chat.');
+      return res.status(200).send('');
+    }
+
+    // ---- Personal contacts: NEVER reply (friends/family chatting personally) ----
+    // Owner lists these numbers in Business profile. Messages are ignored
+    // entirely (not even logged as chats — personal chats aren't business data).
+    // This is THE anti-fighting mechanism: explicit list beats AI guessing.
+    try { // try/catch: a malformed list must never break the webhook (parse defensively!)
+      const personal = JSON.parse(business.personal_contacts || '[]'); // JSONB may arrive as string or array…
+      const list = Array.isArray(personal) ? personal : []; // …normalize to array (anything else → empty = no silencing)
+      const digits = (s) => String(s || '').replace(/\D/g, ''); // digits-only compare (ignores +, spaces, whatsapp: prefix!)
+      if (!isOwner && list.some((p) => p && digits(p) && digits(From).endsWith(digits(p).slice(-7)))) { // endsWith(last 7 digits) = tolerant match (country-code/format-proof!)
+        return res.status(200).send(''); // silent 200: Twilio happy, human conversation untouched
+      }
+    } catch {} // JSON.parse failed → ignore list this once (empty catch intentional: availability over strictness)
+
     // ---- Normal customer conversation ----
     let body = Body; // let: photo case appends "[the customer sent a photo]"
     let image = null; // {mime, base64} for AI vision (null = text only)
@@ -96,7 +142,15 @@ async function handleInbound(req, res) {
     }
 
     const customerId = await conversationService.saveMessage(business.id, From, ProfileName || null, body); // find-or-create chat row → id
-    await conversationService.logMessage(customerId, 'in', body, mediaDataUrl); // store inbound message
+    await conversationService.logMessage(customerId, 'in', body, mediaDataUrl); // store inbound message (ALWAYS logged — even when silent below!)
+    // ---- Takeover silence: global off OR this chat taken over → log only ----
+    // Covers: dashboard toggle, inbox Take-over button, PAUSE commands above.
+    // WHY log-then-return (not ignore): the owner still SEES what customers
+    // said while away — silence is about REPLIES, never about records.
+    const { rows: gate } = await db.query('SELECT bot_enabled FROM businesses WHERE id = $1', [business.id]); // fresh read (owner may have toggled seconds ago!)
+    const { rows: chat } = await db.query('SELECT bot_paused FROM conversations WHERE id = $1', [customerId]);
+    if (gate[0] && gate[0].bot_enabled === false) return res.status(200).send(''); // global kill-switch engaged → silent (Twilio 200, no retry)
+    if (chat[0] && chat[0].bot_paused) return res.status(200).send(''); // owner took over this chat → silent (chat freely!)
     const history = await conversationService.getHistory(customerId); // last 10, oldest-first (pronoun context: "how much is IT?")
 
     // Free tier keeps working from the manual catalog — only Pro unlocks

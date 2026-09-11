@@ -23,6 +23,10 @@ router.get('/me/profile-sync', ownerController.getProfileSync); // has the owner
 router.post('/me/profile-sync', ownerController.profileSync); // Pro: scaffold catalog from profile text
 router.post('/me/ask', ownerController.ask); // Vendora AI chat (tier + caps enforced)
 router.get('/me/ai-models', ownerController.aiModels); // dropdown list with locked flags
-router.post('/me/ads/click', ownerController.adClick); // log a sponsor click (per-click billing)
+router.post('/me/ads/click', ownerController.adClick);
+router.post('/me/bot', ownerController.botToggle);
+router.post('/me/conversations/:id/takeover', ownerController.chatTakeover);
+router.get('/me/complaints', ownerController.complaintMine);
+router.post('/me/complaints', ownerController.complaintCreate); // log a sponsor click (per-click billing)
 
 module.exports = router; // server.js does app.use('/api', ownerRoutes)

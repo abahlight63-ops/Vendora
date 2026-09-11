@@ -7,9 +7,14 @@ const authController = require('../controllers/authController'); // the 5 handle
 
 const router = express.Router(); // the mini-app
 
-router.post('/signup', authController.signup); // create business + user + session
-router.get('/verify', authController.verify); // email link click (?token=…) — GET because it's a link
-router.post('/resend', authController.resendVerification); // "didn't get the email" button
+router.post('/signup', authController.signup); // create business + user → OTP emailed (auto-login ONLY in dev!)
+router.get('/verify', authController.verify); // email link click (?token=…) — GET because it's a link (OTP FALLBACK path!)
+router.post('/verify-otp', authController.verifyOtp); // { email, code } → check 6-digit OTP → session on success
+router.post('/otp-resend', authController.otpResend); // { email } → fresh code (burns old, resets tries)
+router.post('/otp-link', authController.otpLink); // { email } → "send a LINK instead" fallback (reuses token flow!)
+router.post('/resend', authController.resendVerification); // legacy "didn't get the email" button (kept working!)
+router.post('/forgot', authController.forgot); // { email } → reset link emailed (always "sent" — enumeration-safe!)
+router.post('/reset', authController.reset); // { token, password } → consume link, set new password
 router.post('/login', authController.login); // email + password → session
 router.post('/logout', authController.logout); // destroy session
 

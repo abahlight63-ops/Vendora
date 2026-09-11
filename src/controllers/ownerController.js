@@ -13,6 +13,7 @@ async function getMe(req, res) {
   const { rows } = await db.query( // the owner's own business row + everything the dashboard needs…
     `SELECT b.id, b.name, b.whatsapp_number, b.owner_number, b.hours, b.faq, b.tone,
             b.max_discount_pct, b.min_order_naira, b.currency, b.timezone,
+            b.bot_enabled, b.personal_contacts,
             b.subscription_status, b.subscription_expires, b.trial_started_at
      FROM businesses b WHERE b.id = $1`, // b = alias; WHERE session id (never a client id!)
     [req.session.businessId]
@@ -51,6 +52,21 @@ async function updateBusiness(req, res) {
   if (ownerRaw && !owner) errors.push('Enter a valid WhatsApp number (e.g. 0803 123 4567)');
   if (faq !== undefined && !Array.isArray(faq)) errors.push('faq must be an array');
   if (curRaw !== undefined && !['NGN', 'USD'].includes(curRaw)) errors.push('currency must be NGN or USD'); // whitelist (only two real options)
+  const { personal_contacts: pcRaw } = req.body || {}; // friends/family numbers the bot must NEVER reply to (array of strings)
+  let personal = null; // null = "don't touch what's stored" (vs [] = "clear the list" — different meanings!)
+  if (pcRaw !== undefined) { // provided? validate strictly…
+    if (!Array.isArray(pcRaw)) errors.push('personal_contacts must be an array of phone numbers');
+    else { // normalize each entry (accept "0803…", "+234…", "whatsapp:+234…")…
+      const { normalizePhone: norm } = require('../utils/phone'); // inline require (same module, style-consistent)
+      personal = [];
+      for (const raw of pcRaw) { // for...of (clearer than map+filter for validate-and-collect)…
+        if (typeof raw !== 'string' || !raw.trim()) continue; // skip blanks/non-strings silently (forgiving input!)
+        const n = norm(raw); // → 'whatsapp:+234…' or null…
+        if (!n) { errors.push(`Invalid personal number: ${raw}`); break; } // …one bad number fails the batch (explicit > silently dropping!)
+        personal.push(n);
+      }
+    }
+  }
   if (errors.length) return res.status(400).json({ errors });
 
   const { rows: cur } = await db.query('SELECT whatsapp_number, owner_number, currency, timezone FROM businesses WHERE id = $1', [req.session.businessId]); // read CURRENT values first (needed for smart defaults below)
@@ -63,10 +79,13 @@ async function updateBusiness(req, res) {
 
   const { rows } = await db.query( // write it all + hand back the fresh row
     `UPDATE businesses SET name = $1, owner_number = $2, hours = $3, faq = $4, tone = $5, currency = $6, timezone = $7
+     ${personal !== null ? ', personal_contacts = $9' : ''} -- dynamic SET clause: only touch the list when provided (else keep stored!)
      WHERE id = $8
-     RETURNING id, name, whatsapp_number, owner_number, hours, faq, tone, currency, timezone`,
-    [name, owner || null, req.body.hours || '', JSON.stringify(faq || []), req.body.tone || 'friendly and helpful', currency, timezone, req.session.businessId]
-  ); // JSON.stringify: faq ARRAY → JSONB column needs a JSON string
+     RETURNING id, name, whatsapp_number, owner_number, hours, faq, tone, currency, timezone, personal_contacts, bot_enabled`,
+    personal !== null // params array must MATCH the $ placeholders above (conditional 9th param!)
+      ? [name, owner || null, req.body.hours || '', JSON.stringify(faq || []), req.body.tone || 'friendly and helpful', currency, timezone, req.session.businessId, JSON.stringify(personal)]
+      : [name, owner || null, req.body.hours || '', JSON.stringify(faq || []), req.body.tone || 'friendly and helpful', currency, timezone, req.session.businessId]
+  ); // JSON.stringify: faq ARRAY + personal ARRAY → JSONB columns need JSON strings
   res.json(rows[0]); // frontend Profile page uses the returned row (no refetch needed)
 }
 
@@ -96,9 +115,9 @@ async function deleteProduct(req, res) {
 async function getConversations(req, res) {
   const { rows } = await db.query( // inbox list: previews + flags, newest first, cap 100
     `SELECT id, customer_number, customer_name, last_message, last_reply,
-            needs_human, flag_reason, updated_at
+            needs_human, flag_reason, bot_paused, updated_at
      FROM conversations WHERE business_id = $1
-     ORDER BY updated_at DESC LIMIT 100`, // DESC = newest first (inbox order); LIMIT = don't dump the whole history
+     ORDER BY updated_at DESC LIMIT 100`, // DESC = newest first (inbox order); LIMIT = don't dump the whole history; bot_paused drives Take-over badges
     [req.session.businessId]
   );
   res.json(rows);
@@ -211,6 +230,50 @@ async function getProfileSync(req, res) {
   res.json({ synced: !!rows[0].profile_snapshot, synced_at: rows[0].profile_synced_at }); // !! string → boolean ("ever synced?")
 }
 
+// Bot kill-switch: { enabled: true/false }. Instant global silence/resume.
+async function botToggle(req, res) {
+  const { enabled } = req.body || {}; // strict boolean required (no truthy games: "false" string must NOT enable!)
+  if (typeof enabled !== 'boolean') return res.status(400).json({ error: 'Send { enabled: true } or { enabled: false }.' });
+  await db.query('UPDATE businesses SET bot_enabled = $1 WHERE id = $2', [enabled, req.session.businessId]);
+  res.json({ bot_enabled: enabled }); // echo back (toggle UI syncs to truth)
+}
+
+// Per-chat takeover: { paused: true } silences the bot on ONE conversation
+// (owner chats personally from their phone); false hands back to the AI.
+async function chatTakeover(req, res) {
+  const { paused } = req.body || {};
+  if (typeof paused !== 'boolean') return res.status(400).json({ error: 'Send { paused: true } or { paused: false }.' });
+  const owned = await db.query( // ownership check FIRST (IDOR: no pausing others' chats!)
+    'SELECT id FROM conversations WHERE id = $1 AND business_id = $2',
+    [req.params.id, req.session.businessId]
+  );
+  if (owned.rows.length === 0) return res.status(404).json({ error: 'Not found' }); // 404 hides existence (same pattern as getMessages)
+  await db.query('UPDATE conversations SET bot_paused = $1, updated_at = now() WHERE id = $2', [paused, req.params.id]); // updated_at bump re-sorts inbox (taken-over chat rises to top = visible!)
+  res.json({ bot_paused: paused });
+}
+
+// File a support complaint (Help form → admin queue). Owners see history below.
+async function complaintCreate(req, res) {
+  const { subject, body } = req.body || {}; // subject line + message (both required)…
+  if (!body || typeof body !== 'string' || !body.trim()) return res.status(400).json({ error: 'Describe the problem first.' }); // …body is the hard requirement (subject defaults below)
+  if (body.trim().length > 2000) return res.status(400).json({ error: 'Keep it under 2000 characters.' }); // same anti-abuse cap as chat inputs
+  const { rows } = await db.query( // INSERT, RETURNING the ticket (frontend appends it instantly — optimistic-ish, but server-confirmed!)
+    `INSERT INTO complaints (business_id, subject, body) VALUES ($1, $2, $3)
+     RETURNING id, subject, body, status, reply, created_at`,
+    [req.session.businessId, String(subject || 'Support request').slice(0, 120), body.trim()] // String()+slice caps subject (DB hygiene, same habit as adClick!)
+  );
+  res.status(201).json(rows[0]); // 201 + ticket (Help history updates without reload!)
+}
+
+// Owner's own ticket history (open + answered + resolved, newest first).
+async function complaintMine(req, res) {
+  const { rows } = await db.query( // session-scoped (owners see ONLY their tickets — same privacy rule as chats!)…
+    'SELECT id, subject, body, status, reply, created_at, updated_at FROM complaints WHERE business_id = $1 ORDER BY updated_at DESC LIMIT 50',
+    [req.session.businessId]
+  );
+  res.json(rows);
+}
+
 // Log a sponsor/ad click (per-click billing for direct sponsors).
 async function adClick(req, res) {
   const { slot, target_url } = req.body || {}; // which placement + where they went
@@ -307,4 +370,8 @@ module.exports = { // every handler the routes file wires up (miss one here = ro
   ask,
   aiModels,
   adClick,
+  botToggle,
+  chatTakeover,
+  complaintCreate,
+  complaintMine,
 };

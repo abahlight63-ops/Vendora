@@ -347,6 +347,9 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .faq-cta h2 { color: #fff; }
 .faq-cta .desc { color: #b9d4c2; }
 
+/* OTP code input: huge centered digits (grandma-proof typing!) */
+.otp-input { text-align: center; font-size: 32px !important; font-weight: 800; letter-spacing: 10px; text-indent: 10px; } /* letter-spacing spreads digits; text-indent re-centers (spacing pushes right!); !important beats the 16px mobile rule */
+
 /* pricing cards */
 .plan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .plan { position: relative; display: flex; flex-direction: column; background: var(--card); border: 1.5px solid var(--line); border-radius: 18px; padding: 22px; animation: fadeSlide 0.4s ease both; transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }

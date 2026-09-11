@@ -6,7 +6,7 @@
 // React pattern: CONDITIONAL early-return — `if (thread) return (…thread…)`
 // renders a totally different screen from the same component.
 import { useEffect, useState } from 'react'; // useState ×4; useEffect = load inbox on mount
-import { api, fmtTime } from '../lib/api.js'; // api() fetches; fmtTime stamps
+import { api, fmtTime, toast } from '../lib/api.js'; // api() fetches; fmtTime stamps
 import Ic from '../components/icons.jsx'; // back-arrow icon
 
 export default function Chats() {
@@ -19,10 +19,21 @@ export default function Chats() {
   async function open(c) { setThread(c); setMsgs(null); const { data } = await api('/api/me/conversations/' + c.id + '/messages'); setMsgs(data || []); } // open thread: show screen instantly (thread set) + spinner messages (msgs null) → fill when fetch lands. c.id in URL (backend ownership-checks it!)
   const list = (convos || []).filter((c) => filter === 'all' ? true : filter === 'needs' ? c.needs_human : !c.needs_human); // nested ternary filter: all→everything; needs→flagged; handled→rest ((convos||[]) guards loading)
 
+  async function takeover(paused) { // flip THIS chat's bot: true = you talk (bot silent), false = AI resumes. POSTs to the takeover endpoint, then refreshes local state so the badge flips instantly.
+    const { ok } = await api('/api/me/conversations/' + thread.id + '/takeover', { method: 'POST', body: JSON.stringify({ paused }) });
+    if (ok) { setThread({ ...thread, bot_paused: paused }); load(); } // spread-copy with new flag (immutable update!) + reload list (badges there too)
+    else toast('Could not update takeover', 'err'); // failure toast (button stays — retry possible)
+  }
   if (thread) { // THREAD SCREEN (early return — completely different JSX below list screen)
     return (
       <div className="card">
-        <button className="btn ghost sm" onClick={() => { setThread(null); load(); }}><Ic n="back" s={14} /> Back to inbox</button> {/* back: clear thread (→ list) + reload (flags may have changed) — two statements in one arrow body {} */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}> {/* action row: back + takeover toggle side by side */}
+          <button className="btn ghost sm" onClick={() => { setThread(null); load(); }}><Ic n="back" s={14} /> Back to inbox</button> {/* back: clear thread (→ list) + reload (flags may have changed) — two statements in one arrow body {} */}
+          {thread.bot_paused // ternary: paused → green "Hand back to AI", else gold "Take over" (color = state at a glance!)
+            ? <button className="btn sm" onClick={() => takeover(false)}>Hand back to AI</button>
+            : <button className="btn ghost sm" onClick={() => takeover(true)}>Take over (pause bot)</button>}
+        </div>
+        {thread.bot_paused && <p className="hint" style={{ marginTop: 8 }}>Bot paused on this chat — the customer hears only you. Hand back anytime.</p>} {/* && explainer (only when paused — teaches what silence means!) */}
         <h2 style={{ margin: '12px 0 2px' }}>{thread.customer_name || thread.customer_number}</h2> {/* name or number (|| fallback) */}
         <p className="desc">{thread.customer_number} {thread.needs_human ? '· needs you' : '· handled by AI'}</p> {/* status suffix (ternary) */}
         <div className="thread"> {/* .thread = flex column of bubbles (CSS) */}
@@ -49,7 +60,7 @@ export default function Chats() {
               : list.map((c) => (<tr key={c.id} className="rowlink" onClick={() => open(c)}>
                 <td><b>{c.customer_name || c.customer_number}</b><br /><span className="hint">{fmtTime(c.updated_at)}</span></td> {/* name (or number) + timestamp below */}
                 <td>{(c.last_message || '').slice(0, 90)}</td> {/* preview capped at 90 chars (|| '' guards null) */}
-                <td><span className={'pill ' + (c.needs_human ? 'flag' : 'ok')}>{c.needs_human ? 'needs you' : 'handled'}</span></td> {/* gold vs green status pill */}
+                <td><span className={'pill ' + (c.needs_human ? 'flag' : 'ok')}>{c.needs_human ? 'needs you' : 'handled'}</span>{c.bot_paused ? <span className="pill info" style={{ marginLeft: 6 }}>you talk</span> : null}</td>
               </tr>))}
           </tbody>
         </table></div>

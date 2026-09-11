@@ -66,6 +66,15 @@ app.get('/health', (req, res) => res.json({ status: 'ok' })); // GET /health →
 // Routes — mount each router at a URL prefix:
 app.use('/webhook', webhookRoutes); // POST /webhook/whatsapp ← Twilio
 app.use('/api/auth', authRoutes); // POST /api/auth/login etc.
+// Admin login/logout BEFORE ownerRoutes (whose blanket requireAuth would 401
+// guests before they ever reach these!). You can't require a session to OBTAIN
+// a session — order matters in Express (first matching middleware wins!).
+app.post('/api/admin/login', require('./controllers/adminController').adminLogin); // { password } → session.isAdmin
+app.post('/api/admin/logout', require('./controllers/adminController').adminLogout); // clears the flag (owner session underneath untouched)
+// Admin console mount BEFORE ownerRoutes (whose blanket requireAuth demands a
+// userId that password-admin sessions don't have — mounting first lets
+// requireAdmin decide instead!). Paths: /api/admin/stats, /users, /transfers…
+app.use('/api/admin', require('./controllers/adminController').requireAdmin, require('./routes/adminRoutes'));
 app.use('/api', ownerRoutes); // /api/me, /api/me/business, etc.
 app.use('/api', billingRoutes.router); // POST /api/billing/initialize
 app.post('/webhook/paystack', billingController.handlePaystackWebhook); // ← Paystack events
@@ -74,6 +83,7 @@ app.post('/webhook/paystack', billingController.handlePaystackWebhook); // ← P
 app.use('/api', (req, res, next) => {
   const expected = process.env.ADMIN_API_KEY; // the secret from .env
   if (expected && req.get('x-admin-key') === expected) return next(); // key matches → in
+  if (req.session && req.session.isAdmin) return next(); // …or the admin password session (full /api/admin/* + legacy businesses access)…
   if (req.session && req.session.businessId) { // …or a logged-in owner…
     if (req.path.startsWith('/me')) return next(); // …but only for their OWN /me routes
   }
@@ -94,7 +104,7 @@ const spa = (req, res) => {
   return res.status(503).json({ error: 'Frontend not built. Run: npm run build' }); // 503 = not ready
 };
 // All app routes → React SPA
-['/', '/login', '/onboarding', '/dashboard', '/profile', '/catalog', '/chats', '/billing', '/playground', '/insights', '/vendora-ai', '/settings', '/help', '/privacy', '/terms', '/faq'].forEach((r) => app.get(r, spa)); // register each page → same handler
+['/', '/login', '/reset', '/onboarding', '/dashboard', '/profile', '/catalog', '/chats', '/billing', '/playground', '/insights', '/vendora-ai', '/settings', '/help', '/privacy', '/terms', '/faq', '/admin'].forEach((r) => app.get(r, spa)); // register each page → same handler
 
 const port = process.env.PORT || 3000; // hosts (Render) inject PORT; locally default 3000
 app.listen(port, () => { // START listening — the callback runs once the socket is open

@@ -3,22 +3,30 @@
 // number, hours, tone, currency, timezone, FAQs. Save → PUT /api/me/business.
 // The AI introduces the shop EXACTLY from this data (garbage in = garbage out).
 import { useState } from 'react'; // useState only (no fetching — biz prop arrives loaded from App!)
-import { api, pop } from '../lib/api.js'; // api() save; pop() big success/fail animation
+import { api, pop, toast } from '../lib/api.js'; // api() save; pop() big success/fail animation; toast() small toggle notes
 import { normalizePhone, prettyPhone } from '../lib/phone.js'; // live phone help: normalize (validate) + pretty (display)
 import Ic from '../components/icons.jsx'; // check icon for the "Saved as …" line
 
 export default function Profile({ biz }) { // biz prop = business from App's useMe (includes currency/timezone from getMe!)
-  const [f, setF] = useState({ name: biz?.name || '', owner: biz?.owner_number || '', hours: biz?.hours || '', tone: biz?.tone || 'friendly and helpful', currency: biz?.currency || 'NGN', timezone: biz?.timezone || 'Africa/Lagos', faq: (biz?.faq || []).map((x) => x.question + ' | ' + x.answer).join('\n') }); // ONE form object (biz?. guards slow load; || defaults; faq ARRAY → one-per-line "question | answer" TEXT for easy editing!)
+  const [f, setF] = useState({ name: biz?.name || '', owner: biz?.owner_number || '', hours: biz?.hours || '', tone: biz?.tone || 'friendly and helpful', currency: biz?.currency || 'NGN', timezone: biz?.timezone || 'Africa/Lagos', personal: ((biz?.personal_contacts || []).join('\n')), faq: (biz?.faq || []).map((x) => x.question + ' | ' + x.answer).join('\n') }); // ONE form object (biz?. guards slow load; || defaults; faq ARRAY → one-per-line "question | answer" TEXT for easy editing!; personal JSONB array → one-number-per-line text!)
+  const [botOn, setBotOn] = useState(biz?.bot_enabled !== false); // kill-switch state (default ON; !== false treats missing as on — safe default!)
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value }); // CURRIED setter factory: set('name') returns an onChange handler writing f.name (computed key [k]!). One line replaces 7 handlers!
   async function save() {
     const faq = f.faq.split('\n').map((l) => { const [q, ...a] = l.split('|'); return q && a.length ? { question: q.trim(), answer: a.join('|').trim() } : null; }).filter(Boolean); // parse BACK: lines → split on FIRST '|' (destructure [q, ...a] keeps extra pipes in the answer via a.join!) → trim → drop blank/invalid lines (filter(Boolean) removes nulls)
-    const { ok, data } = await api('/api/me/business', { method: 'PUT', body: JSON.stringify({ name: f.name.trim(), owner_number: f.owner.trim(), hours: f.hours.trim(), tone: f.tone.trim(), currency: f.currency, timezone: f.timezone.trim() || 'Africa/Lagos', faq }) }); // PUT full update (trim strings, pass currency/timezone through)
+    const personal = f.personal.split('\n').map((l) => l.trim()).filter(Boolean); // one-number-per-line → clean array (any format accepted — backend normalizes!)
+    const { ok, data } = await api('/api/me/business', { method: 'PUT', body: JSON.stringify({ name: f.name.trim(), owner_number: f.owner.trim(), hours: f.hours.trim(), tone: f.tone.trim(), currency: f.currency, timezone: f.timezone.trim() || 'Africa/Lagos', personal_contacts: personal, faq }) }); // PUT full update (trim strings, pass currency/timezone/personal through)
     if (ok) pop('ok', 'Profile saved!', 'The AI talks with this from now on.'); // big success (profile = high-stakes!)
     else pop('err', 'Save failed', (data.errors || [data.error || 'Please try again.']).join('; ')); // backend sends errors ARRAY (validation) or single error — handle BOTH shapes!
   }
   return (
     <>
       <div className="page-head"><div><h1>Business profile</h1><p>Exactly how the AI introduces you. Short, true, and fresh beats long and stale.</p></div></div>
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div><h2>Bot replies: {botOn ? 'ON' : 'OFF'}</h2><p className="desc" style={{ margin: 0 }}>{botOn ? 'The AI answers customers.' : 'Silent everywhere — messages are logged only.'}</p></div>
+          <button className={'btn sm ' + (botOn ? 'ghost' : '')} onClick={async () => { const { ok } = await api('/api/me/bot', { method: 'POST', body: JSON.stringify({ enabled: !botOn }) }); if (ok) { setBotOn(!botOn); toast(!botOn ? 'Bot resumed.' : 'Bot paused everywhere.'); } else toast('Could not switch bot', 'err'); }}>{botOn ? 'Pause bot' : 'Resume bot'}</button>
+        </div>
+      </div>
       <div className="card">
         <div className="grid2"> {/* two-column grid (stacks mobile) */}
           <div><label>Business name</label><input value={f.name} onChange={set('name')} /></div> {/* controlled input: value mirrors state, onChange writes back (React owns the text!) */}
@@ -31,6 +39,9 @@ export default function Profile({ biz }) { // biz prop = business from App's use
         </div>
         <label>How should the AI sound?</label> {/* tone = personality prompt (free text → system prompt!) */}
         <input value={f.tone} onChange={set('tone')} placeholder="warm, short, a little Pidgin when they use Pidgin" />
+        <label>Personal contacts — one number per line (bot NEVER replies to these)</label>
+        <textarea value={f.personal} onChange={set('personal')} rows="3" placeholder={'0803 123 4567\n0805 987 6543'} />
+        <span className="hint">Friends and family chatting personally — their messages are ignored entirely, so the bot never fights your own conversations.</span>
         <label>FAQs — one per line: question | answer</label> {/* the pipe format (parsed in save() above) */}
         <textarea value={f.faq} onChange={set('faq')} rows="5" placeholder={"Where are you? | 12 Allen Avenue, Ikeja\nDo you deliver? | Yes, nationwide in 2–4 days"} /> {/* <textarea> multiline; rows="5" height; {"…\n…"} = placeholder with real newline */}
         <div style={{ marginTop: 14 }}><button className="btn" onClick={save}>Save profile</button></div>

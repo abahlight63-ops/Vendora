@@ -86,6 +86,12 @@ ALTER TABLE businesses ADD COLUMN IF NOT EXISTS trial_started_at TIMESTAMPTZ NOT
 ${USERS_TABLE} -- interpolation: paste the users-table string defined above into this one
 ALTER TABLE users ADD COLUMN IF NOT EXISTS verified BOOLEAN NOT NULL DEFAULT false; -- safety net if users table predates the flag
 ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_token TEXT;
+-- OTP registration (6-digit email codes) + forgot-password reset links
+ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_hash TEXT; -- scrypt hash of the 6-digit code (NEVER the plain code — leaked DBs must not reveal OTPs!)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_expires TIMESTAMPTZ; -- 10-minute window (NULL = no active code)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_attempts INTEGER NOT NULL DEFAULT 0; -- wrong tries (5 = code burned, request a new one)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT; -- forgot-password token (NULL after use — one-time!)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMPTZ; -- 1-hour window for reset links
 
 -- ComeBack: abandonment recovery
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS recovery_sent_at TIMESTAMPTZ; -- NULL = never nudged; timestamp = nudged once
@@ -121,6 +127,39 @@ CREATE INDEX IF NOT EXISTS idx_ad_clicks_created ON ad_clicks(created_at); -- fa
 -- Global: per-business currency (NGN default) + timezone for business-hours logic
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS currency TEXT NOT NULL DEFAULT 'NGN'; -- NGN (+234) or USD (world)
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'Africa/Lagos'; -- IANA zone for open/closed replies
+
+-- Takeover controls: never let the bot fight the owner's personal chats
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS bot_enabled BOOLEAN NOT NULL DEFAULT true; -- global kill-switch (dashboard toggle + PAUSE/RESUME)
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS personal_contacts JSONB NOT NULL DEFAULT '[]'; -- WhatsApp numbers the bot ALWAYS ignores (friends/family)
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS bot_paused BOOLEAN NOT NULL DEFAULT false; -- per-chat takeover (inbox Take over / Hand back)
+
+-- Revenue ledger: every money event (Paystack success, transfer report/approval)
+CREATE TABLE IF NOT EXISTS payments (
+  id SERIAL PRIMARY KEY,
+  business_id INTEGER REFERENCES businesses(id) ON DELETE SET NULL, -- SET NULL: revenue history survives shop deletion
+  plan TEXT NOT NULL DEFAULT 'monthly', -- monthly | yearly | lifetime
+  currency TEXT NOT NULL DEFAULT 'NGN', -- NGN | USD
+  amount INTEGER NOT NULL DEFAULT 0, -- minor units (kobo/cents) — integers dodge float rounding!
+  method TEXT NOT NULL DEFAULT 'paystack', -- paystack | transfer
+  status TEXT NOT NULL DEFAULT 'pending', -- pending | active | rejected
+  reference TEXT, -- Paystack reference or transfer:plan:timestamp tag
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_payments_created ON payments(created_at);
+CREATE INDEX IF NOT EXISTS idx_payments_business ON payments(business_id);
+
+-- Support complaints: in-app tickets from owners (Help form → admin replies)
+CREATE TABLE IF NOT EXISTS complaints (
+  id SERIAL PRIMARY KEY,
+  business_id INTEGER REFERENCES businesses(id) ON DELETE CASCADE, -- tickets die with the shop
+  subject TEXT NOT NULL DEFAULT '',
+  body TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'open', -- open | answered | resolved
+  reply TEXT NOT NULL DEFAULT '', -- admin's latest reply (shown in owner's Help)
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_complaints_business ON complaints(business_id);
 `;
 
 async function ensureSchema() {

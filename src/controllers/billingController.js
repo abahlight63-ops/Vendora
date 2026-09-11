@@ -83,12 +83,19 @@ async function reportTransfer(req, res) {
   const planKey = String(req.body?.plan || 'monthly').toLowerCase();
   if (!PLANS[planKey]) return res.status(400).json({ error: 'Unknown plan.' }); // validate the key (same whitelist idea)
   try {
-    await db.query( // mark PENDING (not active!) — a human verifies the credit first (fraud control)
+    const { rows: bRows } = await db.query('SELECT currency FROM businesses WHERE id = $1', [req.session.businessId]); // price the ledger in the SHOP's currency (same rule as initialize!)
+    const currency = bRows[0]?.currency === 'USD' ? 'USD' : 'NGN';
+    const tag = `transfer:${planKey}:${Date.now()}`; // unique audit tag (also stored as customer_code)
+    await db.query(
       `UPDATE businesses SET subscription_status = 'pending',
-        paystack_customer_code = $1 WHERE id = $2`, // code field reused as "transfer:monthly:169999…" audit trail
-      [`transfer:${planKey}:${Date.now()}`, req.session.businessId] // Date.now() = ms timestamp (unique-ish reference)
+        paystack_customer_code = $1 WHERE id = $2`,
+      [tag, req.session.businessId]
     );
-    res.json({ ok: true }); // frontend shows "activation in progress" popup
+    await db.query( // ledger row: pending until a human (admin approvals!) confirms the credit…
+      'INSERT INTO payments (business_id, plan, currency, amount, method, status, reference) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      [req.session.businessId, planKey, currency, PLANS[planKey][currency] * 100, 'transfer', 'pending', tag] // amount in MINOR units (kobo/cents — integers, never floats!)
+    );
+    res.json({ ok: true });
   } catch (e) {
     console.error('transfer report error:', e.message);
     res.status(500).json({ error: 'Could not record transfer' });
@@ -112,7 +119,7 @@ async function handlePaystackWebhook(req, res) {
     const { business_id, kind, days: metaDays } = event.data.metadata || {}; // destructure OUR metadata back out (|| {} guards missing)
     const days = Number(metaDays) || (PLANS[kind] ? PLANS[kind].days : Number(process.env.SUBSCRIPTION_DAYS || 30)); // metadata days → plan table → env default (triple fallback, never NaN-activate)
     if (business_id) {
-      await db.query( // activate + extend: from existing expiry OR now, whichever LATER (early renewals don't lose days)
+      await db.query( // activate: status=active, extend expiry (from existing expiry or now, whichever later — early renewals don't lose days!)
         `UPDATE businesses
          SET subscription_status = 'active',
              subscription_expires = GREATEST(COALESCE(subscription_expires, now()), now()) + make_interval(days => $1),
@@ -120,6 +127,14 @@ async function handlePaystackWebhook(req, res) {
          WHERE id = $3`, // GREATEST(a,b) = later date; COALESCE(NULL, now()) = now; make_interval builds "N days"
         [days, event.data.customer?.customer_code || null, Number(business_id)] // ?. guards missing customer object
       );
+      try { // ledger row: card payments are active IMMEDIATELY (verified webhook = proof of money!)…
+        const amt = event.data.amount || 0; // Paystack sends amount in MINOR units already (kobo/cents — store as-is!)
+        const cur = (event.data.currency || 'NGN').toUpperCase(); // 'NGN' | 'USD' (upstream value, uppercased defensively)
+        await db.query(
+          'INSERT INTO payments (business_id, plan, currency, amount, method, status, reference) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+          [Number(business_id), PLANS[kind] ? kind : 'monthly', cur, Number(amt) || 0, 'paystack', 'active', event.data.reference || null]
+        );
+      } catch (e) { console.error('payment ledger error:', e.message); } // ledger must NEVER break activation (inner try/catch isolates it!)
       console.log(`Subscription activated for business ${business_id} (+${days} days)`);
     }
   }

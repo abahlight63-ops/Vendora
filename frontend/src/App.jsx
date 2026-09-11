@@ -11,7 +11,8 @@ import Splash from './components/Splash.jsx'; // 1.5s brand intro (shown first)
 import { api } from './lib/api.js'; // backend fetch helper (session cookie included)
 import { loadNetworkAds } from './lib/ads.js'; // free-tier ad tags (single loader — Pro gets nothing)
 import { useTheme } from './lib/theme.js'; // [theme, toggleTheme] (dark/light, persisted)
-import Login from './pages/Login.jsx'; // sign in / sign up (public)
+import Login from './pages/Login.jsx'; // sign in / sign up / OTP / forgot (public)
+import Reset from './pages/Reset.jsx'; // forgot-password landing (?token= — public, token IS the credential!)
 import Landing from './pages/Landing.jsx'; // marketing homepage (public, at /)
 import Onboarding from './pages/Onboarding.jsx'; // welcome tour (post-signup)
 import Dashboard from './pages/Dashboard.jsx'; // overview: stats + attention + checklist
@@ -22,7 +23,8 @@ import Billing from './pages/Billing.jsx'; // plans + transfer + status
 import Playground from './pages/Playground.jsx'; // test-bot (no WhatsApp needed)
 import Insights from './pages/Insights.jsx'; // AI-handled % + flag reasons
 import Settings from './pages/Settings.jsx'; // SmartDeal discounts + handoff text
-import Help from './pages/Help.jsx'; // FAQ accordion + tour replay
+import Help from './pages/Help.jsx';
+import Admin from './pages/Admin.jsx'; // FAQ accordion + tour replay
 import VendoraAI from './pages/VendoraAI.jsx'; // general AI chat + model dropdown
 import Privacy from './pages/Privacy.jsx'; // public legal (no login needed)
 import Terms from './pages/Terms.jsx'; // public legal
@@ -57,10 +59,12 @@ export default function App() { // ROOT component (main.jsx renders this)
   if (splash) return <Splash done={hideSplash} />; // EARLY RETURN: splash covers everything until done() fires (1.5s)
   return ( // after splash: the route table (order matters — first match wins!)
     <Routes>
+      <Route path="/admin" element={<Admin />} />
       <Route path="/privacy" element={<Privacy />} /> {/* public legal trio (no Guard — Google + guests must read them!) */}
       <Route path="/terms" element={<Terms />} />
       <Route path="/faq" element={<Faq />} />
       <Route path="/login" element={<Login setMe={setMe} theme={theme} onToggleTheme={toggleTheme} />} /> {/* setMe prop: login updates App state directly */}
+      <Route path="/reset" element={<Reset />} /> {/* forgot-password landing (public — must NOT be Guarded: no session exists yet!) */}
       <Route path="/onboarding" element={<Onboarding me={me} />} /> {/* welcome tour (reachable logged-in OR fresh — by design) */}
       <Route path="/dashboard" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme}><Dashboard biz={me} /></Guard>} /> {/* Guard pattern: <Guard …><Page/></Guard> = page becomes `children` */}
       <Route path="/chats" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme}><Chats /></Guard>} />

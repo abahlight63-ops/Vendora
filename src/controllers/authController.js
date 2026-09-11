@@ -34,9 +34,13 @@ async function signup(req, res) {
     const business = bRows[0]; // the new shop
 
     const user = await authService.createUser(business.id, email, password); // hash password + users row (+ verification email or auto-verify)
-    req.session.userId = user.id; // LOGIN = write ids into the session (store persists them)…
-    req.session.businessId = business.id; // …every later request reads these (that's the whole auth system!)
-    res.status(201).json({ user: { id: user.id, email: user.email }, business }); // 201 = Created (only safe fields — NEVER password_hash!)
+    const otp = await authService.issueOTP(email); // OTP-first registration: 6-digit code emailed (link is the FALLBACK, not the default!)…
+    if (otp.auto) { // …UNLESS dev mode (no Resend key): skip the dance, log straight in (old behavior, local convenience!)
+      req.session.userId = user.id; // LOGIN = write ids into the session (store persists them)…
+      req.session.businessId = business.id; // …every later request reads these (that's the whole auth system!)
+      return res.status(201).json({ user: { id: user.id, email: user.email }, business, auto: true }); // auto flag tells frontend: no OTP screen needed!
+    }
+    res.status(201).json({ needsOTP: true, email: user.email }); // NO session yet (unverified users get nothing!) — frontend shows the OTP screen (only safe fields — NEVER password_hash!)
   } catch (err) {
     if (err.code === '23505') { // Postgres UNIQUE violation (two signups racing the same number)
       return res.status(409).json({ error: 'That WhatsApp number is already registered' });
@@ -84,4 +88,65 @@ function logout(req, res) {
   req.session.destroy(() => res.json({ ok: true })); // destroy = delete DB row → cookie becomes useless; reply in the callback (after deletion completes)
 }
 
-module.exports = { signup, verify, resendVerification, login, logout }; // routes/authRoutes.js wires these five
+// POST /api/auth/verify-otp { email, code } — check the 6-digit code, log in on success.
+async function verifyOtp(req, res) {
+  const { email, code } = req.body || {}; // both required (guarded below)…
+  if (!email || !code) return res.status(400).json({ error: 'Email and code required.' });
+  const result = await authService.verifyOTP(email, String(code)); // service: expiry, attempts, hash compare, burn-on-success…
+  if (result.already) { // already verified (double-submit / back-button) → just log them in (idempotent!)
+    const user = await authService.findUserByEmail(email);
+    req.session.userId = user.id;
+    req.session.businessId = user.business_id;
+    return res.json({ user: { id: user.id, email: user.email } });
+  }
+  if (!result.ok) { // wrong/expired/locked → specific message + attempts left (frontend shows resend/fallback options!)…
+    if (result.expired) return res.status(400).json({ error: 'Code expired — request a new one.', expired: true });
+    if (result.locked) return res.status(400).json({ error: 'Too many wrong tries — request a new code.', locked: true });
+    if (typeof result.left === 'number') return res.status(400).json({ error: `Wrong code — ${result.left} ${result.left === 1 ? 'try' : 'tries'} left.`, left: result.left });
+    return res.status(400).json({ error: 'Wrong code — try again.' });
+  }
+  const user = result.user; // verified user object (returned by the service — no second lookup!)
+  req.session.userId = user.id; // LOGIN on successful verification (same session stamp as login/signup!)…
+  req.session.businessId = user.business_id;
+  res.json({ user: { id: user.id, email: user.email } });
+}
+
+// POST /api/auth/otp-resend { email } — fresh OTP code (burns the old one, resets attempts).
+async function otpResend(req, res) {
+  const { email } = req.body || {};
+  if (!email) return res.status(400).json({ error: 'Email required.' });
+  const result = await authService.issueOTP(email); // same issuer as signup (new code, new 10-min window!)
+  if (result.reason === 'nouser') return res.status(404).json({ error: 'No account with that email.' });
+  if (result.already) return res.json({ ok: true, message: 'Already verified — you can sign in.' });
+  if (result.auto) return res.json({ ok: true, auto: true, message: 'Email service off (dev) — signing you in.' }); // dev: skip the code entirely
+  if (!result.sent) return res.status(502).json({ error: 'Email service is down — use "send a link instead" below.' }); // honest Resend failure (points at the fallback!)
+  res.json({ ok: true, message: 'New code sent — check your inbox.' });
+}
+
+// POST /api/auth/otp-link { email } — OTP fallback: "email didn't arrive? send a LINK instead" (existing token flow!).
+async function otpLink(req, res) {
+  const { email } = req.body || {};
+  if (!email) return res.status(400).json({ error: 'Email required.' });
+  const result = await authService.resendVerification(email); // reuse the LINK machinery (new token, Resend email)…
+  if (!result) return res.status(404).json({ error: 'No account with that email.' });
+  if (result.already) return res.json({ ok: true, message: 'Already verified — you can sign in.' });
+  res.json({ ok: true, message: result.sent ? 'Link sent — check your inbox.' : 'Email service is down right now — try the code again or contact support.' }); // honest failure message (no fake "sent" when Resend is down!)
+}
+
+// POST /api/auth/forgot { email } — always { sent: true } (enumeration defense lives in the service!).
+async function forgot(req, res) {
+  const { email } = req.body || {};
+  if (!email) return res.status(400).json({ error: 'Email required.' });
+  const result = await authService.issueReset(email); // unknown emails ALSO get {sent:true} (don't leak the user list!)
+  res.json({ sent: true, ...(result.devToken ? { devToken: result.devToken } : {}) }); // spread devToken ONLY in dev (real users just see "sent"!)
+}
+
+// POST /api/auth/reset { token, password } — consume reset link, set new password.
+async function reset(req, res) {
+  const { token, password } = req.body || {};
+  const result = await authService.resetPassword(token, password); // bad/expired/weak → {ok:false} (all identical — no enumeration!)
+  if (!result.ok) return res.status(400).json({ error: 'Link invalid, expired, or password too short (8+ characters).' }); // one message covers all three (deliberately vague = secure!)
+  res.json({ ok: true }); // frontend routes to /login ("password set — sign in!")
+}
+
+module.exports = { signup, verify, resendVerification, login, logout, verifyOtp, otpResend, otpLink, forgot, reset }; // routes/authRoutes.js wires these five

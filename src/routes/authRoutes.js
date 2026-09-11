@@ -17,5 +17,8 @@ router.post('/forgot', authController.forgot); // { email } → reset link email
 router.post('/reset', authController.reset); // { token, password } → consume link, set new password
 router.post('/login', authController.login); // email + password → session
 router.post('/logout', authController.logout); // destroy session
+router.get('/config', authController.authConfig); // public knobs (Google client id) — no auth needed (it's PUBLIC by design!)
+router.post('/google', authController.google); // { credential } → session OR { needsSignup } (FREE social login!)
+router.post('/google-signup', authController.googleSignup); // { credential, name, whatsapp_number… } → full account + session
 
 module.exports = router; // server.js does app.use('/api/auth', authRoutes)

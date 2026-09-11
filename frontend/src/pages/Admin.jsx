@@ -8,8 +8,9 @@
 import { useEffect, useState } from 'react';
 import { api, fmtDate, pop, toast } from '../lib/api.js';
 import { money } from '../lib/money.js';
+import Ic from '../components/icons.jsx';
 
-const TABS = [['stats', 'Overview'], ['users', 'Users'], ['revenue', 'Revenue'], ['transfers', 'Transfers'], ['complaints', 'Complaints']]; // [key, label] pairs (data-driven tabs = add a tab = add a row + panel!)
+const TABS = [['stats', 'Overview', 'chart'], ['users', 'Users', 'profile'], ['revenue', 'Revenue', 'card'], ['transfers', 'Transfers', 'send'], ['complaints', 'Complaints', 'help']]; // [key, label, icon] triples (icons at fixed 16px per the icon system!)
 
 export default function Admin() {
   const [gate, setGate] = useState('checking'); // 'checking' | 'locked' | 'open' (three gate states — never flash the console to strangers!)
@@ -68,11 +69,11 @@ export default function Admin() {
 
   return ( // CONSOLE (gate open)…
     <>
-      <div className="page-head"><div><h1>Admin console</h1><p>Private — users, revenue, transfers, complaints. No owner ever sees this page.</p></div></div>
-      <div className="card"> {/* tab bar (same button pattern as Chats filters!) */}
+      <div className="page-head"><div className="row" style={{ width: '100%' }}><div><h1>Admin console</h1><p>Private — users, revenue, transfers, complaints. No owner ever sees this page.</p></div><button className="btn ghost sm" onClick={async () => { await api('/api/admin/logout', { method: 'POST' }); setGate('locked'); }}>Sign out</button></div></div>
+      <div className="card"> {/* tab bar (icons at 16px + labels, active solid / rest ghost) */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {TABS.map(([k, l]) => ( // destructure pairs; active tab solid, rest ghost…
-            <button key={k} className={'btn sm ' + (tab === k ? '' : 'ghost')} onClick={() => load(k)}>{l}</button>
+          {TABS.map(([k, l, ic]) => ( // destructure triples; icon + label per tab…
+            <button key={k} className={'btn sm ' + (tab === k ? '' : 'ghost')} onClick={() => load(k)}><Ic n={ic} s={16} />{l}</button>
           ))}
         </div>
       </div>
@@ -98,13 +99,13 @@ function Stats({ d }) { // OVERVIEW: users, tiers, money, activity, tickets (rea
         <Stat n={d.trialing} l="On trial" />
         <Stat n={d.pending} l="Awaiting payment" good={d.pending === 0 ? true : false} /> {/* pending>0 = gold (money waiting on YOU!) */}
       </div>
-      <div className="grid4" style={{ marginTop: 14 }}>
+      <div className="grid4" style={{ marginTop: 16 }}>
         <Stat n={'₦' + (Number(d.ngn_kobo || 0) / 100).toLocaleString()} l="Collected (NGN)" /> {/* minor units ÷ 100 (kobo→naira; integers in DB, pretty in UI!) */}
         <Stat n={'$' + (Number(d.usd_cents || 0) / 100).toLocaleString()} l="Collected (USD)" />
         <Stat n={d.today} l="Chats today" />
         <Stat n={d.complaints} l="Open tickets" good={d.complaints === 0} /> {/* open>0 = gold (someone needs YOU!) */}
       </div>
-      <p className="hint" style={{ marginTop: 10 }}>Collected = active payments only. Per-view ad money lives in your Monetag/Adsterra dashboards; per-click sponsor totals: Admin → Revenue uses /api/ads/stats with x-admin-key.</p> {/* honest scope note (where each Naira is counted!) */}
+      <p className="hint" style={{ marginTop: 16 }}>Collected = active payments only. Per-view ad money lives in your Monetag/Adsterra dashboards; per-click sponsor totals: Admin → Revenue uses /api/ads/stats with x-admin-key.</p> {/* honest scope note (where each Naira is counted!) */}
     </>
   );
 }
@@ -141,7 +142,7 @@ function Revenue({ d }) { // REVENUE: collected totals + where transfer money si
         <div className="stat good"><div className="num">${(Number(d.usd_cents || 0) / 100).toLocaleString()}</div><div className="lbl">USD collected</div></div>
         <div className="stat"><div className="num">₦{(Number(d.month_all || 0) / 100).toLocaleString()}</div><div className="lbl">This month (all)</div></div>
       </div>
-      <p className="hint" style={{ marginTop: 10 }}>Per-click sponsor earnings: call <b>GET /api/ads/stats</b> with your admin key. Per-view network earnings: Monetag/Adsterra dashboards.</p>
+      <p className="hint" style={{ marginTop: 16 }}>Per-click sponsor earnings: call <b>GET /api/ads/stats</b> with your admin key. Per-view network earnings: Monetag/Adsterra dashboards.</p>
     </div>
   );
 }
@@ -181,21 +182,21 @@ function Complaints({ rows, act }) { // COMPLAINTS: open-first tickets with inli
       {rows.length === 0 && <div className="card"><div className="empty"><b>No complaints</b>Silence is golden — or nobody found the form yet.</div></div>} {/* && empty state (honest humor, zero dev-talk!) */}
       {rows.map((c) => ( // key={c.id} ticket ids…
         <div key={c.id} className="card">
-          <div className="card-head"><h2>{c.subject || 'Support request'}</h2><span className={'pill ' + (c.status === 'open' ? 'flag' : c.status === 'answered' ? 'info' : 'ok')}>{c.status}</span></div> {/* status pill: gold open / blue answered / green resolved */}
+          <div className="card-head"><h2><Ic n="help" s={16} /> {c.subject || 'Support request'}</h2><span className={'pill ' + (c.status === 'open' ? 'flag' : c.status === 'answered' ? 'info' : 'ok')}>{c.status}</span></div> {/* status pill: gold open / blue answered / green resolved */}
           <p className="hint">{c.business_name || ''} · {c.whatsapp_number || ''} · {fmtDate(c.created_at)}</p> {/* who + when (triage context!) */}
           <p style={{ marginTop: 8 }}>{c.body}</p> {/* the complaint itself */}
           {c.reply && <div className="learn-box light" style={{ fontFamily: 'var(--font)', marginTop: 8 }}><b>Your reply:</b> {c.reply}</div>} {/* && conditional: past reply shown (no double-answering blind!) */}
           {replying === c.id ? ( // reply box open for THIS ticket?…
             <>
-              <label style={{ marginTop: 10 }}>Reply (also emailed to the owner)</label>
+              <label style={{ marginTop: 16 }}>Reply (also emailed to the owner)</label>
               <textarea value={text} onChange={(e) => setText(e.target.value)} rows="3" placeholder="Hi! Here's the fix…" />
               <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                <button className="btn sm" onClick={() => send(c.id)}>Send reply</button>
+                <button className="btn sm" onClick={() => send(c.id)}><Ic n="send" s={16} />Send reply</button>
                 <button className="btn ghost sm" onClick={() => { setReplying(null); setText(''); }}>Cancel</button>
               </div>
             </>
           ) : ( // …else action row (Reply opens box; Resolve closes without reply)…
-            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
               <button className="btn ghost sm" onClick={() => { setReplying(c.id); setText(''); }}>Reply</button>
               {c.status !== 'resolved' && <button className="btn ghost sm" onClick={() => act(`/api/admin/complaints/${c.id}/resolve`, null, 'Ticket resolved.')}>Resolve</button>} {/* && conditional: resolved tickets hide Resolve (can't double-resolve!) */}
             </div>

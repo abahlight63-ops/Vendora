@@ -40,6 +40,9 @@ export default function Landing({ theme = 'light', onToggleTheme = () => {} }) {
             <a className="btn ghost" href="#how">See how it works</a> {/* plain <a href="#how"> = in-page ANCHOR jump (no router involved — scrolls to id="how" below!) */}
           </div>
           <p className="hint" style={{ marginTop: 12 }}>No card required · Set up in 15 minutes · Cancel anytime</p> {/* objection-killers (middle dots ·) */}
+          <div className="landing-hero-photo"> {/* real photo slot: save frontend/public/photos/hero.jpg (1200×800). Missing file hides itself (onError) — layout never breaks! */}
+            <img src="/photos/hero.jpg" alt="Shop owner chatting with customers on WhatsApp" loading="lazy" decoding="async" onError={(e) => { e.target.closest('.landing-hero-photo').style.display = 'none'; }} />
+          </div>
         </div>
         <div className="landing-phone"> {/* right: fake phone with sample chat (CSS bubbles + float animation!) */}
           <div className="landing-phone-head"><i />Amaka Beauty Studio <span>online</span></div> {/* <i> = green dot; shop name + online */}
@@ -53,9 +56,9 @@ export default function Landing({ theme = 'light', onToggleTheme = () => {} }) {
       <p className="hint reveal" style={{ textAlign: 'center', margin: '6px 0 0' }}>Manual catalog free forever · 14-day Pro trial included · profile sync is Pro · pricing adapts to your location</p> {/* location-based pricing note (single currency shown below — never dual tags!) */}
 
       <section className="landing-inner grid3" id="how"> {/* id="how" = the anchor target from "See how it works"! grid3 = 3 columns → stack mobile */}
-        <div className="card hover-lift reveal"><h2>1. Teach it once</h2><p className="desc">Send <b>LEARN: Blue gown ₦45,000</b> from your WhatsApp — or add products here. Same name always updates the price.</p></div> {/* hover-lift = rise on hover (CSS); reveal = scroll entrance (both classes compose!) */}
-        <div className="card hover-lift reveal"><h2>2. It sells while you sleep</h2><p className="desc">Every customer gets an instant, accurate answer from YOUR catalog. Never an invented price.</p></div>
-        <div className="card hover-lift reveal"><h2>3. You close the hot ones</h2><p className="desc">Unsure moments get flagged to your inbox + WhatsApp instantly — with the customer's words attached.</p></div>
+        <div className="card hover-lift reveal"><div className="how-thumb"><img src="/photos/how-1.jpg" alt="Teaching the bot with a WhatsApp message" loading="lazy" decoding="async" onError={(e) => { e.target.closest('.how-thumb').style.display = 'none'; }} /></div><h2>1. Teach it once</h2><p className="desc">Send <b>LEARN: Blue gown ₦45,000</b> from your WhatsApp — or add products here. Same name always updates the price.</p></div> {/* thumbs: frontend/public/photos/how-{1,2,3}.jpg (800×600), self-hiding when missing */}
+        <div className="card hover-lift reveal"><div className="how-thumb"><img src="/photos/how-2.jpg" alt="AI replying to a customer instantly" loading="lazy" decoding="async" onError={(e) => { e.target.closest('.how-thumb').style.display = 'none'; }} /></div><h2>2. It sells while you sleep</h2><p className="desc">Every customer gets an instant, accurate answer from YOUR catalog. Never an invented price.</p></div>
+        <div className="card hover-lift reveal"><div className="how-thumb"><img src="/photos/how-3.jpg" alt="Owner closing a flagged sale" loading="lazy" decoding="async" onError={(e) => { e.target.closest('.how-thumb').style.display = 'none'; }} /></div><h2>3. You close the hot ones</h2><p className="desc">Unsure moments get flagged to your inbox + WhatsApp instantly — with the customer's words attached.</p></div>
       </section>
 
       <section className="landing-inner grid3"> {/* pricing trio — ONE currency each, picked by visitor location (useCurrency hook below!) */}

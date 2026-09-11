@@ -88,6 +88,92 @@ function logout(req, res) {
   req.session.destroy(() => res.json({ ok: true })); // destroy = delete DB row → cookie becomes useless; reply in the callback (after deletion completes)
 }
 
+// GET /api/auth/config — PUBLIC knobs the login page needs (client id ONLY —
+// never secrets! Secrets stay server-side; the client id is public by design).
+function authConfig(req, res) {
+  res.json({ googleClientId: process.env.GOOGLE_CLIENT_ID || null }); // null → Google button explains "not switched on" (no dead button!)
+}
+
+// POST /api/auth/google { credential } — Sign in with Google (FREE forever).
+// Flow: GIS button → Google signs a JWT ID token → we verify it with Google →
+// find-or-create user by verified email → same session. No password involved.
+// WHY tokeninfo + fetch (no google-auth-library): one less dependency, same
+// security (Google is the authority either way — we just ask "is this token real?").
+async function google(req, res) {
+  try {
+    const clientId = process.env.GOOGLE_CLIENT_ID; // your OAuth client id (public value — safe in frontend too!)
+    if (!clientId) return res.status(503).json({ error: 'Google sign-in is not switched on yet.' }); // 503 = not configured (honest, not "invalid token"!)
+    const { credential } = req.body || {}; // the JWT from the Google button (NOT an access token — an ID token asserting identity!)
+    if (!credential || typeof credential !== 'string') return res.status(400).json({ error: 'Missing Google credential.' }); // guard clause
+    const r = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`); // ask Google: valid? (tokeninfo validates signature + expiry server-side!)
+    if (!r.ok) return res.status(401).json({ error: 'Google sign-in failed — try again.' }); // expired/forged/wrong-audience token
+    const info = await r.json(); // { sub, email, email_verified, aud, name, picture }
+    if (!info.email_verified || info.aud !== clientId) return res.status(401).json({ error: 'Google sign-in failed — try again.' }); // belt & braces: email MUST be verified AND token minted for OUR client id (aud check stops token-reuse across apps!)
+    const email = String(info.email).toLowerCase(); // normalize (login consistency with password accounts!)
+    let user = await authService.findUserByEmail(email); // existing account (password OR prior Google)?
+    if (user) { // YES → link/enter: mark verified (Google proved the inbox!) + log in (same session stamp!)
+      if (!user.verified) await db.query('UPDATE users SET verified = true, verify_token = NULL WHERE id = $1', [user.id]); // upgrade: Google proof counts as email verification!
+      req.session.userId = user.id;
+      req.session.businessId = user.business_id;
+      const fresh = await authService.findUserByEmail(email); // refetch (business_name for the response!)
+      return res.json({ user: { id: fresh.id, email: fresh.email, business_name: fresh.business_name }, businessId: fresh.business_id });
+    }
+    return res.status(404).json({ error: 'No Vendora account uses that Google email — create one first.', needsSignup: true, email, name: info.name || '' }); // NO account → frontend offers one-tap business creation (see googleSignup below — never auto-create blindly: we need their WhatsApp number!)
+  } catch (e) {
+    console.error('google auth error:', e.message);
+    res.status(502).json({ error: 'Could not reach Google — try again.' }); // network to Google failed (our side reachable, theirs not!)
+  }
+}
+
+// POST /api/auth/google-signup { credential, name, whatsapp_number, owner_number?, hours? }
+// Google-verified email + minimal business details → full account, logged in.
+async function googleSignup(req, res) {
+  try {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) return res.status(503).json({ error: 'Google sign-in is not switched on yet.' });
+    const { credential, name, whatsapp_number: numberRaw, owner_number: ownerRaw, hours } = req.body || {};
+    if (!credential) return res.status(400).json({ error: 'Missing Google credential.' });
+    const r = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`); // re-verify (NEVER trust the frontend's word about identity!)
+    if (!r.ok) return res.status(401).json({ error: 'Google sign-in failed — try again.' });
+    const info = await r.json();
+    if (!info.email_verified || info.aud !== clientId) return res.status(401).json({ error: 'Google sign-in failed — try again.' });
+    const email = String(info.email).toLowerCase();
+    const existing = await authService.findUserByEmail(email); // race: account created between google() and here?…
+    if (existing) { // …then just log in (idempotent — double-submit safe!)
+      req.session.userId = existing.id;
+      req.session.businessId = existing.business_id;
+      return res.json({ user: { id: existing.id, email: existing.email } });
+    }
+    if (!name || typeof name !== 'string') return res.status(400).json({ error: 'Business name required.' }); // business still needs a NAME + NUMBER (Google gives neither!)
+    const number = normalizePhone(numberRaw); // same normalizer as password signup (one rule everywhere!)
+    const owner = normalizePhone(ownerRaw);
+    if (!number) return res.status(400).json({ error: 'Enter a valid WhatsApp number (e.g. 0803 123 4567).' });
+    if (ownerRaw && !owner) return res.status(400).json({ error: 'Enter a valid personal WhatsApp number.' });
+    const planService = require('../services/planService'); // lazy require (file style)
+    const { rows: bRows } = await db.query( // same INSERT as password signup (currency auto-resolved!)…
+      `INSERT INTO businesses (name, whatsapp_number, owner_number, hours, faq, tone, currency)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, name, whatsapp_number, owner_number, hours, tone, currency`,
+      [name.trim(), number, owner || number, (hours || '').trim(), '[]', 'friendly and helpful', planService.resolveCurrency(number, owner)]
+    );
+    const business = bRows[0];
+    const { rows: uRows } = await db.query( // …but user row WITHOUT password (password_hash empty = "Google-only account"; login blocks empty hashes — verifyPassword on '' fails safely!)
+      `INSERT INTO users (business_id, email, password_hash, verified, verify_token)
+       VALUES ($1, $2, $3, true, NULL)
+       RETURNING id, email, business_id`,
+      [business.id, email, '']
+    );
+    const user = uRows[0]; // verified=true immediately (Google proved the inbox — no OTP dance needed!)
+    req.session.userId = user.id; // log straight in (same stamp!)
+    req.session.businessId = business.id;
+    res.status(201).json({ user: { id: user.id, email: user.email }, business }); // 201 + business (frontend routes to /onboarding like password signup!)
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'That WhatsApp number or email is already registered — try signing in.' }); // UNIQUE race (number or email taken between checks!)
+    console.error('google signup error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
 // POST /api/auth/verify-otp { email, code } — check the 6-digit code, log in on success.
 async function verifyOtp(req, res) {
   const { email, code } = req.body || {}; // both required (guarded below)…
@@ -149,4 +235,4 @@ async function reset(req, res) {
   res.json({ ok: true }); // frontend routes to /login ("password set — sign in!")
 }
 
-module.exports = { signup, verify, resendVerification, login, logout, verifyOtp, otpResend, otpLink, forgot, reset }; // routes/authRoutes.js wires these five
+module.exports = { signup, verify, resendVerification, login, logout, verifyOtp, otpResend, otpLink, forgot, reset, google, googleSignup, authConfig }; // routes/authRoutes.js wires these five

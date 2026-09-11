@@ -43,6 +43,79 @@ function DemoChat() { // self-playing chat preview (NOT a component with props �
   );
 }
 
+function GoogleButton({ busy, setBusy, fail, afterAuth, setMe }) { // "Continue with Google" (GIS button + full flow: session OR one-tap business form). Props drilled from Login (shared busy/fail/afterAuth = consistent UX!).
+  const [gBusy, setGBusy] = useState(false); // google in-flight (separate from form busy — both lock!)
+  const [needBiz, setNeedBiz] = useState(null); // null = no form; {email, name, credential} = Google user WITHOUT Vendora account (one-tap creation form!)
+  const [g, setG] = useState({ name: '', wa: '', hours: '' }); // mini business form (name + number + hours — email comes from Google!)
+  function loadGIS() { // lazy-load Google's script ONCE (no render-blocking <script> in index.html — speed!)
+    return new Promise((resolve, reject) => { // Promise wrapper around script injection (async/await-friendly!)
+      if (window.google?.accounts?.id) return resolve(); // ?. chain: already loaded → resolve instantly (no double-inject!)
+      const s = document.createElement('script'); // create <script>…
+      s.src = 'https://accounts.google.com/gsi/client'; // …Google Identity Services (GIS = the modern button/popup lib, NOT the dead gapi!)
+      s.async = true; s.defer = true; // async+defer = never blocks our page (speed pass approved!)
+      s.onload = () => resolve(); // loaded → resolve…
+      s.onerror = () => reject(new Error('google')); // …blocked (adblock!) → reject (we show a message, not silence!)
+      document.head.appendChild(s); // inject → browser fetches
+    });
+  }
+  async function start() { // the whole flow: script → button-less prompt → credential → backend…
+    if (busy || gBusy) return; // locked either way (double-tap protection!)
+    setGBusy(true);
+    try {
+      await loadGIS(); // 1. GIS library ready (or throw → catch shows message!)
+      const clientId = window.__GOOGLE_CLIENT_ID__; // injected below (see bottom: read from backend /api/auth/config — never hardcode secrets… client_id is PUBLIC, but env-driven keeps deploys clean!)
+      if (!clientId) { setGBusy(false); return fail('Google sign-in is not switched on yet.'); } // backend has no GOOGLE_CLIENT_ID (honest message, not a dead button!)
+      const credential = await new Promise((resolve, reject) => { // 2. One Tap / popup prompt (Promise-wrapped callback API!)…
+        window.google.accounts.id.initialize({ client_id: clientId, callback: (r) => resolve(r.credential), auto_select: false }); // initialize once per click (idempotent); callback receives {credential: JWT}
+        window.google.accounts.id.prompt((n) => { if (n.isNotDisplayed() || n.isSkippedMoment()) reject(new Error('closed')); }); // prompt() shows the account chooser; closed/skipped → reject (user walked away!)
+      });
+      const { ok, data } = await api('/api/auth/google', { method: 'POST', body: JSON.stringify({ credential }) }); // 3. backend verifies with Google + session OR needsSignup…
+      setGBusy(false);
+      if (ok) { const me = await api('/api/me'); if (me.ok) setMe(me.data.business); const nav2 = '/dashboard'; window.location.href = nav2; return; } // session stamped → refresh state → dashboard (location.href = full reload: guarantees session cookie + fresh App state! Simpler than threading navigate here.)
+      if (data.needsSignup) { setNeedBiz({ email: data.email, name: data.name || '', credential }); setG({ name: data.name || '', wa: '', hours: '' }); return; } // 404 needsSignup → open the ONE-TAP business form (credential KEPT for the signup call!)
+      fail(data.error || 'Google sign-in failed — try again.'); // other failures (expired token, Google down…)
+    } catch { setGBusy(false); fail('Google sign-in was closed or blocked — try again (disable adblock for accounts.google.com).'); } // script blocked / popup closed / network (ONE message for all — all three feel identical to users!)
+  }
+  async function finishSignup() { // one-tap business creation for Google users (name + number + hours, email from Google!)…
+    const number = normalizePhone(g.wa); // same normalizer as password signup (one rule everywhere!)
+    if (!g.name.trim()) return fail('Business name required.');
+    if (!number) return fail('Enter a valid WhatsApp number (e.g. 0803 123 4567).');
+    setGBusy(true);
+    try {
+      const { ok, data } = await api('/api/auth/google-signup', { method: 'POST', body: JSON.stringify({ credential: needBiz.credential, name: g.name.trim(), whatsapp_number: g.wa.trim(), owner_number: g.wa.trim(), hours: g.hours.trim() }) }); // credential RE-VERIFIED server-side (never trust the frontend's claim!)
+      setGBusy(false);
+      if (ok && data.user) { const me = await api('/api/me'); if (me.ok) setMe(me.data.business); window.location.href = '/onboarding'; return; } // new account → tour (same as password signup!)
+      fail((data.errors || [data.error || 'Signup failed']).join('; ')); // validation/409 shapes handled like password flow
+    } catch { setGBusy(false); fail("Can't reach the Vendora server. Check your internet connection and try again."); }
+  }
+  if (needBiz) { // BUSINESS FORM replaces the button (Google verified email, just needs shop details!)…
+    return (
+      <div style={{ marginTop: 12 }}>
+        <p className="switch-note">Google verified <b>{needBiz.email}</b> — add your shop to finish (one step!).</p> {/* email shown (proof it worked!) */}
+        <label>Business name</label><input value={g.name} onChange={(e) => setG({ ...g, name: e.target.value })} placeholder="Amaka Beauty Studio" autoComplete="organization" />
+        <label>Business WhatsApp</label><input value={g.wa} onChange={(e) => setG({ ...g, wa: e.target.value })} placeholder="0803 123 4567" inputMode="tel" />
+        <label>Opening hours</label><input value={g.hours} onChange={(e) => setG({ ...g, hours: e.target.value })} placeholder="Mon–Sat, 9am–7pm" />
+        <button className="btn login-cta" disabled={gBusy} onClick={finishSignup}>{gBusy ? 'Creating…' : 'Create my shop →'}</button>
+        <p className="auth-toggle"><a onClick={() => setNeedBiz(null)}>Back</a></p> {/* Back drops the form (credential discarded — re-click to restart!) */}
+      </div>
+    );
+  }
+  return ( // THE BUTTON (white Google style: G logo + text, full-width like our CTA)…
+    <div style={{ marginTop: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0 12px' }}><span style={{ flex: 1, height: 1, background: 'var(--line)' }} /><span className="hint">or</span><span style={{ flex: 1, height: 1, background: 'var(--line)' }} /></div> {/* divider with lines (flex:1 rules grow to fill!) */}
+      <button className="btn ghost login-cta" disabled={busy || gBusy} onClick={start} style={{ background: '#fff' }}><svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.3-2.3H12v4.5h6.5c-.1 1.1-.8 2.7-2.4 3.8l-.1.1 3.5 2.7.2.1c2.2-2 3.8-5 3.8-8.9z" /><path fill="#34A853" d="M12 24c3.2 0 6-1.1 7.9-2.9l-3.8-2.9c-1 .7-2.4 1.2-4.1 1.2-3.1 0-5.8-2.1-6.8-5l-.1.1-3.6 2.8v.1C3.5 21.5 7.5 24 12 24z" /><path fill="#FBBC05" d="M5.2 14.4c-.2-.7-.4-1.5-.4-2.4s.1-1.7.4-2.4l-.1-.1-3.5-2.7-.1.1C.5 8.9 0 10.4 0 12s.5 3.1 1.5 4.5l3.7-2.1z" /><path fill="#EA4335" d="M12 4.7c1.8 0 3 .8 3.7 1.4l3.3-3.2C17.9 1.1 15.2 0 12 0 7.5 0 3.5 2.5 1.5 6.9l3.7 2.8c1-2.9 3.7-5 6.8-5z" /></svg>{gBusy ? 'Waiting for Google…' : 'Continue with Google'}</button> {/* inline G logo paths (brand colors — Google's own mark, no library!); label flips while popup open */}
+    </div>
+  );
+}
+
+async function fetchGoogleClientId() { // module-level fetch (called once below): backend exposes ONLY the public client id (never secrets!)…
+  try {
+    const { ok, data } = await api('/api/auth/config');
+    if (ok && data.googleClientId) window.__GOOGLE_CLIENT_ID__ = data.googleClientId; // stash on window (GoogleButton reads it at click time!)
+  } catch {} // backend down/unconfigured → button shows "not switched on" (graceful!)
+}
+fetchGoogleClientId(); // fire on module load (once per page-load — cached on window!)
+
 export default function Login({ setMe }) { // setMe prop = App's state setter (login updates GLOBAL login state directly — no reload!)
   useEffect(() => { document.title = 'Vendora — Sign in'; }, []); // tab title (mount-only side-effect)
   const nav = useNavigate(); // code navigation (afterAuth below)
@@ -202,6 +275,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
             <div className="pw-meter"><i className={pwScore >= 1 ? 'on' : ''} /><i className={pwScore >= 2 ? 'on' : ''} /><i className={pwScore >= 3 ? 'on' : ''} /><span>{pwScore >= 2 ? 'Strong enough' : 'Keep typing…'}</span></div>
           )}
           <button className="btn login-cta" disabled={busy} onClick={mode === 'login' ? login : signup}>{busy ? <span className="spinner" /> : null}{busy ? 'Please wait…' : mode === 'login' ? 'Sign in →' : 'Start my free trial →'}</button> {/* disabled while busy (double-submit lock); spinner span OR null; label ternary ×2 (busy? then mode?) */}
+          {(mode === 'login' || mode === 'signup') && <GoogleButton busy={busy} setBusy={setBusy} fail={fail} afterAuth={afterAuth} setMe={setMe} />} {/* social login under BOTH forms (one component, both modes!) */}
           {needsVerify && <button className="resend-btn" onClick={resend}><Ic n="mail" s={15} /> Resend verification email</button>} {/* unverified-login only (backend needsVerification flag drives this!) */}
           <div className={'auth-message' + (msgErr ? ' err shake' : '')}>{msg}</div> {/* status line: .err red + .shake animation on errors (re-triggers per message? shake replays when class re-added — msg change re-renders, animation restarts if key/msg differs… good enough visually) */}
           <p className="auth-toggle">{mode === 'login' ? (<>New here? <a onClick={() => switchMode('signup')}>Create an account</a></>) : (<>Have an account? <a onClick={() => switchMode('login')}>Sign in</a></>)}</p> {/* mode toggle links (<a> without href + onClick = action links) */}

@@ -12,8 +12,8 @@ const db = require('../db'); // shared pool (../ = up one folder from services/ 
 
 async function getProducts(businessId) {
   const { rows } = await db.query( // simple filtered list, oldest first (stable order for the AI prompt)
-    `SELECT id, name, price, description, available
-     FROM products WHERE business_id = $1 ORDER BY id`,
+    `SELECT id, name, price, description, available, quantity
+     FROM products WHERE business_id = $1 ORDER BY id`, // quantity included (AI answers "how many left?" + parser grounds names!)
     [businessId] // $1 = safe parameter (SQL injection impossible)
   );
   return rows; // array (possibly empty) — caller decides what "empty" means
@@ -57,8 +57,9 @@ function formatCatalog(products) {
     .map((p) => { // each product → multi-line block…
       const status = p.available === false ? 'OUT OF STOCK' : 'available'; // === false (not !p.available): NULL/undefined still count as available
       const bits = [`- ${p.name} [${status}]`]; // "- Blue gown [available]" (backticks interpolate)
-      if (p.price) bits.push(`  Price: ${p.price}`); // only include lines that exist (no "Price: null" noise)
+      if (p.price) bits.push(`  Price: ${p.price}`);
       if (p.description) bits.push(`  Details: ${p.description}`);
+      if (p.quantity !== undefined && p.quantity !== null) bits.push(`  In stock: ${p.quantity}`); // quantity line (AI answers "how many left?" truthfully; absent on legacy rows → no line, no crash!)
       return bits.join('\n'); // block lines → one string
     })
     .join('\n'); // blocks → whole catalog text for the system prompt

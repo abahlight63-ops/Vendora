@@ -79,6 +79,19 @@ export default function Landing({ theme = 'light', onToggleTheme = () => {} }) {
         </div>
       </section>
 
+      <section className="landing-inner reveal"> {/* PRO spotlight: the bot that does real work (your premium-tier positioning!) */}
+        <div className="card hover-lift" style={{ borderColor: '#25d366' }}>
+          <span className="pill ok">Vendora Pro</span>
+          <h2 style={{ marginTop: 10 }}>Your AI Assistant That Actually Works For You.</h2>
+          <p className="desc">Answering questions was just the interview. Pro rolls up its sleeves: tell it <b>"sold 3 bags of rice"</b> and your stock updates itself — before and after confirmed, every change logged and undoable. Supplier reorder drafts and auto-invoicing are on the way, same tier. No spreadsheets. No stock-taking Sundays. No "I thought we had more."</p>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <Link className="btn sm" to="/login">Try Pro free — 14 days</Link>
+            <Link className="btn ghost sm" to="/faq">How it works</Link>
+          </div>
+          <p className="hint" style={{ marginTop: 10 }}>Free answers questions. Pro does the work.</p>
+        </div>
+      </section>
+
       <section className="landing-inner reveal"> {/* FAQ teaser → full /faq page (keeps landing short!) */}
         <div className="card hover-lift">
           <h2>Common questions</h2>

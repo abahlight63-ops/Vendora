@@ -111,6 +111,69 @@ async function handleInbound(req, res) {
       return res.status(200).send('');
     }
 
+    // ---- UNDO: reverse the latest stock change (owner only) ----
+    // Reads the audit log, writes back the old value, logs the reversal.
+    // Audit is append-only: original + reversal BOTH stay visible (honest books!).
+    if (isOwner && upperBody === 'UNDO:') {
+      const { undoLast } = require('../services/actions/updateInventory'); // lazy require (actions dir loads on demand!)
+      const undone = await undoLast(business.id); // latest entry → reversed (or structured error below!)
+      if (!undone.ok) { // empty history / product deleted since…
+        await whatsappService.sendWhatsAppReply(From, undone.error === 'gone' ? 'That product no longer exists in your catalog — re-add it with LEARN: first.' : 'Nothing to undo yet — no stock changes recorded.');
+        return res.status(200).send('');
+      }
+      await whatsappService.sendWhatsAppReply(From, `↩️ Undone: ${undone.item} ${undone.before} → ${undone.after}.`); // before = value at undo time, after = restored value (mirrors update format!)
+      return res.status(200).send('');
+    }
+
+    // ---- INVENTORY intents: "sold 3 bags of rice" → real stock edits ----
+    // Owner-only, Pro-gated (registry tier!). Flow: parse intent → gate →
+    // execute-or-clarify → confirm with before/after. Free tier gets the pitch.
+    // Positioned AFTER LEARN:/SYNC:/PAUSE:/UNDO: (explicit prefixes win over
+    // fuzzy intent — "LEARN: sold out poster" must NOT become a stock removal!).
+    if (isOwner && replyEngine.INVENTORY_HINT.test(Body || '')) { // regex gate FIRST (no hint words → zero AI cost, straight to normal flow!)
+      const catalog = await productService.getProducts(business.id); // parser needs names to ground matching…
+      const intent = await replyEngine.parseInventoryAction(Body, catalog); // …strict-JSON intent (validated inside!)
+      if (intent.action === 'clarify') { // ambiguous → ASK (never guess — your rule #3!)
+        await whatsappService.sendWhatsAppReply(From, `🤔 ${intent.question}`);
+        return res.status(200).send('');
+      }
+      if (intent.action === 'update_inventory') { // confident parse → GATE, then execute…
+        const registry = require('../services/actions/registry'); // lazy require (registry loads handlers on demand!)
+        const gate = registry.canRun(business, 'update_inventory'); // Pro check (trial counts — planService decides!)
+        if (!gate.ok) { // free tier → pitch (one line + LEARN reminder — never silent!)
+          await whatsappService.sendWhatsAppReply(From, 'Stock updates are a Pro feature — I can edit inventory from your messages automatically.\n\nManual catalog stays free: use LEARN: any time.\n\nUpgrade to Pro in your Vendora dashboard to unlock it.');
+          return res.status(200).send('');
+        }
+        const done = await gate.action.run(business.id, intent.item, intent.quantity, intent.operation, Body); // THE TOOL CALL (transactional + audited inside!)
+        if (!done.ok) { // resolution/execution failures → specific coaching (never raw errors!)…
+          if (done.error === 'empty') {
+            await whatsappService.sendWhatsAppReply(From, 'Your catalog is empty — add products first (dashboard, or send LEARN: Blue gown ₦45,000), then tell me stock changes.');
+          } else if (done.error === 'notfound') {
+            await whatsappService.sendWhatsAppReply(From, `I don't have "${intent.item}" in your catalog. Add it first with LEARN: — then tell me the stock change.`);
+          } else if (done.error === 'ambiguous') {
+            await whatsappService.sendWhatsAppReply(From, `Which one? ${(done.candidates || []).join(', ')} — reply with the exact name and quantity.`);
+          } else {
+            await whatsappService.sendWhatsAppReply(From, 'Stock update failed — try again in a moment.');
+          }
+          return res.status(200).send('');
+        }
+        const arrow = `${done.before} → ${done.after}`; // the before/after core (your rule #4 — always shown!)
+        if (done.operation === 'add') {
+          await whatsappService.sendWhatsAppReply(From, `✅ Stock updated: ${done.item} ${arrow} (+${intent.quantity} received).`);
+        } else if (done.operation === 'remove') { // remove splits: clean sale vs oversell-clamp (different copy — owner must SEE the difference!)…
+          if (done.clamped) {
+            await whatsappService.sendWhatsAppReply(From, `⚠️ Only ${done.before} in stock — recorded the sale, stock now 0 (was short by ${intent.quantity - done.before}). Check this one!`); // oversell math shown (shortfall = asked − had!)
+          } else {
+            await whatsappService.sendWhatsAppReply(From, `✅ Sold recorded: ${done.item} ${arrow} (−${intent.quantity}).`);
+          }
+        } else { // 'set' (count corrections)…
+          await whatsappService.sendWhatsAppReply(From, `✅ Stock count set: ${done.item} ${arrow}.`);
+        }
+        return res.status(200).send('');
+      }
+      // intent.action === 'none' → fall THROUGH to normal flow below (owner chit-chat still gets Q&A/handoff!)
+    }
+
     // ---- Personal contacts: NEVER reply (friends/family chatting personally) ----
     // Owner lists these numbers in Business profile. Messages are ignored
     // entirely (not even logged as chats — personal chats aren't business data).

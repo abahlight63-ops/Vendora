@@ -128,6 +128,26 @@ CREATE INDEX IF NOT EXISTS idx_ad_clicks_created ON ad_clicks(created_at); -- fa
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS currency TEXT NOT NULL DEFAULT 'NGN'; -- NGN (+234) or USD (world)
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'Africa/Lagos'; -- IANA zone for open/closed replies
 
+-- Agentic inventory: stock counts per product (forward-compatible with the
+-- back-office plan: low_threshold + supplier_id arrive with reorder drafts)
+ALTER TABLE products ADD COLUMN IF NOT EXISTS quantity INTEGER NOT NULL DEFAULT 0; -- integer counts (never floats — stock is whole units!)
+ALTER TABLE products ADD COLUMN IF NOT EXISTS low_threshold INTEGER NOT NULL DEFAULT 5; -- reorder watch level (used later, harmless now)
+
+-- Inventory audit log: EVERY stock change, append-only (never edited, never
+-- deleted by app code — UNDO writes a REVERSING entry, preserving history)
+CREATE TABLE IF NOT EXISTS inventory_logs (
+  id SERIAL PRIMARY KEY,
+  business_id INTEGER NOT NULL REFERENCES businesses(id) ON DELETE CASCADE, -- vendor scope (per-vendor system of record = Postgres!)
+  product_id INTEGER REFERENCES products(id) ON DELETE SET NULL, -- SET NULL: history survives product deletion (audit must outlive the row!)
+  item TEXT NOT NULL DEFAULT '', -- product name snapshot (readable even if product renamed later)
+  old_value INTEGER NOT NULL DEFAULT 0, -- before
+  new_value INTEGER NOT NULL DEFAULT 0, -- after
+  operation TEXT NOT NULL DEFAULT 'set', -- add | remove | set | undo
+  source_message TEXT NOT NULL DEFAULT '', -- the exact owner message that caused it (audit proof!)
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_inventory_business ON inventory_logs(business_id, created_at DESC); -- fast per-shop history (latest-first!)
+
 -- Takeover controls: never let the bot fight the owner's personal chats
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS bot_enabled BOOLEAN NOT NULL DEFAULT true; -- global kill-switch (dashboard toggle + PAUSE/RESUME)
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS personal_contacts JSONB NOT NULL DEFAULT '[]'; -- WhatsApp numbers the bot ALWAYS ignores (friends/family)

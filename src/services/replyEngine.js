@@ -377,6 +377,45 @@ ${image ? '10. The customer also sent a PHOTO. Look at it, describe briefly what
  * TRICK: we ask the AI for STRICT JSON, then JSON.parse it — structured output
  * without any special API mode. The regex finds the [...] even if the AI chats.
  */
+
+/**
+ * INVENTORY intent parser: turns "sold 3 bags of rice" into a STRICT JSON
+ * action — same structured-output trick (prompt for JSON, regex the {...},
+ * JSON.parse, validate). Uniform across ALL providers (no per-provider
+ * function-calling code!). Returns:
+ * { action:'update_inventory', item, quantity, operation } — ready to execute
+ * { action:'clarify', question } — ambiguous, ask (NEVER guess!)
+ * { action:'none' } — not an inventory message (normal flow continues)
+ */
+const INVENTORY_HINT = /(sold|sell|restock|restocked|add|added|remove|removed|stock|inventory|update|received|supply|deliver|count|set|balance|remaining|left|out of|finished|used|damaged|spoiled|\+|-)/i; // cheap regex GATE (see below): no match → skip the AI call entirely (cost control!)
+
+async function parseInventoryAction(message, products) {
+  if (!INVENTORY_HINT.test(message || '')) return { action: 'none' }; // fast path: no inventory words → zero AI cost (most owner messages skip here!)
+  const names = (products || []).map((p) => p.name).join(', ') || '(empty catalog)'; // catalog names ground item matching (AI picks from THESE, not thin air!)
+  const system = `You parse stock-update requests from a shop owner. Catalog products: ${names}.
+Return ONLY one JSON object, no markdown, no explanation:
+{"action": "update_inventory" | "clarify" | "none", "item": string or null, "quantity": number or null, "operation": "add" | "remove" | "set" or null, "question": string or null}
+Verb map: sold/sell/used/removed/spoiled/damaged/finished/out of → "remove". restocked/added/received/bought/supplied/delivered/+N → "add". set/count/correction/is now/balance → "set".
+Rules: item MUST match a catalog product (fuzzy ok: "rice" matches "Rice 20kg"). Quantity MUST be a positive number in the message. If EITHER is missing/unclear, or several products match → "clarify" with a short question naming the options. No inventory intent at all → "none".`;
+  try {
+    const text = await callAI(system, message, null); // image omitted (stock intents are text!)
+    const match = text.match(/\{[\s\S]*\}/); // regex: first { … last } (same defensive pattern as extractProducts!)
+    if (!match) return { action: 'none' }; // no JSON → treat as ordinary message (fail OPEN to Q&A, never stuck!)
+    const parsed = JSON.parse(match[0]); // may throw on garbage → caught below
+    if (parsed.action === 'update_inventory') { // validate STRICTLY (AI output is untrusted input!):
+      if (typeof parsed.item !== 'string' || !parsed.item.trim()) return { action: 'clarify', question: 'Which product should I update?' }; // no item → ask (never guess!)
+      const qty = Math.floor(Number(parsed.quantity)); // whole units (floor 2.7 → 2, consistent with updateInventory!)
+      if (!Number.isFinite(qty) || qty <= 0) return { action: 'clarify', question: `How many units of ${parsed.item.trim()}?` }; // no/invalid qty → ask (zero/negative rejected!)
+      if (!['add', 'remove', 'set'].includes(parsed.operation)) return { action: 'clarify', question: `Should I add to, remove from, or set the stock of ${parsed.item.trim()}?` }; // unknown verb → ask
+      return { action: 'update_inventory', item: parsed.item.trim(), quantity: qty, operation: parsed.operation };
+    }
+    if (parsed.action === 'clarify') return { action: 'clarify', question: (typeof parsed.question === 'string' && parsed.question.trim()) || 'Which product and how many units?' }; // fallback question (AI gave a bad one → use ours!)
+    return { action: 'none' }; // anything else ("none", garbage action) → ordinary flow
+  } catch (err) {
+    console.error('parseInventoryAction error:', err.message); // AI down OR bad JSON → ordinary flow (inventory never blocks Q&A!)
+    return { action: 'none' };
+  }
+}
 async function extractProducts(adText, business) {
   const system = `You extract structured product data from WhatsApp business ad posts.
 Return ONLY a JSON array, no markdown, no explanation. Each item:
@@ -399,4 +438,4 @@ If the text contains no products, return [].`;
   }
 }
 
-module.exports = { generateReply, extractProducts, askGeneral, PROVIDER, configuredProviders }; // the public API of the brain
+module.exports = { generateReply, extractProducts, askGeneral, parseInventoryAction, INVENTORY_HINT, PROVIDER, configuredProviders }; // the public API of the brain (parser + hint exported for webhook + tests!)

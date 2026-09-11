@@ -67,13 +67,14 @@ export default function Catalog() { // no props needed (fetches everything itsel
         <h2>Products</h2>
         <p className="desc">Tip: from your WhatsApp send <b>LEARN: Blue gown ₦45,000</b> — same result, no dashboard needed.</p> {/* <b> inside <p> = inline bold (teaches the WhatsApp shortcut!) */}
         <div className="table-wrap"><table> {/* .table-wrap = horizontal scroll on small screens (responsive tables 101) */}
-          <thead><tr><th>Product</th><th>Price</th><th>Status</th><th></th></tr></thead> {/* <thead>/<th> = semantic header row (empty last <th> = actions column) */}
+          <thead><tr><th>Product</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead> {/* <thead>/<th> = semantic header row (empty last <th> = actions column; Stock = live quantity!) */}
           <tbody> {/* three states: loading → empty → rows (classic async trilogy!) */}
-            {products === null ? <tr><td colSpan="4"><div className="skel-grid">{[0, 1, 2].map((i) => (<div key={i} className="skel-row"><div className="skel-lines"><div className="skel" style={{ width: '35%' }} /><div className="skel" style={{ width: '60%' }} /></div><div className="skel" style={{ width: 70 }} /><div className="skel" style={{ width: 90 }} /></div>))}</div></td></tr>
-              : products.length === 0 ? <tr><td colSpan="4"><div className="empty"><b>No products yet</b>Add your first one below — it takes 10 seconds.</div></td></tr>
+            {products === null ? <tr><td colSpan="5"><div className="skel-grid">{[0, 1, 2].map((i) => (<div key={i} className="skel-row"><div className="skel-lines"><div className="skel" style={{ width: '35%' }} /><div className="skel" style={{ width: '60%' }} /></div><div className="skel" style={{ width: 70 }} /><div className="skel" style={{ width: 90 }} /></div>))}</div></td></tr>
+              : products.length === 0 ? <tr><td colSpan="5"><div className="empty"><b>No products yet</b>Add your first one below — it takes 10 seconds.</div></td></tr>
               : products.map((p) => (<tr key={p.id}> {/* key={p.id} = stable DB id (rows never shuffle wrongly!) */}
                 <td><b>{p.name}</b><br /><span className="hint">{p.description || ''}</span></td> {/* <br/> stacks description under name */}
                 <td>{p.price || '—'}</td> {/* || '—' : null prices show dash, never "null" */}
+                <td><b>{p.quantity ?? 0}</b></td> {/* live stock count (?? 0: legacy rows show 0, never blank — WhatsApp updates land here instantly!) */}
                 <td><button className={'pill ' + (p.available ? 'ok' : 'flag')} style={{ cursor: 'pointer', border: '1px solid' }} onClick={() => toggle(p)} title="Click to toggle stock">{p.available ? 'in stock' : 'out of stock'}</button></td> {/* pill AS button: color shows state, click flips it (title = hover tooltip teaching the trick) */}
                 <td style={{ textAlign: 'right' }}><button className="del" onClick={() => del(p.id)} title="Remove"><Ic n="trash" s={15} /></button></td> {/* .del = red hover trash (arrow fn passes id — onClick={() => del(p.id)} delays the call until click!) */}
               </tr>))}

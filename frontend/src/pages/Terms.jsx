@@ -17,12 +17,12 @@ export default function Terms() {
       </div></header>
       <section className="landing-inner" style={{ padding: '48px 24px 64px' }}>
         <div className="card legal reveal vis">
-          <p className="hint">Last updated: September 2026 · Written like a human, enforceable like a contract</p>
+          <p className="hint">Last updated: September 2026</p>
           <h1>Terms &amp; Conditions</h1>
-          <p>Welcome to Vendora. By creating an account or using the service you agree to these terms. We kept them readable on purpose — but they are still a binding agreement between you ("business owner") and Vendora ("we").</p>
+          <p>Welcome to Vendora. These Terms &amp; Conditions constitute a binding legal agreement between you, the business owner ("you", "your"), and Vendora ("we", "us", "our") governing your access to and use of the Vendora platform, website, and AI-powered WhatsApp customer support services (collectively, the "Service"). By creating an account, accessing, or using the Service, you acknowledge that you have read, understood, and agree to be bound by these Terms.</p>
 
-          <h3>1. What Vendora is (and isn't)</h3>
-          <p>Vendora is an AI assistant that auto-replies to your WhatsApp customers using YOUR catalog. It is a tool, not an employee: it drafts replies from the information you provide, flags anything unsure to you instead of guessing, and never invents prices. You remain fully responsible for what your shop sells, charges and promises — the AI only quotes what you taught it.</p>
+          <h3>1. Description of the Service</h3>
+          <p>Vendora provides an artificial intelligence assistant that automatically responds to your WhatsApp customers on the basis of your product catalog and business information. The Service drafts replies from information you supply, escalates uncertain inquiries to you for human handling rather than speculating, and does not generate prices or product claims independently. You remain solely responsible for the accuracy of your catalog, pricing, availability representations, and all commercial promises made in connection with your business. The Service is a software tool and does not constitute an employee, agent, or representative of your business.</p>
 
           <h3>2. Who can use it</h3>
           <ul>
@@ -47,7 +47,7 @@ export default function Terms() {
             <li>Prices show in your currency (NGN or USD) and may change for NEW purchases; your active paid period always keeps the price you paid.</li>
           </ul>
 
-          <h3>5. Acceptable use — the "don't be that shop" list</h3>
+          <h3>5. Acceptable use</h3>
           <ul>
             <li>No spam, bulk unsolicited messaging, fraud, counterfeit goods, or anything illegal under Nigerian law.</li>
             <li>No teaching the AI false prices to bait customers, and no using Vendora to impersonate another business.</li>
@@ -55,8 +55,8 @@ export default function Terms() {
             <li>Don't probe, scrape or attack the service. Automated abuse gets accounts paused without refund.</li>
           </ul>
 
-          <h3>6. AI honesty clause (read this one)</h3>
-          <p>AI models occasionally err — wrong tone, misunderstood slang, confident-sounding mistakes. That's exactly why Vendora hands off instead of guessing when unsure, and why owner alerts exist. You agree to review flagged chats promptly; we are not liable for sales lost because a flagged chat sat unanswered, nor for replies generated from catalog data you entered incorrectly. Garbage in, garbage out — keep your catalog fresh.</p>
+          <h3>6. Accuracy of AI-generated responses</h3>
+          <p>Artificial intelligence systems may occasionally produce inaccurate, incomplete, or contextually inappropriate responses, including errors of tone, misinterpretation of colloquial language, or confidently stated inaccuracies. To mitigate this risk, the Service escalates uncertain inquiries to you for human handling rather than speculating, and issues owner alerts for flagged conversations. You agree to review flagged conversations promptly and to maintain accurate catalog and business information at all times. We shall not be liable for commercial losses arising from unanswered flagged conversations or from responses generated on the basis of inaccurate information you provided. The quality of AI responses depends directly on the accuracy of your catalog.</p>
 
           <h3>7. Dependencies beyond our control</h3>
           <p>Vendora rides on WhatsApp/Meta, Twilio, AI providers (Gemini/Groq/OpenRouter/Anthropic), Paystack, and our hosts. If any of them has an outage, changes prices, or changes rules, parts of Vendora may degrade — and that isn't our breach. We'll always fail safe (flag to human, never invent answers) and post status in the dashboard when we can.</p>
@@ -70,7 +70,7 @@ export default function Terms() {
             <li>You may leave anytime: cancel paid plans (keep Pro till period end), then delete your account from Settings or via Help. Export your catalog first — deletion is permanent after 14 days.</li>
           </ul>
 
-          <h3>10. Liability — the cap</h3>
+          <h3>10. Limitation of liability</h3>
           <p>To the maximum extent permitted by law, Vendora is provided "as is" without warranties of any kind. Our total liability for anything arising from the service is capped at the amount you paid us in the 3 months before the claim (or ₦10,000 / $7 if you never paid). We are never liable for indirect losses: lost profits, lost customers, or Meta/WhatsApp restricting your number for policy breaches on your side.</p>
 
           <h3>11. Indemnity</h3>

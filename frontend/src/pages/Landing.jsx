@@ -6,8 +6,10 @@
 import { useEffect } from 'react'; // useEffect ×1: title + reveal observer setup
 import { Link } from 'react-router-dom'; // Links (client-side nav, no reloads)
 import ThemeToggle from '../components/ThemeToggle.jsx'; // theme switch in the nav (guests get dark mode too!)
+import { useCurrency } from '../lib/locale.js'; // location → 'NGN' | 'USD' (single-currency pricing!)
 
 export default function Landing({ theme = 'light', onToggleTheme = () => {} }) { // theme props from App (defaults = safe standalone render)
+  const cur = useCurrency(); // visitor currency (NGN default → corrected after IP/timezone detection, auto re-render!)
   useEffect(() => { // mount: title + scroll-reveal wiring…
     document.title = 'Vendora — Your WhatsApp shop, open 24/7'; // tab title (SEO-ish + tabs)
     const els = document.querySelectorAll('.reveal'); // grab ALL reveal elements (cards below)…
@@ -48,7 +50,7 @@ export default function Landing({ theme = 'light', onToggleTheme = () => {} }) {
         </div>
       </section>
 
-      <p className="hint reveal" style={{ textAlign: 'center', margin: '6px 0 0' }}>Manual catalog free forever · 14-day Pro trial included · profile sync is Pro · Naira &amp; Dollar billing</p> {/* &amp; = HTML entity for & (raw & is technically sloppy HTML); .reveal = fades in on scroll (observer above!) */}
+      <p className="hint reveal" style={{ textAlign: 'center', margin: '6px 0 0' }}>Manual catalog free forever · 14-day Pro trial included · profile sync is Pro · pricing adapts to your location</p> {/* location-based pricing note (single currency shown below — never dual tags!) */}
 
       <section className="landing-inner grid3" id="how"> {/* id="how" = the anchor target from "See how it works"! grid3 = 3 columns → stack mobile */}
         <div className="card hover-lift reveal"><h2>1. Teach it once</h2><p className="desc">Send <b>LEARN: Blue gown ₦45,000</b> from your WhatsApp — or add products here. Same name always updates the price.</p></div> {/* hover-lift = rise on hover (CSS); reveal = scroll entrance (both classes compose!) */}
@@ -56,19 +58,19 @@ export default function Landing({ theme = 'light', onToggleTheme = () => {} }) {
         <div className="card hover-lift reveal"><h2>3. You close the hot ones</h2><p className="desc">Unsure moments get flagged to your inbox + WhatsApp instantly — with the customer's words attached.</p></div>
       </section>
 
-      <section className="landing-inner grid3"> {/* pricing trio (dual currency = global from day one!) */}
+      <section className="landing-inner grid3"> {/* pricing trio — ONE currency each, picked by visitor location (useCurrency hook below!) */}
         <div className="card hover-lift reveal">
-          <h2>Monthly — ₦7,500 / $5</h2>
+          <h2>Monthly — {cur === 'USD' ? '$5' : '₦7,500'}</h2> {/* ternary per card: location decides the tag (no dual display!) */}
           <p className="desc">Pay as you grow. Every feature included, cancel anytime.</p>
           <Link className="btn ghost sm" to="/login">Start free trial</Link>
         </div>
         <div className="card hover-lift reveal" style={{ borderColor: '#25d366' }}> {/* inline borderColor = featured card pops (one-off override, no new class!) */}
-          <h2>Yearly — ₦50,000 / $33</h2>
+          <h2>Yearly — {cur === 'USD' ? '$33' : '₦50,000'}</h2>
           <p className="desc"><b style={{ color: '#7ef0c0' }}>Save 44%+</b> vs paying monthly. Priority support included.</p>
           <Link className="btn sm" to="/login">Start free trial</Link> {/* solid (not ghost) = featured plan gets the primary button (eye-flow!) */}
         </div>
         <div className="card hover-lift reveal">
-          <h2>Lifetime — ₦100,000 / $65</h2>
+          <h2>Lifetime — {cur === 'USD' ? '$65' : '₦100,000'}</h2>
           <p className="desc">Pay once, sell forever. Pays for itself in ~14 months.</p>
           <Link className="btn ghost sm" to="/login">Start free trial</Link>
         </div>

@@ -78,7 +78,7 @@ export default function VendoraAI({ biz }) { // biz = business (name for greetin
         <select id="vai-model" value={model} onChange={(e) => setModel(e.target.value)}> {/* controlled select: value mirrors state (options below) */}
           {models.length === 0 && <option value="gemini-flash">Gemini Flash</option>} {/* loading fallback (so the select is never empty!) */}
           {models.map((m) => ( // map options: locked gets 🔒 + (Pro) suffix (honest labeling!)
-            <option key={m.id} value={m.id}>{m.locked ? '🔒 ' : ''}{m.label}{m.tier === 'paid' ? ' (Pro)' : ''}</option> {/* key={m.id} stable ids; string concat builds "🔒 Claude Haiku (Pro)" */}
+            <option key={m.id} value={m.id}>{m.locked ? '🔒 ' : ''}{m.label}{m.tier === 'paid' ? ' (Pro)' : ''}</option>
           ))}
         </select>
         {current?.locked && <Link className="mini-link" to="/billing">Unlock Pro</Link>} {/* ?. guards loading; locked selection → direct upgrade path (conversion right where desire peaks!) */}
@@ -90,7 +90,7 @@ export default function VendoraAI({ biz }) { // biz = business (name for greetin
           <p>Ask Vendora AI anything — research, writing, ideas, advice. Not just your catalog.</p>
           <div className="vai-chips">
             {SUGGESTIONS.map((s) => ( // chips → send(s) directly (preset text bypasses input!)
-              <button key={s} className="vai-chip" onClick={() => send(s)}>{s}</button> {/* key={s} = unique strings (stable!) */}
+              <button key={s} className="vai-chip" onClick={() => send(s)}>{s}</button>
             ))}
           </div>
         </div>

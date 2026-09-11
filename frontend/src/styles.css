@@ -325,6 +325,28 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .qa.done { opacity: 0.85; }
 .qa-num.ok { background: var(--green); }
 
+/* ── PUBLIC FAQ page: light, airy, searchable (works in both app themes via vars) */
+.faq-page { background: var(--bg); color: var(--ink); min-height: 100vh; }
+.faq-hero { text-align: center; padding: 56px 24px 8px; max-width: 640px; }
+.faq-hero h1 { font-size: 38px; font-weight: 800; letter-spacing: -1px; margin: 14px 0 8px; }
+.faq-hero p { color: var(--muted); font-size: 15.5px; }
+.faq-search { display: flex; align-items: center; gap: 8px; background: var(--card); border: 1.5px solid var(--line); border-radius: 999px; padding: 6px 8px 6px 18px; margin: 22px auto 0; max-width: 520px; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+.faq-search:focus-within { border-color: var(--green); box-shadow: 0 0 0 3px rgba(18, 140, 74, 0.12); }
+.faq-search > span { color: var(--faint); font-size: 17px; }
+.faq-search input { flex: 1; border: none; background: none; padding: 10px 0; font-size: 15px; }
+.faq-search input:focus { outline: none; box-shadow: none; }
+.faq-search button { border: none; background: var(--line-soft); color: var(--muted); width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 13px; }
+.faq-item { padding: 18px 20px; transition: border-color 0.2s ease, transform 0.2s ease; }
+.faq-item.open { border-color: var(--green); }
+.faq-item .faq-q { align-items: center; }
+.faq-num { font-size: 22px; font-weight: 800; color: var(--green); opacity: 0.35; min-width: 34px; }
+.faq-plus { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: var(--green-soft); color: var(--green-dark); font-size: 18px; font-weight: 700; transition: transform 0.3s ease, background 0.2s ease; flex: 0 0 auto; }
+.faq-item.open .faq-plus { transform: rotate(180deg); background: var(--green); color: #fff; }
+.faq-item .faq-a p { font-size: 14.5px; line-height: 1.7; color: var(--ink); }
+.faq-cta { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-top: 18px; background: linear-gradient(135deg, #0d1f16, #16432c); border: none; }
+.faq-cta h2 { color: #fff; }
+.faq-cta .desc { color: #b9d4c2; }
+
 /* pricing cards */
 .plan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .plan { position: relative; display: flex; flex-direction: column; background: var(--card); border: 1.5px solid var(--line); border-radius: 18px; padding: 22px; animation: fadeSlide 0.4s ease both; transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
@@ -466,9 +488,14 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .demo-mobile .mock { animation: none; }
 .resend-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 /* ---------- neumorphic welcome (scoped to onboarding only) ---------- */
-.neu-bg { background: #e3ebe6; }
-.neu-card.slide { background: #e9f1ec; border: none; box-shadow: 12px 12px 28px #b9c6be, -12px -12px 28px #ffffff; }
-.neu-art.slide-art { position: relative; overflow: hidden; background: linear-gradient(160deg, #dce7e0, #cfdccf); }
+.neu-bg { background: #eef4ef; }
+.neu-card.slide { background: #f2f7f3; border: 1px solid #ffffff; box-shadow: 8px 8px 20px rgba(120, 140, 128, 0.25), -8px -8px 20px #ffffff; }
+.neu-art.slide-art { position: relative; overflow: hidden; background: linear-gradient(160deg, #e8f2ea 0%, #d8e8dc 60%, #cfe4d5 100%); }
+.float-ic { position: absolute; width: 44px; height: 44px; border-radius: 50%; background: #ffffff; color: var(--green-dark); display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 6px 16px rgba(18, 140, 74, 0.25); animation: floatBob 3.2s ease-in-out infinite; pointer-events: none; z-index: 2; }
+.float-ic.f1 { top: 14px; left: 16px; }
+.float-ic.f2 { bottom: 18px; right: 18px; animation-delay: 0.8s; width: 38px; height: 38px; }
+.float-ic.f3 { top: 44%; right: 10px; animation-delay: 1.6s; width: 34px; height: 34px; }
+@keyframes floatBob { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-10px) rotate(4deg); } }
 .orb { position: absolute; border-radius: 50%; filter: blur(2px); opacity: 0.7; pointer-events: none; }
 .orb.o1 { width: 130px; height: 130px; top: -40px; right: -30px; background: radial-gradient(circle, #a9e6c3, transparent 70%); animation: orbFloat 6s ease-in-out infinite alternate; }
 .orb.o2 { width: 90px; height: 90px; bottom: -25px; left: -20px; background: radial-gradient(circle, #8fd6ff, transparent 70%); animation: orbFloat 7s ease-in-out infinite alternate-reverse; }

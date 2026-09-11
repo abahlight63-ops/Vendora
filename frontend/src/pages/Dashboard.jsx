@@ -67,7 +67,7 @@ export default function Dashboard({ biz }) { // biz = business object from App (
       </div>
 
       {trialLeft !== null && ( // && conditional render: trial strip ONLY during trial (null → renders nothing)
-        <div className="trial-strip"><Ic n="clock" s={16} /><span><b>{trialLeft} day{trialLeft === 1 ? '' : 's'} of Pro trial left.</b> Keep Pro sync, or stay free forever with manual catalog.</span><Link to="/billing">Billing<Ic n="next" s={14} /></Link></div> {/* {trialLeft === 1 ? '' : 's'} = "1 day" vs "5 days" pluralization */}
+        <div className="trial-strip"><Ic n="clock" s={16} /><span><b>{trialLeft} day{trialLeft === 1 ? '' : 's'} of Pro trial left.</b> Keep Pro sync, or stay free forever with manual catalog.</span><Link to="/billing">Billing<Ic n="next" s={14} /></Link></div>
       )}
 
       {showGuide && ( // checklist card (see showGuide logic above)…
@@ -91,8 +91,8 @@ export default function Dashboard({ biz }) { // biz = business object from App (
 
       {!s ? ( // LOADING: skeleton stat cards mirroring the real layout (same grid, shimmer blocks)…
         <div className="skel-grid cols4">
-          {[0, 1, 2, 3].map((i) => ( // [0,1,2,3].map = "repeat 4×" idiom (array literal as loop counter)
-            <div key={i} className="skel-card"><div className="skel" style={{ width: 34, height: 34, borderRadius: 10 }} /><div className="skel" style={{ width: '55%', height: 26 }} /><div className="skel" style={{ width: '80%' }} /></div> {/* icon block + big number block + label block (widths mimic real proportions) */}
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="skel-card"><div className="skel" style={{ width: 34, height: 34, borderRadius: 10 }} /><div className="skel" style={{ width: '55%', height: 26 }} /><div className="skel" style={{ width: '80%' }} /></div>
           ))}
         </div>
       ) : ( // LOADED: real stat cards (each a Link — whole card clickable!)…
@@ -109,8 +109,8 @@ export default function Dashboard({ biz }) { // biz = business object from App (
           <div className="card-head"><h2>Needs your attention</h2><Link className="mini-link" to="/chats">Inbox <Ic n="next" s={13} /></Link></div>
           <p className="desc">Chats the AI flagged instead of guessing.</p>
           {!s ? (<div className="skel-grid">{[0, 1, 2].map((i) => (<div key={i} className="skel-row"><div className="skel skel-dot" /><div className="skel-lines"><div className="skel" style={{ width: '40%' }} /><div className="skel" style={{ width: '75%' }} /></div></div>))}</div>) : s.flagged.length === 0 // nested ternary: loading → skeletons; empty → all-clear; else → rows
-            ? <div className="empty"><span className="empty-ic"><Ic n="checkCircle" s={28} /></span><b>All clear</b>Nothing waiting for you right now.</div> {/* .empty = centered Illustration-less state (icon + bold + text pattern) */}
-            : s.flagged.map((c) => (<Link key={c.id} className="qa" to="/chats"><span className="qa-dot flag" /><div><b>{c.customer_name || c.customer_number}</b><span className="hint">{(c.last_message || '').slice(0, 80)} · {fmtTime(c.updated_at)}</span></div></Link>))} {/* key={c.id} = stable DB id (correct key choice!); slice(0,80) previews; · separator */}
+            ? <div className="empty"><span className="empty-ic"><Ic n="checkCircle" s={28} /></span><b>All clear</b>Nothing waiting for you right now.</div>
+            : s.flagged.map((c) => (<Link key={c.id} className="qa" to="/chats"><span className="qa-dot flag" /><div><b>{c.customer_name || c.customer_number}</b><span className="hint">{(c.last_message || '').slice(0, 80)} · {fmtTime(c.updated_at)}</span></div></Link>))}
         </div>
         <div className="card">
           <div className="card-head"><h2>{setupDone ? 'Latest activity' : 'Get selling in 3 steps'}</h2></div> {/* title flips once catalog exists */}

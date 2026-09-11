@@ -38,15 +38,15 @@ export default function Chats() {
       <div className="card">
         <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}> {/* filter tabs row */}
           {[['all', 'All'], ['needs', 'Needs you'], ['handled', 'Handled']].map(([k, l]) => ( // array-of-pairs mapped to buttons (destructure [k,l] per pair!)
-            <button key={k} className={'btn sm ' + (filter === k ? '' : 'ghost')} onClick={() => setFilter(k)}>{l}</button> {/* active tab = solid, others = ghost outline (className ternary). onClick sets filter → list recomputes → re-render! */}
+            <button key={k} className={'btn sm ' + (filter === k ? '' : 'ghost')} onClick={() => setFilter(k)}>{l}</button>
           ))}
         </div>
         <div className="table-wrap"><table> {/* scroll wrapper (mobile) + semantic table */}
           <thead><tr><th>Customer</th><th>Last message</th><th>Status</th></tr></thead>
           <tbody> {/* trilogy again: loading → empty (filter-aware message!) → rows */}
-            {convos === null ? <tr><td colSpan="3"><div className="skel-grid">{[0, 1, 2, 3].map((i) => (<div key={i} className="skel-row"><div className="skel skel-dot" /><div className="skel-lines"><div className="skel" style={{ width: '30%' }} /><div className="skel" style={{ width: '70%' }} /></div></div>))}</div></td></tr> {/* colSpan="3" spans all columns; avatar-dot + two text lines mimic rows */}
-              : list.length === 0 ? <tr><td colSpan="3"><div className="empty"><b>Nothing here</b>{filter === 'all' ? 'Chats appear once WhatsApp is connected.' : 'No chats match this filter.'}</div></td></tr> {/* empty text CHANGES with filter (teaches: connect WhatsApp vs switch tab!) */}
-              : list.map((c) => (<tr key={c.id} className="rowlink" onClick={() => open(c)}> {/* key={c.id} stable DB id; .rowlink = pointer cursor + hover (whole row clickable → open(c)) */}
+            {convos === null ? <tr><td colSpan="3"><div className="skel-grid">{[0, 1, 2, 3].map((i) => (<div key={i} className="skel-row"><div className="skel skel-dot" /><div className="skel-lines"><div className="skel" style={{ width: '30%' }} /><div className="skel" style={{ width: '70%' }} /></div></div>))}</div></td></tr>
+              : list.length === 0 ? <tr><td colSpan="3"><div className="empty"><b>Nothing here</b>{filter === 'all' ? 'Chats appear once WhatsApp is connected.' : 'No chats match this filter.'}</div></td></tr>
+              : list.map((c) => (<tr key={c.id} className="rowlink" onClick={() => open(c)}>
                 <td><b>{c.customer_name || c.customer_number}</b><br /><span className="hint">{fmtTime(c.updated_at)}</span></td> {/* name (or number) + timestamp below */}
                 <td>{(c.last_message || '').slice(0, 90)}</td> {/* preview capped at 90 chars (|| '' guards null) */}
                 <td><span className={'pill ' + (c.needs_human ? 'flag' : 'ok')}>{c.needs_human ? 'needs you' : 'handled'}</span></td> {/* gold vs green status pill */}

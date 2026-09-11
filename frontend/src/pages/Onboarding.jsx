@@ -97,8 +97,11 @@ export default function Onboarding() {
           }}
         >
           <div className={'slide neu-card' + (dir > 0 ? ' fwd' : ' back')} key={slide.k}> {/* key={slide.k} = THE animation trick: new key → React UNMOUNTS old slide + mounts new (fresh .fwd/.back entrance every time!). dir picks slide direction class. */}
-            <div className="slide-art neu-art"> {/* art panel: gradient + orbs + pressed frame */}
+            <div className="slide-art neu-art"> {/* art panel: gradient + orbs + floating icons + pressed frame */}
               <span className="orb o1" /><span className="orb o2" /> {/* ambient floating blobs (self-closing spans, pure CSS drift!) */}
+              <span className="float-ic f1"><Ic n={slide.icon} s={20} /></span> {/* bobbing icon chips: current slide icon… */}
+              <span className="float-ic f2"><Ic n="chat" s={17} /></span> {/* …WhatsApp chat bubble… */}
+              <span className="float-ic f3"><Ic n="spark" s={16} /></span> {/* …AI sparkle (staggered float delays in CSS!) */}
               <div className="neu-frame"> {/* inset-shadow frame (neumorphic "pressed" look) */}
                 <SlideImg src={slide.img} icon={slide.icon} alt={slide.eyebrow} /> {/* art with fallback chain (above) */}
               </div>
@@ -108,10 +111,10 @@ export default function Onboarding() {
               <h1>{slide.title}</h1>
               <p className="lede">{slide.body}</p> {/* lede = intro paragraph style */}
               {slide.points && ( // points chips (slides 0 + 3 only — && conditional on the FLAG!)
-                <div className="slide-points">{slide.points.map(([ic, t]) => <span key={t}><Ic n={ic} s={15} />{t}</span>)}</div> {/* destructure [icon, text] pairs; key={t} unique strings */}
+                <div className="slide-points">{slide.points.map(([ic, t]) => <span key={t}><Ic n={ic} s={15} />{t}</span>)}</div>
               )}
               {slide.demo && ( // mini customer↔AI chat sample (slide 1)…
-                <div className="learn-box light">Customer: "Abeg, do you have blue gown?"<div className="reply">AI: "Yes — blue gown ₦45,000, in stock. Want me to reserve it?"</div></div> {/* .learn-box.light = inset demo style (reused from Catalog tips!) */}
+                <div className="learn-box light">Customer: "Abeg, do you have blue gown?"<div className="reply">AI: "Yes — blue gown ₦45,000, in stock. Want me to reserve it?"</div></div>
               )}
               {slide.code && ( // LEARN: sample (slide 2)…
                 <div className="learn-box light">LEARN: New stock! Blue gown ₦45,000<div className="reply"><Ic n="checkCircle" s={14} /> Catalog updated — I'll now use this to answer customers.</div></div>
@@ -119,7 +122,7 @@ export default function Onboarding() {
               {slide.plans && ( // Free-vs-Pro rows (slide 4 — Pro row is a real LINK!)…
                 <div className="qa-list">
                   <div className="qa static"><Ic n="checkCircle" s={17} /><div><b>Free forever</b><span className="hint">Manual catalog + AI replies</span></div></div> {/* div (not Link) = non-clickable row (.static kills hover) */}
-                  <Link className="qa" to="/billing"><Ic n="bolt" s={17} /><div><b>Pro — ₦7,500 / $5 per mo</b><span className="hint">Profile sync · no ads · priority</span></div></Link> {/* clickable upsell row → billing! */}
+                  <Link className="qa" to="/billing"><Ic n="bolt" s={17} /><div><b>Pro — from ₦7,500/mo</b><span className="hint">Profile sync · no ads · priority · priced in your currency</span></div></Link> {/* clickable upsell row → billing (Billing page shows the exact local price!) */}
                 </div>
               )}
               {slide.checklist && ( // first-action checklist (slide 5)…

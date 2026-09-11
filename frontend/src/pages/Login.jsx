@@ -36,7 +36,7 @@ function DemoChat() { // self-playing chat preview (NOT a component with props �
     <div className="mock live">
       <div className="mock-head"><i />Amaka Beauty Studio <span>online</span></div> {/* <i> = green dot (CSS); shop name + online sells "alive" */}
       {DEMO.slice(0, n).map((m, i) => ( // slice(0,n) = first n lines (progressive reveal!); key={i} fine (static script order)
-        <div key={i} className={'bubble' + (m.from === 'ai' ? ' ai' : '')}>{m.text}</div> {/* ' ai' class = green reply style (string concat toggle) */}
+        <div key={i} className={'bubble' + (m.from === 'ai' ? ' ai' : '')}>{m.text}</div>
       ))}
       {typing && n < DEMO.length && <div className="bubble ai typing"><span /><span /><span /></div>} {/* && conditional: dots only while typing AND script unfinished (3 spans = CSS bounce stagger) */}
     </div>
@@ -64,23 +64,38 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
   }
   async function login() { // SIGN IN flow…
     if (busy) return; setBusy(true); setMsg(''); setMsgErr(false); setNeedsVerify(false); // lock + reset ALL status (clean slate per attempt!)
-    const { ok, data } = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: f.email.trim(), password: f.password }) }); // trim email (trailing spaces break login!); password NOT trimmed (spaces can be intentional!)
-    setBusy(false); // unlock (ALWAYS — both paths!)
-    if (ok) { setMsg('Welcome back…'); setMsgErr(false); afterAuth('/dashboard'); return; } // success → message + dashboard (return stops here)
-    if (data.needsVerification) setNeedsVerify(true); // backend flag → reveal resend button below
-    fail(data.error || 'Sign in failed'); // failure → red message (|| fallback)
+    try { // try/catch: if the SERVER can't be reached at all, fetch THROWS (no response to read!)…
+      const { ok, data } = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: f.email.trim(), password: f.password }) }); // trim email (trailing spaces break login!); password NOT trimmed (spaces can be intentional!)
+      setBusy(false); // unlock (ALWAYS — both paths!)
+      if (ok && data.user) { setMsg('Welcome back…'); setMsgErr(false); afterAuth('/dashboard'); return; } // success = ok AND a user object (guards empty-200 responses from misconfigured hosting!)
+      if (data.needsVerification) setNeedsVerify(true); // backend flag → reveal resend button below
+      fail(data.error || (data.errors || []).join('; ') || 'Sign in failed — check your details and try again.'); // server answered with an error (validation/credentials) → show its message, never a bare fallback
+    } catch { // …network/server unreachable (backend down, offline, wrong URL) lands HERE with a human message, never silence!
+      setBusy(false);
+      fail("Can't reach the Vendora server. Check your internet connection and try again.");
+    }
   }
   async function signup() { // SIGN UP flow (same shape, more fields)…
     if (busy) return; setBusy(true); setMsg(''); setMsgErr(false);
-    const { ok, data } = await api('/api/auth/signup', { method: 'POST', body: JSON.stringify({ name: f.name.trim(), whatsapp_number: f.wa.trim(), owner_number: f.wa.trim(), hours: f.hours.trim(), email: f.email.trim(), password: f.password }) }); // owner_number = same as business number initially (editable later in Profile!); password raw
-    setBusy(false);
-    if (ok) { setMsg('Account created — setting up your assistant…'); setMsgErr(false); afterAuth('/onboarding'); return; } // new accounts tour FIRST (onboarding, not dashboard!)
-    fail((data.errors || [data.error || 'Signup failed']).join('; ')); // backend sends errors ARRAY (validation!) or single error — handle both, join with '; '
+    try { // try/catch: unreachable server throws — must show why, never hang on "Please wait…"!
+      const { ok, data } = await api('/api/auth/signup', { method: 'POST', body: JSON.stringify({ name: f.name.trim(), whatsapp_number: f.wa.trim(), owner_number: f.wa.trim(), hours: f.hours.trim(), email: f.email.trim(), password: f.password }) }); // owner_number = same as business number initially (editable later in Profile!); password raw
+      setBusy(false);
+      if (ok && data.user) { setMsg('Account created — setting up your assistant…'); setMsgErr(false); afterAuth('/onboarding'); return; } // success = ok AND a user object (empty-200 from bad hosting config won't fake a login!)
+      fail((data.errors || [data.error || 'Signup failed — check your details and try again.']).join('; ')); // backend sends errors ARRAY (validation!) or single error — handle both, join with '; '
+    } catch { // server unreachable (no backend deployed, offline…) → plain-language message, button unlocked!
+      setBusy(false);
+      fail("Can't reach the Vendora server. Check your internet connection and try again.");
+    }
   }
   async function resend() { // "didn't get the email" button…
-    const { ok, data } = await api('/api/auth/resend', { method: 'POST', body: JSON.stringify({ email: f.email.trim() }) });
-    setMsg(data.message || data.error || (ok ? 'Check your inbox.' : 'Could not resend')); // backend message wins (it knows Resend state!); || chain of fallbacks
-    setMsgErr(!ok); // red iff failed (!ok flips boolean)
+    try { // same unreachable-server guard as login/signup (consistency: every auth call explains failures!)
+      const { ok, data } = await api('/api/auth/resend', { method: 'POST', body: JSON.stringify({ email: f.email.trim() }) });
+      setMsg(data.message || data.error || (ok ? 'Check your inbox.' : 'Could not resend — try again.')); // backend message wins (it knows Resend state!); || chain of fallbacks
+      setMsgErr(!ok); // red iff failed (!ok flips boolean)
+    } catch { // server unreachable → plain message, red (never silent!)
+      setMsg("Can't reach the Vendora server. Check your internet connection and try again.");
+      setMsgErr(true);
+    }
   }
   function switchMode(m) { setMode(m); setMsg(''); setMsgErr(false); setNeedsVerify(false); setShowPw(false); } // mode switch RESETS all transient state (no leaking signup errors into login view!)
 
@@ -119,7 +134,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
             <button type="button" className="pw-eye" onClick={() => setShowPw(!showPw)} title={showPw ? 'Hide password' : 'Show password'} aria-label={showPw ? 'Hide password' : 'Show password'}><Ic n={showPw ? 'eyeOff' : 'eye'} s={18} /></button> {/* type="button" (not submit!), icon flips eye/eyeOff, title + aria-label (hover + screen reader) */}
           </div>
           {mode === 'signup' && f.password.length > 0 && ( // strength meter: signup + non-empty only…
-            <div className="pw-meter"><i className={pwScore >= 1 ? 'on' : ''} /><i className={pwScore >= 2 ? 'on' : ''} /><i className={pwScore >= 3 ? 'on' : ''} /><span>{pwScore >= 2 ? 'Strong enough' : 'Keep typing…'}</span></div> {/* 3 bars light up by pwScore (className ternary each); label flips at 2+ */}
+            <div className="pw-meter"><i className={pwScore >= 1 ? 'on' : ''} /><i className={pwScore >= 2 ? 'on' : ''} /><i className={pwScore >= 3 ? 'on' : ''} /><span>{pwScore >= 2 ? 'Strong enough' : 'Keep typing…'}</span></div>
           )}
           <button className="btn login-cta" disabled={busy} onClick={mode === 'login' ? login : signup}>{busy ? <span className="spinner" /> : null}{busy ? 'Please wait…' : mode === 'login' ? 'Sign in →' : 'Start my free trial →'}</button> {/* disabled while busy (double-submit lock); spinner span OR null; label ternary ×2 (busy? then mode?) */}
           {needsVerify && <button className="resend-btn" onClick={resend}><Ic n="mail" s={15} /> Resend verification email</button>} {/* unverified-login only (backend needsVerification flag drives this!) */}

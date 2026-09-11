@@ -108,10 +108,10 @@ export default function Onboarding() {
               <h1>{slide.title}</h1>
               <p className="lede">{slide.body}</p> {/* lede = intro paragraph style */}
               {slide.points && ( // points chips (slides 0 + 3 only — && conditional on the FLAG!)
-                <div className="slide-points">{slide.points.map(([ic, t]) => <span key={t}><Ic n={ic} s={15} />{t}</span>)}</div> // destructure [icon, text] pairs; key={t} unique strings
+                <div className="slide-points">{slide.points.map(([ic, t]) => <span key={t}><Ic n={ic} s={15} />{t}</span>)}</div> {/* destructure [icon, text] pairs; key={t} unique strings */}
               )}
               {slide.demo && ( // mini customer↔AI chat sample (slide 1)…
-                <div className="learn-box light">Customer: "Abeg, do you have blue gown?"<div className="reply">AI: "Yes — blue gown ₦45,000, in stock. Want me to reserve it?"</div></div> // .learn-box.light = inset demo style (reused from Catalog tips!)
+                <div className="learn-box light">Customer: "Abeg, do you have blue gown?"<div className="reply">AI: "Yes — blue gown ₦45,000, in stock. Want me to reserve it?"</div></div> {/* .learn-box.light = inset demo style (reused from Catalog tips!) */}
               )}
               {slide.code && ( // LEARN: sample (slide 2)…
                 <div className="learn-box light">LEARN: New stock! Blue gown ₦45,000<div className="reply"><Ic n="checkCircle" s={14} /> Catalog updated — I'll now use this to answer customers.</div></div>

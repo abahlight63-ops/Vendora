@@ -36,9 +36,9 @@ function DemoChat() { // self-playing chat preview (NOT a component with props �
     <div className="mock live">
       <div className="mock-head"><i />Amaka Beauty Studio <span>online</span></div> {/* <i> = green dot (CSS); shop name + online sells "alive" */}
       {DEMO.slice(0, n).map((m, i) => ( // slice(0,n) = first n lines (progressive reveal!); key={i} fine (static script order)
-        <div key={i} className={'bubble' + (m.from === 'ai' ? ' ai' : '')}>{m.text}</div> // ' ai' class = green reply style (string concat toggle)
+        <div key={i} className={'bubble' + (m.from === 'ai' ? ' ai' : '')}>{m.text}</div> {/* ' ai' class = green reply style (string concat toggle) */}
       ))}
-      {typing && n < DEMO.length && <div className="bubble ai typing"><span /><span /><span /></div>} // && conditional: dots only while typing AND script unfinished (3 spans = CSS bounce stagger)
+      {typing && n < DEMO.length && <div className="bubble ai typing"><span /><span /><span /></div>} {/* && conditional: dots only while typing AND script unfinished (3 spans = CSS bounce stagger) */}
     </div>
   );
 }
@@ -119,7 +119,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
             <button type="button" className="pw-eye" onClick={() => setShowPw(!showPw)} title={showPw ? 'Hide password' : 'Show password'} aria-label={showPw ? 'Hide password' : 'Show password'}><Ic n={showPw ? 'eyeOff' : 'eye'} s={18} /></button> {/* type="button" (not submit!), icon flips eye/eyeOff, title + aria-label (hover + screen reader) */}
           </div>
           {mode === 'signup' && f.password.length > 0 && ( // strength meter: signup + non-empty only…
-            <div className="pw-meter"><i className={pwScore >= 1 ? 'on' : ''} /><i className={pwScore >= 2 ? 'on' : ''} /><i className={pwScore >= 3 ? 'on' : ''} /><span>{pwScore >= 2 ? 'Strong enough' : 'Keep typing…'}</span></div> // 3 bars light up by pwScore (className ternary each); label flips at 2+
+            <div className="pw-meter"><i className={pwScore >= 1 ? 'on' : ''} /><i className={pwScore >= 2 ? 'on' : ''} /><i className={pwScore >= 3 ? 'on' : ''} /><span>{pwScore >= 2 ? 'Strong enough' : 'Keep typing…'}</span></div> {/* 3 bars light up by pwScore (className ternary each); label flips at 2+ */}
           )}
           <button className="btn login-cta" disabled={busy} onClick={mode === 'login' ? login : signup}>{busy ? <span className="spinner" /> : null}{busy ? 'Please wait…' : mode === 'login' ? 'Sign in →' : 'Start my free trial →'}</button> {/* disabled while busy (double-submit lock); spinner span OR null; label ternary ×2 (busy? then mode?) */}
           {needsVerify && <button className="resend-btn" onClick={resend}><Ic n="mail" s={15} /> Resend verification email</button>} {/* unverified-login only (backend needsVerification flag drives this!) */}

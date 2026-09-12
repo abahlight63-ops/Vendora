@@ -20,6 +20,9 @@ const FAQS = [ // [question, answer] pairs — content lives HERE, markup below 
   ['How do I cancel?', "Just stop paying — you drop to free at period end, nothing deleted. To erase everything, ask us here and it's gone within 14 days."],
   ['Can the AI make mistakes?', 'Rarely, but yes — which is why unsure chats hand off to you instead of guessing. Keep your catalog accurate and review flagged chats daily.'],
   ['Why do I see sponsored messages?', 'The free plan is supported by clearly-labeled sponsor cards (max one a day) plus quiet network ads. Pro removes all of them — see Billing.'],
+  ['How do I connect Telegram?', 'Free: open Telegram → message @BotFather → /newbot → name it → copy the token → paste it in Profile → Telegram → Connect. Then tap Link my Telegram and send the code to your bot. Pro can also use the shared @VendoraBot — ask support for your link code.'],
+  ['Do voice notes work?', 'Yes — on Pro. Customers send voice notes on WhatsApp or Telegram, the bot transcribes them with Whisper and answers like normal text. Free tier gets a polite handoff instead.'],
+  ['Which AI should I pick?', 'Fast (Llama 8B, Gemini) for speed, Smart (Llama 70B, Scout, GPT-OSS) for quality, Reasoning (DeepSeek, Qwen) for hard thinking. Premium (Kimi K2, Claude, GPT) is Pro-only — tap one to see what you get.'],
 ];
 
 export default function Help() {

@@ -113,6 +113,16 @@ CREATE TABLE IF NOT EXISTS ai_usage ( -- one row per business per day; PRIMARY K
   PRIMARY KEY (business_id, day)
 );
 
+-- Per-MODEL daily caps: stops one hammered model eating the shared key quota
+-- (one row per business per day per model — 50/day free default for everything!)
+CREATE TABLE IF NOT EXISTS model_usage (
+  business_id INTEGER NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  day DATE NOT NULL DEFAULT CURRENT_DATE,
+  model_id TEXT NOT NULL, -- catalog id (llama-8b, kimi-k2…) — stable keys, not provider model names!
+  count INTEGER NOT NULL DEFAULT 0, -- calls today
+  PRIMARY KEY (business_id, day, model_id)
+);
+
 -- Ad monetization: per-click tracking (per-view earnings come from the
 -- network dashboard, e.g. Monetag; clicks are tracked here for sponsor billing)
 CREATE TABLE IF NOT EXISTS ad_clicks ( -- every "Visit sponsor" tap
@@ -152,6 +162,17 @@ CREATE INDEX IF NOT EXISTS idx_inventory_business ON inventory_logs(business_id,
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS bot_enabled BOOLEAN NOT NULL DEFAULT true; -- global kill-switch (dashboard toggle + PAUSE/RESUME)
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS personal_contacts JSONB NOT NULL DEFAULT '[]'; -- WhatsApp numbers the bot ALWAYS ignores (friends/family)
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS bot_paused BOOLEAN NOT NULL DEFAULT false; -- per-chat takeover (inbox Take over / Hand back)
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS channel TEXT NOT NULL DEFAULT 'whatsapp'; -- whatsapp | telegram (inbox filters + tone tweaks per channel!)
+
+-- Telegram channel: per-shop bot tokens + shared-bot routing + owner linking
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS telegram_bot_token TEXT NOT NULL DEFAULT ''; -- per-shop BotFather token (empty = Telegram off for this shop)
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS telegram_link_code TEXT NOT NULL DEFAULT ''; -- customer link code (t.me/SharedBot?start=CODE) + owner-link nonce (regenerated per tap!)
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS owner_telegram_id TEXT NOT NULL DEFAULT ''; -- linked owner chat id (owner commands work from here!)
+CREATE TABLE IF NOT EXISTS telegram_links ( -- shared-bot routing: telegram user id → business (bound on /start CODE, forever!)
+  telegram_id TEXT NOT NULL PRIMARY KEY, -- Telegram chat/user id (stable per user — the identity!)
+  business_id INTEGER NOT NULL REFERENCES businesses(id) ON DELETE CASCADE, -- bound shop (CASCADE: shop gone = links gone!)
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
 -- Revenue ledger: every money event (Paystack success, transfer report/approval)
 CREATE TABLE IF NOT EXISTS payments (

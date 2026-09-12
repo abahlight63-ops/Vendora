@@ -274,6 +274,35 @@ async function complaintMine(req, res) {
   res.json(rows);
 }
 
+// Set/clear the shop's Telegram bot token (paste from BotFather; empty = off).
+async function telegramToken(req, res) {
+  const { token } = req.body || {}; // BotFather token string (or '' to disconnect!)
+  if (token !== undefined && token !== '' && !/^[\w:-]{20,}$/.test(String(token))) return res.status(400).json({ error: 'That does not look like a Telegram bot token (BotFather gives like 123456:ABC-DEF…).' }); // shape check (Bot tokens are long alnum+colon+dash — catches pasted usernames/links!)
+  const clean = String(token || ''); // '' = disconnect (normalized once!)
+  const { rows } = await db.query(
+    'UPDATE businesses SET telegram_bot_token = $1, owner_telegram_id = CASE WHEN $1 = $2 THEN owner_telegram_id ELSE $3 END WHERE id = $4 RETURNING telegram_bot_token <> $2 AS connected',
+    [clean, '', null, req.session.businessId]
+  ); // CASE: empty token keeps the owner link; a NEW token wipes it (stale owner id on a different bot = wrong human with owner powers — security!)
+  res.json({ connected: rows[0] ? rows[0].connected : false }); // boolean for the UI toggle state
+}
+
+// Generate a fresh Telegram link code (Profile "Link Telegram" button).
+// Returns the code + deep link; owner taps it → bot binds owner_telegram_id.
+async function telegramLink(req, res) {
+  const code = 'BIZ' + require('crypto').randomBytes(3).toString('hex').toUpperCase(); // 6 hex chars (unguessable-ish, typable — same generator as the route file!)
+  await db.query('UPDATE businesses SET telegram_link_code = $1 WHERE id = $2', [code, req.session.businessId]); // overwrite (each tap INVALIDATES the old code — leaked links die!)
+  const { rows } = await db.query('SELECT telegram_bot_token FROM businesses WHERE id = $1', [req.session.businessId]);
+  const botName = (rows[0] && rows[0].telegram_bot_token) ? null : (process.env.TELEGRAM_SHARED_BOT_NAME || null); // per-shop bot: owner opens THEIR bot; shared: needs the shared username (env!)
+  res.json({ code, botName, note: botName ? `Open t.me/${botName}?start=link_${code} from your Telegram` : 'Open your shop bot and send: /start link_' + code });
+}
+
+// Telegram connection status (Profile status line + Help docs).
+async function telegramStatus(req, res) {
+  const { rows } = await db.query('SELECT telegram_bot_token <> $1 AS connected, owner_telegram_id <> $1 AS owner_linked, telegram_link_code FROM businesses WHERE id = $2', ['', req.session.businessId]);
+  if (!rows.length) return res.status(404).json({ error: 'Not found' });
+  res.json({ connected: rows[0].connected, ownerLinked: rows[0].owner_linked, hasCode: !!(rows[0].telegram_link_code) }); // hasCode (not the code — codes only travel on explicit generate!)
+}
+
 // Log a sponsor/ad click (per-click billing for direct sponsors).
 async function adClick(req, res) {
   const { slot, target_url } = req.body || {}; // which placement + where they went
@@ -301,11 +330,12 @@ async function aiModels(req, res) {
   res.json({ models: aiModels.listForTier(planService.tier(b)) }); // [{id, label, tier, locked}…] — model IDs never leak
 }
 
-const FREE_AI_PER_DAY = Number(process.env.FREE_AI_PER_DAY || 20); // free-tier Vendora AI chats/day (env-tunable)
-const PAID_AI_PER_DAY = Number(process.env.PAID_AI_PER_DAY || 50); // Pro premium-model chats/day (cost guard!)
+const FREE_AI_PER_DAY = Number(process.env.FREE_AI_PER_DAY || 50); // free-tier Vendora AI chats/day, 50 for everything (env-tunable)
+const PAID_AI_PER_DAY = Number(process.env.PAID_AI_PER_DAY || 50); // Pro premium-model chats/day, 50 too (cost guard!)
+const MODEL_DAILY_CAP = Number(process.env.MODEL_DAILY_CAP || 50); // per-MODEL daily cap per business (one hammered model can't eat the shared key!)
 
-// Vendora AI — general chat. Free tier: free models up to FREE_AI_PER_DAY/day.
-// Pro: unlimited free models + paid models up to PAID_AI_PER_DAY/day.
+// Vendora AI — general chat. Free tier: 50 chats/day total AND 50/model/day.
+// Pro: unlimited free models (model caps still apply to shared keys!) + 50 paid chats/day.
 async function ask(req, res) {
   try { // everything inside try: AI + DB failures become JSON, never crashes
     const { message, history, model } = req.body || {}; // message required; history optional; model = dropdown id
@@ -338,6 +368,15 @@ async function ask(req, res) {
     if (paid && usage.paid_count >= PAID_AI_PER_DAY) { // anyone (even Pro) hammering premium models?…
       return res.status(429).json({ error: `Premium AI limit reached for today (${PAID_AI_PER_DAY}). Free AIs still work.` }); // free models still open (only paid capped)
     }
+    const { rows: mrows } = await db.query( // per-MODEL counter (upsert-then-read, same pattern as ai_usage)…
+      `INSERT INTO model_usage (business_id, day, model_id) VALUES ($1, CURRENT_DATE, $2)
+       ON CONFLICT (business_id, day, model_id) DO UPDATE SET model_id = EXCLUDED.model_id
+       RETURNING count`,
+      [req.session.businessId, resolved.entry.id]
+    );
+    if (mrows[0].count >= MODEL_DAILY_CAP) { // this business maxed THIS model today (quota justice: others' share untouched!)…
+      return res.status(429).json({ error: `You've used ${resolved.entry.label} 50 times today — try another AI below, fresh quota!` }); // …redirect, don't dead-end (dropdown has 7 more!)
+    }
     const result = await replyEngine.askGeneral(message.trim(), Array.isArray(history) ? history.slice(-12) : [], resolved.entry.id, tier); // Array.isArray guards tampered history; slice(-12) caps context cost
     if (result.reply) { // SUCCESS → count it (only successful chats consume quota — failures are free retries!)
       await db.query( // dynamic column via ${} — SAFE here: `paid` is a boolean WE computed, not user input (never interpolate raw user text into SQL!)
@@ -345,6 +384,7 @@ async function ask(req, res) {
          WHERE business_id = $1 AND day = CURRENT_DATE`,
         [req.session.businessId]
       );
+      await db.query('UPDATE model_usage SET count = count + 1 WHERE business_id = $1 AND day = CURRENT_DATE AND model_id = $2', [req.session.businessId, resolved.entry.id]); // model counter (plain values — no dynamic SQL needed here!)
       return res.json({ reply: result.reply, via: result.via }); // via = "answered by Llama 3.3" caption
     }
     return res.status(502).json({ error: 'Vendora AI is resting — try again in a moment.' }); // 502 = our upstream (the AI) failed
@@ -374,4 +414,7 @@ module.exports = { // every handler the routes file wires up (miss one here = ro
   chatTakeover,
   complaintCreate,
   complaintMine,
+  telegramToken,
+  telegramLink,
+  telegramStatus,
 };

@@ -27,6 +27,24 @@ const GEMINI_MODELS = (process.env.GEMINI_MODELS || 'gemini-2.5-flash,gemini-2.5
 let fastModel = null; // module-level memory: the Gemini model that worked last time
 const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS || 25000); // env override, default 25s
 
+// GROQ SHARED-KEY GOVERNOR: Groq free tier ≈ 30 req/min PER KEY (shared by ALL
+// our traffic!). Token bucket: timestamps of recent calls; over the line →
+// wait briefly (users see "answering…" a second longer) → else throw so the
+// FALLBACK chain (Gemini/OpenRouter) absorbs it instead of Groq 429ing us.
+// Single-process memory (multi-server later: Redis — same interface!).
+const GROQ_RPM = Number(process.env.GROQ_RPM || 30); // env-tunable (lower = safer on shared keys!)
+const groqHits = []; // timestamps (ms) of recent Groq attempts — pruned on every check
+async function groqSlot() { // returns true when a slot is ours, false after ~5s of waiting (caller falls back!)
+  const windowMs = 60 * 1000; // sliding 60-second window (matches Groq's per-minute quota!)
+  for (let i = 0; i < 20; i++) { // 20 × 250ms = 5s max wait (bounded — never hang a webhook!)
+    const now = Date.now(); // fresh clock each poll (time passes while we wait!)
+    while (groqHits.length && groqHits[0] <= now - windowMs) groqHits.shift(); // prune: drop timestamps older than the window (shift = remove from front!)
+    if (groqHits.length < GROQ_RPM) { groqHits.push(now); return true; } // room → TAKE the slot (push = record it!) and go
+    await new Promise((r) => setTimeout(r, 250)); // full → nap 250ms, then re-check (polite polling!)
+  }
+  return false; // waited 5s, still full → caller throws to fallback (Gemini answers instead — user never sees an error!)
+}
+
 // fetch() with a hard deadline: AbortController cancels the request on timeout.
 async function fetchWithTimeout(url, opts) {
   const ctrl = new AbortController(); // controller whose signal can abort the fetch…
@@ -163,6 +181,7 @@ async function callOpenAICompat(name, url, key, model, system, user, extraHeader
 async function callGroq(system, user, modelOverride) {
   const key = process.env.GROQ_API_KEY;
   if (!validKey(key)) throw new Error('GROQ_API_KEY is not set');
+  if (!(await groqSlot())) throw new Error('Groq shared quota busy — falling back'); // governor says full → THROW (fallback chain catches → Gemini answers; message preserved, zero user impact!)
   const model = modelOverride || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'; // dropdown > env > default
   return callOpenAICompat('Groq', 'https://api.groq.com/openai/v1/chat/completions', key, model, system, user); // Groq hosts an OpenAI-compatible endpoint (that's why no SDK needed)
 }
@@ -438,4 +457,4 @@ If the text contains no products, return [].`;
   }
 }
 
-module.exports = { generateReply, extractProducts, askGeneral, parseInventoryAction, INVENTORY_HINT, PROVIDER, configuredProviders }; // the public API of the brain (parser + hint exported for webhook + tests!)
+module.exports = { generateReply, extractProducts, askGeneral, parseInventoryAction, INVENTORY_HINT, PROVIDER, configuredProviders, __groqSlot: groqSlot }; // __ prefix = test hook (production code never calls it — tests + debugging only!)rain (parser + hint exported for webhook + tests!)

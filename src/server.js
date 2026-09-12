@@ -20,6 +20,7 @@ const ownerRoutes = require('./routes/ownerRoutes'); // /api/me* (owner dashboar
 const adminRoutes = require('./routes/adminRoutes'); // /api/businesses* (admin key)
 const billingRoutes = require('./routes/billingRoutes'); // /api/billing/* (Paystack init)
 const webhookRoutes = require('./routes/webhookRoutes'); // /webhook/whatsapp (Twilio inbound)
+const telegramRoutes = require('./routes/telegramRoutes'); // /webhook/telegram/* (Telegram inbound, both modes)
 
 const app = express(); // create the Express application object
 app.set('trust proxy', 1); // behind Railway/Render/ngrok there is 1 proxy — trust its
@@ -65,6 +66,7 @@ app.get('/health', (req, res) => res.json({ status: 'ok' })); // GET /health →
 
 // Routes — mount each router at a URL prefix:
 app.use('/webhook', webhookRoutes); // POST /webhook/whatsapp ← Twilio
+app.use('/webhook', telegramRoutes); // POST /webhook/telegram/:bizId + /shared ← Telegram (same /webhook prefix, distinct paths!)
 app.use('/api/auth', authRoutes); // POST /api/auth/login etc.
 // Admin login/logout BEFORE ownerRoutes (whose blanket requireAuth would 401
 // guests before they ever reach these!). You can't require a session to OBTAIN

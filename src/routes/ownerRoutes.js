@@ -26,6 +26,9 @@ router.get('/me/ai-models', ownerController.aiModels); // dropdown list with loc
 router.post('/me/ads/click', ownerController.adClick);
 router.post('/me/bot', ownerController.botToggle);
 router.post('/me/conversations/:id/takeover', ownerController.chatTakeover);
+router.get('/me/telegram', ownerController.telegramStatus);
+router.post('/me/telegram/token', ownerController.telegramToken);
+router.post('/me/telegram/link', ownerController.telegramLink);
 router.get('/me/complaints', ownerController.complaintMine);
 router.post('/me/complaints', ownerController.complaintCreate); // log a sponsor click (per-click billing)
 

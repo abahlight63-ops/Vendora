@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react'; // useEffect = fetch models
 import { Link } from 'react-router-dom'; // Unlock-Pro link (locked model selected)
 import { api, pop, toast } from '../lib/api.js'; // api() ask/models; pop() paywall popup; toast() small errors
 import { maybeShowSponsor } from '../lib/ads.js'; // sponsor interstitial on daily-limit hit (perfect contextual moment!)
+import GlassUpsell from '../components/GlassUpsell.jsx'; // warm-glass Pro modal (locked models + 402s open it!)
 import Ic from '../components/icons.jsx'; // send-arrow icon
 
 const SUGGESTIONS = [ // hero chips: one-tap starters (each sends immediately — zero typing needed!)
@@ -53,7 +54,7 @@ export default function VendoraAI({ biz }) { // biz = business (name for greetin
       if (ok && data.reply) { // 200 + reply → append AI message WITH via caption…
         setMsgs((m) => [...m, { from: 'ai', text: data.reply, via: data.via }]); // functional update (latest state!) + extra `via` field (undefined for old messages — rendering guards with {m.via && …})
       } else if (status === 402) { // 402 = paywall (locked premium model — shouldn't happen via UI, but tampered requests possible!)…
-        pop('err', 'Pro AI', data.error || 'Upgrade to unlock premium AIs.'); // …big upgrade popup (conversion moment!)
+        setUpsell(true); // …WARM GLASS modal (not the red error pop — desire, not scolding!)
       } else if (status === 429) { // 429 = daily cap hit…
         setMsgs((m) => [...m, { from: 'ai', text: data.error }]); // …show the limit AS a chat message (conversational, not a dead popup!)…
         toast('Daily limit reached', 'err'); // …plus small toast…
@@ -70,18 +71,34 @@ export default function VendoraAI({ biz }) { // biz = business (name for greetin
   }
 
   const current = models.find((m) => m.id === model); // selected option object (for the locked-state Unlock link below; undefined while loading → ?. not needed, && guards)
+  const [upsell, setUpsell] = useState(false); // glass modal open? (locked taps + 402s set true; close sets false!)
+  const groups = ['Fast', 'Smart', 'Reasoning', 'Premium']; // badge order (free brains first, crown jewels last — desire builds downward!)
+  function pick(id) { // dropdown change WITH locked interception…
+    const m = models.find((x) => x.id === id); // look up the tapped option…
+    if (m && m.locked) { setUpsell(true); return; } // …locked premium → GLASS modal, selection UNCHANGED (user keeps their free model!)
+    setModel(id); // …free → select normally
+  }
 
   return (
     <div className="vai"> {/* .vai = column layout, max-width 760 (chat-app feel) */}
       <div className="vai-modelbar"> {/* dropdown row (label + select + conditional unlock link) */}
         <label htmlFor="vai-model">AI:</label> {/* htmlFor links label↔select (click label focuses select — accessibility!) */}
-        <select id="vai-model" value={model} onChange={(e) => setModel(e.target.value)}> {/* controlled select: value mirrors state (options below) */}
+        <select id="vai-model" value={model} onChange={(e) => pick(e.target.value)}> {/* pick() intercepts locked taps (glass modal!) instead of blind setModel */}
           {models.length === 0 && <option value="gemini-flash">Gemini Flash</option>} {/* loading fallback (so the select is never empty!) */}
-          {models.map((m) => ( // map options: locked gets 🔒 + (Pro) suffix (honest labeling!)
-            <option key={m.id} value={m.id}>{m.locked ? '🔒 ' : ''}{m.label}{m.tier === 'paid' ? ' (Pro)' : ''}</option>
-          ))}
+          {groups.map((g) => { // badge-grouped optgroups (Fast → Smart → Reasoning → Premium: scannable menu!)…
+            const items = models.filter((m) => (m.badge || 'Smart') === g); // …options of this badge (|| 'Smart' guards backends older than badges!)
+            if (!items.length) return null; // empty group → render nothing (not an empty heading!)
+            return (
+              <optgroup key={g} label={g === 'Premium' ? '✦ Premium (Pro)' : g}> {/* <optgroup> = native grouped dropdown (zero CSS, works everywhere!) */}
+                {items.map((m) => ( // locked gets 🔒 + (Pro) suffix (honest labeling — premium visible but gated!)
+                  <option key={m.id} value={m.id}>{m.locked ? '🔒 ' : ''}{m.label}{m.tier === 'paid' ? ' (Pro)' : ''}</option>
+                ))}
+              </optgroup>
+            );
+          })}
         </select>
         {current?.locked && <Link className="mini-link" to="/billing">Unlock Pro</Link>} {/* ?. guards loading; locked selection → direct upgrade path (conversion right where desire peaks!) */}
+        <GlassUpsell show={upsell} onClose={() => setUpsell(false)} /> {/* the warm-glass moment (default Kimi-led benefits inside!) */}
       </div>
       {msgs.length === 0 ? ( // HERO mode (no messages yet): logo + greeting + chips…
         <div className="vai-hero">

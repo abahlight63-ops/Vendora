@@ -374,6 +374,25 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 /* OTP code input: huge centered digits (grandma-proof typing!) */
 .otp-input { text-align: center; font-size: 32px !important; font-weight: 800; letter-spacing: 10px; text-indent: 10px; } /* letter-spacing spreads digits; text-indent re-centers (spacing pushes right!); !important beats the 16px mobile rule */
 
+/* ---------- warm-glass premium upsell (Pro modal users LOVE) ---------- */
+.glass-overlay { position: fixed; inset: 0; z-index: 320; display: grid; place-items: center; padding: 20px; background: rgba(20, 14, 6, 0.55); animation: popFade 0.25s ease both; }
+.glass-card { position: relative; width: 100%; max-width: 400px; text-align: center; border-radius: 24px; padding: 34px 28px 26px; overflow: hidden; background: linear-gradient(150deg, rgba(255, 251, 235, 0.92), rgba(255, 243, 205, 0.88)); border: 1px solid rgba(181, 71, 8, 0.25); box-shadow: 0 30px 70px rgba(122, 46, 14, 0.35); animation: popIn 0.4s cubic-bezier(0.2, 0.9, 0.25, 1.25) both; }
+[data-theme="dark"] .glass-card { background: linear-gradient(150deg, rgba(58, 36, 10, 0.92), rgba(32, 20, 8, 0.9)); border-color: rgba(245, 176, 65, 0.35); }
+.glass-card h2 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; color: #7a2e0e; margin: 10px 0 6px; }
+[data-theme="dark"] .glass-card h2 { color: #f5d9a8; }
+.glass-card .hint { color: #8a5a2b; }
+[data-theme="dark"] .glass-card .hint { color: #c9a06a; }
+.glass-shine { position: absolute; top: -60%; left: -30%; width: 60%; height: 220%; transform: rotate(18deg); background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent); animation: glassShine 3.2s ease-in-out infinite; pointer-events: none; }
+@keyframes glassShine { 0% { left: -30%; } 60%, 100% { left: 130%; } }
+.glass-badge { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #fff; background: linear-gradient(135deg, #b54708, #7a2e0e); padding: 5px 14px; border-radius: 999px; box-shadow: 0 4px 14px rgba(181, 71, 8, 0.45); }
+.glass-feats { list-style: none; text-align: left; display: grid; gap: 10px; margin: 20px 0 22px; }
+.glass-feats li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: #5c3a12; }
+[data-theme="dark"] .glass-feats li { color: #ecd3a8; }
+.glass-tick { flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; background: #128c4a; color: #fff; font-size: 12px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+.btn.glass-cta { width: 100%; background: linear-gradient(135deg, #e07b1f, #b54708); background-size: 200% 200%; animation: ctaShimmer 2.8s ease infinite; font-size: 15px; padding: 13px 18px; margin-bottom: 6px; }
+.btn.glass-cta:hover { filter: brightness(1.08); }
+@keyframes ctaShimmer { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+
 /* pricing cards */
 .plan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .plan { position: relative; display: flex; flex-direction: column; background: var(--card); border: 1.5px solid var(--line); border-radius: 18px; padding: 22px; animation: fadeSlide 0.4s ease both; transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }

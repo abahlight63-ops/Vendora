@@ -18,7 +18,7 @@ services:
     healthCheckPath: /health
     envVars:
       - key: NODE_VERSION
-        value: 20
+        value: 22
       - key: SESSION_SECRET
         generateValue: true
       - key: DATABASE_URL
@@ -36,6 +36,14 @@ services:
       - key: GROQ_API_KEY
         sync: false
       - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        sync: false
+      - key: TELEGRAM_SHARED_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_SHARED_BOT_NAME
         sync: false
       - key: RESEND_API_KEY
         sync: false

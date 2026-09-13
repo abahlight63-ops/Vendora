@@ -146,7 +146,8 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
         nav(path); // ONLY navigate when the session actually stuck (prevents login → dashboard → login bounce!)
         return true;
       }
-      fail('Signed in, but your session did not stick. The API may be unreachable (check VITE_API_URL / FRONTEND_URL) — please try again.'); // session cookie dropped or /me 401 (split-deploy CORS/cookie!) — stay here with a reason, never bounce silently
+      if (me.status === 401) fail('Signed in, but the session cookie was blocked (browser rejected it). Allow cookies for this site, or open the app at its backend URL, then try again.'); // 401 = login saved but /me arrived cookieless (third-party-cookie blocking / CORS mismatch) — stay here with the real reason
+      else fail(`Signed in, but loading your shop failed (server said ${me.status || 'nothing'}). Check your connection and try again.`); // non-401 = backend hiccup, not a cookie problem
       return false;
     } catch {
       fail("Can't reach the Vendora server. Check your internet connection and try again."); // network-down: fetch threw — explain, don't navigate

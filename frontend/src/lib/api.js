@@ -4,13 +4,14 @@
 // No npm modules — browser `fetch` + raw DOM for notifications (no toast library).
 
 // Shared API helpers for the Vendora React frontend.
-// SPLIT DEPLOY: same-origin by default (local dev + full-stack Render). When the
-// frontend lives on Vercel apart from the API, set VITE_API_URL to the Render
-// URL (e.g. https://vendora.onrender.com) and all calls are prefixed with it.
-const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, ''); // import.meta.env = Vite's env (VITE_*-prefixed vars baked in at BUILD time!); strip trailing slash so '/api' joins cleanly
+// SPLIT DEPLOY: same-origin by default (local dev + full-stack Render + Vercel
+// proxy — vercel.json rewrites /api/* to the Render backend, so the session
+// cookie stays FIRST-party: no CORS, no third-party-cookie blocking).
+// VITE_API_URL remains as an override (e.g. testing the API directly), but
+// empty is now the recommended value on Vercel (proxy handles it).
+export const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, ''); // import.meta.env = Vite's env (VITE_*-prefixed vars baked in at BUILD time!); strip trailing slash so '/api' joins cleanly
 export async function api(url, opts = {}) { // url like '/api/me'; opts = {method, body, headers…}
   const r = await fetch(API_BASE + url, { // prefix: '' locally (same-origin) or the Render URL on Vercel (cross-origin + cookies — needs backend CORS!)
-    credentials: 'include', // fetch = browser built-in HTTP (like Node's, but with cookies)
     credentials: 'include', // CRITICAL: send the session cookie (without this, backend thinks we're logged out!)
     headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) }, // JSON bodies by default; ...spread lets callers add/override headers
     ...opts, // spread the rest (method: 'POST', body: JSON.stringify(…)…)

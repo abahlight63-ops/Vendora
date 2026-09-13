@@ -55,15 +55,21 @@ class PgSessionStore extends Store { // `extends` = inherit get/set/destroy cont
     try { await this._ready(); } catch (e) { if (cb) cb(e); return; }
     // cookie.maxAge tells us how long "remember me" lasts; default 7 days
     const maxAge = (sess.cookie && sess.cookie.maxAge) || 7 * 24 * 60 * 60 * 1000;
+    const sql =
+      // UPSERT: insert new row, or overwrite if this sid already exists
+      `INSERT INTO sessions (sid, sess, expires) VALUES ($1, $2, now() + make_interval(secs => $3))
+       ON CONFLICT (sid) DO UPDATE SET sess = EXCLUDED.sess, expires = EXCLUDED.expires`;
+    const params = [sid, JSON.stringify(sess), maxAge / 1000]; // EXCLUDED = the row we tried to insert
     try {
-      await db.query(
-        // UPSERT: insert new row, or overwrite if this sid already exists
-        `INSERT INTO sessions (sid, sess, expires) VALUES ($1, $2, now() + make_interval(secs => $3))
-         ON CONFLICT (sid) DO UPDATE SET sess = EXCLUDED.sess, expires = EXCLUDED.expires`,
-        [sid, JSON.stringify(sess), maxAge / 1000] // EXCLUDED = the row we tried to insert
-      );
+      await db.query(sql, params);
       cb && cb(null); // `cb &&` guards: callback is optional in express-session
-    } catch (e) { cb && cb(e); }
+    } catch (e) {
+      try { // one quick retry: Supabase pooler blips must not log the user out
+        await new Promise((r) => setTimeout(r, 300));
+        await db.query(sql, params);
+        cb && cb(null);
+      } catch (e2) { cb && cb(e2); }
+    }
   }
   // Called on logout — delete the row so the cookie becomes useless.
   async destroy(sid, cb) {

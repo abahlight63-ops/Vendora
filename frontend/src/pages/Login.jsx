@@ -71,7 +71,11 @@ function GoogleButton({ busy, setBusy, fail, afterAuth, setMe }) { // "Continue 
       });
       const { ok, data } = await api('/api/auth/google', { method: 'POST', body: JSON.stringify({ credential }) }); // 3. backend verifies with Google + session OR needsSignup…
       setGBusy(false);
-      if (ok) { const me = await api('/api/me'); if (me.ok) setMe(me.data.business); const nav2 = '/dashboard'; window.location.href = nav2; return; } // session stamped → refresh state → dashboard (location.href = full reload: guarantees session cookie + fresh App state! Simpler than threading navigate here.)
+      if (ok) {
+        const me = await api('/api/me'); // confirm the session cookie stuck before leaving (split-deploy CORS/cookie can drop it!)
+        if (me.ok && me.data && me.data.business) { setMe(me.data.business); window.location.href = '/dashboard'; return; } // full reload: guarantees fresh App state + cookie
+        return fail('Google signed in, but your session did not stick. Check the API URL / connection and try again.'); // stay here with a reason — never bounce to login silently
+      }
       if (data.needsSignup) { setNeedBiz({ email: data.email, name: data.name || '', credential }); setG({ name: data.name || '', wa: '', hours: '' }); return; } // 404 needsSignup → open the ONE-TAP business form (credential KEPT for the signup call!)
       fail(data.error || 'Google sign-in failed — try again.'); // other failures (expired token, Google down…)
     } catch { setGBusy(false); fail('Google sign-in was closed or blocked — try again (disable adblock for accounts.google.com).'); } // script blocked / popup closed / network (ONE message for all — all three feel identical to users!)
@@ -84,7 +88,11 @@ function GoogleButton({ busy, setBusy, fail, afterAuth, setMe }) { // "Continue 
     try {
       const { ok, data } = await api('/api/auth/google-signup', { method: 'POST', body: JSON.stringify({ credential: needBiz.credential, name: g.name.trim(), whatsapp_number: g.wa.trim(), owner_number: g.wa.trim(), hours: g.hours.trim() }) }); // credential RE-VERIFIED server-side (never trust the frontend's claim!)
       setGBusy(false);
-      if (ok && data.user) { const me = await api('/api/me'); if (me.ok) setMe(me.data.business); window.location.href = '/onboarding'; return; } // new account → tour (same as password signup!)
+      if (ok && data.user) {
+        const me = await api('/api/me'); // confirm session stuck before leaving the page
+        if (me.ok && me.data && me.data.business) { setMe(me.data.business); window.location.href = '/onboarding'; return; } // new account → tour (same as password signup!)
+        return fail('Account created, but your session did not stick. Please sign in.');
+      }
       fail((data.errors || [data.error || 'Signup failed']).join('; ')); // validation/409 shapes handled like password flow
     } catch { setGBusy(false); fail("Can't reach the Vendora server. Check your internet connection and try again."); }
   }
@@ -131,9 +139,19 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
 
   function fail(m) { setMsg(m); setMsgErr(true); } // helper: red status line (two setStates = one re-render, batched!)
   async function afterAuth(path) { // shared post-auth: refresh login state THEN navigate (order matters: Guard reads `me`!)
-    const me = await api('/api/me'); // refetch (single source of truth — never trust the login response alone!)
-    if (me.ok) setMe(me.data.business); // lift business into App state (whole app re-renders as logged-in!)
-    nav(path); // go to dashboard/onboarding (fires even if refetch failed — Guard will bounce to login if truly broken)
+    try {
+      const me = await api('/api/me'); // refetch (single source of truth — never trust the login response alone!)
+      if (me.ok && me.data && me.data.business) {
+        setMe(me.data.business); // lift business into App state (whole app re-renders as logged-in!)
+        nav(path); // ONLY navigate when the session actually stuck (prevents login → dashboard → login bounce!)
+        return true;
+      }
+      fail('Signed in, but your session did not stick. The API may be unreachable (check VITE_API_URL / FRONTEND_URL) — please try again.'); // session cookie dropped or /me 401 (split-deploy CORS/cookie!) — stay here with a reason, never bounce silently
+      return false;
+    } catch {
+      fail("Can't reach the Vendora server. Check your internet connection and try again."); // network-down: fetch threw — explain, don't navigate
+      return false;
+    }
   }
   async function login() { // SIGN IN flow…
     if (busy) return; setBusy(true); setMsg(''); setMsgErr(false); setNeedsVerify(false); // lock + reset ALL status (clean slate per attempt!)
@@ -187,7 +205,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
     try {
       const { ok, data } = await api('/api/auth/verify-otp', { method: 'POST', body: JSON.stringify({ email: otpEmail, code }) });
       setBusy(false);
-      if (ok) { setMsg('Verified — setting up your assistant…'); setMsgErr(false); afterAuth('/onboarding'); return; } // verified = logged in (session stamped!) → tour!
+      if (ok) { setMsg('Verified — setting up your assistant…'); setMsgErr(false); await afterAuth('/onboarding'); return; } // verified = logged in (session stamped!) → tour! (await: afterAuth overwrites msg on failure so the user sees WHY, never a silent bounce)
       fail(data.error || 'Wrong code — try again.'); // expired/locked/left-count messages arrive HERE (backend crafts each one!)
     } catch { setBusy(false); fail("Can't reach the Vendora server. Check your internet connection and try again."); } // unreachable → plain message (same guard as login/signup!)
   }

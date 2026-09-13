@@ -8,6 +8,21 @@ const db = require('../db'); // shared pool
 const authService = require('../services/authService'); // findUserByEmail, createUser, verifyPassword…
 const { normalizePhone } = require('../utils/phone'); // destructure the phone helper
 
+// Force-write the session to the store NOW. Without this, express-session only
+// saves at response end and a DB blip yields a fake 200 whose cookie dies on
+// the very next /api/me (login works, then bounces back to /login or stays on
+// the OTP screen). Returns true on success, sends 500 + returns false on failure.
+async function saveSession(req, res) {
+  try {
+    await new Promise((resolve, reject) => req.session.save((err) => (err ? reject(err) : resolve())));
+    return true;
+  } catch (e) {
+    console.error('session save failed:', e.message);
+    res.status(500).json({ error: 'Could not keep you signed in — please try again.' });
+    return false;
+  }
+}
+
 async function signup(req, res) {
   const { email, password, name, whatsapp_number: numberRaw, owner_number: ownerRaw, hours, tone } = req.body || {}; // pull + rename raw inputs (Raw = unvalidated, un-normalized)
   const number = normalizePhone(numberRaw); // → 'whatsapp:+234…' or null (accepts 0803…, spaces…)
@@ -38,6 +53,7 @@ async function signup(req, res) {
     if (otp.auto) { // …UNLESS dev mode (no Resend key): skip the dance, log straight in (old behavior, local convenience!)
       req.session.userId = user.id; // LOGIN = write ids into the session (store persists them)…
       req.session.businessId = business.id; // …every later request reads these (that's the whole auth system!)
+      if (!(await saveSession(req, res))) return; // persist NOW (else next /api/me bounces!)
       return res.status(201).json({ user: { id: user.id, email: user.email }, business, auto: true }); // auto flag tells frontend: no OTP screen needed!
     }
     res.status(201).json({ needsOTP: true, email: user.email }); // NO session yet (unverified users get nothing!) — frontend shows the OTP screen (only safe fields — NEVER password_hash!)
@@ -81,6 +97,7 @@ async function login(req, res) {
   }
   req.session.userId = user.id; // LOGIN: stamp the session…
   req.session.businessId = user.business_id; // …business id rides along from the JOIN
+  if (!(await saveSession(req, res))) return; // force-write NOW (a DB blip must return 500 here, never a fake success that bounces back to /login!)
   res.json({ user: { id: user.id, email: user.email, business_name: user.business_name } }); // safe fields only
 }
 
@@ -115,6 +132,7 @@ async function google(req, res) {
       if (!user.verified) await db.query('UPDATE users SET verified = true, verify_token = NULL WHERE id = $1', [user.id]); // upgrade: Google proof counts as email verification!
       req.session.userId = user.id;
       req.session.businessId = user.business_id;
+      if (!(await saveSession(req, res))) return; // persist NOW (else /api/me bounces!)
       const fresh = await authService.findUserByEmail(email); // refetch (business_name for the response!)
       return res.json({ user: { id: fresh.id, email: fresh.email, business_name: fresh.business_name }, businessId: fresh.business_id });
     }
@@ -142,6 +160,7 @@ async function googleSignup(req, res) {
     if (existing) { // …then just log in (idempotent — double-submit safe!)
       req.session.userId = existing.id;
       req.session.businessId = existing.business_id;
+      if (!(await saveSession(req, res))) return; // persist NOW (else /api/me bounces!)
       return res.json({ user: { id: existing.id, email: existing.email } });
     }
     if (!name || typeof name !== 'string') return res.status(400).json({ error: 'Business name required.' }); // business still needs a NAME + NUMBER (Google gives neither!)
@@ -166,6 +185,7 @@ async function googleSignup(req, res) {
     const user = uRows[0]; // verified=true immediately (Google proved the inbox — no OTP dance needed!)
     req.session.userId = user.id; // log straight in (same stamp!)
     req.session.businessId = business.id;
+    if (!(await saveSession(req, res))) return; // persist NOW (else /api/me bounces!)
     res.status(201).json({ user: { id: user.id, email: user.email }, business }); // 201 + business (frontend routes to /onboarding like password signup!)
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ error: 'That WhatsApp number or email is already registered — try signing in.' }); // UNIQUE race (number or email taken between checks!)
@@ -183,6 +203,7 @@ async function verifyOtp(req, res) {
     const user = await authService.findUserByEmail(email);
     req.session.userId = user.id;
     req.session.businessId = user.business_id;
+    if (!(await saveSession(req, res))) return; // persist NOW (else next /api/me bounces back to login!)
     return res.json({ user: { id: user.id, email: user.email } });
   }
   if (!result.ok) { // wrong/expired/locked → specific message + attempts left (frontend shows resend/fallback options!)…
@@ -194,6 +215,7 @@ async function verifyOtp(req, res) {
   const user = result.user; // verified user object (returned by the service — no second lookup!)
   req.session.userId = user.id; // LOGIN on successful verification (same session stamp as login/signup!)…
   req.session.businessId = user.business_id;
+  if (!(await saveSession(req, res))) return; // persist NOW (this was the signup-OTP bounce: 200 without a saved row → /api/me 401 → back to login!)
   res.json({ user: { id: user.id, email: user.email } });
 }
 

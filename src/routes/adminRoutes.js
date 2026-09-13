@@ -24,5 +24,6 @@ router.post('/transfers/:id/reject', adminController.requireAdmin, adminControll
 router.get('/complaints', adminController.requireAdmin, adminController.complaintList); // support tickets (open first)
 router.post('/complaints/:id/reply', adminController.requireAdmin, adminController.complaintReply); // answer (stored + emailed)
 router.post('/complaints/:id/resolve', adminController.requireAdmin, adminController.complaintResolve); // close without reply
+router.post('/broadcast', adminController.requireAdmin, adminController.broadcast); // app-update notice → every owner's bell
 
 module.exports = router;

@@ -1,316 +1,109 @@
 // ── src/services/replyEngine.js ──────────────────────────────────
-// WHAT: the AI brain. Two jobs + one engine:
+// WHAT: the AI BRAIN — prompts + grounding + structured parsing.
+// Transport (keys, timeouts, provider HTTP) lives in ./ai/client.js.
+// Two jobs:
 //   1. generateReply() — WhatsApp customer replies, STRICTLY grounded in the
 //      shop's catalog (never invents prices; NEED_HUMAN flag when unsure).
 //   2. askGeneral() — Vendora AI page: free-form assistant, no grounding.
-//   Engine: callAI() tries AI_PROVIDER first, then every other configured
-//   provider (Gemini → Groq → OpenRouter → Claude → OpenAI). callChoice() does
-//   the same for a SPECIFIC dropdown model, falling back to FREE models only.
-// MODULES: none installed for AI! All providers are called with global `fetch`
-// (Node 18+ built-in HTTP). No langchain, no SDKs — just POST JSON, read JSON.
-// That keeps `npm install` tiny and every provider swappable.
-const productService = require('./productService'); // getProducts() + formatCatalog()
+// MODULES: ./productService (catalog), ./ai/client (transport).
 
-// Which provider goes FIRST (the rest are automatic fallbacks). Lowercased for safety.
-const PROVIDER = (process.env.AI_PROVIDER || 'claude').toLowerCase();
-const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-3-5-haiku-20241022'; // cheap Claude default
-// gemini-2.5-flash is the live free-tier model (verified 2026-09-10).
-// gemini-3-flash does not exist, gemini-2.0-flash was retired June 2026.
-const GEMINI_MODELS = (process.env.GEMINI_MODELS || 'gemini-2.5-flash,gemini-2.5-flash-lite,gemini-flash-lite-latest')
-  .split(',').map((m) => m.trim()).filter(Boolean); // "a, b, c" → ['a','b','c'] (env override without code change)
+const productService = require('./productService');
+const client = require('./ai/client');
 
-/**
- * Provider-agnostic AI call. Returns plain text.
- * Speed: remembers the first working Gemini model (model affinity) so later
- * calls skip the slow fallback chain; every attempt has a hard timeout.
- */
-let fastModel = null; // module-level memory: the Gemini model that worked last time
-const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS || 25000); // env override, default 25s
-
-// GROQ SHARED-KEY GOVERNOR: Groq free tier ≈ 30 req/min PER KEY (shared by ALL
-// our traffic!). Token bucket: timestamps of recent calls; over the line →
-// wait briefly (users see "answering…" a second longer) → else throw so the
-// FALLBACK chain (Gemini/OpenRouter) absorbs it instead of Groq 429ing us.
-// Single-process memory (multi-server later: Redis — same interface!).
-const GROQ_RPM = Number(process.env.GROQ_RPM || 30); // env-tunable (lower = safer on shared keys!)
-const groqHits = []; // timestamps (ms) of recent Groq attempts — pruned on every check
-async function groqSlot() { // returns true when a slot is ours, false after ~5s of waiting (caller falls back!)
-  const windowMs = 60 * 1000; // sliding 60-second window (matches Groq's per-minute quota!)
-  for (let i = 0; i < 20; i++) { // 20 × 250ms = 5s max wait (bounded — never hang a webhook!)
-    const now = Date.now(); // fresh clock each poll (time passes while we wait!)
-    while (groqHits.length && groqHits[0] <= now - windowMs) groqHits.shift(); // prune: drop timestamps older than the window (shift = remove from front!)
-    if (groqHits.length < GROQ_RPM) { groqHits.push(now); return true; } // room → TAKE the slot (push = record it!) and go
-    await new Promise((r) => setTimeout(r, 250)); // full → nap 250ms, then re-check (polite polling!)
-  }
-  return false; // waited 5s, still full → caller throws to fallback (Gemini answers instead — user never sees an error!)
-}
-
-// fetch() with a hard deadline: AbortController cancels the request on timeout.
-async function fetchWithTimeout(url, opts) {
-  const ctrl = new AbortController(); // controller whose signal can abort the fetch…
-  const t = setTimeout(() => ctrl.abort(), AI_TIMEOUT_MS); // …fires after the timeout (abort → fetch throws)
-  try {
-    return await fetch(url, { ...opts, signal: ctrl.signal }); // spread keeps caller's opts, adds our signal
-  } finally {
-    clearTimeout(t); // finally ALWAYS runs: cancel the timer so it can't fire late
-  }
-}
-
-// A key counts only if it looks real — example placeholders are skipped.
-function validKey(v) {
-  return typeof v === 'string' && v.trim().length > 15 && !v.includes('...') && !v.includes('xxxxx'); // rejects 'sk-ant-...', 'sk_test_xxxxx', empties
-}
-
-// Which providers have REAL keys right now (used by fallback + /health display).
-function configuredProviders() {
-  return {
-    gemini: validKey(process.env.GEMINI_API_KEY),
-    claude: validKey(process.env.ANTHROPIC_API_KEY),
-    groq: validKey(process.env.GROQ_API_KEY),
-    openrouter: validKey(process.env.OPENROUTER_API_KEY),
-    openai: validKey(process.env.OPENAI_API_KEY),
-  };
-}
-
-// ── Individual provider callers (each: build request → POST → parse text) ──
-async function callGemini(system, user, image) {
-  {
-    const key = process.env.GEMINI_API_KEY;
-    if (!validKey(key)) throw new Error('GEMINI_API_KEY is not set'); // throw = caught by callAI/callChoice fallback
-    const parts = [{ text: user }]; // Gemini "parts" array: text always…
-    if (image) parts.push({ inlineData: { mimeType: image.mime, data: image.base64 } }); // …plus base64 photo for vision
-    const body = JSON.stringify({ // Gemini REST shape: systemInstruction + contents + generationConfig
-      systemInstruction: { parts: [{ text: system }] }, // the "who you are" prompt
-      contents: [{ role: 'user', parts }], // the conversation (single turn here)
-      generationConfig: { temperature: 0.3, maxOutputTokens: 350 }, // 0.3 = factual, not creative; 350 caps cost/speed
-    });
-    // Model affinity: the model that worked last time goes first.
-    const ordered = fastModel ? [fastModel, ...GEMINI_MODELS.filter((m) => m !== fastModel)] : GEMINI_MODELS; // winner first, rest after (no duplicates)
-    // Try models in order — falls back automatically if a model name isn't available
-    let lastErr; // remembers the latest failure for the final throw
-    for (const model of ordered) { // for...of with await = tries run SEQUENTIALLY (needed: stop on first success)
-      const started = Date.now(); // for the speed log line
-      let res; // declared outside try so the code below can use it
-      try {
-        res = await fetchWithTimeout( // POST to this model's :generateContent endpoint (?key= auth)
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-          { method: 'POST', headers: { 'content-type': 'application/json' }, body }
-        );
-      } catch (e) {
-        lastErr = `Gemini ${model} network/timeout: ${e.message}`;
-        console.error(lastErr); // timeouts logged with the model name (debugging gold)
-        continue; // timeout → try next model (don't break — others may work)
-      }
-      if (res.ok) { // HTTP 200 = success
-        fastModel = model; // remember the winner (affinity for next call)
-        const data = await res.json(); // parse Gemini's JSON…
-        return (data.candidates?.[0]?.content?.parts || []) // ?. = optional chaining (missing keys → undefined, not crash)
-          .map((p) => p.text) // each part → its text…
-          .join('') // …glued together…
-          .trim(); // …whitespace trimmed. return EXITS the function (no more models tried)
-      }
-      lastErr = `Gemini ${model} error ${res.status} (${Date.now() - started}ms): ${(await res.text()).slice(0, 200)}`; // status + ms + first 200 chars of Google's error
-      console.error(lastErr);
-      // 404/400 = model not available on this key → try the next one; other errors → stop
-      if (res.status !== 404 && res.status !== 400) break; // 429/500 = key/quota problem: retrying siblings won't help
-    }
-    throw new Error(lastErr || 'All Gemini models failed'); // all tried → throw so the PROVIDER fallback continues
-  }
-}
-
-async function callClaude(system, user, image, modelOverride) {
-  // default: claude
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!validKey(key)) throw new Error('ANTHROPIC_API_KEY is not set');
-  const content = [{ type: 'text', text: user }]; // Claude blocks: text always…
-  if (image) {
-    content.push({ type: 'image', source: { type: 'base64', media_type: image.mime, data: image.base64 } }); // …plus base64 photo block for vision
-  }
-  const res = await fetchWithTimeout('https://api.anthropic.com/v1/messages', { // Anthropic messages endpoint
-    method: 'POST',
-    headers: {
-      'x-api-key': key, // Claude uses x-api-key header (not Bearer)
-      'anthropic-version': '2023-06-01', // API version pin (required header)
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: modelOverride || CLAUDE_MODEL, // dropdown choice wins, else env default
-      max_tokens: 350, // cap reply length (cost + WhatsApp-friendly)
-      system, // shorthand: { system: system } — the system prompt
-      messages: [{ role: 'user', content }], // one user turn with the blocks above
-    }),
-  });
-  if (!res.ok) throw new Error(`Claude API error ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const data = await res.json();
-  return (data.content || []) // Claude returns content BLOCKS (text, tool_use…)
-    .filter((c) => c.type === 'text') // keep only text blocks…
-    .map((c) => c.text) // …extract text…
-    .join('\n') // …join with newlines…
-    .trim();
-}
-
-// Groq + OpenRouter speak the same OpenAI-style chat format.
-async function callOpenAICompat(name, url, key, model, system, user, extraHeaders) {
-  // ONE shared function for Groq, OpenAI and OpenRouter (they all speak OpenAI's API).
-  const started = Date.now(); // for the speed log
-  let res;
-  try {
-    res = await fetchWithTimeout(url, {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + key, 'content-type': 'application/json', ...(extraHeaders || {}) }, // Bearer auth + any provider extras (OpenRouter needs Referer/Title)
-      body: JSON.stringify({
-        model, // shorthand — the model id string
-        temperature: 0.3, // factual, consistent replies
-        max_tokens: 350, // cap length
-        messages: [
-          { role: 'system', content: system }, // OpenAI style: system is a MESSAGE, not a field
-          { role: 'user', content: user },
-        ],
-      }),
-    });
-  } catch (e) {
-    throw new Error(`${name} network/timeout: ${e.message}`); // wrap with provider name for clear logs
-  }
-  if (!res.ok) throw new Error(`${name} error ${res.status} (${Date.now() - started}ms): ${(await res.text()).slice(0, 200)}`);
-  const data = await res.json();
-  const text = (data.choices?.[0]?.message?.content || '').trim(); // OpenAI shape: choices[0].message.content
-  if (!text) throw new Error(`${name} returned an empty reply`);
-  return text;
-}
-
-async function callGroq(system, user, modelOverride) {
-  const key = process.env.GROQ_API_KEY;
-  if (!validKey(key)) throw new Error('GROQ_API_KEY is not set');
-  if (!(await groqSlot())) throw new Error('Groq shared quota busy — falling back'); // governor says full → THROW (fallback chain catches → Gemini answers; message preserved, zero user impact!)
-  const model = modelOverride || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'; // dropdown > env > default
-  return callOpenAICompat('Groq', 'https://api.groq.com/openai/v1/chat/completions', key, model, system, user); // Groq hosts an OpenAI-compatible endpoint (that's why no SDK needed)
-}
-
-async function callOpenAI(system, user, modelOverride) {
-  const key = process.env.OPENAI_API_KEY;
-  if (!validKey(key)) throw new Error('OPENAI_API_KEY is not set');
-  const model = modelOverride || process.env.OPENAI_MODEL || 'gpt-4o-mini'; // cheapest OpenAI default
-  return callOpenAICompat('OpenAI', 'https://api.openai.com/v1/chat/completions', key, model, system, user);
-}
-
-async function callOpenRouter(system, user, modelOverride) {
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!validKey(key)) throw new Error('OPENROUTER_API_KEY is not set');
-  const model = modelOverride || process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.1-8b-instruct:free'; // :free = $0 models
-  const base = process.env.PUBLIC_BASE_URL || 'http://localhost:3000';
-  return callOpenAICompat('OpenRouter', 'https://openrouter.ai/api/v1/chat/completions', key, model, system, user, {
-    'HTTP-Referer': base, // OpenRouter REQUIRES a referer (shows your app on their leaderboard)
-    'X-Title': 'Vendora', // your app name on their dashboard
-  });
-}
-
-/**
- * Provider-agnostic AI call with automatic fallback.
- * Tries AI_PROVIDER first, then every other configured provider
- * (Groq → OpenRouter → Gemini → Claude). Photo messages only go to
- * providers that support images (Gemini, Claude).
- * Returns plain text.
- */
-async function callAI(system, user, image) {
-  const has = configuredProviders(); // {gemini:true, groq:false…} — skip unconfigured
-  const order = [PROVIDER, 'groq', 'openrouter', 'gemini', 'claude', 'openai'].filter((p, i, a) => a.indexOf(p) === i); // primary first, then rest; filter dedupes (indexOf finds FIRST occurrence, keep only those)
-  const runners = { // name → thunk (a () => … wrapper so NOTHING runs until we call it)
-    gemini: () => callGemini(system, user, image),
-    claude: () => callClaude(system, user, image),
-    groq: () => callGroq(system, user),
-    openrouter: () => callOpenRouter(system, user),
-    openai: () => callOpenAI(system, user),
-  };
-  let lastErr = null; // last failure (thrown if EVERYTHING fails)
-  for (const name of order) { // sequential tries — stop at first success
-    if (!has[name]) continue; // no key → skip silently
-    if (image && (name === 'groq' || name === 'openrouter')) continue; // no vision there → skip (don't waste the call)
-    const started = Date.now();
-    try {
-      const text = await runners[name](); // RUN this provider's call
-      console.log(`AI answered via ${name} in ${Date.now() - started}ms`); // observability: /health + logs show what's working
-      return text; // success → return immediately (later providers never run = no extra cost)
-    } catch (err) {
-      lastErr = err; // remember…
-      console.error(`AI ${name} failed:`, err.message); // …log with the provider name…
-    } // …and LOOP to the next provider (this is the fallback!)
-  }
-  throw lastErr || new Error('No AI provider configured — add GEMINI_API_KEY, GROQ_API_KEY or OPENROUTER_API_KEY to .env and restart the server');
-}
+// Re-exported for /health + tests (single import point for callers).
+const PROVIDER = (process.env.AI_PROVIDER || 'gemini').toLowerCase();
+const configuredProviders = client.configuredProviders;
 
 /**
  * Call a SPECIFIC catalog model first; if it fails, fall back to other
  * FREE models only — never silently spend money on a paid model.
- * Returns { text, via } so the UI can show which AI answered.
+ * Returns { text, via, fallback, requested } — via is ALWAYS the model that
+ * actually answered, so the UI caption can never lie about the switch.
  */
-async function callChoice(entry, model, system, user, image) {
-  const aiModels = require('./aiModels'); // required HERE (not top) to avoid a require cycle: aiModels doesn't need us, but lazy is safe
-  const has = configuredProviders();
-  const single = { // same thunks, but each accepts the EXACT model id from the dropdown
-    gemini: () => callGemini(system, user, image),
-    claude: () => callClaude(system, user, image, model),
-    groq: () => callGroq(system, user, model),
-    openrouter: () => callOpenRouter(system, user, model),
-    openai: () => callOpenAI(system, user, model),
-  };
-  // 1. The chosen model.
-  if (entry.provider === 'gemini') {
-    // Gemini manages its own multi-model fallback internally.
-    try {
+async function callChoice(entry, model, system, user, image, opts) {
+  const aiModels = require('./aiModels');
+  const has = client.configuredProviders();
+  // 1. The chosen model — exact catalog entry, exact model id (Gemini pinned,
+  //    no chain, no affinity — the dropdown pick always takes effect).
+  if (has[entry.provider]) {
+    if (!(image && (entry.provider === 'groq' || entry.provider === 'openrouter'))) {
       const started = Date.now();
-      const text = await callGemini(system, user, image);
-      console.log(`AI answered via gemini in ${Date.now() - started}ms`);
-      return { text, via: entry.label }; // via = pretty name for the UI ("answered by Llama 3.3")
-    } catch (err) { console.error('AI gemini failed:', err.message); } // fall THROUGH to free chain below
-  } else if (has[entry.provider] && single[entry.provider]) { // chosen provider configured?
-    const started = Date.now();
-    try {
-      const text = await single[entry.provider]();
-      console.log(`AI answered via ${entry.provider} in ${Date.now() - started}ms`);
-      return { text, via: entry.label };
-    } catch (err) { console.error(`AI ${entry.provider} failed:`, err.message); }
+      try {
+        const text = await client.callModel(entry, system, user, image, opts);
+        console.log(
+          `AI answered via ${entry.id} (${entry.provider}/${entry.model()}) in ${Date.now() - started}ms`
+        );
+        return { text, via: entry.label, modelId: entry.id, fallback: false };
+      } catch (err) {
+        console.error(`AI ${entry.id} failed:`, err.message);
+      }
+    }
+  } else {
+    console.error(`AI ${entry.id} skipped: no key for ${entry.provider}`);
   }
-  // 2. Free fallback chain (chosen one already tried / unconfigured).
-  for (const fb of aiModels.CATALOG.filter((m) => m.tier === 'free' && m.id !== entry.id)) { // only tier==='free', skip the one just tried
-    if (!has[fb.provider]) continue; // no key → skip
-    if (image && (fb.provider === 'groq' || fb.provider === 'openrouter')) continue; // no vision → skip
+  // 2. Free fallback chain — each fallback uses its OWN model id.
+  for (const fb of aiModels.CATALOG.filter(
+    (m) => m.tier === 'free' && m.id !== entry.id
+  )) {
+    if (!has[fb.provider]) continue;
+    if (image && (fb.provider === 'groq' || fb.provider === 'openrouter')) continue;
     const started = Date.now();
     try {
-      let text; // let because two branches assign it
-      if (fb.provider === 'gemini') text = await callGemini(system, user, image);
-      else text = await single[fb.provider]();
-      console.log(`AI answered via fallback ${fb.provider} in ${Date.now() - started}ms`);
-      return { text, via: fb.label };
-    } catch (err) { console.error(`AI fallback ${fb.provider} failed:`, err.message); }
+      const text = await client.callModel(fb, system, user, image, opts);
+      console.log(`AI answered via fallback ${fb.id} in ${Date.now() - started}ms`);
+      return { text, via: fb.label, modelId: fb.id, fallback: true, requested: entry.label };
+    } catch (err) {
+      console.error(`AI fallback ${fb.id} failed:`, err.message);
+    }
   }
   throw new Error('All configured AIs failed — check keys and restart the server');
 }
 
 /**
  * General-purpose chat (Vendora AI page) — NOT grounded in any catalog.
- * Answers like a normal AI assistant: research, writing, ideas, explanations.
+ * Smart + thorough: full explanations with examples, not one-liners.
  * choiceId comes from the dropdown and is validated against the tier.
  */
-async function askGeneral(message, history, choiceId, tier) {
-  const aiModels = require('./aiModels'); // catalog + resolveChoice validator
-  const system = `You are Vendora AI, a friendly general-purpose assistant inside the Vendora app.
-Answer clearly and helpfully: research questions, writing, ideas, explanations, advice.
-Keep answers scannable — short paragraphs, simple lists when useful. No markdown tables.
-If asked about Vendora itself: it is a WhatsApp AI sales assistant for small businesses.`;
-  const transcript = (history || []) // history = [{from:'you'|'ai', text}] from the client
-    .slice(-12) // last 12 only (cost control — long histories get expensive)
-    .map((m) => `${m.from === 'you' ? 'User' : 'Vendora AI'}: ${m.text}`) // label each turn for the model
-    .join('\n'); // one transcript block
-  const user = transcript ? `${transcript}\nUser: ${message}` : message; // context + new question
+async function askGeneral(message, history, choiceId, tier, bizName) {
+  const aiModels = require('./aiModels');
+  const shop = (bizName || '').split(' ')[0] || 'friend';
+  const system = `You are Vendora AI, a smart, warm general-purpose assistant inside the Vendora app.
+
+PERSONALITY: knowledgeable friend + sharp business coach. Friendly, respectful, encouraging. Greet warmly, always offer a concrete next step.
+
+GREETINGS ("hey", "hi", "hello", "sup", "good morning", "how far", "abeg"): NEVER curt. Reply politely, use their shop name when known ("Hey ${shop}! 👋 Great to see you — what are we working on today?"). Match vibe: English → warm English; Pidgin → natural Pidgin ("Hey! I dey here for you — wetin I fit help you do today?"); Yoruba/Hausa/Igbo greetings → greet back, then follow their language lead.
+
+SMALL TALK ("how are you?", "who are you?", "what can you do?"): answer warmly, say you are Vendora AI inside Vendora, list 4-5 real capabilities (write sales captions, business name ideas, pricing strategy, difficult-customer replies, product descriptions, marketing plans), end with one question to keep helping.
+
+DEPTH (this is the important part): give COMPLETE, useful answers — explain the why, show steps, give concrete examples with numbers/names where it helps. A pricing question deserves a mini-framework with an example calculation, not two sentences. A caption request deserves 3 ready-to-post options, not advice about captions. Structure longer answers with short headings or numbered steps so they stay scannable. Aim for genuinely helpful over brief: up to ~500 words when the question deserves it; short only when the question is small.
+
+FORMATTING: short paragraphs, simple lists for steps/options. No markdown tables (they break on WhatsApp-style bubbles).
+
+VENDORA FACTS: Vendora is a WhatsApp AI sales assistant for small businesses (answers customers in English + Pidgin, 24/7, learns the catalog, hands off to a human when unsure).`;
+  const transcript = (history || [])
+    .slice(-12)
+    .map((m) => `${m.from === 'you' ? 'User' : 'Vendora AI'}: ${m.text}`)
+    .join('\n');
+  const user = transcript ? `${transcript}\nUser: ${message}` : message;
+  // Smart settings: warmer sampling for personality, roomy token budget so
+  // answers are complete instead of cut off mid-thought.
+  const chatOpts = { temperature: 0.8, maxTokens: 1200 };
   try {
-    const resolved = aiModels.resolveChoice(choiceId, tier || 'free'); // validate: exists? paid-but-free-tier? Returns {entry, model} or {error}
-    if (resolved.error) return { reply: null, reason: resolved.error }; // locked/unknown → friendly refusal (402 in controller)
-    const { text, via } = await callChoice(resolved.entry, resolved.model, system, user, null); // null image = text chat
+    const resolved = aiModels.resolveChoice(choiceId, tier || 'free');
+    if (resolved.error) return { reply: null, reason: resolved.error };
+    const { text, via, modelId, fallback, requested } = await callChoice(
+      resolved.entry,
+      resolved.model,
+      system,
+      user,
+      null,
+      chatOpts
+    );
     if (!text) return { reply: null, reason: 'Empty AI response' };
-    return { reply: text, via }; // via shown under the bubble ("answered by DeepSeek R1")
+    return { reply: text, via, modelId, fallback, requested };
   } catch (err) {
-    console.error('askGeneral error:', err.message); // all providers failed
-    return { reply: null, reason: 'AI service unavailable' }; // NEVER throw — controller turns this into the "resting" message
+    console.error('askGeneral error:', err.message);
+    return { reply: null, reason: 'AI service unavailable' };
   }
 }
 
@@ -321,21 +114,23 @@ If asked about Vendora itself: it is a WhatsApp AI sales assistant for small bus
  * Pro businesses additionally ground in their synced WhatsApp Business profile.
  */
 async function generateReply(customerMessage, business, image, history) {
-  const planService = require('./planService'); // lazy require (same pattern — avoids cycles)
-  const pro = planService.isPro(business); // Pro unlocks profile-snapshot grounding below
-  const products = await productService.getProducts(business.id); // the shop's catalog rows
-  const catalog = productService.formatCatalog(products); // rows → pretty text block for the prompt
-  const tz = business.timezone || 'Africa/Lagos'; // per-business timezone (global scale!)
-  let now; // let because try/catch assigns in two places
-  try { now = new Date().toLocaleString('en-GB', { timeZone: tz }); } // current time IN the shop's zone (open/closed logic needs this)
-  catch { now = new Date().toLocaleString('en-GB', { timeZone: 'Africa/Lagos' }); } // bad timezone string → safe default instead of crashing
-  const maxDisc = business.max_discount_pct || 0; // SmartDeal: 0 = never discount
-  const minOrder = business.min_order_naira || 0; // SmartDeal: minimum order for discounts
-  const transcript = (history || []) // recent chat turns so "how much is it?" knows what "it" is
-    .map((m) => `${m.direction === 'in' ? 'Customer' : 'You'}: ${m.body}`) // 'in' = customer wrote it
+  const planService = require('./planService');
+  const pro = planService.isPro(business);
+  const products = await productService.getProducts(business.id);
+  const catalog = productService.formatCatalog(products);
+  const tz = business.timezone || 'Africa/Lagos';
+  let now;
+  try {
+    now = new Date().toLocaleString('en-GB', { timeZone: tz });
+  } catch {
+    now = new Date().toLocaleString('en-GB', { timeZone: 'Africa/Lagos' });
+  }
+  const maxDisc = business.max_discount_pct || 0;
+  const minOrder = business.min_order_naira || 0;
+  const transcript = (history || [])
+    .map((m) => `${m.direction === 'in' ? 'Customer' : 'You'}: ${m.body}`)
     .join('\n');
 
-  // THE SYSTEM PROMPT — the constitution the AI must obey. ${} injects live data.
   const systemPrompt = `You are the automated WhatsApp sales assistant for ${business.name}.
 You answer customer questions using ONLY the business information and product catalog below.
 It is ${now} (business local time, ${tz}).
@@ -371,70 +166,63 @@ Rules:
 7. If a product the customer wants is out of stock, say so honestly and offer alternatives from the catalog.
 8. PERSONAL CHIT-CHAT: if the message is purely social with zero buying signal (greetings alone, jokes, "lol", "where are you", memes, personal banter), do NOT pitch products — respond with exactly: NEED_HUMAN: personal chat, no sales intent. A friend saying hi must never get a sales pitch.
 ${maxDisc > 0 ? `9. SMARTDEAL NEGOTIATION: The owner allows you to offer up to ${maxDisc}% off${minOrder ? ` on orders worth at least ₦${minOrder.toLocaleString()}` : ''} ONLY when the customer hesitates, complains about price, or says it's too expensive AND they clearly want to buy. Offer it once, as a special one-time price — never volunteer discounts to happy customers, never exceed ${maxDisc}%. Phrase it like the owner is doing them a favour.` : '9. Do NOT offer any discounts — the owner has not enabled negotiation.'}
-${image ? '10. The customer also sent a PHOTO. Look at it, describe briefly what you see, and match it to the closest product(s) in the catalog (replacement, matching item, or exact match). If nothing in the catalog matches, use NEED_HUMAN.' : ''}`; // vision rule only when a photo exists
+${image ? '10. The customer also sent a PHOTO. Look at it, describe briefly what you see, and match it to the closest product(s) in the catalog (replacement, matching item, or exact match). If nothing in the catalog matches, use NEED_HUMAN.' : ''}`;
 
-  const userPrompt = `Customer message: "${customerMessage}"${image ? '\n(A photo is attached — analyze it.)' : ''}\n\nRespond per your rules.`; // the actual user turn
+  const userPrompt = `Customer message: "${customerMessage}"${image ? '\n(A photo is attached — analyze it.)' : ''}\n\nRespond per your rules.`;
 
   try {
-    const text = await callAI(systemPrompt, userPrompt, image); // automatic provider fallback inside
-    if (text.startsWith('NEED_HUMAN')) { // the model's escape hatch: "I don't know, get a human"
-      return { reply: null, needsHuman: true, reason: text.slice(11).trim() || 'Unsure how to answer' }; // slice(11) strips "NEED_HUMAN:" (11 chars)
+    const text = await client.callAI(systemPrompt, userPrompt, image);
+    if (text.startsWith('NEED_HUMAN')) {
+      return { reply: null, needsHuman: true, reason: text.slice(11).trim() || 'Unsure how to answer' };
     }
-    if (!text) { // empty string = treat as unsure (never send silence to a customer)
+    if (!text) {
       return { reply: null, needsHuman: true, reason: 'Empty AI response' };
     }
-    return { reply: text, needsHuman: false }; // confident → send it
+    return { reply: text, needsHuman: false };
   } catch (err) {
-    console.error('replyEngine error:', err); // every provider failed (network/keys down)
-    return { reply: null, needsHuman: true, reason: 'AI service unavailable' }; // graceful: flag human, don't crash the webhook
+    console.error('replyEngine error:', err);
+    return { reply: null, needsHuman: true, reason: 'AI service unavailable' };
   }
 }
 
 /**
- * LEARN mode: extract products from the owner's ad text.
- * Returns { products: [{name, price, description}] , ok: boolean }.
- * TRICK: we ask the AI for STRICT JSON, then JSON.parse it — structured output
- * without any special API mode. The regex finds the [...] even if the AI chats.
- */
-
-/**
  * INVENTORY intent parser: turns "sold 3 bags of rice" into a STRICT JSON
- * action — same structured-output trick (prompt for JSON, regex the {...},
- * JSON.parse, validate). Uniform across ALL providers (no per-provider
- * function-calling code!). Returns:
- * { action:'update_inventory', item, quantity, operation } — ready to execute
- * { action:'clarify', question } — ambiguous, ask (NEVER guess!)
- * { action:'none' } — not an inventory message (normal flow continues)
+ * action. Returns update_inventory | clarify | none. Never guesses.
  */
-const INVENTORY_HINT = /(sold|sell|restock|restocked|add|added|remove|removed|stock|inventory|update|received|supply|deliver|count|set|balance|remaining|left|out of|finished|used|damaged|spoiled|\+|-)/i; // cheap regex GATE (see below): no match → skip the AI call entirely (cost control!)
+const INVENTORY_HINT = /(sold|sell|restock|restocked|add|added|remove|removed|stock|inventory|update|received|supply|deliver|count|set|balance|remaining|left|out of|finished|used|damaged|spoiled|\+|-)/i;
 
 async function parseInventoryAction(message, products) {
-  if (!INVENTORY_HINT.test(message || '')) return { action: 'none' }; // fast path: no inventory words → zero AI cost (most owner messages skip here!)
-  const names = (products || []).map((p) => p.name).join(', ') || '(empty catalog)'; // catalog names ground item matching (AI picks from THESE, not thin air!)
+  if (!INVENTORY_HINT.test(message || '')) return { action: 'none' };
+  const names = (products || []).map((p) => p.name).join(', ') || '(empty catalog)';
   const system = `You parse stock-update requests from a shop owner. Catalog products: ${names}.
 Return ONLY one JSON object, no markdown, no explanation:
 {"action": "update_inventory" | "clarify" | "none", "item": string or null, "quantity": number or null, "operation": "add" | "remove" | "set" or null, "question": string or null}
 Verb map: sold/sell/used/removed/spoiled/damaged/finished/out of → "remove". restocked/added/received/bought/supplied/delivered/+N → "add". set/count/correction/is now/balance → "set".
 Rules: item MUST match a catalog product (fuzzy ok: "rice" matches "Rice 20kg"). Quantity MUST be a positive number in the message. If EITHER is missing/unclear, or several products match → "clarify" with a short question naming the options. No inventory intent at all → "none".`;
   try {
-    const text = await callAI(system, message, null); // image omitted (stock intents are text!)
-    const match = text.match(/\{[\s\S]*\}/); // regex: first { … last } (same defensive pattern as extractProducts!)
-    if (!match) return { action: 'none' }; // no JSON → treat as ordinary message (fail OPEN to Q&A, never stuck!)
-    const parsed = JSON.parse(match[0]); // may throw on garbage → caught below
-    if (parsed.action === 'update_inventory') { // validate STRICTLY (AI output is untrusted input!):
-      if (typeof parsed.item !== 'string' || !parsed.item.trim()) return { action: 'clarify', question: 'Which product should I update?' }; // no item → ask (never guess!)
-      const qty = Math.floor(Number(parsed.quantity)); // whole units (floor 2.7 → 2, consistent with updateInventory!)
-      if (!Number.isFinite(qty) || qty <= 0) return { action: 'clarify', question: `How many units of ${parsed.item.trim()}?` }; // no/invalid qty → ask (zero/negative rejected!)
-      if (!['add', 'remove', 'set'].includes(parsed.operation)) return { action: 'clarify', question: `Should I add to, remove from, or set the stock of ${parsed.item.trim()}?` }; // unknown verb → ask
+    const text = await client.callAI(system, message, null);
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) return { action: 'none' };
+    const parsed = JSON.parse(match[0]);
+    if (parsed.action === 'update_inventory') {
+      if (typeof parsed.item !== 'string' || !parsed.item.trim())
+        return { action: 'clarify', question: 'Which product should I update?' };
+      const qty = Math.floor(Number(parsed.quantity));
+      if (!Number.isFinite(qty) || qty <= 0)
+        return { action: 'clarify', question: `How many units of ${parsed.item.trim()}?` };
+      if (!['add', 'remove', 'set'].includes(parsed.operation))
+        return { action: 'clarify', question: `Should I add to, remove from, or set the stock of ${parsed.item.trim()}?` };
       return { action: 'update_inventory', item: parsed.item.trim(), quantity: qty, operation: parsed.operation };
     }
-    if (parsed.action === 'clarify') return { action: 'clarify', question: (typeof parsed.question === 'string' && parsed.question.trim()) || 'Which product and how many units?' }; // fallback question (AI gave a bad one → use ours!)
-    return { action: 'none' }; // anything else ("none", garbage action) → ordinary flow
+    if (parsed.action === 'clarify')
+      return { action: 'clarify', question: (typeof parsed.question === 'string' && parsed.question.trim()) || 'Which product and how many units?' };
+    return { action: 'none' };
   } catch (err) {
-    console.error('parseInventoryAction error:', err.message); // AI down OR bad JSON → ordinary flow (inventory never blocks Q&A!)
+    console.error('parseInventoryAction error:', err.message);
     return { action: 'none' };
   }
 }
+
 async function extractProducts(adText, business) {
   const system = `You extract structured product data from WhatsApp business ad posts.
 Return ONLY a JSON array, no markdown, no explanation. Each item:
@@ -443,18 +231,28 @@ Prices keep the currency as written (e.g. "₦5,000"). Product names short (max 
 If the text contains no products, return [].`;
 
   try {
-    const text = await callAI(system, adText); // image omitted → undefined (text-only extraction)
-    const match = text.match(/\[[\s\S]*\]/); // regex: first [ … last ] across lines ([\s\S] = "any char incl. newline")
-    if (!match) return { products: [], ok: false }; // no array found → fail
-    const parsed = JSON.parse(match[0]); // turn the JSON text into real objects (throws on garbage → caught below)
-    const clean = parsed.filter( // drop junk entries: must be an object with a non-empty name string
+    const text = await client.callAI(system, adText);
+    const match = text.match(/\[[\s\S]*\]/);
+    if (!match) return { products: [], ok: false };
+    const parsed = JSON.parse(match[0]);
+    const clean = parsed.filter(
       (p) => p && typeof p.name === 'string' && p.name.trim()
     );
     return { products: clean, ok: true };
   } catch (err) {
-    console.error('extractProducts error:', err); // AI down OR bad JSON — either way…
-    return { products: [], ok: false }; // …caller shows "couldn't find products", nothing crashes
+    console.error('extractProducts error:', err);
+    return { products: [], ok: false };
   }
 }
 
-module.exports = { generateReply, extractProducts, askGeneral, parseInventoryAction, INVENTORY_HINT, PROVIDER, configuredProviders, __groqSlot: groqSlot }; // __ prefix = test hook (production code never calls it — tests + debugging only!)rain (parser + hint exported for webhook + tests!)
+module.exports = {
+  generateReply,
+  extractProducts,
+  askGeneral,
+  callChoice,
+  parseInventoryAction,
+  INVENTORY_HINT,
+  PROVIDER,
+  configuredProviders,
+  __groqSlot: client.groqSlot,
+};

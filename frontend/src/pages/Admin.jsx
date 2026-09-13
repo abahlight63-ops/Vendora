@@ -82,7 +82,29 @@ export default function Admin() {
         : tab === 'revenue' ? <Revenue d={d} />
         : tab === 'transfers' ? <Transfers rows={d} act={act} />
         : <Complaints rows={d} act={act} />}
+      <Broadcast act={act} /> {/* always mounted: announce updates to every bell */}
     </>
+  );
+}
+
+function Broadcast({ act }) { // APP UPDATES: one broadcast → every owner's 🔔 bell…
+  const [t, setT] = useState('');
+  const [b, setB] = useState('');
+  async function send() {
+    if (!t.trim()) return toast('Give the update a title', 'err');
+    await act('/api/admin/broadcast', { title: t.trim(), body: b.trim(), link: '/dashboard' }, 'Update sent to every inbox.');
+    setT(''); setB('');
+  }
+  return (
+    <div className="card" style={{ borderColor: 'var(--gold-line)' }}>
+      <h2>📣 Broadcast app update</h2>
+      <p className="desc">Title + 1–2 lines → lands in every owner's notification bell instantly. Use after each release.</p>
+      <label>Title</label>
+      <input value={t} onChange={(e) => setT(e.target.value)} placeholder="e.g. Smarter Vendora AI is live 🎉" maxLength={120} />
+      <label>What changed (1–2 lines)</label>
+      <textarea value={b} onChange={(e) => setB(e.target.value)} rows="2" placeholder="e.g. Fuller answers, Lite default, no more scroll jump…" maxLength={500} />
+      <button className="btn" style={{ marginTop: 10 }} onClick={send}><Ic n="send" s={16} />Send to all bells</button>
+    </div>
   );
 }
 
@@ -151,16 +173,18 @@ function Transfers({ rows, act }) { // TRANSFERS: FIFO approval queue (empty = c
   if (!rows.length) return <div className="card"><div className="empty"><b>Queue clear</b>No pending transfers. Money verified as fast as it arrives.</div></div>; // empty state SELLS the calm (not just blank!)
   return (
     <div className="card">
+      <p className="desc">Verify each claim against your bank statement: sender name + bank + reference must match a real credit of the exact plan amount. Approve only what you see in the account.</p>
       <div className="table-wrap"><table>
-        <thead><tr><th>Who</th><th>Plan</th><th>Amount</th><th>Reported</th><th></th></tr></thead>
+        <thead><tr><th>Who</th><th>Plan</th><th>Amount</th><th>Sender proof</th><th>Reported</th><th></th></tr></thead>
         <tbody>
           {rows.map((t) => ( // key={t.id} payment ids…
             <tr key={t.id}>
               <td><b>{t.business_name || '—'}</b><br /><span className="hint">{t.email || ''} · {t.whatsapp_number || ''}</span></td> {/* who + contacts (verify the credit against THESE!) */}
               <td>{t.plan} ({t.currency})<br /><span className="hint">{t.reference || ''}</span></td> {/* plan + audit tag */}
               <td><b>{money(t.amount / 100, t.currency)}</b></td> {/* minor→major units via money() (single formatter everywhere!) */}
+              <td style={{ fontSize: 13 }}><b>{t.sender_name || '—'}</b><br /><span className="hint">{t.sender_bank || ''}{t.sender_ref ? ` · ref: ${t.sender_ref}` : ''}</span></td>
               <td><span className="hint">{fmtDate(t.created_at)}</span></td>
-              <td style={{ whiteSpace: 'nowrap' }}><button className="btn sm" onClick={() => { if (confirm(`Approve ${t.plan} for ${t.business_name}?`)) act(`/api/admin/transfers/${t.id}/approve`, null, 'Plan activated.'); }}>Approve</button> <button className="btn ghost sm" onClick={() => { if (confirm(`Reject transfer from ${t.business_name}?`)) act(`/api/admin/transfers/${t.id}/reject`, null, 'Transfer rejected.'); }}>Reject</button></td> {/* confirm() on BOTH (money moves on click — mis-taps cost real days!); nowrap keeps buttons together */}
+              <td style={{ whiteSpace: 'nowrap' }}><button className="btn sm" onClick={() => { if (confirm(`Approve ${t.plan} for ${t.business_name}? Only if ₦ matches in your statement.`)) act(`/api/admin/transfers/${t.id}/approve`, null, 'Plan activated.'); }}>Approve</button> <button className="btn ghost sm" onClick={() => { if (confirm(`Reject transfer from ${t.business_name}?`)) act(`/api/admin/transfers/${t.id}/reject`, null, 'Transfer rejected.'); }}>Reject</button></td> {/* confirm() on BOTH (money moves on click — mis-taps cost real days!); nowrap keeps buttons together */}
             </tr>
           ))}
         </tbody>

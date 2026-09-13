@@ -263,10 +263,18 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
           {mode === 'otp' ? (<> {/* OTP screen: shown after signup (no session yet — code IS the key!) */}
             <h1>Check your email</h1>
             <p className="switch-note">We sent a 6-digit code to <b>{otpEmail}</b>. It expires in 10 minutes.</p>
+            <div className="otp-help">
+              <b>📧 Code not in your inbox?</b>
+              <span>Our sending domain is new, so the mail can land in <b>Spam</b> or <b>Promotions</b> — please check there first, then wait ~2 minutes.</span>
+            </div>
             <label>6-digit code</label>
             <input className="otp-input" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="••••••" inputMode="numeric" autoComplete="one-time-code" maxLength={6} onKeyDown={(e) => { if (e.key === 'Enter') verifyOtp(); }} /> {/* replace(/\D/g) strips non-digits AS YOU TYPE (paste-friendly!); autoComplete="one-time-code" = phones offer SMS-style autofill! */}
             <button className="btn login-cta" disabled={busy} onClick={verifyOtp}>{busy ? <span className="spinner" /> : null}{busy ? 'Checking…' : 'Verify →'}</button>
-            <p className="auth-toggle">Didn't get it? <a onClick={resendCode}>{cool > 0 ? `Resend in ${cool}s` : 'Resend code'}</a> · <a onClick={sendLink}>Send a link instead</a></p> {/* cooldown gate + LINK fallback (two escape hatches — nobody gets stuck!) */}
+            <div className="otp-fallback">
+              <button type="button" className="btn ghost" disabled={busy || cool > 0} onClick={resendCode}>{cool > 0 ? `Resend code in ${cool}s` : 'Resend code'}</button>
+              <button type="button" className="btn ghost" disabled={busy} onClick={sendLink}>Send a verification link instead</button>
+            </div>
+            <p className="hint" style={{ textAlign: 'center', marginTop: 8 }}>The link does the same job as the code — pick whichever arrives first. Both expire; the newest one wins.</p>
             <p className="auth-toggle"><a onClick={() => switchMode('login')}>Back to sign in</a></p>
           </>) : mode === 'forgot' ? (<> {/* FORGOT screen: email → reset link (always "sent" — enumeration-safe!) */}
             <h1>Reset password</h1>
@@ -295,7 +303,13 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
           )}
           <button className="btn login-cta" disabled={busy} onClick={mode === 'login' ? login : signup}>{busy ? <span className="spinner" /> : null}{busy ? 'Please wait…' : mode === 'login' ? 'Sign in →' : 'Start my free trial →'}</button> {/* disabled while busy (double-submit lock); spinner span OR null; label ternary ×2 (busy? then mode?) */}
           {(mode === 'login' || mode === 'signup') && <GoogleButton busy={busy} setBusy={setBusy} fail={fail} afterAuth={afterAuth} setMe={setMe} />} {/* social login under BOTH forms (one component, both modes!) */}
-          {needsVerify && <button className="resend-btn" onClick={resend}><Ic n="mail" s={15} /> Resend verification email</button>} {/* unverified-login only (backend needsVerification flag drives this!) */}
+          {needsVerify && (
+            <div className="otp-help" style={{ marginTop: 12 }}>
+              <b>📧 No verification mail?</b>
+              <span>Check <b>Spam / Promotions</b> — our domain is new so mail can hide there. Then resend below.</span>
+              <button className="resend-btn" onClick={resend}><Ic n="mail" s={15} /> Resend verification email</button>
+            </div>
+          )} {/* unverified-login only (backend needsVerification flag drives this!) */}
           <div className={'auth-message' + (msgErr ? ' err shake' : '')}>{msg}</div> {/* status line: .err red + .shake animation on errors (re-triggers per message? shake replays when class re-added — msg change re-renders, animation restarts if key/msg differs… good enough visually) */}
           <p className="auth-toggle">{mode === 'login' ? (<>New here? <a onClick={() => switchMode('signup')}>Create an account</a></>) : (<>Have an account? <a onClick={() => switchMode('login')}>Sign in</a></>)}</p> {/* mode toggle links (<a> without href + onClick = action links) */}
           <div className="demo-mobile">

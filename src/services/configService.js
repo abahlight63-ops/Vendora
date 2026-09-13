@@ -188,6 +188,10 @@ CREATE TABLE IF NOT EXISTS payments (
 );
 CREATE INDEX IF NOT EXISTS idx_payments_created ON payments(created_at);
 CREATE INDEX IF NOT EXISTS idx_payments_business ON payments(business_id);
+-- Transfer verification (anti-fraud: every manual claim carries who/where/ref)
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS sender_name TEXT NOT NULL DEFAULT '';
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS sender_bank TEXT NOT NULL DEFAULT '';
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS sender_ref TEXT NOT NULL DEFAULT '';
 
 -- Support complaints: in-app tickets from owners (Help form → admin replies)
 CREATE TABLE IF NOT EXISTS complaints (
@@ -201,6 +205,18 @@ CREATE TABLE IF NOT EXISTS complaints (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_complaints_business ON complaints(business_id);
+
+-- In-app notifications: the topbar bell (payment events auto, app updates via broadcast)
+CREATE TABLE IF NOT EXISTS notifications (
+  id SERIAL PRIMARY KEY,
+  business_id INTEGER REFERENCES businesses(id) ON DELETE CASCADE, -- owner inbox (CASCADE: shop gone = inbox gone)
+  title TEXT NOT NULL DEFAULT '',
+  body TEXT NOT NULL DEFAULT '',
+  link TEXT NOT NULL DEFAULT '', -- app route to open on tap (e.g. /billing), '' = no-op
+  is_read BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_business ON notifications(business_id, created_at DESC);
 `;
 
 async function ensureSchema() {

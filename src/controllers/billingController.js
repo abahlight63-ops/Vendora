@@ -77,14 +77,53 @@ async function initialize(req, res) {
   }
 }
 
-// Manual bank-transfer path — no Paystack, no BVN needed.
-// Customer taps "I have sent the money"; owner confirms and activates.
+// Manual bank-transfer path — VERIFIED, not "tap and trust".
+// Security model (why each check exists):
+//  - sender_name + sender_bank + reference REQUIRED: admin matches the claim
+//    against the real bank statement. No details = no activation.
+//  - amount_paid must EXACTLY equal the plan price: underpayers can't sneak in,
+//    overpayers get flagged (typo or wrong plan) instead of auto-credit.
+//  - ONE pending claim per business: prevents queue-spam / double-spend races.
+//  - reference min-length + uniqueness per business: the same teller number
+//    can't activate twice.
+//  - Everything is logged in `payments` (sender_*, amount, reference) so the
+//    admin queue shows WHO paid WHAT with WHICH ref — approve/reject in 1 click.
+// API-KEY NOTE (the user asked "tell me if a key is needed"):
+//  - Card checkout needs PAYSTACK_SECRET_KEY (Paystack Dashboard → Settings →
+//    API Keys → copy the SECRET key: sk_test_... to test, sk_live_... for real
+//    money). No key = /initialize returns 503 and Billing shows transfer only.
+//  - Transfer block needs BANK_NAME + BANK_ACCOUNT_NUMBER + BANK_ACCOUNT_NAME.
+//    No bank env = transfer block hides entirely (never show half-details).
 async function reportTransfer(req, res) {
   const planKey = String(req.body?.plan || 'monthly').toLowerCase();
   if (!PLANS[planKey]) return res.status(400).json({ error: 'Unknown plan.' }); // validate the key (same whitelist idea)
+  const senderName = String(req.body?.sender_name || '').trim().slice(0, 80);
+  const senderBank = String(req.body?.sender_bank || '').trim().slice(0, 80);
+  const senderRef = String(req.body?.reference || req.body?.sender_ref || '').trim().slice(0, 60);
+  const amountPaid = Number(req.body?.amount_paid ?? req.body?.amount);
+  const errors = [];
+  if (senderName.length < 3) errors.push('Enter the exact account name you paid from (3+ characters).');
+  if (senderBank.length < 2) errors.push('Enter the bank you paid from.');
+  if (!senderRef || senderRef.replace(/[^A-Za-z0-9]/g, '').length < 6) errors.push('Enter the transfer reference / teller number (at least 6 letters or digits).');
+  if (errors.length) return res.status(400).json({ error: errors.join(' ') });
   try {
-    const { rows: bRows } = await db.query('SELECT currency FROM businesses WHERE id = $1', [req.session.businessId]); // price the ledger in the SHOP's currency (same rule as initialize!)
+    const { rows: bRows } = await db.query('SELECT currency, subscription_status FROM businesses WHERE id = $1', [req.session.businessId]); // price the ledger in the SHOP's currency (same rule as initialize!)
+    if (!bRows.length) return res.status(404).json({ error: 'Business not found.' });
+    if (bRows[0].subscription_status === 'pending') {
+      return res.status(400).json({ error: 'You already have a transfer waiting for review. Please wait for activation before sending another.' });
+    }
     const currency = bRows[0]?.currency === 'USD' ? 'USD' : 'NGN';
+    if (currency !== 'NGN') return res.status(400).json({ error: 'Bank transfer is Naira-only for now — please pay by card above.' });
+    const expected = PLANS[planKey][currency]; // major units (₦7500, not kobo)
+    if (!Number.isFinite(amountPaid) || Math.round(amountPaid) !== expected) {
+      return res.status(400).json({ error: `Amount must be exactly ₦${expected.toLocaleString()} for ${planKey}. You entered ${req.body?.amount_paid ?? 'nothing'}. Send the exact amount, then report it.` });
+    }
+    // Same reference twice for this business = reject (replay protection).
+    const { rows: dup } = await db.query(
+      "SELECT id FROM payments WHERE business_id = $1 AND method = 'transfer' AND sender_ref = $2 AND status IN ('pending','active') LIMIT 1",
+      [req.session.businessId, senderRef]
+    );
+    if (dup.length) return res.status(400).json({ error: 'That reference was already used. Check your bank receipt for the correct reference number.' });
     const tag = `transfer:${planKey}:${Date.now()}`; // unique audit tag (also stored as customer_code)
     await db.query(
       `UPDATE businesses SET subscription_status = 'pending',
@@ -92,10 +131,15 @@ async function reportTransfer(req, res) {
       [tag, req.session.businessId]
     );
     await db.query( // ledger row: pending until a human (admin approvals!) confirms the credit…
-      'INSERT INTO payments (business_id, plan, currency, amount, method, status, reference) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-      [req.session.businessId, planKey, currency, PLANS[planKey][currency] * 100, 'transfer', 'pending', tag] // amount in MINOR units (kobo/cents — integers, never floats!)
+      'INSERT INTO payments (business_id, plan, currency, amount, method, status, reference, sender_name, sender_bank, sender_ref) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
+      [req.session.businessId, planKey, currency, PLANS[planKey][currency] * 100, 'transfer', 'pending', tag, senderName, senderBank, senderRef] // amount in MINOR units (kobo/cents — integers, never floats!)
     );
-    res.json({ ok: true });
+    require('../services/notifyService').notify(req.session.businessId, { // bell: claim logged (never throws — notify is fire-and-forget safe)
+      title: 'Transfer received — verifying…',
+      body: `Your ${planKey} claim (₦${expected.toLocaleString()}, ref ${senderRef}) is queued. We match it against the bank statement, usually within hours.`,
+      link: '/billing',
+    });
+    res.json({ ok: true, message: 'Transfer reported. We verify every claim against the bank statement before activating — usually within a few hours.' });
   } catch (e) {
     console.error('transfer report error:', e.message);
     res.status(500).json({ error: 'Could not record transfer' });
@@ -136,6 +180,11 @@ async function handlePaystackWebhook(req, res) {
         );
       } catch (e) { console.error('payment ledger error:', e.message); } // ledger must NEVER break activation (inner try/catch isolates it!)
       console.log(`Subscription activated for business ${business_id} (+${days} days)`);
+      require('../services/notifyService').notify(Number(business_id), { // bell: card payment confirmed (fire-and-forget)
+        title: '✅ Payment confirmed — Pro is active!',
+        body: `Your card payment went through. Enjoy ${days} days of Pro.`,
+        link: '/billing',
+      });
     }
   }
   res.status(200).end(); // always 200 on verified events (Paystack retries anything else)

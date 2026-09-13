@@ -166,6 +166,7 @@ async function adminVerifyUser(req, res) {
 async function transferQueue(req, res) {
   const { rows } = await db.query( // pending payments + WHO (join business for context)…
     `SELECT p.id, p.business_id, p.plan, p.currency, p.amount, p.reference, p.created_at,
+            p.sender_name, p.sender_bank, p.sender_ref,
             b.name AS business_name, b.whatsapp_number, b.owner_number, u.email
      FROM payments p
      LEFT JOIN businesses b ON b.id = p.business_id
@@ -192,6 +193,11 @@ async function transferApprove(req, res) {
     [days, pay.business_id]
   );
   await db.query("UPDATE payments SET status = 'active' WHERE id = $1", [req.params.id]); // ledger flips pending → active (revenue counts it now!)
+  require('../services/notifyService').notify(pay.business_id, { // bell: verified (fire-and-forget — never breaks approval)
+    title: '✅ Payment verified — Pro is active!',
+    body: `Your ${pay.plan} payment was confirmed. Enjoy ${days} days of Pro — nothing else to do.`,
+    link: '/billing',
+  });
   res.json({ ok: true, days }); // days echoed (UI confirms "+30 days")
 }
 
@@ -203,6 +209,11 @@ async function transferReject(req, res) {
   if (pay.status !== 'pending') return res.status(400).json({ error: `Already ${pay.status}.` }); // same idempotency guard
   await db.query("UPDATE payments SET status = 'rejected' WHERE id = $1", [req.params.id]); // ledger only (business row untouched — subscription_status stays pending → owner sees "activation in progress"?? NO — flip it back so UI is honest!)
   await db.query("UPDATE businesses SET subscription_status = 'expired' WHERE id = $1 AND subscription_status = 'pending'", [pay.business_id]); // pending → expired (free tier keeps working — nothing deleted, nothing paused!)
+  require('../services/notifyService').notify(pay.business_id, { // bell: rejected with next step (fire-and-forget)
+    title: 'Transfer not confirmed',
+    body: `We couldn't match your ${pay.plan} transfer (ref ${pay.sender_ref || pay.reference || '—'}) in the statement. Check the reference and try again, or contact support.`,
+    link: '/billing',
+  });
   res.json({ ok: true });
 }
 
@@ -260,6 +271,27 @@ async function adStats(req, res) {
   res.json({ ...s, rate_naira: rate, estimate_month_naira: s.month * rate, estimate_total_naira: s.total * rate }); // spread counts + computed Naira estimates (bill sponsors from these!)
 }
 
+// ---- Broadcast an app update to EVERY owner's bell (new features, fixes).
+// Body doubles as the "what changed" note — keep it to 1-2 lines. ----
+async function broadcast(req, res) {
+  const { title, body, link } = req.body || {};
+  if (!title || typeof title !== 'string' || !title.trim()) {
+    return res.status(400).json({ error: 'Title required.' });
+  }
+  try {
+    const notify = require('../services/notifyService');
+    const n = await notify.broadcast({
+      title: title.trim(),
+      body: (body || '').trim(),
+      link: (link || '/dashboard').trim(),
+    });
+    res.json({ ok: true, sent: n });
+  } catch (e) {
+    console.error('broadcast error:', e.message);
+    res.status(500).json({ error: 'Could not broadcast' });
+  }
+}
+
 module.exports = {
   listBusinesses,
   getBusiness,
@@ -277,6 +309,7 @@ module.exports = {
   transferQueue,
   transferApprove,
   transferReject,
+  broadcast,
   complaintList,
   complaintReply,
   complaintResolve,

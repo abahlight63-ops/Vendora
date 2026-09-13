@@ -347,10 +347,11 @@ async function ask(req, res) {
     const aiModels = require('../services/aiModels');
     const replyEngine = require('../services/replyEngine');
     const { rows } = await db.query( // tier first (gates EVERYTHING below)
-      'SELECT subscription_status, subscription_expires, trial_started_at FROM businesses WHERE id = $1',
+      'SELECT subscription_status, subscription_expires, trial_started_at, name FROM businesses WHERE id = $1',
       [req.session.businessId]
     );
     const tier = planService.tier(rows[0] || {}); // 'pro' | 'free'
+    const bizName = rows[0]?.name || '';
     const resolved = aiModels.resolveChoice(model, tier); // validate dropdown id: exists? paid-but-free? → {entry, model} or {error}
     if (resolved.error) return res.status(402).json({ error: resolved.error }); // 402 = paywall (locked premium model)
     const paid = resolved.entry.tier === 'paid'; // which counter to check/increment?
@@ -377,7 +378,7 @@ async function ask(req, res) {
     if (mrows[0].count >= MODEL_DAILY_CAP) { // this business maxed THIS model today (quota justice: others' share untouched!)…
       return res.status(429).json({ error: `You've used ${resolved.entry.label} 50 times today — try another AI below, fresh quota!` }); // …redirect, don't dead-end (dropdown has 7 more!)
     }
-    const result = await replyEngine.askGeneral(message.trim(), Array.isArray(history) ? history.slice(-12) : [], resolved.entry.id, tier); // Array.isArray guards tampered history; slice(-12) caps context cost
+    const result = await replyEngine.askGeneral(message.trim(), Array.isArray(history) ? history.slice(-12) : [], resolved.entry.id, tier, bizName); // Array.isArray guards tampered history; slice(-12) caps context cost
     if (result.reply) { // SUCCESS → count it (only successful chats consume quota — failures are free retries!)
       await db.query( // dynamic column via ${} — SAFE here: `paid` is a boolean WE computed, not user input (never interpolate raw user text into SQL!)
         `UPDATE ai_usage SET ${paid ? 'paid_count = paid_count + 1' : 'free_count = free_count + 1'}
@@ -385,12 +386,35 @@ async function ask(req, res) {
         [req.session.businessId]
       );
       await db.query('UPDATE model_usage SET count = count + 1 WHERE business_id = $1 AND day = CURRENT_DATE AND model_id = $2', [req.session.businessId, resolved.entry.id]); // model counter (plain values — no dynamic SQL needed here!)
-      return res.json({ reply: result.reply, via: result.via }); // via = "answered by Llama 3.3" caption
+      return res.json({ reply: result.reply, via: result.via, model: resolved.entry.id, fallback: !!result.fallback, requested: result.requested || null }); // via = ACTUAL answerer; model = chosen id; fallback tells UI "your pick was down, X answered instead"
     }
     return res.status(502).json({ error: 'Vendora AI is resting — try again in a moment.' }); // 502 = our upstream (the AI) failed
   } catch (e) {
     console.error('ask error:', e.message);
     res.status(500).json({ error: 'Something went wrong — try again.' });
+  }
+}
+
+// ---- Notifications: bell inbox (payment events land here automatically,
+// app updates arrive via admin broadcast). Newest first, unread counted. ----
+async function getNotifications(req, res) {
+  try {
+    const notify = require('../services/notifyService');
+    res.json(await notify.list(req.session.businessId));
+  } catch (e) {
+    console.error('notifications error:', e.message);
+    res.status(500).json({ error: 'Could not load notifications' });
+  }
+}
+
+async function readNotifications(req, res) {
+  try {
+    const notify = require('../services/notifyService');
+    await notify.markAllRead(req.session.businessId);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('notifications read error:', e.message);
+    res.status(500).json({ error: 'Could not mark as read' });
   }
 }
 
@@ -417,4 +441,6 @@ module.exports = { // every handler the routes file wires up (miss one here = ro
   telegramToken,
   telegramLink,
   telegramStatus,
+  getNotifications,
+  readNotifications,
 };

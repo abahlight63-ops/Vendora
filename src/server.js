@@ -64,6 +64,13 @@ app.use(
 // Health check — Render/Railway ping this to know the app is alive.
 app.get('/health', (req, res) => res.json({ status: 'ok' })); // GET /health → {"status":"ok"}
 
+// Version — the Shell checks this on load: version changed since last visit
+// → "Vendora updated 🎉" toast + bell badge. Bump src/version.js per release.
+app.get('/api/version', (req, res) => {
+  const { APP_VERSION, WHATS_NEW } = require('./version');
+  res.json({ version: APP_VERSION, whatsNew: WHATS_NEW });
+});
+
 // Routes — mount each router at a URL prefix:
 app.use('/webhook', webhookRoutes); // POST /webhook/whatsapp ← Twilio
 app.use('/webhook', telegramRoutes); // POST /webhook/telegram/:bizId + /shared ← Telegram (same /webhook prefix, distinct paths!)

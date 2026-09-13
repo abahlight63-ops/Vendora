@@ -6,8 +6,9 @@
 // class); useLocation = current URL; useNavigate = go somewhere in code.
 import { useEffect, useState } from 'react'; // useState = drawer open flag; useEffect = title + drawer side-effects
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'; // NavLink (active-aware link), useLocation (current path), useNavigate (code navigation)
-import { api } from '../lib/api.js'; // api() for the logout call
+import { api, toast } from '../lib/api.js'; // api() for the logout call (+ version check below)
 import ThemeToggle from './ThemeToggle.jsx'; // sun/moon button (topbar)
+import Notifications from './Notifications.jsx'; // 🔔 bell (payment + update alerts)
 import Tour from './Tour.jsx'; // first-run coachmarks (mounted once here = available everywhere)
 
 const GROUPS = [ // sidebar sections: label + [iconKey, label, route] rows (data-driven nav = add a row, get a link)
@@ -42,6 +43,17 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
     document.body.style.overflow = menuOpen ? 'hidden' : ''; // '' restores default ('hidden' disables scroll)
     return () => { document.body.style.overflow = ''; }; // cleanup: always restore on unmount (stuck scroll = broken app!)
   }, [menuOpen]); // re-run when drawer toggles
+  useEffect(() => { // app-update notice: version changed since last visit → toast once…
+    api('/api/version').then(({ ok, data }) => {
+      if (!ok || !data?.version) return;
+      let last = null;
+      try { last = localStorage.getItem('vendora-version'); } catch {}
+      if (last && last !== data.version) {
+        toast('Vendora updated to v' + data.version + ' 🎉 — check the 🔔 bell for what changed', 'ok');
+      }
+      try { localStorage.setItem('vendora-version', data.version); } catch {}
+    });
+  }, []); // mount-only (one check per page load, not per navigation)
   async function logout() { try { await api('/api/auth/logout', { method: 'POST' }); } catch {} navigate('/login'); } // try destroy server session (ignore failure) THEN go to login (empty catch = navigate regardless)
   const safeName = biz?.name || 'Your business'; // ?. + || : biz may load late — never render "undefined"
   const initial = (safeName.trim()[0] || 'V').toUpperCase(); // avatar letter: first char uppercased ([0] = first character)
@@ -72,6 +84,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
             </div>
             <div className="top-right">
               <span className="live-dot"><i />AI online</span> {/* pulsing status pill (<i> = the dot, CSS) */}
+              <Notifications /> {/* 🔔 bell sits before theme toggle (thumb-side on mobile) */}
               <ThemeToggle theme={theme} onToggle={onToggleTheme} /> {/* sun/moon switch */}
               <div className="avatar" title={safeName}>{initial}</div> {/* title = hover tooltip */}
               <button className="btn ghost sm" onClick={logout}>Sign out</button> {/* ghost = outline style; sm = small */}

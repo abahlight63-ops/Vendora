@@ -27,8 +27,11 @@ const FALLBACK_PLANS = { // display defaults while /api/me/billing loads (MUST m
 
 export default function Billing() {
   const [bill, setBill] = useState(null); // null = loading (statusLine shows 'Loading…')
-  const [busy, setBusy] = useState(''); // '' = idle; 'monthly'|'yearly'|'lifetime'|'transfer-x' = which button spins (string state = WHICH loader, not just boolean!)
-  const [transferDone, setTransferDone] = useState(false); // transfer reported → swap buttons for confirmation text
+  const [busy, setBusy] = useState(''); // '' = idle; plan key or 'transfer' = which button spins
+  const [transferDone, setTransferDone] = useState(false); // transfer reported → confirmation state
+  const [tPlan, setTPlan] = useState('monthly'); // which plan the transfer is FOR
+  const [tForm, setTForm] = useState({ sender_name: '', sender_bank: '', reference: '', amount_paid: '' });
+  const setT = (k) => (e) => setTForm({ ...tForm, [k]: e.target.value });
 
   async function load() { // reusable reload (mount + after transfer report)…
     const { data } = await api('/api/me/billing'); // status, tier, currency, plans, transfer, paystack_live
@@ -49,17 +52,33 @@ export default function Billing() {
     }
   }
 
-  async function sentTransfer(plan) { // TRANSFER FLOW: "I sent the money" → pending (human verifies later)
-    setBusy('transfer-' + plan); // string concat makes unique busy keys per plan button
-    const { ok, data } = await api('/api/billing/transfer', { method: 'POST', body: JSON.stringify({ plan }) });
-    setBusy(''); // unlock either way
-    if (ok) {
-      setTransferDone(true); // swap button row → confirmation line (persists via status='pending' on reload too)
-      pop('ok', 'Transfer recorded!', 'We will confirm and activate your plan within a few hours. Your catalog stays safe.');
-      load(); // reload: status flips to pending (banner + pill update)
-    } else {
-      pop('err', 'Could not record transfer', data.error || 'Please try again.');
+  async function sentTransfer() { // VERIFIED TRANSFER: details required, exact amount enforced server-side
+    if (busy) return;
+    if (!tForm.sender_name.trim() || !tForm.sender_bank.trim() || !tForm.reference.trim() || !tForm.amount_paid) {
+      pop('err', 'Details missing', 'Enter the account name, bank, reference and exact amount you sent.');
+      return;
     }
+    setBusy('transfer');
+    const { ok, data } = await api('/api/billing/transfer', {
+      method: 'POST',
+      body: JSON.stringify({ plan: tPlan, sender_name: tForm.sender_name.trim(), sender_bank: tForm.sender_bank.trim(), reference: tForm.reference.trim(), amount_paid: Number(String(tForm.amount_paid).replace(/[^0-9.]/g, '')) }),
+    });
+    setBusy('');
+    if (ok) {
+      setTransferDone(true);
+      pop('ok', 'Transfer reported for verification', data.message || 'We match every claim against the bank statement before activating — usually within a few hours.');
+      load();
+    } else {
+      pop('err', 'Could not record transfer', data.error || 'Please check the details and try again.');
+    }
+  }
+
+  function copyText(s) {
+    try {
+      if (navigator.clipboard) navigator.clipboard.writeText(s);
+      else { const ta = document.createElement('textarea'); ta.value = s; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+      toast('Copied: ' + s);
+    } catch { toast('Copy failed — long-press to copy', 'err'); }
   }
 
   const status = bill?.status || '…'; // ?. + || : loading → '…' placeholder (never crash on null bill)
@@ -132,32 +151,62 @@ export default function Billing() {
         </div>
       </div>
 
-      {transferReady && cur === 'NGN' && ( // transfer block: ONLY when bank details set AND Naira (USD = card-only; && chain hides otherwise — zero dev-talk!)
+      {transferReady && cur === 'NGN' && (
       <div className="card" style={{ marginTop: 14 }}>
         <h2>Pay by bank transfer</h2>
-        <p className="desc">Send the exact plan amount, then tap "I have sent the money". We confirm and activate within a few hours.</p>
-        <div className="learn-box light" style={{ fontFamily: 'var(--font)' }}> {/* reuses learn-box styling (mono dark box, .light variant) for account details */}
+        <p className="desc">Send the <b>exact</b> plan amount to the account below, then fill the verification form. We match every claim against the bank statement before activating — usually within a few hours. False or mismatched claims are rejected.</p>
+        <div className="learn-box light" style={{ fontFamily: 'var(--font)' }}>
           <div><b>Bank:</b> {t.bank}</div>
-          <div><b>Account number:</b> {t.account_number}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}><span><b>Account number:</b> {t.account_number}</span><button type="button" className="btn ghost sm" onClick={() => copyText(t.account_number)}>Copy</button></div>
           <div><b>Account name:</b> {t.account_name}</div>
+          <div style={{ marginTop: 8 }}><b>Amount to send ({tPlan}):</b> {amt(plans[tPlan])} — send exactly this, no more, no less.</div>
         </div>
-        {transferDone ? ( // reported? → confirmation line (no double-reporting!)…
-          <p className="hint ok-line"><Ic n="checkCircle" s={15} /> Transfer recorded — activation in progress.</p>
-        ) : ( // …else one button per plan (label shows exact amount = user sends the RIGHT sum!) —
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
-            {['monthly', 'yearly', 'lifetime'].map((p) => ( // map plan KEYS (strings!) → buttons…
-              <button key={p} className="btn ghost sm" disabled={!!busy} onClick={() => sentTransfer(p)}> {/* …passing the key (not amount!) — server prices it */}
-                {busy === 'transfer-' + p ? 'Recording…' : `I sent ${amt(plans[p])} (${p})`} {/* plans[p] = dynamic lookup by key (bracket notation!) */}
-              </button>
-            ))}
+        {transferDone ? (
+          <p className="hint ok-line"><Ic n="checkCircle" s={15} /> Transfer reported — verification in progress. Keep your receipt until we activate you.</p>
+        ) : (
+          <div className="tform">
+            <div className="grid2">
+              <div>
+                <label>Plan you paid for</label>
+                <select value={tPlan} onChange={(e) => setTPlan(e.target.value)}>
+                  <option value="monthly">Monthly — {amt(plans.monthly)}</option>
+                  <option value="yearly">Yearly — {amt(plans.yearly)}</option>
+                  <option value="lifetime">Lifetime — {amt(plans.lifetime)}</option>
+                </select>
+              </div>
+              <div>
+                <label>Exact amount you sent (₦)</label>
+                <input value={tForm.amount_paid} onChange={setT('amount_paid')} inputMode="numeric" placeholder={String(plans[tPlan]?.amount ?? '')} />
+              </div>
+            </div>
+            <div className="grid2">
+              <div>
+                <label>Account name you paid FROM</label>
+                <input value={tForm.sender_name} onChange={setT('sender_name')} placeholder="e.g. Adaeze Okafor" autoComplete="name" />
+              </div>
+              <div>
+                <label>Bank you paid FROM</label>
+                <input value={tForm.sender_bank} onChange={setT('sender_bank')} placeholder="e.g. GTBank" />
+              </div>
+            </div>
+            <label>Transfer reference / teller number</label>
+            <input value={tForm.reference} onChange={setT('reference')} placeholder="On your receipt — min 6 characters" spellCheck="false" />
+            <p className="hint" style={{ marginTop: 8 }}>🔒 Verification: we check sender name + bank + reference + exact amount in our statement. One pending claim at a time — duplicates with the same reference are blocked automatically.</p>
+            <button className="btn" disabled={!!busy} onClick={sentTransfer} style={{ marginTop: 10, width: '100%' }}>{busy === 'transfer' ? 'Verifying…' : `I sent ${amt(plans[tPlan])} — verify my transfer`}</button>
           </div>
         )}
       </div>
       )}
-      {cur === 'USD' && ( // USD note (transfer is Naira-only — say so plainly, no dev-talk)
+      {cur === 'USD' && (
         <p className="hint" style={{ marginTop: 12 }}>Paying in dollars — card checkout above. Bank transfer is Naira-only for now.</p>
       )}
-      {!cardsLive && transferReady && cur === 'NGN' && <p className="hint" style={{ marginTop: 4 }}>Prefer card? Card payments are coming soon — transfer works right now.</p>} {/* triple-&& : only when cards off AND transfer on AND NGN (customer voice, never "owner hasn't set keys"!) */}
+      {!cardsLive && (
+        <div className="card" style={{ marginTop: 14, borderColor: 'var(--gold-line)', background: 'var(--gold-bg)' }}>
+          <h2>Why no card button? (API key needed)</h2>
+          <p className="desc" style={{ marginBottom: 8 }}>Card checkout needs a <b>Paystack secret key</b> on the server. Until the site owner adds it, cards stay off and transfer above works fine.</p>
+          <p className="hint">Site owner setup: Paystack Dashboard → Settings → API Keys → copy the <b>Secret Key</b> (<span style={{ fontFamily: 'monospace' }}>sk_test_…</span> to test, <span style={{ fontFamily: 'monospace' }}>sk_live_…</span> for real money) → set <span style={{ fontFamily: 'monospace' }}>PAYSTACK_SECRET_KEY</span> in the server env + <span style={{ fontFamily: 'monospace' }}>BANK_NAME / BANK_ACCOUNT_NUMBER / BANK_ACCOUNT_NAME</span> for transfers → restart. Test keys need no BVN; live keys need BVN + NIN + CAC.</p>
+        </div>
+      )}
     </>
   );
 }

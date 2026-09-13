@@ -227,8 +227,8 @@ async function otpResend(req, res) {
   if (result.reason === 'nouser') return res.status(404).json({ error: 'No account with that email.' });
   if (result.already) return res.json({ ok: true, message: 'Already verified — you can sign in.' });
   if (result.auto) return res.json({ ok: true, auto: true, message: 'Email service off (dev) — signing you in.' }); // dev: skip the code entirely
-  if (!result.sent) return res.status(502).json({ error: 'Email service is down — use "send a link instead" below.' }); // honest Resend failure (points at the fallback!)
-  res.json({ ok: true, message: 'New code sent — check your inbox.' });
+  if (!result.sent) return res.status(502).json({ error: 'Email service is down — tap "Send a verification link instead" below, and check your spam folder too.' }); // honest Resend failure (points at the fallback!)
+  res.json({ ok: true, message: 'New code sent — check your inbox AND spam/promotions folder. Still nothing? Tap "Send a verification link instead".' });
 }
 
 // POST /api/auth/otp-link { email } — OTP fallback: "email didn't arrive? send a LINK instead" (existing token flow!).
@@ -238,7 +238,7 @@ async function otpLink(req, res) {
   const result = await authService.resendVerification(email); // reuse the LINK machinery (new token, Resend email)…
   if (!result) return res.status(404).json({ error: 'No account with that email.' });
   if (result.already) return res.json({ ok: true, message: 'Already verified — you can sign in.' });
-  res.json({ ok: true, message: result.sent ? 'Link sent — check your inbox.' : 'Email service is down right now — try the code again or contact support.' }); // honest failure message (no fake "sent" when Resend is down!)
+  res.json({ ok: true, message: result.sent ? 'Link sent — check your inbox AND spam/promotions folder. Our sending domain is new, so mail can land in spam.' : 'Email service is down right now — try the code again or contact support.' }); // honest failure message (no fake "sent" when Resend is down!)
 }
 
 // POST /api/auth/forgot { email } — always { sent: true } (enumeration defense lives in the service!).

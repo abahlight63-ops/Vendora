@@ -235,7 +235,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
     try {
       const { data } = await api('/api/auth/forgot', { method: 'POST', body: JSON.stringify({ email: f.email.trim() }) }); // uses the LOGIN email field (no extra input needed!)
       setBusy(false);
-      setMsg((data && data.devToken ? `Dev mode — your reset token: ${data.devToken}. ` : '') + 'If that email has an account, a reset link is on its way.'); // devToken shown ONLY in dev (prod never leaks it!)
+      setMsg((data && data.devToken ? `Dev mode — your reset token: ${data.devToken}. ` : '') + 'Reset link sent — check your inbox (and spam folder). It expires in 1 hour.'); // backend always answers "sent" (never reveals who has an account), so we can promise the link confidently
       setMsgErr(false);
     } catch { setBusy(false); fail("Can't reach the Vendora server. Check your internet connection and try again."); }
   }

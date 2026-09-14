@@ -89,7 +89,6 @@ export default function Billing() {
   const saveAmt = plans.yearly.save ?? plans.yearly.save_naira; // same dual-shape guard for savings
   const t = bill?.transfer || {}; // bank details ({} default → transferReady false while loading)
   const transferReady = t.bank && t.account_number; // && returns last truthy/falsy (both set = show block; else hide ENTIRELY — no dev-talk!)
-  const cardsLive = bill?.paystack_live; // real Paystack key on server? (drives the "coming soon" hint)
 
   const statusLine = !bill ? 'Loading…' // 4-way status message (reads like a human wrote each one):
     : status === 'active' ? `Pro active until ${fmtDate(bill.expires)}. Profile sync + priority support on.` // backticks interpolate the date
@@ -199,13 +198,6 @@ export default function Billing() {
       )}
       {cur === 'USD' && (
         <p className="hint" style={{ marginTop: 12 }}>Paying in dollars — card checkout above. Bank transfer is Naira-only for now.</p>
-      )}
-      {!cardsLive && (
-        <div className="card" style={{ marginTop: 14, borderColor: 'var(--gold-line)', background: 'var(--gold-bg)' }}>
-          <h2>Why no card button? (API key needed)</h2>
-          <p className="desc" style={{ marginBottom: 8 }}>Card checkout needs a <b>Paystack secret key</b> on the server. Until the site owner adds it, cards stay off and transfer above works fine.</p>
-          <p className="hint">Site owner setup: Paystack Dashboard → Settings → API Keys → copy the <b>Secret Key</b> (<span style={{ fontFamily: 'monospace' }}>sk_test_…</span> to test, <span style={{ fontFamily: 'monospace' }}>sk_live_…</span> for real money) → set <span style={{ fontFamily: 'monospace' }}>PAYSTACK_SECRET_KEY</span> in the server env + <span style={{ fontFamily: 'monospace' }}>BANK_NAME / BANK_ACCOUNT_NUMBER / BANK_ACCOUNT_NAME</span> for transfers → restart. Test keys need no BVN; live keys need BVN + NIN + CAC.</p>
-        </div>
       )}
     </>
   );

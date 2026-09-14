@@ -81,10 +81,15 @@ class VendoraTheme {
     Color muted,
     Color ink,
   ) {
+    // Liquid glass: scaffolds are TRANSPARENT so the mesh gradient
+    // (GlassBackground, stacked in MaterialApp.builder) shows through —
+    // every frosted surface above refracts it. Splash keeps its own
+    // explicit background (brand moment, unaffected).
+    final frost = card.withValues(alpha: 0.72); // bar tint (blurred on top)
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      scaffoldBackgroundColor: bg,
+      scaffoldBackgroundColor: Colors.transparent,
       textTheme: _text(ThemeData.light().textTheme, ink, muted),
       // .page fade .12s → global page transition (fast fade).
       pageTransitionsTheme: const PageTransitionsTheme(builders: {
@@ -95,7 +100,7 @@ class VendoraTheme {
         TargetPlatform.windows: _FadePageBuilder(),
       }),
       appBarTheme: AppBarTheme(
-        backgroundColor: card,
+        backgroundColor: frost, // translucent: main.dart blurs beneath it
         foregroundColor: ink,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -167,8 +172,19 @@ class VendoraTheme {
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: card,
+        backgroundColor: frost, // translucent: main.dart blurs beneath it
         indicatorColor: scheme.primary.withValues(alpha: 0.15),
+      ),
+      // Sheets + dialogs paint their own glass (glass.dart) — theme stays
+      // transparent so it never covers the frost with a solid panel.
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: Colors.transparent,
+        modalBackgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      dialogTheme: const DialogThemeData(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       chipTheme: ThemeData.light().chipTheme.copyWith(
             shape: RoundedRectangleBorder(

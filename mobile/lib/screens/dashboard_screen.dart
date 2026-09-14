@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../api.dart';
 import '../format.dart';
+import '../glass.dart';
 import '../motion.dart';
 import 'profile_screen.dart';
 
@@ -128,7 +129,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           // ── dash-hero: gradient banner, greeting, live pill, actions ──
           FadeSlideIn(
-            child: Card(
+            child: GlassCard(
               child: Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
@@ -198,7 +199,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (trialLeft != null)
             FadeSlideIn(
               delayMs: 60,
-              child: Card(
+              child: GlassCard(
                 child: Padding(
                   padding: const EdgeInsets.all(14),
                   child: Row(children: [
@@ -256,7 +257,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (doneCount < steps.length)
             FadeSlideIn(
               delayMs: 120,
-              child: Card(
+              child: GlassCard(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -323,7 +324,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 4),
             FadeSlideIn(
               delayMs: 160,
-              child: Card(
+              child: GlassCard(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -358,7 +359,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           // ── bot kill-switch (was the old whole screen) ──
           FadeSlideIn(
             delayMs: 200,
-            child: Card(
+            child: GlassCard(
               child: SwitchListTile(
                 title: const Text('AI bot replies'),
                 subtitle: const Text(
@@ -407,31 +408,29 @@ class _Stat extends StatelessWidget {
             : scheme.onSurface;
     return FadeSlideIn(
       delayMs: delay,
-      child: Card(
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(num,
-                      style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w700,
-                          color: color)),
-                  const SizedBox(height: 2),
-                  Text(lbl,
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5,
-                          color: scheme.onSurface
-                              .withValues(alpha: 0.6))),
-                ]),
-          ),
+      child: GlassCard(
+        radius: 16,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(num,
+                    style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                        color: color)),
+                const SizedBox(height: 2),
+                Text(lbl,
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                        color: scheme.onSurface
+                            .withValues(alpha: 0.6))),
+              ]),
         ),
       ),
     );

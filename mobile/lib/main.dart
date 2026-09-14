@@ -3,10 +3,13 @@
 // runs — same timing as Splash.jsx) + light/dark themes (same tokens as
 // the web app; toggle in the top bar, persisted) + bottom-nav shell.
 // Run with: flutter run --dart-define API_BASE_URL=https://<backend>
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api.dart';
+import 'glass.dart';
 import 'theme.dart';
 import 'splash.dart';
 import 'motion.dart';
@@ -71,6 +74,12 @@ class _VendoraAppState extends State<VendoraApp> {
       theme: VendoraTheme.light,
       darkTheme: VendoraTheme.dark,
       themeMode: _mode,
+      // Liquid glass: mesh-gradient backdrop behind EVERYTHING (scaffolds
+      // are transparent by theme, so every frosted surface refracts this).
+      builder: (context, child) => Stack(children: [
+        const Positioned.fill(child: GlassBackground()),
+        child ?? const SizedBox.shrink(),
+      ]),
       home: _authed == null
           ? const SplashView()
           : _authed!
@@ -155,43 +164,43 @@ class _HomeShellState extends State<HomeShell> {
       items = List<dynamic>.from(n['items'] ?? []);
     } catch (_) {}
     if (!mounted) return;
-    await showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (c) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Text('Notifications',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            Flexible(
-              child: items.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Text('All caught up. Payment verifications and app updates land here.'),
-                    )
-                  : ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: items.length,
-                      itemBuilder: (_, i) {
-                        final m =
-                            (items[i] as Map).cast<String, dynamic>();
-                        return ListTile(
-                          title: Text('${m['title'] ?? 'Update'}',
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14)),
-                          subtitle: Text(
-                              '${m['body'] ?? ''}\n${fmtTime(m['created_at'])}',
-                              style: const TextStyle(fontSize: 12)),
-                        );
-                      },
-                    ),
-            ),
-          ]),
+    await glassSheet(
+      context,
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Text('Notifications',
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        Flexible(
+          child: items.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text('All caught up. Payment verifications and app updates land here.'),
+                )
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: items.length,
+                  itemBuilder: (c, i) {
+                    final m =
+                        (items[i] as Map).cast<String, dynamic>();
+                    return GlassCard(
+                      radius: 14,
+                      margin: const EdgeInsets.symmetric(vertical: 5),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 2),
+                        title: Text('${m['title'] ?? 'Update'}',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14)),
+                        subtitle: Text(
+                            '${m['body'] ?? ''}\n${fmtTime(m['created_at'])}',
+                            style: const TextStyle(fontSize: 12)),
+                      ),
+                    );
+                  },
+                ),
         ),
-      ),
+      ]),
     );
     // Marks all read on open (Notifications.jsx parity).
     try {
@@ -206,6 +215,13 @@ class _HomeShellState extends State<HomeShell> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_tab]),
+        // Liquid glass: blur whatever scrolls beneath the frosted bar.
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: Glass.cardBlur, sigmaY: Glass.cardBlur),
+            child: const SizedBox.expand(),
+          ),
+        ),
         actions: [
           // 🔔 bell (Notifications.jsx parity: badge + mark-read on open).
           Stack(children: [
@@ -256,7 +272,11 @@ class _HomeShellState extends State<HomeShell> {
         const AiScreen(),
         const BillingScreen(),
       ]),
-      bottomNavigationBar: NavigationBar(
+      // Liquid glass: the bottom nav floats frosted over the mesh backdrop.
+      bottomNavigationBar: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: Glass.cardBlur, sigmaY: Glass.cardBlur),
+          child: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
         destinations: const [
@@ -280,7 +300,9 @@ class _HomeShellState extends State<HomeShell> {
               icon: Icon(Icons.payments_outlined),
               selectedIcon: Icon(Icons.payments),
               label: 'Billing'),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

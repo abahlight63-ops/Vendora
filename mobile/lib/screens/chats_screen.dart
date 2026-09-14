@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../api.dart';
 import '../format.dart';
+import '../glass.dart';
 import '../motion.dart';
 
 class ChatsScreen extends StatefulWidget {
@@ -130,7 +131,8 @@ class _ChatsScreenState extends State<ChatsScreen> {
                             final paused = m['bot_paused'] == true;
                             return FadeSlideIn(
                               delayMs: (i * 60).clamp(0, 300),
-                              child: Card(
+                              child: GlassCard(
+                                radius: 16,
                                 margin: const EdgeInsets.symmetric(
                                     horizontal: 12, vertical: 5),
                                 child: ListTile(

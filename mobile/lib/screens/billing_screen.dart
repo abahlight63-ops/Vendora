@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api.dart';
+import '../glass.dart';
 import '../motion.dart';
 
 const _webBilling = 'https://vendorabot.vercel.app/billing';
@@ -123,7 +124,7 @@ class _BillingScreenState extends State<BillingScreen> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.all(16), children: [
-        Card(
+        GlassCard(
           child: Padding(
             padding: const EdgeInsets.all(18),
             child: Column(
@@ -155,7 +156,7 @@ class _BillingScreenState extends State<BillingScreen> {
           ),
         if ('${t['bank'] ?? ''}'.isNotEmpty) ...[
           const SizedBox(height: 4),
-          Card(
+          GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(18),
               child: Column(
@@ -208,22 +209,19 @@ class _PlanCard extends StatelessWidget {
       if (plan != 'monthly') 'Priority support — jump the queue',
       if (plan == 'lifetime') 'Locked price forever',
     ];
-    return Card(
+    return GlassCard(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-            color: hot ? scheme.primary : scheme.outline.withValues(alpha: 0.3),
-            width: hot ? 1.5 : 1),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => launchUrl(Uri.parse(_webBilling),
-            mode: LaunchMode.externalApplication),
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      radius: 16,
+      // Hot plan keeps its accent rim (glass edge overridden, not removed).
+      border: Border.all(
+          color: hot ? scheme.primary : Glass.edge(context),
+          width: hot ? 1.5 : 1),
+      onTap: () => launchUrl(Uri.parse(_webBilling),
+          mode: LaunchMode.externalApplication),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             if (hot)
               Container(
                 margin: const EdgeInsets.only(bottom: 8),
@@ -270,7 +268,6 @@ class _PlanCard extends StatelessWidget {
                     ]),
               ),
           ]),
-        ),
       ),
     );
   }

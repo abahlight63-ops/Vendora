@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 
 import '../api.dart';
+import '../glass.dart';
 import '../motion.dart';
 
 class CatalogScreen extends StatefulWidget {
@@ -74,7 +75,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
     return Column(children: [
       Padding(
         padding: const EdgeInsets.all(12),
-        child: Card(
+        child: GlassCard(
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Column(children: [
@@ -131,7 +132,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                 (_items![i] as Map).cast<String, dynamic>();
                             return FadeSlideIn(
                               delayMs: (i * 60).clamp(0, 300),
-                              child: Card(
+                              child: GlassCard(
+                                radius: 16,
                                 margin: const EdgeInsets.symmetric(
                                     horizontal: 12, vertical: 5),
                                 child: ListTile(

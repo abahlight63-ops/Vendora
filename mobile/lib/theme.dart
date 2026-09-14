@@ -4,7 +4,6 @@
 // dark = [data-theme="dark"] overrides. Same Inter, same 12px radius,
 // same 180ms motion feel. ThemeMode persists (SharedPreferences).
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class VendoraTheme {
@@ -38,11 +37,7 @@ class VendoraTheme {
   }
 
   static TextTheme _text(TextTheme base, Color body, Color muted) =>
-      googleFontsInterTextTheme(base).apply(bodyColor: body, displayColor: body);
-
-  // Helper: Inter on every style of [base].
-  static TextTheme googleFontsInterTextTheme(TextTheme base) =>
-      GoogleFonts.interTextTheme(base);
+      base.apply(bodyColor: body, displayColor: body, fontFamily: 'Inter');
 
   static ThemeData get light {
     const ink = Color(0xFF101828);
@@ -106,8 +101,11 @@ class VendoraTheme {
         scrolledUnderElevation: 0,
         // .topbar 1px bottom border (Divider under AppBar via shape).
         shape: Border(bottom: BorderSide(color: line)),
-        titleTextStyle: GoogleFonts.inter(
-            fontSize: 17, fontWeight: FontWeight.w700, color: ink),
+        titleTextStyle: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: ink),
       ),
       // .card: 24px padding, 12px radius, 1px token border, tiny shadow.
       cardTheme: CardThemeData(
@@ -124,8 +122,10 @@ class VendoraTheme {
         style: FilledButton.styleFrom(
           minimumSize: const Size(0, 40),
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          textStyle: GoogleFonts.inter(
-              fontSize: 14, fontWeight: FontWeight.w600),
+          textStyle: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              fontWeight: FontWeight.w600),
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(_radius)),
         ),
@@ -134,8 +134,10 @@ class VendoraTheme {
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(0, 40),
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          textStyle: GoogleFonts.inter(
-              fontSize: 14, fontWeight: FontWeight.w600),
+          textStyle: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              fontWeight: FontWeight.w600),
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(_radius)),
           side: BorderSide(color: line),
@@ -147,8 +149,10 @@ class VendoraTheme {
         fillColor: card,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        hintStyle: GoogleFonts.inter(fontSize: 14, color: muted),
-        labelStyle: GoogleFonts.inter(fontSize: 14, color: muted),
+        hintStyle: TextStyle(
+            fontFamily: 'Inter', fontSize: 14, color: muted),
+        labelStyle: TextStyle(
+            fontFamily: 'Inter', fontSize: 14, color: muted),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(_radius),
           borderSide: BorderSide(color: line),

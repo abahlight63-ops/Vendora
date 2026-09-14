@@ -28,6 +28,7 @@ class _AiScreenState extends State<AiScreen> {
   List<dynamic> _models = [];
   String? _model; // null = server default (Lite)
   bool _busy = false;
+  bool _testBot = false; // false = Vendora AI (/ask), true = shop test-bot (/playground)
 
   @override
   void initState() {
@@ -71,13 +72,23 @@ class _AiScreenState extends State<AiScreen> {
     _input.clear();
     _jump();
     try {
-      final r = await ApiClient.instance.ask(text, _model);
-      final meta = [
-        if (r['via'] != null) 'via ${r['via']}',
-        if (r['fallback'] == true) 'fallback brain',
-      ].join(' · ');
-      setState(() => _msgs.add(
-          _AiMessage(false, '${r['reply'] ?? '…'}', meta.isEmpty ? null : meta)));
+      if (_testBot) {
+        // Shop test-bot: answers AS your catalog (like a customer).
+        final r = await ApiClient.instance.playground(text);
+        final reply = r['reply'];
+        setState(() => _msgs.add(_AiMessage(
+            false,
+            '${reply ?? r['reason'] ?? '…'}',
+            reply == null ? 'handed to human' : null)));
+      } else {
+        final r = await ApiClient.instance.ask(text, _model);
+        final meta = [
+          if (r['via'] != null) 'via ${r['via']}',
+          if (r['fallback'] == true) 'fallback brain',
+        ].join(' · ');
+        setState(() => _msgs.add(_AiMessage(
+            false, '${r['reply'] ?? '…'}', meta.isEmpty ? null : meta)));
+      }
     } on ApiException catch (e) {
       setState(() => _msgs.add(_AiMessage(false, e.message, 'error')));
     } catch (_) {
@@ -92,7 +103,22 @@ class _AiScreenState extends State<AiScreen> {
   @override
   Widget build(BuildContext context) {
     return Column(children: [
-      if (_models.isNotEmpty)
+      // Mode toggle (web: /vendora-ai vs /playground pages).
+      Padding(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+        child: SegmentedButton<bool>(
+          segments: const [
+            ButtonSegment(value: false, label: Text('Vendora AI')),
+            ButtonSegment(value: true, label: Text('Test bot')),
+          ],
+          selected: {_testBot},
+          onSelectionChanged: (s) => setState(() {
+            _testBot = s.first;
+            if (_testBot) _model = null;
+          }),
+        ),
+      ),
+      if (_models.isNotEmpty && !_testBot)
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
           child: DropdownButtonFormField<String>(
@@ -114,8 +140,10 @@ class _AiScreenState extends State<AiScreen> {
         ),
       Expanded(
         child: _msgs.isEmpty
-            ? const Center(
-                child: Text('Ask anything — stock, prices, advice.'))
+            ? Center(
+                child: Text(_testBot
+                    ? 'Ask like a customer — prices, stock, delivery.'
+                    : 'Ask anything — stock, prices, advice.'))
             : ListView.builder(
                 controller: _scroll,
                 padding: const EdgeInsets.all(12),

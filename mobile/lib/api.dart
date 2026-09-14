@@ -205,6 +205,28 @@ class ApiClient {
     final b = await get('/api/me/ai-models');
     return List<dynamic>.from((b as Map)['models'] ?? []);
   }
+
+  // ── Business profile (PUT /api/me/business) ──
+  // Editable: name, owner_number, hours, faq, tone, currency, timezone.
+  // whatsapp_number is LOCKED server-side (identity mustn't change).
+  Future<Map<String, dynamic>> updateBusiness(
+      Map<String, dynamic> fields) async {
+    final b = await put('/api/me/business', fields);
+    return (b as Map).cast<String, dynamic>();
+  }
+
+  // ── Bell inbox: { items: [{id,title,body,link,is_read,created_at}…],
+  // unread: n }. Newest first, max 20.
+  Future<Map<String, dynamic>> notifications() async =>
+      (await get('/api/me/notifications') as Map).cast<String, dynamic>();
+
+  Future<void> readNotifications() async {
+    await post('/api/me/notifications/read');
+  }
+
+  // ── App version (Shell update toast): { version, whatsNew }.
+  Future<Map<String, dynamic>> version() async =>
+      (await get('/api/version') as Map).cast<String, dynamic>();
 }
 
 // Fire-and-forget without importing dart:async everywhere.

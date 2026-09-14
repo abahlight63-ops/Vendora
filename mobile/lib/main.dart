@@ -4,10 +4,13 @@
 // the web app; toggle in the top bar, persisted) + bottom-nav shell.
 // Run with: flutter run --dart-define API_BASE_URL=https://<backend>
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api.dart';
 import 'theme.dart';
 import 'splash.dart';
+import 'motion.dart';
+import 'format.dart';
 import 'screens/auth_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/chats_screen.dart';
@@ -97,6 +100,7 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _tab = 0;
+  int _unread = 0;
 
   static const _titles = [
     'Overview',
@@ -107,12 +111,127 @@ class _HomeShellState extends State<HomeShell> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _bootExtras();
+  }
+
+  /// Shell parity: bell unread count + "Vendora updated" toast when the
+  /// backend version changed since last visit (Shell.jsx does both).
+  Future<void> _bootExtras() async {
+    try {
+      final n = await ApiClient.instance.notifications();
+      if (mounted) {
+        setState(() => _unread = (n['unread'] as num? ?? 0).toInt());
+      }
+    } catch (_) {}
+    try {
+      final v = await ApiClient.instance.version();
+      final cur = '${v['version'] ?? ''}';
+      if (cur.isEmpty) return;
+      final prefs = await SharedPreferences.getInstance();
+      final last = prefs.getString('vendora-version');
+      await prefs.setString('vendora-version', cur);
+      if (mounted && last != null && last != cur) {
+        showToast(context, 'Vendora updated to v$cur 🎉 — check the 🔔 bell');
+        _refreshBell();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _refreshBell() async {
+    try {
+      final n = await ApiClient.instance.notifications();
+      if (mounted) {
+        setState(() => _unread = (n['unread'] as num? ?? 0).toInt());
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _openBell() async {
+    List<dynamic> items = [];
+    try {
+      final n = await ApiClient.instance.notifications();
+      items = List<dynamic>.from(n['items'] ?? []);
+    } catch (_) {}
+    if (!mounted) return;
+    await showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (c) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Text('Notifications',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Flexible(
+              child: items.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Text('All caught up. Payment verifications and app updates land here.'),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: items.length,
+                      itemBuilder: (_, i) {
+                        final m =
+                            (items[i] as Map).cast<String, dynamic>();
+                        return ListTile(
+                          title: Text('${m['title'] ?? 'Update'}',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14)),
+                          subtitle: Text(
+                              '${m['body'] ?? ''}\n${fmtTime(m['created_at'])}',
+                              style: const TextStyle(fontSize: 12)),
+                        );
+                      },
+                    ),
+            ),
+          ]),
+        ),
+      ),
+    );
+    // Marks all read on open (Notifications.jsx parity).
+    try {
+      await ApiClient.instance.readNotifications();
+    } catch (_) {}
+    _refreshBell();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_tab]),
         actions: [
+          // 🔔 bell (Notifications.jsx parity: badge + mark-read on open).
+          Stack(children: [
+            IconButton(
+              icon: const Icon(Icons.notifications_outlined),
+              tooltip: 'Notifications',
+              onPressed: _openBell,
+            ),
+            if (_unread > 0)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                      color: Colors.redAccent,
+                      borderRadius: BorderRadius.circular(999)),
+                  child: Text('$_unread',
+                      style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
+                ),
+              ),
+          ]),
           // Same dark/light switch as the web nav (ThemeToggle).
           IconButton(
             icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
@@ -130,12 +249,12 @@ class _HomeShellState extends State<HomeShell> {
           ),
         ],
       ),
-      body: IndexedStack(index: _tab, children: const [
-        DashboardScreen(),
-        ChatsScreen(),
-        CatalogScreen(),
-        AiScreen(),
-        BillingScreen(),
+      body: IndexedStack(index: _tab, children: [
+        DashboardScreen(onGoTab: (i) => setState(() => _tab = i)),
+        const ChatsScreen(),
+        const CatalogScreen(),
+        const AiScreen(),
+        const BillingScreen(),
       ]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,

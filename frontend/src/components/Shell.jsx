@@ -33,7 +33,7 @@ function Icon({ k }) { // tiny inline SVG set (stroke = inherits text color; no 
   return (<svg {...p}><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 0 1 5 .2c0 1.7-2.5 2-2.5 3.6M12 17h.01" /></svg>); // default = help "?" (unknown keys never render broken)
 }
 
-export default function Shell({ biz, children, theme = 'light', onToggleTheme = () => {} }) { // props: biz (business object), children (the page!), theme + toggle (defaults = safe if omitted)
+export default function Shell({ biz, children, theme = 'light', onToggleTheme = () => {}, onLogout = () => {} }) { // props: biz (business object), children (the page!), theme + toggle (defaults = safe if omitted), onLogout (App clears login state — without it /login bounces back to /dashboard!)
   const { pathname } = useLocation(); // destructure current path from router (re-renders on navigation)
   const navigate = useNavigate(); // navigate('/login') = go there in code (after logout)
   const [menuOpen, setMenuOpen] = useState(false); // mobile drawer open? (desktop sidebar always visible via CSS)
@@ -54,7 +54,12 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
       try { localStorage.setItem('vendora-version', data.version); } catch {}
     });
   }, []); // mount-only (one check per page load, not per navigation)
-  async function logout() { try { await api('/api/auth/logout', { method: 'POST' }); } catch {} navigate('/login'); } // try destroy server session (ignore failure) THEN go to login (empty catch = navigate regardless)
+  async function logout() {
+    setMenuOpen(false); // close the drawer first (both topbar + drawer buttons use this)
+    try { await api('/api/auth/logout', { method: 'POST' }); } catch {} // try destroy server session (empty catch = still log out locally on network failure)
+    onLogout(); // clear App's login state FIRST — otherwise /login sees stale `me` and bounces back to /dashboard
+    navigate('/login', { replace: true }); // replace = signed-out page can't "back" into the app
+  } // logout() = server destroy + local clear + go to login (all three, every time)
   const safeName = biz?.name || 'Your business'; // ?. + || : biz may load late — never render "undefined"
   const initial = (safeName.trim()[0] || 'V').toUpperCase(); // avatar letter: first char uppercased ([0] = first character)
   const mobile = ALL.filter(([k]) => ['overview', 'chats', 'catalog', 'playground', 'billing'].includes(k)); // bottom-bar subset: destructure [k] (first array item) + .includes whitelist
@@ -72,7 +77,9 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
               <nav>{g.items.map(([k, label, href]) => (<NavLink key={k} to={href} onClick={() => setMenuOpen(false)}><Icon k={k} /><span>{label}</span></NavLink>))}</nav> {/* NavLink adds .active on current route (CSS highlights); destructure [k,label,href] per row */}
             </div>
           ))}
-          <div className="foot">AI replies 24/7 so you never miss a sale.<br />© 2026 Vendora</div> {/* <br/> = line break element; margin-top:auto in CSS pins it bottom */}
+          <div className="foot">AI replies 24/7 so you never miss a sale.<br />© 2026 Vendora
+            <button className="drawer-signout" onClick={logout}>Sign out</button> {/* mobile-only: topbar sign-out hides on phones, so the drawer carries it */}
+          </div> {/* <br/> = line break element; margin-top:auto in CSS pins it bottom */}
         </aside>
         <div className="main-col"> {/* right column: topbar + scrolling page */}
           <header className="topbar"> {/* sticky header (CSS position:sticky) */}
@@ -87,7 +94,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
               <Notifications /> {/* 🔔 bell sits before theme toggle (thumb-side on mobile) */}
               <ThemeToggle theme={theme} onToggle={onToggleTheme} /> {/* sun/moon switch */}
               <div className="avatar" title={safeName}>{initial}</div> {/* title = hover tooltip */}
-              <button className="btn ghost sm" onClick={logout}>Sign out</button> {/* ghost = outline style; sm = small */}
+              <button className="btn ghost sm signout-btn" onClick={logout}>Sign out</button> {/* ghost = outline style; sm = small; .signout-btn hides on phones (drawer carries sign-out instead) */}
             </div>
           </header>
           <main className="page">{children}</main> {/* children = THE PAGE (Dashboard/Catalog/…) rendered inside the frame */}

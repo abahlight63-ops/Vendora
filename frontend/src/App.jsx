@@ -45,10 +45,10 @@ function useMe() { // CUSTOM HOOK: "who's logged in?" — returns {me, loading, 
   return { me, loading, setMe }; // hook consumers: const { me, loading, setMe } = useMe()
 }
 
-function Guard({ me, loading, theme, onToggleTheme, children }) { // login wall: wraps every private page (destructure 5 props)
+function Guard({ me, loading, theme, onToggleTheme, onLogout, children }) { // login wall: wraps every private page (destructure 6 props)
   if (loading) return <div className="page"><div className="card"><p className="hint">Loading…</p></div></div>; // still checking session → skeleton-ish placeholder (no flashing!)
   if (!me) return <Navigate to="/login" replace />; // guest → redirect to /login (replace = don't keep bad URL in history)
-  return <Shell biz={me} theme={theme} onToggleTheme={onToggleTheme}>{children}</Shell>; // logged in → frame + page (children = the page element)
+  return <Shell biz={me} theme={theme} onToggleTheme={onToggleTheme} onLogout={onLogout}>{children}</Shell>; // logged in → frame + page (children = the page element; onLogout clears login state on sign-out)
 }
 
 export default function App() { // ROOT component (main.jsx renders this)
@@ -66,16 +66,16 @@ export default function App() { // ROOT component (main.jsx renders this)
       <Route path="/login" element={loading ? <div className="page"><div className="card"><p className="hint">Loading…</p></div></div> : me ? <Navigate to="/dashboard" replace /> : <Login setMe={setMe} theme={theme} onToggleTheme={toggleTheme} />} /> {/* logged-in visiting /login → dashboard (no login-loop); loading → placeholder so we don't flash the form */}
       <Route path="/reset" element={<Reset />} /> {/* forgot-password landing (public — must NOT be Guarded: no session exists yet!) */}
       <Route path="/onboarding" element={<Onboarding me={me} />} /> {/* welcome tour (reachable logged-in OR fresh — by design) */}
-      <Route path="/dashboard" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme}><Dashboard biz={me} /></Guard>} /> {/* Guard pattern: <Guard …><Page/></Guard> = page becomes `children` */}
-      <Route path="/chats" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme}><Chats /></Guard>} />
-      <Route path="/catalog" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme}><Catalog /></Guard>} />
-      <Route path="/playground" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme}><Playground /></Guard>} />
-      <Route path="/insights" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme}><Insights /></Guard>} />
-      <Route path="/billing" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme}><Billing /></Guard>} />
-      <Route path="/profile" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme}><Profile biz={me} /></Guard>} />
-      <Route path="/settings" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme}><Settings biz={me} /></Guard>} />
-      <Route path="/help" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme}><Help /></Guard>} />
-      <Route path="/vendora-ai" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme}><VendoraAI biz={me} /></Guard>} />
+      <Route path="/dashboard" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Dashboard biz={me} /></Guard>} /> {/* Guard pattern: <Guard …><Page/></Guard> = page becomes `children` */}
+      <Route path="/chats" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Chats /></Guard>} />
+      <Route path="/catalog" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Catalog /></Guard>} />
+      <Route path="/playground" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Playground /></Guard>} />
+      <Route path="/insights" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Insights /></Guard>} />
+      <Route path="/billing" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Billing /></Guard>} />
+      <Route path="/profile" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Profile biz={me} /></Guard>} />
+      <Route path="/settings" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Settings biz={me} /></Guard>} />
+      <Route path="/help" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Help /></Guard>} />
+      <Route path="/vendora-ai" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><VendoraAI biz={me} /></Guard>} />
       <Route path="/" element={loading ? <div className="page"><div className="card"><p className="hint">Loading…</p></div></div> : me ? <Navigate to="/dashboard" replace /> : <Landing theme={theme} onToggleTheme={toggleTheme} />} /> {/* / = smart root: loading→placeholder, logged-in→dashboard, guest→marketing landing (ternary chain) */}
       <Route path="*" element={<div className="page"><div className="card"><h2>Page not found</h2><p className="hint">That link doesn't exist.</p><p style={{ marginTop: 12 }}><a href="/dashboard">Back to overview</a></p></div></div>} /> {/* path="*" = catch-all 404 (MUST be last — Routes picks first match!) */}
     </Routes>

@@ -802,4 +802,63 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .legal p, .legal li { color: var(--muted); font-size: 14px; }
 .legal ul { padding-left: 20px; display: grid; gap: 6px; margin-top: 8px; }
 
+/* ── PHONE-FIRST POLISH (users said the phone view felt cramped).
+   Why it felt cramped: (1) topbar carried 5 items on 360px — title squeezed,
+   buttons pushed off; (2) inbox/catalog TABLES forced sideways scrolling
+   (min-width 620px); (3) hero/CTAs + filter rows never wrapped, so everything
+   collided. Fixes below are small-screen ONLY (desktop untouched):
+   topbar declutter → tables become stacked cards → rows wrap → tap targets ≥44px. */
+.drawer-signout { display: none; } /* desktop: sign-out lives in the topbar */
+@media (max-width: 960px) {
+  /* topbar: hamburger + shop name (shrinks) + bell + toggle only.
+     Avatar + "Sign out" move to the drawer — 5 items never fit 360px. */
+  .topbar { padding: 10px 12px; gap: 8px; }
+  .topbar > div:first-child { flex: 1; min-width: 0; }
+  .topbar h1 { font-size: 14px; }
+  .topbar .avatar, .topbar .signout-btn { display: none; }
+  .drawer-signout { display: block; width: 100%; margin-top: 10px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 10px; padding: 11px; font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+  .nbell-btn { width: 38px; height: 38px; }
+  .tt-track { width: 52px; height: 28px; }
+  .tt-knob { width: 20px; height: 20px; }
+  .theme-toggle.on .tt-knob { transform: translateX(22px); }
+  /* page rhythm: tighter headings, breathing cards, no sideways scroll */
+  .page { padding: 14px 12px 104px; overflow-x: hidden; }
+  .page-head { margin-bottom: 18px; }
+  .page-head h1 { font-size: 22px; }
+  .page-head p { font-size: 13.5px; }
+  .page-head .row { flex-direction: column; align-items: flex-start; }
+  .card-head { flex-wrap: wrap; }
+  /* tables → stacked cards: hide the header row, each <tr> becomes a card,
+     each <td> a full-width block. Kills the 620px sideways scroll. */
+  .table-wrap { border: none; overflow: visible; }
+  .table-wrap table { min-width: 0; background: none; }
+  .table-wrap thead { display: none; }
+  .table-wrap table, .table-wrap tbody, .table-wrap tr, .table-wrap td { display: block; width: 100%; }
+  .table-wrap tbody tr { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 10px; padding: 6px 4px; }
+  .table-wrap tbody td { border: none; padding: 6px 12px; }
+  .table-wrap tbody td:last-child { padding-bottom: 10px; }
+  /* inbox filter tabs: wrap + scroll instead of pushing off-screen */
+  .card > div[style*="marginBottom"] { flex-wrap: wrap; }
+  /* dashboard hero: stack text over full-width buttons */
+  .dash-hero { flex-direction: column; align-items: stretch; padding: 20px 16px; gap: 14px; }
+  .dash-hero h1 { font-size: 22px; }
+  .dash-cta { display: grid; grid-template-columns: 1fr 1fr; }
+  .dash-cta .btn { width: 100%; min-height: 44px; }
+  /* trial strip + status banner: stack, link drops below text */
+  .trial-strip { flex-wrap: wrap; }
+  .trial-strip a { margin-left: 0; }
+  /* chat bubbles use the width, thread actions stack neatly */
+  .bubble-in, .bubble-out { max-width: 88%; }
+  /* bottom bar + buttons: thumb-friendly targets */
+  .mobile-bar a { min-height: 48px; justify-content: center; font-size: 10px; }
+  .btn { min-height: 44px; }
+  .btn.sm { min-height: 40px; }
+  .qa { padding: 14px 12px; }
+}
+@media (max-width: 380px) {
+  .dash-cta { grid-template-columns: 1fr; } /* tiniest phones: one button per row */
+  .grid4 { gap: 8px; }
+  .stat { padding: 12px; }
+}
+
 @media (prefers-reduced-motion: reduce) { .page { animation: none; } .slide.fwd, .slide.back { animation: none; } .splash-bar i, .splash-logo, .landing-phone { animation: none; } .reveal { opacity: 1; transform: none; transition: none; } }

@@ -7,7 +7,9 @@ plugins {
 android {
     namespace = "com.vendora.vendora"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // Local SDK has a complete NDK 30.0.16138531; the pinned 28.2 dir is a
+    // partial download (missing source.properties). Prefer the good one.
+    ndkVersion = "30.0.16138531"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

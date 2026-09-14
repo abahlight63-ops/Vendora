@@ -13,6 +13,7 @@ dist/
 mobile/.dart_tool/
 mobile/.idea/
 mobile/build/
+mobile/android/build/
 mobile/*.iml
 **/android/app/debug/
 **/android/app/profile/

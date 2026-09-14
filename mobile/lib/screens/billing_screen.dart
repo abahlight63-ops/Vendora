@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api.dart';
+import '../motion.dart';
 
 const _webBilling = 'https://vendorabot.vercel.app/billing';
 
@@ -62,7 +63,20 @@ class _BillingScreenState extends State<BillingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) {
+      return ListView(
+        padding: const EdgeInsets.all(16),
+        children: const [
+          Skeleton(height: 110),
+          SizedBox(height: 12),
+          Skeleton(height: 64),
+          SizedBox(height: 10),
+          Skeleton(height: 64),
+          SizedBox(height: 10),
+          Skeleton(height: 64),
+        ],
+      );
+    }
     if (_err != null) {
       return Center(
           child: Column(mainAxisSize: MainAxisSize.min, children: [

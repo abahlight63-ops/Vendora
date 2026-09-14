@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vendora — Full Setup Guide (keys, deploy, WhatsApp, Play Store)</title>
+<meta name="description" content="One page: run Vendora locally, fill every API key step by step, deploy, go live on WhatsApp, publish to Play Store." />
+<style>
+:root{--bg:#0d1f16;--bg2:#0a1811;--card:#12291d;--line:#1f4030;--ink:#f2f7f3;
+--muted:#9fc3ad;--green:#25d366;--gold:#ffcf5c;--red:#ff7a70;--blue:#4da3ff;--r:16px}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;line-height:1.65}
+.wrap{max-width:1000px;margin:0 auto;padding:0 20px}
+header.hero{padding:56px 0 8px;text-align:center}
+header.hero h1{font-size:clamp(1.9rem,4.6vw,3rem);font-weight:900;letter-spacing:-.02em}
+header.hero h1 em{font-style:normal;color:var(--green)}
+.stamp{display:inline-block;margin-top:12px;font-size:.82rem;color:var(--muted);border:1px solid var(--line);
+border-radius:999px;padding:6px 16px}
+.stamp b{color:var(--gold)}
+nav.toc{position:sticky;top:0;z-index:50;background:rgba(13,31,22,.92);backdrop-filter:blur(10px);
+border-bottom:1px solid var(--line);padding:10px 0;margin-top:24px}
+nav.toc .wrap{display:flex;gap:8px;overflow-x:auto}
+nav.toc a{color:var(--muted);text-decoration:none;font-size:.8rem;font-weight:700;white-space:nowrap;
+border:1px solid var(--line);border-radius:999px;padding:6px 13px}
+nav.toc a:hover{color:var(--ink);border-color:var(--green)}
+section{padding:44px 0 8px}
+h2{font-size:1.6rem;font-weight:800;margin-bottom:6px}
+.sub{color:var(--muted);margin-bottom:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px 22px;margin-bottom:14px}
+.card h3{margin-bottom:6px}
+.card p,.card li{color:#d7e7dc;font-size:.94rem}
+.card ul,.card ol{padding-left:20px;margin:8px 0}
+.card li{margin-bottom:6px}
+a{color:var(--green)}
+code{background:#0a1811;border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-size:.85em;color:#c9f2d8}
+pre{background:#0a1811;border:1px solid var(--line);border-radius:12px;padding:14px 16px;overflow-x:auto;
+font-size:.83rem;color:#c9f2d8;margin:10px 0}
+.badge{display:inline-block;font-size:.68rem;font-weight:800;letter-spacing:.06em;border-radius:6px;padding:3px 10px;margin-bottom:8px}
+.b-miss{background:rgba(255,122,112,.15);color:var(--red);border:1px solid rgba(255,122,112,.4)}
+.b-have{background:rgba(37,211,102,.13);color:#7ef0c0;border:1px solid rgba(37,211,102,.4)}
+.b-opt{background:rgba(255,207,92,.12);color:var(--gold);border:1px solid rgba(255,207,92,.4)}
+.b-info{background:rgba(77,163,255,.12);color:var(--blue);border:1px solid rgba(77,163,255,.4)}
+details.key{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--card);overflow:hidden}
+details.key summary{cursor:pointer;padding:14px 18px;font-weight:700;list-style:none;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+details.key summary::-webkit-details-marker{display:none}
+details.key summary:hover{border-color:var(--green)}
+details.key .body{padding:0 18px 16px;color:#d7e7dc;font-size:.92rem}
+.dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
+.dot.red{background:var(--red)}.dot.green{background:var(--green)}.dot.gold{background:var(--gold)}
+label.tick{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px dashed var(--line);
+cursor:pointer;font-size:.92rem;color:#d7e7dc}
+label.tick:last-child{border-bottom:0}
+label.tick input{margin-top:5px;accent-color:var(--green);width:16px;height:16px}
+label.tick.done span{color:var(--muted);text-decoration:line-through}
+table{width:100%;border-collapse:collapse;font-size:.88rem;margin:10px 0}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-size:.76rem;text-transform:uppercase;letter-spacing:.06em}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.prog{height:8px;background:#0a1811;border-radius:99px;overflow:hidden;margin:10px 0 2px}
+.prog i{display:block;height:100%;width:0;background:var(--green);transition:width .3s}
+footer{border-top:1px solid var(--line);margin-top:40px;padding:22px 0 40px;color:var(--muted);font-size:.85rem;text-align:center}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}}
+@media print{nav.toc,.prog{display:none}body{background:#fff;color:#111}.card,details.key{background:#fff;border-color:#ccc}.card p,.card li{color:#222}}
+</style>
+</head>
+<body>
+
+<header class="hero wrap">
+  <h1>Vendora <em>Setup Bible</em> 📖</h1>
+  <p class="sub">Run it locally → fill every key → deploy → WhatsApp live → Play Store. One page, zero guesswork.</p>
+  <span class="stamp">Key status stamped <b>2026-09-14</b> · names only — your secret <b>values are never printed</b> · progress ticks save in this browser</span>
+  <div class="prog"><i id="progBar"></i></div>
+  <p class="sub" style="font-size:.8rem"><span id="progTxt">0%</span> complete</p>
+</header>
+
+<nav class="toc"><div class="wrap">
+  <a href="#map">🗺 Map</a><a href="#local">💻 Local run</a><a href="#keys">🔑 Keys</a>
+  <a href="#deploy">🚀 Deploy</a><a href="#whatsapp">💬 WhatsApp live</a><a href="#ads">📢 Monetag</a>
+  <a href="#site">🌐 Website+videos</a><a href="#play">▶ Play Store</a><a href="#launch">✅ Launch</a><a href="#sos">🆘 Fix-it</a>
+</div></nav>
+
+<main class="wrap">
+
+<!-- 1 MAP -->
+<section id="map"><h2>1 · 🗺 The map (read this first)</h2>
+<p class="sub">One backend, three faces. Never point one client at a different host or users see different data.</p>
+<div class="card"><table>
+<tr><th>Piece</th><th>Where it lives</th><th>Talks to</th></tr>
+<tr><td><b>Backend</b> (Express + Postgres)</td><td>Render · <code>vendora-fsse.onrender.com</code></td><td>Everything below hits this</td></tr>
+<tr><td><b>Web app</b> (React)</td><td>Vercel · <code>vendorabot.vercel.app</code> (proxies <code>/api/*</code> → Render)</td><td>Same backend, cookie session</td></tr>
+<tr><td><b>Marketing site</b> (static)</td><td>Netlify · <code>website/</code> folder</td><td>Links only — no API calls</td></tr>
+<tr><td><b>Flutter app</b> (native Dart)</td><td>Play Store (your phone)</td><td>Same backend via <code>API_BASE_URL</code></td></tr>
+</table></div></section>
+
+<!-- 2 LOCAL -->
+<section id="local"><h2>2 · 💻 Run it on your PC</h2><p class="sub">Tick as you go — the bar at the top fills.</p>
+<div class="card"><div id="localChecks">
+<label class="tick"><input type="checkbox" data-k="l1" /><span><code>npm install</code> in repo root</span></label>
+<label class="tick"><input type="checkbox" data-k="l2" /><span>Copy <code>.env.example</code> → <code>.env</code>, fill Section 3 keys</span></label>
+<label class="tick"><input type="checkbox" data-k="l3" /><span><code>npm run db:init</code> → “Schema created”</span></label>
+<label class="tick"><input type="checkbox" data-k="l4" /><span><code>npm run db:seed</code> (test business)</span></label>
+<label class="tick"><input type="checkbox" data-k="l5" /><span><code>npm run dev</code> → open <code>http://localhost:3000/login</code>, sign up, verify OTP</span></label>
+<label class="tick"><input type="checkbox" data-k="l6" /><span>Dashboard loads, add a product, Playground answers</span></label>
+</div></div></section>
+
+<!-- 3 KEYS -->
+<section id="keys"><h2>3 · 🔑 Every key, step by step</h2>
+<p class="sub"><span class="badge b-miss">❌ MISSING (17)</span> fill in impact order ·
+<span class="badge b-have">✅ YOU HAVE IT (48)</span> collapsed at the bottom · <span class="badge b-opt">OPTIONAL</span> skippable without shame.</p>
+
+<details class="key" open><summary><span class="dot red"></span><code>ADMIN_PASSWORD</code> <span class="badge b-miss">❌ MISSING · 2 min · unlocks /admin</span></summary>
+<div class="body"><p>No website gives this — <b>invent a long random string yourself</b> (password manager). Puts the private admin console behind YOUR password. Set in local <code>.env</code> AND Render → Variables. Without it, <code>/admin</code> stays locked.</p></div></details>
+
+<details class="key"><summary><span class="dot red"></span><code>BANK_NAME · BANK_ACCOUNT_NUMBER · BANK_ACCOUNT_NAME</code> <span class="badge b-miss">❌ MISSING · unlocks transfer revenue</span></summary>
+<div class="body"><p>Your own bank account (the one customers pay into). Type all three yourself — all set = transfer block appears on Billing; any empty = hidden. Claims are verified against your statement in Admin → Transfers.</p></div></details>
+
+<details class="key"><summary><span class="dot red"></span><code>PUBLIC_BASE_URL · FRONTEND_URL</code> <span class="badge b-miss">❌ MISSING locally = correct · REQUIRED on Render</span></summary>
+<div class="body"><p>Leave empty locally (same-origin mode). On Render set:
+<code>PUBLIC_BASE_URL=https://vendora-fsse.onrender.com</code> and
+<code>FRONTEND_URL=https://vendorabot.vercel.app</code>. Without these, cross-site cookies + Paystack callback break in production.</p></div></details>
+
+<details class="key"><summary><span class="dot gold"></span><code>TELEGRAM_WEBHOOK_SECRET · TELEGRAM_SHARED_BOT_TOKEN · TELEGRAM_SHARED_BOT_NAME</code> <span class="badge b-opt">OPTIONAL · Telegram channel only</span></summary>
+<div class="body"><ol><li>Telegram → chat with <b>@BotFather</b> → <code>/newbot</code> → name it → copy the token → <code>TELEGRAM_SHARED_BOT_TOKEN</code>, username → <code>TELEGRAM_SHARED_BOT_NAME</code>. Free.</li><li>Invent a random string → <code>TELEGRAM_WEBHOOK_SECRET</code> (same value goes in every BotFather <code>setWebhook … secret_token</code> call).</li><li>Skip all three = Telegram stays off, WhatsApp unaffected.</li></ol></div></details>
+
+<details class="key"><summary><span class="dot gold"></span><code>OPENROUTER_API_KEY · OPENAI_API_KEY</code> <span class="badge b-opt">OPTIONAL · extra AI brains</span></summary>
+<div class="body"><p>Backup AIs only (Gemini + Groq already cover you free).
+OpenRouter: <code>openrouter.ai</code> → Keys (free <code>:free</code> models). OpenAI: <code>platform.openai.com</code> → API keys (paid, cheapest <code>gpt-4o-mini</code>).</p></div></details>
+
+<details class="key"><summary><span class="dot gold"></span><code>ADS_SCRIPT_URL(2) · SPONSOR_*</code> <span class="badge b-opt">OPTIONAL · ad money</span></summary>
+<div class="body"><p>Networks: Monetag (<code>monetag.com</code> → Sites → MultiTag zone → tag URL) and optional Adsterra Social Bar. Direct sponsor (best ₦): set <code>SPONSOR_TITLE + TEXT + LINK + IMAGE + RATE</code> for one local business; clicks logged, invoice via <code>GET /api/ads/stats</code> + admin key. Full playbook in Section 6.</p></div></details>
+
+<details class="key"><summary><span class="dot green"></span>✅ Already filled (48) — verify, don't re-fetch</summary>
+<div class="body"><p><code>GEMINI_API_KEY</code> (aistudio.google.com) · <code>GROQ_API_KEY</code> (console.groq.com) ·
+<code>RESEND_API_KEY</code> (resend.com) · <code>TWILIO_ACCOUNT_SID / AUTH_TOKEN / WHATSAPP_NUMBER</code> (twilio.com) ·
+<code>PAYSTACK_SECRET_KEY</code> (<code>sk_test_…</code> now, <code>sk_live_…</code> after BVN+NIN+CAC) ·
+<code>GOOGLE_CLIENT_ID</code> (Cloud Console, External type!) · <code>SESSION_SECRET, ADMIN_API_KEY, DATABASE_URL</code> ·
+prices, caps, models. If a feature says “down”, re-check its key + restart (<code>Ctrl+C, npm run dev</code>; Render redeploys itself).</p></div></details>
+</section>
+
+<!-- 4 DEPLOY -->
+<section id="deploy"><h2>4 · 🚀 Deploy (backend → web → site)</h2><p class="sub">Env mirror: local <code>.env</code> never uploads — re-type each var on the host.</p>
+<div class="card"><ol>
+<li><b>Render (backend):</b> Blueprint from <code>render.yaml</code> → add secrets (Section 3) → set <code>PUBLIC_BASE_URL</code> → one-off <code>node scripts/schema.js</code> → <code>/health</code> → <code>{"status":"ok"}</code>.</li>
+<li><b>Vercel (web):</b> imports repo, <code>npm run build</code> → <code>dist/</code>. Optional <code>VITE_API_URL</code> override; default proxy already targets Render. Redeploy after env changes.</li>
+<li><b>Netlify (site):</b> same repo → base <code>website</code>, publish <code>website</code>, no build command. Set <code>WEBSITE_URL</code> in <code>Landing.jsx</code> once live to show “Full website ↗”.</li>
+<li><b>Callbacks after every move:</b> Twilio webhook → <code>/webhook/whatsapp</code> · Paystack → <code>/webhook/paystack</code> · Telegram <code>setWebhook</code> · Google authorized origins.</li>
+</ol></div></section>
+
+<!-- 5 WHATSAPP -->
+<section id="whatsapp"><h2>5 · 💬 WhatsApp go-live</h2><p class="sub">Sandbox (free test) → live number (real money).</p>
+<div class="card"><ol>
+<li>Twilio Console → copy SID + Token → <code>TWILIO_*</code> → sandbox number <code>whatsapp:+14155238886</code>.</li>
+<li>Expose server (<code>ngrok http 3000</code> locally, or Render URL) → sandbox “message comes in” → <code>https://&lt;host&gt;/webhook/whatsapp</code> (POST).</li>
+<li><code>/admin</code> → business <code>whatsapp_number</code> must match <code>To</code> EXACTLY (incl. <code>whatsapp:</code>) + 3–5 FAQs.</li>
+<li>Phone → sandbox: “What are your prices?” → AI answers from catalog (check <code>conversations</code> row).</li>
+<li>Live: buy/verify Business number → webhook → same URL → update business number. Done.</li>
+</ol></div></section>
+
+<!-- 6 ADS -->
+<section id="ads"><h2>6 · 📢 Monetag + sponsors (money)</h2><p class="sub">Networks pay pennies at low volume — one direct sponsor beats them 10:1.</p>
+<div class="card"><ul>
+<li><b>Monetag:</b> Sites → verify (your <code>/sw.js</code> zone <code>11798042</code> is pushed ✅) → MultiTag zone → tag URL → Render <code>ADS_PROVIDER=monetag</code> + <code>ADS_SCRIPT_URL=&lt;url&gt;</code> → redeploy. Cap popunder to 1/session; earnings in Monetag dashboard.</li>
+<li><b>Sponsor:</b> one local business → agree ₦/click (default 50) → set <code>SPONSOR_TITLE/TEXT/LINK/IMAGE/RATE</code> → free users see a labeled card max 1/day → month-end <code>GET /api/ads/stats</code> (x-admin-key) → invoice clicks × rate.</li>
+</ul></div></section>
+
+<!-- 7 SITE -->
+<section id="site"><h2>7 · 🌐 Website + video ads</h2><p class="sub">Netlify + <code>website/video-prompts.md</code> (CapCut ~$8–10, Hailuo ~$10, Runway ~$15, InVideo ~$15–20).</p>
+<div class="card"><ol>
+<li>Netlify publish (Section 4.3) → all CTAs already point at <code>vendorabot.vercel.app</code>.</li>
+<li>Make 4 videos with the prompts file: 15s hero (9:16) → slot <code>hero-916</code> · 30s how-it-works (16:9) → <code>how-169</code> · UGC testimonial (film real!) · founder story (pinned).</li>
+<li>Drop MP4 URLs into the matching <code>&lt;source src=""&gt;</code> in <code>website/index.html</code> → push → Netlify rebuilds.</li>
+<li>Post native everywhere; reply to every comment week 1.</li>
+</ol></div></section>
+
+<!-- 8 PLAY -->
+<section id="play"><h2>8 · ▶ Play Store (when you have $25)</h2><p class="sub">Two routes — Flutter native (real app) is ready; TWA wrapper is the fallback.</p>
+<div class="card"><ol>
+<li><b>Flutter (recommended — built ✅):</b> <code>cd mobile → flutter pub get → flutter run</code> (live backend by default). <code>flutter build appbundle --dart-define API_BASE_URL=https://vendora-fsse.onrender.com</code> → <code>.aab</code>.</li>
+<li>Pay $25 → <code>play.google.com/console</code> → verify → Create app → upload <code>.aab</code> (package <code>com.vendora.vendora</code>).</li>
+<li>Listing: name Vendora, Business category, 1080×1920 screenshots (use the site's chat demo!), 1024×500 feature graphic, privacy URL <code>vendorabot.vercel.app/privacy</code>.</li>
+<li>Rating + audience questionnaires → internal test track → production. <b>Back up the signing keystore — losing it = never update again.</b></li>
+<li><b>TWA fallback:</b> manifest + <code>assetlinks.json</code> already ship in <code>dist/</code> → PWABuilder → replace <code>REPLACE_WITH_PLAY_SIGNING_SHA256</code> → push.</li>
+</ol></div></section>
+
+<!-- 9 LAUNCH -->
+<section id="launch"><h2>9 · ✅ Launch checklist</h2><p class="sub">Everything above, in go-live order.</p>
+<div class="card"><div id="launchChecks">
+<label class="tick"><input type="checkbox" data-k="g1" /><span>ADMIN_PASSWORD set locally + Render</span></label>
+<label class="tick"><input type="checkbox" data-k="g2" /><span>BANK_* trio set (transfer revenue on)</span></label>
+<label class="tick"><input type="checkbox" data-k="g3" /><span>Render: PUBLIC_BASE_URL + FRONTEND_URL set, /health ok</span></label>
+<label class="tick"><input type="checkbox" data-k="g4" /><span>Vercel web live: signup → OTP → catalog → playground</span></label>
+<label class="tick"><input type="checkbox" data-k="g5" /><span>Twilio webhook live, test message answered from catalog</span></label>
+<label class="tick"><input type="checkbox" data-k="g6" /><span>Google login works in production (origins allowlisted)</span></label>
+<label class="tick"><input type="checkbox" data-k="g7" /><span>Netlify site published, WEBSITE_URL set in app</span></label>
+<label class="tick"><input type="checkbox" data-k="g8" /><span>First sponsor live (SPONSOR_* set)</span></label>
+<label class="tick"><input type="checkbox" data-k="g9" /><span>Play Console paid, AAB uploaded, internal test running</span></label>
+</div></div></section>
+
+<!-- 10 FIX -->
+<section id="sos"><h2>10 · 🆘 Fix-it table</h2><p class="sub">Symptom → cause → fix. Copy the error text before changing anything.</p>
+<div class="card"><table>
+<tr><th>You see</th><th>Means</th><th>Fix</th></tr>
+<tr><td>“Google sign-in is not switched on”</td><td>No GOOGLE_CLIENT_ID / not restarted</td><td>Set var + restart; check <code>/api/auth/config</code></td></tr>
+<tr><td>Google popup closes instantly</td><td>Origin not allowlisted / adblock</td><td>Add exact https origin; wait ~5 min</td></tr>
+<tr><td>Error 403 access_denied (Google)</td><td>Consent screen = Internal</td><td>Switch to External or remake project</td></tr>
+<tr><td>Bot silent on WhatsApp</td><td>Number mismatch / webhook wrong</td><td>Match <code>whatsapp_number</code> incl. prefix; re-set webhook POST</td></tr>
+<tr><td>“AI is down / resting”</td><td>Bad AI key or quota spent</td><td>Re-check GEMINI/GROQ keys; 429 = wait / upgrade</td></tr>
+<tr><td>No card button (was removed from UI)</td><td>No real Paystack key</td><td>Set <code>PAYSTACK_SECRET_KEY</code> (sk_test_… now)</td></tr>
+<tr><td>Login loops / session lost</td><td>Cookie/CORS or split-deploy mismatch</td><td>FRONTEND_URL exact on backend; same backend everywhere</td></tr>
+<tr><td>Monetag “not verified”</td><td>sw.js unreachable</td><td>Open <code>/sw.js</code> on the verified domain; redeploy</td></tr>
+</table></div></section>
+
+</main>
+
+<footer>© 2026 Vendora Setup Bible · stamped 2026-09-14 · companions:
+<code>RAILWAY.md</code> · <code>GOOGLE_AUTH_SETUP.md</code> · <code>mobile/README.md</code> · <code>website/video-prompts.md</code></footer>
+
+<script>
+// Progress: all checkboxes persist in this browser; bar fills as you tick.
+const boxes=[...document.querySelectorAll('input[type=checkbox][data-k]')];
+const bar=document.getElementById('progBar'),txt=document.getElementById('progTxt');
+function paint(){
+  const done=boxes.filter(b=>b.checked).length,pct=Math.round(done/boxes.length*100);
+  bar.style.width=pct+'%';txt.textContent=pct+'% complete ('+done+'/'+boxes.length+')';
+  boxes.forEach(b=>b.closest('label').classList.toggle('done',b.checked));
+}
+boxes.forEach(b=>{
+  b.checked=localStorage.getItem('vendora-setup-'+b.dataset.k)==='1';
+  b.addEventListener('change',()=>{localStorage.setItem('vendora-setup-'+b.dataset.k,b.checked?'1':'0');paint();});
+});
+paint();
+</script>
+</body>
+</html>

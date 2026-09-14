@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 
 import '../api.dart';
+import '../motion.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -42,7 +43,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return ListView(
+        padding: const EdgeInsets.all(16),
+        children: const [
+          Skeleton(height: 120),
+          SizedBox(height: 12),
+          Skeleton(height: 64),
+          SizedBox(height: 12),
+          Skeleton(height: 90),
+        ],
+      );
     }
     if (_err != null) {
       return Center(
@@ -95,14 +105,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               subtitle: const Text('Kill-switch: silence every chat instantly'),
               value: botOn,
               onChanged: (v) async {
-                final messenger = ScaffoldMessenger.of(context);
                 try {
                   await ApiClient.instance
                       .post('/api/me/bot', {'enabled': v});
                   _load();
                 } on ApiException catch (e) {
-                  messenger.showSnackBar(
-                      SnackBar(content: Text(e.message)));
+                  if (context.mounted) {
+                    showToast(context, e.message, type: 'err');
+                  }
                 }
               },
             ),

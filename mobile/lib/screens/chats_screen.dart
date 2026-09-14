@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 
 import '../api.dart';
+import '../motion.dart';
 
 class ChatsScreen extends StatefulWidget {
   const ChatsScreen({super.key});
@@ -43,7 +44,16 @@ class _ChatsScreenState extends State<ChatsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) {
+      return ListView.builder(
+        padding: const EdgeInsets.all(12),
+        itemCount: 5,
+        itemBuilder: (_, i) => const Padding(
+          padding: EdgeInsets.only(bottom: 8),
+          child: Skeleton(height: 76),
+        ),
+      );
+    }
     if (_err != null) {
       return Center(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -64,7 +74,9 @@ class _ChatsScreenState extends State<ChatsScreen> {
           final m = (_chats![i] as Map).cast<String, dynamic>();
           final needsHuman = m['needs_human'] == true;
           final paused = m['bot_paused'] == true;
-          return Card(
+          return FadeSlideIn(
+            delayMs: (i * 60).clamp(0, 300),
+            child: Card(
             margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             child: ListTile(
               leading: CircleAvatar(
@@ -88,7 +100,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                       builder: (_) => ThreadScreen(chat: m)))
                   .then((_) => _load()),
             ),
-          );
+          ));
         },
       ),
     );
@@ -138,13 +150,14 @@ class _ThreadScreenState extends State<ThreadScreen> {
             Switch(
               value: _paused,
               onChanged: (v) async {
-                final messenger = ScaffoldMessenger.of(context);
                 try {
                   await ApiClient.instance
                       .takeover(widget.chat['id'], v);
                   setState(() => _paused = v);
                 } on ApiException catch (e) {
-                  messenger.showSnackBar(SnackBar(content: Text(e.message)));
+                  if (context.mounted) {
+                    showToast(context, e.message, type: 'err');
+                  }
                 }
               },
             ),
@@ -154,31 +167,57 @@ class _ThreadScreenState extends State<ThreadScreen> {
       body: _err != null
           ? Center(child: Text(_err!))
           : _msgs == null
-              ? const Center(child: CircularProgressIndicator())
+              ? ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: 6,
+                  itemBuilder: (_, i) => Align(
+                    alignment: i.isEven
+                        ? Alignment.centerLeft
+                        : Alignment.centerRight,
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      child: Skeleton(
+                        height: 44,
+                        width: MediaQuery.of(context).size.width *
+                            (0.5 + (i % 3) * 0.1),
+                        radius: 14,
+                      ),
+                    ),
+                  ),
+                )
               : ListView.builder(
                   padding: const EdgeInsets.all(12),
                   itemCount: _msgs!.length,
                   itemBuilder: (c, i) {
                     final m = (_msgs![i] as Map).cast<String, dynamic>();
                     final incoming = m['direction'] == 'in';
-                    return Align(
-                      alignment: incoming
-                          ? Alignment.centerLeft
-                          : Alignment.centerRight,
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
-                        constraints: BoxConstraints(
-                            maxWidth:
-                                MediaQuery.of(context).size.width * 0.8),
-                        decoration: BoxDecoration(
-                          color: incoming
-                              ? const Color(0xFF1D2F24)
-                              : const Color(0xFF128C4B),
-                          borderRadius: BorderRadius.circular(14),
+                    return FadeSlideIn(
+                      child: Align(
+                        alignment: incoming
+                            ? Alignment.centerLeft
+                            : Alignment.centerRight,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          constraints: BoxConstraints(
+                              maxWidth:
+                                  MediaQuery.of(context).size.width * 0.8),
+                          decoration: BoxDecoration(
+                            color: incoming
+                                ? Theme.of(context).colorScheme.surface
+                                : Theme.of(context).colorScheme.primary,
+                            border: incoming
+                                ? Border.all(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .outline
+                                        .withValues(alpha: 0.4))
+                                : null,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Text('${m['body'] ?? ''}'),
                         ),
-                        child: Text('${m['body'] ?? ''}'),
                       ),
                     );
                   },

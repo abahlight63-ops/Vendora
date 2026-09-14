@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 
 import '../api.dart';
+import '../motion.dart';
 
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
@@ -51,10 +52,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   Future<void> _add() async {
-    final messenger = ScaffoldMessenger.of(context);
     if (_name.text.trim().isEmpty) {
-      messenger.showSnackBar(
-          const SnackBar(content: Text('Product name required')));
+      showToast(context, 'Product name required', type: 'err');
       return;
     }
     try {
@@ -66,7 +65,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       if (mounted) FocusScope.of(context).unfocus();
       _load();
     } on ApiException catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      if (mounted) showToast(context, e.message, type: 'err');
     }
   }
 
@@ -109,7 +108,14 @@ class _CatalogScreenState extends State<CatalogScreen> {
       ),
       Expanded(
         child: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: 4,
+                itemBuilder: (_, i) => const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Skeleton(height: 64),
+                ),
+              )
             : _err != null
                 ? Center(child: Text(_err!))
                 : _items!.isEmpty
@@ -123,28 +129,31 @@ class _CatalogScreenState extends State<CatalogScreen> {
                           itemBuilder: (c, i) {
                             final p =
                                 (_items![i] as Map).cast<String, dynamic>();
-                            return Card(
-                              margin: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 5),
-                              child: ListTile(
-                                title: Text('${p['name']}'),
-                                subtitle: Text(
-                                    '${p['price'] ?? ''} ${p['description'] ?? ''}'
-                                        .trim()),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.delete_outline),
-                                  onPressed: () async {
-                                    final messenger =
-                                        ScaffoldMessenger.of(context);
-                                    try {
-                                      await ApiClient.instance
-                                          .deleteProduct(p['id']);
-                                      _load();
+                            return FadeSlideIn(
+                              delayMs: (i * 60).clamp(0, 300),
+                              child: Card(
+                                margin: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 5),
+                                child: ListTile(
+                                  title: Text('${p['name']}'),
+                                  subtitle: Text(
+                                      '${p['price'] ?? ''} ${p['description'] ?? ''}'
+                                          .trim()),
+                                  trailing: IconButton(
+                                    icon: const Icon(Icons.delete_outline),
+                                    onPressed: () async {
+                                      try {
+                                        await ApiClient.instance
+                                            .deleteProduct(p['id']);
+                                        _load();
                                     } on ApiException catch (e) {
-                                      messenger.showSnackBar(SnackBar(
-                                          content: Text(e.message)));
+                                      if (context.mounted) {
+                                        showToast(context, e.message,
+                                            type: 'err');
+                                      }
                                     }
-                                  },
+                                    },
+                                  ),
                                 ),
                               ),
                             );

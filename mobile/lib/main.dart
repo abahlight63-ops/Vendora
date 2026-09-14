@@ -1,12 +1,13 @@
 // ── lib/main.dart ────────────────────────────────────────────────
-// WHAT: app entry. Session gate (cookie present → try /api/me → in;
-// 401/empty → AuthScreen) + bottom-nav shell (Dashboard, Chats,
-// Catalog, AI, Billing) + logout. Run with:
-//   flutter run --dart-define API_BASE_URL=https://<backend>
+// WHAT: app entry. Splash gate (brand intro ≥1.5s while the session check
+// runs — same timing as Splash.jsx) + light/dark themes (same tokens as
+// the web app; toggle in the top bar, persisted) + bottom-nav shell.
+// Run with: flutter run --dart-define API_BASE_URL=https://<backend>
 import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'theme.dart';
+import 'splash.dart';
 import 'screens/auth_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/chats_screen.dart';
@@ -25,32 +26,56 @@ class VendoraApp extends StatefulWidget {
 
 class _VendoraAppState extends State<VendoraApp> {
   bool? _authed; // null = checking
+  ThemeMode _mode = ThemeMode.system;
 
   @override
   void initState() {
     super.initState();
-    _check();
+    _boot();
   }
 
-  Future<void> _check() async {
-    try {
-      await ApiClient.instance.me(); // cookie valid?
-      if (mounted) setState(() => _authed = true);
-    } catch (_) {
-      if (mounted) setState(() => _authed = false);
-    }
+  Future<void> _boot() async {
+    // Web parity: splash never shorter than 1.5s (Splash.jsx timing).
+    final wait = Future.delayed(const Duration(milliseconds: 1500));
+    final results = await Future.wait([
+      wait,
+      VendoraTheme.loadMode(),
+      (() async {
+        try {
+          await ApiClient.instance.me(); // cookie valid?
+          return true;
+        } catch (_) {
+          return false;
+        }
+      })(),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _mode = results[1] as ThemeMode;
+      _authed = results[2] as bool;
+    });
+  }
+
+  Future<void> _setMode(ThemeMode m) async {
+    await VendoraTheme.saveMode(m);
+    if (mounted) setState(() => _mode = m);
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Vendora',
-      theme: VendoraTheme.dark,
+      theme: VendoraTheme.light,
+      darkTheme: VendoraTheme.dark,
+      themeMode: _mode,
       home: _authed == null
-          ? const Scaffold(
-              body: Center(child: CircularProgressIndicator()))
+          ? const SplashView()
           : _authed!
-              ? HomeShell(onLogout: () => setState(() => _authed = false))
+              ? HomeShell(
+                  mode: _mode,
+                  onMode: _setMode,
+                  onLogout: () => setState(() => _authed = false),
+                )
               : AuthScreen(onAuthed: () => setState(() => _authed = true)),
     );
   }
@@ -58,7 +83,13 @@ class _VendoraAppState extends State<VendoraApp> {
 
 class HomeShell extends StatefulWidget {
   final VoidCallback onLogout;
-  const HomeShell({super.key, required this.onLogout});
+  final ThemeMode mode;
+  final ValueChanged<ThemeMode> onMode;
+  const HomeShell(
+      {super.key,
+      required this.onLogout,
+      required this.mode,
+      required this.onMode});
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -77,10 +108,18 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_tab]),
         actions: [
+          // Same dark/light switch as the web nav (ThemeToggle).
+          IconButton(
+            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+            tooltip: 'Toggle theme',
+            onPressed: () => widget.onMode(
+                isDark ? ThemeMode.light : ThemeMode.dark),
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sign out',

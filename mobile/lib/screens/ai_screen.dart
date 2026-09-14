@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 
 import '../api.dart';
+import '../motion.dart';
 
 class AiScreen extends StatefulWidget {
   const AiScreen({super.key});
@@ -118,37 +119,57 @@ class _AiScreenState extends State<AiScreen> {
             : ListView.builder(
                 controller: _scroll,
                 padding: const EdgeInsets.all(12),
-                itemCount: _msgs.length,
+                itemCount: _msgs.length + (_busy ? 1 : 0),
                 itemBuilder: (c, i) {
+                  // Web parity: typing dots while the brain thinks.
+                  if (i >= _msgs.length) {
+                    return const Align(
+                      alignment: Alignment.centerLeft,
+                      child: _TypingBubble(),
+                    );
+                  }
                   final m = _msgs[i];
-                  return Align(
-                    alignment: m.mine
-                        ? Alignment.centerRight
-                        : Alignment.centerLeft,
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(vertical: 4),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
-                      constraints: BoxConstraints(
-                          maxWidth:
-                              MediaQuery.of(context).size.width * 0.82),
-                      decoration: BoxDecoration(
-                        color: m.mine
-                            ? const Color(0xFF128C4B)
-                            : const Color(0xFF1D2F24),
-                        borderRadius: BorderRadius.circular(14),
+                  return FadeSlideIn(
+                    child: Align(
+                      alignment: m.mine
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
+                        constraints: BoxConstraints(
+                            maxWidth:
+                                MediaQuery.of(context).size.width * 0.82),
+                        decoration: BoxDecoration(
+                          color: m.mine
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.surface,
+                          border: m.mine
+                              ? null
+                              : Border.all(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .outline
+                                      .withValues(alpha: 0.4)),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(m.text),
+                              if (m.meta != null) ...[
+                                const SizedBox(height: 4),
+                                Text(m.meta!,
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.55))),
+                              ],
+                            ]),
                       ),
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(m.text),
-                            if (m.meta != null) ...[
-                              const SizedBox(height: 4),
-                              Text(m.meta!,
-                                  style: const TextStyle(
-                                      fontSize: 11, color: Colors.grey)),
-                            ],
-                          ]),
                     ),
                   );
                 },
@@ -180,5 +201,31 @@ class _AiScreenState extends State<AiScreen> {
         ]),
       ),
     ]);
+  }
+}
+
+// Web-parity typing bubble (typing dots while the brain thinks).
+class _TypingBubble extends StatelessWidget {
+  const _TypingBubble();
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          border: Border.all(
+              color: Theme.of(context)
+                  .colorScheme
+                  .outline
+                  .withValues(alpha: 0.4)),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const TypingDots(),
+      ),
+    );
   }
 }

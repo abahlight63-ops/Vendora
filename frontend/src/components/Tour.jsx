@@ -52,6 +52,7 @@ export default function Tour() { // default export: <Tour /> mounted once inside
 
   useEffect(() => { // MEASURE the spotlight target whenever step changes.
     if (step < 0) return; // hidden → nothing to measure (early return BEFORE listeners — hooks order stays valid because the return is after ALL hooks? NO — this IS a hook call site; conditional RETURN inside effect is fine, conditional HOOKS are not)
+    if (window.innerWidth < 960) { setBox(null); return; } // PHONES: always card mode. The bottom-bar links ARE measurable, but a spotlight ring on them puts the tooltip below the bar = off-screen. Cards never misplace.
     const place = () => { // measure + store box…
       const el = targetEl(STEPS[step].sel); // find visible target for this step
       if (!el) { setBox(null); return; } // missing → card mode fallback (setBox(null) renders the centered card)
@@ -81,7 +82,10 @@ export default function Tour() { // default export: <Tour /> mounted once inside
           <div className="tour-nav">
             <button className="skip" onClick={() => stop(false)}>Skip tour</button> {/* .skip = link-styled button (CSS) */}
             <span className="hint">{step + 1} / {STEPS.length}</span> {/* "3 / 5" progress */}
-            <button className="btn sm" onClick={() => go(1)}>{last ? 'Finish' : 'Next'}</button> {/* small primary button */}
+            <span style={{ display: 'inline-flex', gap: 8 }}>
+              {step > 0 && <button className="btn ghost sm" onClick={() => go(-1)}>Back</button>} {/* Back from step 1+ (same as desktop tooltip — phones deserve it too) */}
+              <button className="btn sm" onClick={() => go(1)}>{last ? 'Finish' : 'Next'}</button>
+            </span>
           </div>
         </div>
       </div>

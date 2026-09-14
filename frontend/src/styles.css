@@ -860,5 +860,33 @@ tbody tr.rowlink:hover { background: #f6fef9; }
   .grid4 { gap: 8px; }
   .stat { padding: 12px; }
 }
+/* ── WELCOME TOUR, DESIGNED FOR PHONES (was desktop-shaped: centered 340px card,
+   spotlight math aimed at the sidebar, art panel eating half the screen).
+   Phones now get: tour = bottom sheet (thumb-reachable, safe-area aware);
+   onboarding = compact art + full-width stacked buttons. Desktop untouched. */
+@media (max-width: 960px) {
+  /* coachmark cards dock to the bottom like a sheet, not a floating box */
+  .tour-overlay { place-items: end center; padding: 0; }
+  .tour-card { max-width: none; width: 100%; border-radius: 22px 22px 0 0; border-bottom: none; padding: 20px 18px calc(20px + env(safe-area-inset-bottom)); animation: sheetUp 0.32s cubic-bezier(0.2, 0.9, 0.25, 1) both; }
+  @keyframes sheetUp { from { opacity: 0; transform: translateY(60px); } to { opacity: 1; transform: none; } }
+  .tour-card h3 { font-size: 19px; }
+  .tour-card p { font-size: 14px; }
+  .tour-nav { gap: 10px; }
+  .tour-nav .btn { min-height: 44px; }
+  /* onboarding: art sips space so copy + buttons fit without scrolling forever */
+  .welcome { padding: 16px 12px 28px; }
+  .slide-art { padding: 18px 16px; }
+  .neu-frame { padding: 8px; }
+  .neu-img { aspect-ratio: 16/9; } /* wide crop on phones: half the vertical cost */
+  .float-ic { width: 36px; height: 36px; }
+  .slide-copy { padding: 20px 16px; }
+  .slide-copy h1 { font-size: 22px; }
+  .slide-copy .lede { font-size: 14px; }
+  .slide-points span { font-size: 12.5px; }
+  .learn-box { font-size: 12.5px; overflow-wrap: anywhere; }
+  /* nav buttons stack full-width: Back on top, CTA below (long labels never collide) */
+  .welcome-nav { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .welcome-nav .btn { width: 100%; min-height: 48px; font-size: 15px; }
+}
 
 @media (prefers-reduced-motion: reduce) { .page { animation: none; } .slide.fwd, .slide.back { animation: none; } .splash-bar i, .splash-logo, .landing-phone { animation: none; } .reveal { opacity: 1; transform: none; transition: none; } }

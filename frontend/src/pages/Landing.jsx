@@ -8,6 +8,10 @@ import { Link } from 'react-router-dom'; // Links (client-side nav, no reloads)
 import ThemeToggle from '../components/ThemeToggle.jsx'; // theme switch in the nav (guests get dark mode too!)
 import { useCurrency } from '../lib/locale.js'; // location → 'NGN' | 'USD' (single-currency pricing!)
 
+// WEBSITE_URL: the Netlify marketing site (full videos + story). Empty string =
+// link hidden (set once Netlify is live, e.g. https://vendorabot.netlify.app).
+const WEBSITE_URL = '';
+
 export default function Landing({ theme = 'light', onToggleTheme = () => {} }) { // theme props from App (defaults = safe standalone render)
   const cur = useCurrency(); // visitor currency (NGN default → corrected after IP/timezone detection, auto re-render!)
   useEffect(() => { // mount: title + scroll-reveal wiring…
@@ -102,6 +106,7 @@ export default function Landing({ theme = 'light', onToggleTheme = () => {} }) {
 
       <footer className="foot-links landing-inner"> {/* <footer> semantic landmark: legal links + copyright */}
         <Link to="/faq">FAQ</Link><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link> {/* Router Links (client-side) */}
+        {WEBSITE_URL && <a href={WEBSITE_URL} target="_blank" rel="noreferrer">Full website ↗</a>} {/* marketing site (hidden until WEBSITE_URL set!) */}
         <span className="hint">© 2026 Vendora · Made for shops that never sleep</span>
       </footer>
     </div>

@@ -1,0 +1,28 @@
+# Netlify deploy — Vendora marketing site (standalone, same repo)
+# Dashboard: Add new site → Import from GitHub → SAME repo (abahlight63-ops/Vendora)
+# → Base directory: website → Build command: (empty) → Publish directory: website
+# (netlify.toml below repeats it so the dashboard pre-fills correctly.)
+
+[build]
+  base = "website/"
+  publish = "website/"
+  command = ""
+
+# SPA not needed (pure static), but keep deep links safe if anchors grow.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  conditions = { Role = ["visitor"] }
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

@@ -1,0 +1,25 @@
+{
+  "name": "Vendora — AI WhatsApp Sales Assistant",
+  "short_name": "Vendora",
+  "description": "Your WhatsApp shop, open 24/7. Instant AI answers in English or Pidgin, straight from your catalog.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d1f16",
+  "theme_color": "#0d1f16",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

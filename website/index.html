@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vendora — Your WhatsApp Shop, Open 24/7</title>
+<meta name="description" content="Vendora turns your WhatsApp number into a 24/7 AI sales rep — instant answers in English or Pidgin, straight from your catalog. Free 14-day trial." />
+<meta name="theme-color" content="#0d1f16" />
+<link rel="icon" type="image/png" href="./assets/logo.png" />
+<meta property="og:title" content="Vendora — Your WhatsApp shop, open 24/7" />
+<meta property="og:description" content="AI sales assistant for WhatsApp. Instant answers in English or Pidgin, straight from your catalog." />
+<meta property="og:type" content="website" />
+<meta property="og:image" content="./assets/logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div class="bg-glow" aria-hidden="true"></div>
+
+<header class="nav">
+  <div class="wrap nav-row">
+    <a class="brand" href="#top"><img src="./assets/logo.png" alt="Vendora logo" />VENDORA</a>
+    <nav class="nav-links">
+      <a href="#demo">Live demo</a>
+      <a href="#videos">Ads</a>
+      <a href="#how">How it works</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <span class="nav-cta">
+      <a class="btn ghost sm" href="https://vendorabot.vercel.app/login">Sign in</a>
+      <a class="btn sm" href="https://vendorabot.vercel.app/login">Start free</a>
+    </span>
+  </div>
+</header>
+
+<main id="top">
+  <!-- HERO -->
+  <section class="wrap hero">
+    <div class="hero-copy">
+      <span class="pill ok pulse-dot">● LIVE — AI selling right now</span>
+      <h1>Your WhatsApp shop, <em>open 24/7.</em></h1>
+      <p class="lede">Customers message you at midnight. Vendora answers in seconds — prices, stock, delivery — in English or Pidgin. You only step in when a human touch truly matters.</p>
+      <div class="cta-row">
+        <a class="btn lg" href="https://vendorabot.vercel.app/login">Start free — 14 days</a>
+        <a class="btn ghost lg" href="#demo">Watch it sell ↓</a>
+      </div>
+      <p class="hint">No card required · Set up in 15 minutes · Cancel anytime</p>
+      <div class="stats">
+        <div class="stat reveal"><b><span data-count="247">0</span>/7</b><span>always answering</span></div>
+        <div class="stat reveal"><b>&lt;<span data-count="10">0</span>s</b><span>median reply time</span></div>
+        <div class="stat reveal"><b><span data-count="2">0</span> langs</b><span>English + Pidgin</span></div>
+      </div>
+    </div>
+    <div class="hero-phone">
+      <div class="phone float">
+        <div class="phone-head"><i></i><span>Amaka Beauty Studio<br /><small>online · AI on duty</small></span><b class="live-tag">LIVE DEMO</b></div>
+        <div class="chat" id="liveChat" aria-live="polite"></div>
+        <div class="phone-foot">
+          <button type="button" data-scenario="0" class="chip on">Price ask</button>
+          <button type="button" data-scenario="1" class="chip">LEARN stock</button>
+          <button type="button" data-scenario="2" class="chip">Hot handoff</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NICHE MARQUEE -->
+  <div class="marquee" aria-hidden="true"><div class="marquee-track" id="marqueeTrack">
+    <span>Boutiques</span><span>Salons</span><span>Thrift vendors</span><span>Food spots</span><span>Phone sellers</span><span>Cosmetics</span><span>Bakeries</span><span>Tailors</span><span>Pharmacies</span><span>Instagram shops</span>
+  </div></div>
+
+  <!-- LIVE CHAT SECTION -->
+  <section class="wrap section" id="demo">
+    <h2 class="reveal">Watch a real conversation happen.</h2>
+    <p class="desc reveal">This is a live simulation of the Vendora reply engine — same brain that answers your customers. Tap a scenario above, or try it yourself inside the app playground.</p>
+    <div class="demo-row">
+      <div class="card reveal">
+        <h3>Why owners switch</h3>
+        <ul class="ticks">
+          <li><b>Midnight sales:</b> 2am questions get 2am answers — no missed buyers.</li>
+          <li><b>Zero invented prices:</b> every answer comes from YOUR catalog.</li>
+          <li><b>Hot-lead flags:</b> unsure moments land in your inbox with the customer's exact words.</li>
+        </ul>
+        <a class="btn" href="https://vendorabot.vercel.app/login">Try it on your own shop</a>
+      </div>
+      <div class="card reveal">
+        <h3>From your WhatsApp in 3 steps</h3>
+        <ol class="steps">
+          <li>Connect your business number (Twilio sandbox to start, live number to scale).</li>
+          <li>Teach it once — send <code>LEARN: Blue gown ₦45,000</code> or add products in Catalog.</li>
+          <li>It sells while you sleep; you close the flagged hot ones.</li>
+        </ol>
+        <a class="btn ghost" href="https://vendorabot.vercel.app/faq">Read the FAQ</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- VIDEO SLOTS -->
+  <section class="wrap section" id="videos">
+    <h2 class="reveal">See it move. Hear it sell.</h2>
+    <p class="desc reveal">AI-generated video ads drop straight into these slots — no code changes when yours are ready. Full scripts + prompts: <code>video-prompts.md</code>.</p>
+    <div class="video-grid">
+      <figure class="video-slot tall reveal">
+        <video controls preload="metadata" poster="./assets/poster-hero.svg" data-slot="hero-916">
+          <source src="" type="video/mp4" />
+        </video>
+        <figcaption><b>15s hero ad · 9:16</b><span>Slot: <code>hero-916</code> — TikTok / Reels / Shorts cut. Paste your MP4 URL into the <code>&lt;source&gt;</code> above.</span></figcaption>
+      </figure>
+      <figure class="video-slot wide reveal">
+        <video controls preload="metadata" poster="./assets/poster-how.svg" data-slot="how-169">
+          <source src="" type="video/mp4" />
+        </video>
+        <figcaption><b>30s how-it-works · 16:9</b><span>Slot: <code>how-169</code> — YouTube + hero embed. Same deal: drop in the MP4.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- HOW -->
+  <section class="wrap section" id="how">
+    <h2 class="reveal">Live in an afternoon.</h2>
+    <div class="grid3">
+      <div class="card hover-lift reveal"><div class="step-n">1</div><h3>Connect WhatsApp</h3><p class="desc">Join the sandbox free, or attach your Business number. One webhook, guided setup.</p></div>
+      <div class="card hover-lift reveal"><div class="step-n">2</div><h3>Stock the catalog</h3><p class="desc">Add products here or text LEARN: from your own phone. Prices update by name.</p></div>
+      <div class="card hover-lift reveal"><div class="step-n">3</div><h3>Let it sell</h3><p class="desc">Instant answers 24/7, ComeBack follow-ups for abandoned buyers, digest of what needs you.</p></div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="wrap section" id="features">
+    <h2 class="reveal">Everything a one-person shop needs.</h2>
+    <div class="grid3">
+      <div class="card reveal"><h3>⚡ Instant replies</h3><p class="desc">Hours, prices, stock, delivery — answered in seconds, day or night.</p></div>
+      <div class="card reveal"><h3>🗣️ Pidgin + English</h3><p class="desc">Customers ask anyhow — "Abeg, e still dey?" — and get a straight answer.</p></div>
+      <div class="card reveal"><h3>📦 LEARN mode</h3><p class="desc">Text your ad copy to your own number; the catalog updates itself.</p></div>
+      <div class="card reveal"><h3>🔥 Hot-lead flags</h3><p class="desc">Low-confidence moments route to you instantly — never a wrong guess.</p></div>
+      <div class="card reveal"><h3>💬 ComeBack follow-ups</h3><p class="desc">Abandoned buyers get a gentle nudge while the intent is still warm.</p></div>
+      <div class="card reveal"><h3>📊 Owner digest</h3><p class="desc">Daily summary of chats, flags and sales signals. Inbox zero, zero effort.</p></div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section class="wrap section" id="pricing">
+    <h2 class="reveal">One plan. Every feature.</h2>
+    <p class="desc reveal">Free 14-day Pro trial · Manual catalog free forever · Cancel anytime.</p>
+    <div class="grid3">
+      <div class="card hover-lift reveal"><h3>Monthly</h3><div class="price">₦7,500<small>/month</small></div><p class="desc">Pay as you grow.</p><a class="btn ghost sm" href="https://vendorabot.vercel.app/billing">Choose monthly</a></div>
+      <div class="card hover-lift reveal hot"><span class="badge">MOST POPULAR</span><h3>Yearly</h3><div class="price">₦50,000<small>/year</small></div><p class="desc"><b class="save">Save 44%</b> vs monthly. Priority support.</p><a class="btn sm" href="https://vendorabot.vercel.app/billing">Choose yearly</a></div>
+      <div class="card hover-lift reveal"><h3>Lifetime</h3><div class="price">₦100,000<small> once</small></div><p class="desc">Pay once, sell forever.</p><a class="btn ghost sm" href="https://vendorabot.vercel.app/billing">Go lifetime</a></div>
+    </div>
+    <p class="hint reveal">Outside Nigeria? Same plans in USD ($5 / $33 / $65) — the app adapts to your location.</p>
+  </section>
+
+  <!-- FAQ -->
+  <section class="wrap section" id="faq">
+    <h2 class="reveal">Quick answers.</h2>
+    <div class="faq">
+      <details class="reveal"><summary>Do I need a new WhatsApp number?</summary><p>No. Start on the free sandbox for testing, attach your real Business number when you're ready to sell.</p></details>
+      <details class="reveal"><summary>Will it invent prices?</summary><p>Never. It answers strictly from your catalog and hands off to you when unsure.</p></details>
+      <details class="reveal"><summary>What if I can't pay yet?</summary><p>Manual catalog + bot replies stay free forever. The 14-day Pro trial unlocks everything to start.</p></details>
+      <details class="reveal"><summary>How do I pay?</summary><p>Card via Paystack or verified bank transfer in the app's Billing page. Activation within hours.</p></details>
+      <details class="reveal"><summary>Is there an app for my phone?</summary><p>Yes — Vendora installs straight from your browser and is heading to the Play Store. Same account everywhere.</p></details>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section class="wrap section final reveal">
+    <h2>Midnight customers are waiting.</h2>
+    <p class="desc">Open your shop around the clock — free for 14 days.</p>
+    <div class="cta-row center">
+      <a class="btn lg" href="https://vendorabot.vercel.app/login">Start selling tonight</a>
+      <a class="btn ghost lg" href="https://vendorabot.vercel.app/faq">Full FAQ in the app</a>
+    </div>
+    <form class="notify" name="launch-notify" method="POST" data-netlify="true" netlify-honeypot="bot-field">
+      <input type="hidden" name="form-name" value="launch-notify" />
+      <p class="hidden"><label>Don't fill this: <input name="bot-field" /></label></p>
+      <input type="email" name="email" placeholder="Email for launch + Pro tips" required aria-label="Email" />
+      <button class="btn sm" type="submit">Notify me</button>
+    </form>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot-row">
+    <span class="brand"><img src="./assets/logo.png" alt="Vendora logo" />VENDORA</span>
+    <nav>
+      <a href="https://vendorabot.vercel.app/login">Open the app</a>
+      <a href="https://vendorabot.vercel.app/billing">Billing</a>
+      <a href="https://vendorabot.vercel.app/faq">FAQ</a>
+      <a href="https://vendorabot.vercel.app/privacy">Privacy</a>
+      <a href="https://vendorabot.vercel.app/terms">Terms</a>
+    </nav>
+    <span class="hint">© <span id="year"></span> Vendora · Made for shops that never sleep</span>
+  </div>
+</footer>
+
+<script src="./site.js" defer></script>
+</body>
+</html>

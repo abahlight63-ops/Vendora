@@ -75,23 +75,34 @@ GREETINGS ("hey", "hi", "hello", "sup", "good morning", "how far", "abeg"): NEVE
 
 SMALL TALK ("how are you?", "who are you?", "what can you do?"): answer warmly, say you are Vendora AI inside Vendora, list 4-5 real capabilities (write sales captions, business name ideas, pricing strategy, difficult-customer replies, product descriptions, marketing plans), end with one question to keep helping.
 
-DEPTH (this is the important part): give COMPLETE, useful answers — explain the why, show steps, give concrete examples with numbers/names where it helps. A pricing question deserves a mini-framework with an example calculation, not two sentences. A caption request deserves 3 ready-to-post options, not advice about captions. Structure longer answers with short headings or numbered steps so they stay scannable. Aim for genuinely helpful over brief: up to ~500 words when the question deserves it; short only when the question is small.
+DEPTH (the important part — NEVER give one-liners to real questions): a how/what/why/strategy/writing question ALWAYS gets a complete answer. Explain the why, give ordered steps, and include at least one concrete example with real numbers/names suited to a small Nigerian business where it fits. A pricing question gets a mini-framework PLUS an example calculation. A caption/description/customer-reply request gets 3 ready-to-copy options, NOT advice about writing. Structure with short headings or numbered steps so long answers stay scannable. Length guide: greetings/small-talk = 2-4 sentences; substantive questions = 150-450 words of real content, never padded with fluff. Every substantive answer ends with ONE concrete next step or follow-up question.
 
-FORMATTING: short paragraphs, simple lists for steps/options. No markdown tables (they break on WhatsApp-style bubbles).
+FORMATTING: short paragraphs, one idea per line. Each step/option on its OWN line (line breaks are preserved in the chat bubble). Simple numbered or dashed lists for steps/options. No markdown tables (they break in chat bubbles).
 
 VENDORA FACTS: Vendora is a WhatsApp AI sales assistant for small businesses (answers customers in English + Pidgin, 24/7, learns the catalog, hands off to a human when unsure).`;
-  const transcript = (history || [])
-    .slice(-12)
+  // Drop a trailing duplicate of the current message (the frontend used to send
+  // history INCLUDING the just-typed message — dedupe here so no provider pays
+  // for, or gets confused by, the question twice).
+  let hist = Array.isArray(history) ? history.slice(-12) : [];
+  if (
+    hist.length &&
+    hist[hist.length - 1].from === 'you' &&
+    typeof hist[hist.length - 1].text === 'string' &&
+    hist[hist.length - 1].text.trim() === message.trim()
+  ) {
+    hist = hist.slice(0, -1);
+  }
+  const transcript = hist
     .map((m) => `${m.from === 'you' ? 'User' : 'Vendora AI'}: ${m.text}`)
     .join('\n');
   const user = transcript ? `${transcript}\nUser: ${message}` : message;
-  // Smart settings: warmer sampling for personality, roomy token budget so
-  // answers are complete instead of cut off mid-thought.
-  const chatOpts = { temperature: 0.8, maxTokens: 1200 };
+  // Warmer sampling for personality + roomy token budget so answers finish
+  // complete instead of cut off mid-thought (2000 tokens ≈ 1300+ words).
+  const chatOpts = { temperature: 0.8, maxTokens: 2000 };
   try {
     const resolved = aiModels.resolveChoice(choiceId, tier || 'free');
     if (resolved.error) return { reply: null, reason: resolved.error };
-    const { text, via, modelId, fallback, requested } = await callChoice(
+    let answered = await callChoice(
       resolved.entry,
       resolved.model,
       system,
@@ -99,6 +110,33 @@ VENDORA FACTS: Vendora is a WhatsApp AI sales assistant for small businesses (an
       null,
       chatOpts
     );
+    // Stub-answer guard: a substantive question answered in ~2 sentences is a
+    // miss (lite-model terseness), not a reply. ONE expansion retry with the
+    // same model — quota still counts once (the controller increments per ask).
+    if (
+      answered.text &&
+      answered.text.trim().length < 140 &&
+      message.trim().length > 40 &&
+      !/^(hi+|hey+|hello+|sup|good\s?(morning|afternoon|evening|day)|how far|yo|hiya|he+y+|how are you|who are you|what can you do)\b/i.test(message.trim())
+    ) {
+      console.log(`AI ${resolved.entry.id} answer too short (${answered.text.trim().length} chars) — expanding once`);
+      try {
+        const expanded = await callChoice(
+          resolved.entry,
+          resolved.model,
+          system,
+          `${user}\n\n(Follow-up: that answer was too brief. Answer again PROPERLY — full explanation, ordered steps, and a concrete example.)`,
+          null,
+          chatOpts
+        );
+        if (expanded.text && expanded.text.trim().length > answered.text.trim().length) {
+          answered = expanded;
+        }
+      } catch (err) {
+        console.error('askGeneral expand retry failed:', err.message);
+      }
+    }
+    const { text, via, modelId, fallback, requested } = answered;
     if (!text) return { reply: null, reason: 'Empty AI response' };
     return { reply: text, via, modelId, fallback, requested };
   } catch (err) {

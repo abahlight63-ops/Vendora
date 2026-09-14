@@ -21,14 +21,14 @@ export async function getAds() {
   return cached;
 }
 
-// Per-VIEW: inject each network tag once per session (5s stuck-tag guard).
+// Per-VIEW: inject each network tag once per session (15s stuck-tag guard — slow phone networks need room).
 function injectTag(provider, url) { // NOT exported: internal helper (only loadNetworkAds uses it)
   if (!url || document.querySelector(`script[data-adnet="${provider}"]`)) return; // no URL, or tag already present → skip (idempotent = safe to call repeatedly)
   const s = document.createElement('script'); // create <script> element programmatically…
   s.async = true; // async = never blocks page rendering (ads must never slow the app)
   s.dataset.adnet = provider; // data-adnet="monetag" → the dedupe hook above finds it next time
   s.src = url; // setting .src STARTS the download (browser fetches the ad network's code)
-  const kill = setTimeout(() => s.remove(), 5000); // SAFETY: yank the tag if it hangs >5s (a dead ad server can't freeze us)
+  const kill = setTimeout(() => s.remove(), 15000); // SAFETY: yank the tag if it hangs >15s (dead server can't freeze us; 15s — not 5 — so slow phone networks still load fine)
   s.onload = () => clearTimeout(kill); // loaded fine → cancel the yank timer…
   s.onerror = () => s.remove(); // …failed → remove immediately (broken tag leaves no trace)
   document.head.appendChild(s); // mount into <head> → browser executes it

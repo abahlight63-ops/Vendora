@@ -14,6 +14,7 @@ router.put('/businesses/:id', adminController.updateBusiness); // edit any busin
 router.get('/businesses/:id/products', adminController.listBusinessProducts); // inspect a catalog
 router.delete('/businesses/:id', adminController.deleteBusiness); // remove a business
 router.get('/ads/stats', adminController.adStats); // per-click earnings totals (your revenue!)
+router.get('/ads/status', adminController.requireAdmin, adminController.adsStatus); // env-key diagnostics (booleans only — key VALUES never leave the server!)
 // Admin console (session-password OR x-admin-key — requireAdmin decides per route)
 router.get('/stats', adminController.requireAdmin, adminController.adminStats); // overview cards (users, tiers, money, chats, complaints)
 router.get('/users', adminController.requireAdmin, adminController.adminUsers); // every account + shop (newest first)
@@ -25,5 +26,6 @@ router.get('/complaints', adminController.requireAdmin, adminController.complain
 router.post('/complaints/:id/reply', adminController.requireAdmin, adminController.complaintReply); // answer (stored + emailed)
 router.post('/complaints/:id/resolve', adminController.requireAdmin, adminController.complaintResolve); // close without reply
 router.post('/broadcast', adminController.requireAdmin, adminController.broadcast); // app-update notice → every owner's bell
+router.post('/notify', adminController.requireAdmin, adminController.notifyUser); // warning/notice → ONE owner's bell (business id, email, or WhatsApp number)
 
 module.exports = router;

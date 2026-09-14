@@ -292,6 +292,72 @@ async function broadcast(req, res) {
   }
 }
 
+// ---- Warn ONE user: drop a notification into a single owner's bell.
+// Find the shop three ways (whatever the admin has at hand): business_id,
+// account email, or WhatsApp number. Same inbox the bell + mobile app poll,
+// so the warning lands within ~60s on web AND phone. ----
+async function notifyUser(req, res) {
+  const { business_id, email, whatsapp_number, title, body, link } = req.body || {};
+  if (!title || typeof title !== 'string' || !title.trim()) {
+    return res.status(400).json({ error: 'Title required.' });
+  }
+  try {
+    let biz = null;
+    if (business_id) { // direct id (from the Users tab row)…
+      const { rows } = await db.query('SELECT id, name FROM businesses WHERE id = $1', [Number(business_id)]);
+      biz = rows[0] || null;
+    } else if (email && typeof email === 'string') { // account email → their shop…
+      const { rows } = await db.query(
+        `SELECT b.id, b.name FROM businesses b
+         JOIN users u ON u.business_id = b.id
+         WHERE LOWER(u.email) = LOWER($1) ORDER BY u.id ASC LIMIT 1`,
+        [email.trim()]
+      );
+      biz = rows[0] || null;
+    } else if (whatsapp_number && typeof whatsapp_number === 'string') { // shop number (exact or normalized digits)…
+      const raw = whatsapp_number.trim();
+      let norm = raw;
+      try { norm = normalizePhone(raw); } catch {}
+      const { rows } = await db.query(
+        'SELECT id, name FROM businesses WHERE whatsapp_number = $1 OR whatsapp_number = $2 LIMIT 1',
+        [raw, norm]
+      );
+      biz = rows[0] || null;
+    } else {
+      return res.status(400).json({ error: 'Give a business ID, account email, or WhatsApp number.' });
+    }
+    if (!biz) return res.status(404).json({ error: 'No shop found for that user.' });
+    const notify = require('../services/notifyService');
+    await notify.notify(biz.id, {
+      title: title.trim(),
+      body: (body || '').trim(),
+      link: (link || '/dashboard').trim(),
+    });
+    res.json({ ok: true, business_id: biz.id, business_name: biz.name });
+  } catch (e) {
+    console.error('notify user error:', e.message);
+    res.status(500).json({ error: 'Could not send warning' });
+  }
+}
+
+// ---- Ads status: are the Render ad keys live? (booleans only — key VALUES
+// never leave the server!) The #1 "ads don't show" cause is keys added in the
+// Render dashboard but the service never redeployed (Node reads env at boot).
+// #2 is testing on a Pro/trial account (backend sends ads to FREE tier only).
+// #3 is an ad-blocker in the test browser. ----
+async function adsStatus(req, res) {
+  res.json({
+    network1: !!(process.env.ADS_SCRIPT_URL || '').trim(),
+    provider1: process.env.ADS_PROVIDER || 'custom',
+    network2: !!(process.env.ADS_SCRIPT_URL_2 || '').trim(),
+    provider2: process.env.ADS_PROVIDER_2 || 'custom',
+    sponsor: !!(process.env.SPONSOR_TITLE || '').trim() && !!(process.env.SPONSOR_LINK || '').trim(),
+    sponsorTitle: (process.env.SPONSOR_TITLE || '').slice(0, 60),
+    rateNaira: Number(process.env.SPONSOR_RATE_PER_CLICK || 50),
+    note: 'Ads serve to FREE-tier owners only — Pro and trial accounts get ads:null by design. Test with a free account and no ad-blocker.',
+  });
+}
+
 module.exports = {
   listBusinesses,
   getBusiness,
@@ -300,6 +366,7 @@ module.exports = {
   listBusinessProducts,
   deleteBusiness,
   adStats,
+  adsStatus,
   adminLogin,
   adminLogout,
   requireAdmin,
@@ -310,6 +377,7 @@ module.exports = {
   transferApprove,
   transferReject,
   broadcast,
+  notifyUser,
   complaintList,
   complaintReply,
   complaintResolve,

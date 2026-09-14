@@ -29,7 +29,7 @@ function badgeClass(badge) {
 function ModelPicker({ models, model, onPick, onLocked }) {
   const [open, setOpen] = useState(false);
   const wrap = useRef(null);
-  const current = models.find((m) => m.id === model) || { id: model, label: 'Gemini Flash Lite', badge: 'Fast', desc: 'Google · lite default', tier: 'free' };
+  const current = models.find((m) => m.id === model) || { id: model, label: 'Gemini Flash (full)', badge: 'Smart', desc: 'Google · fuller answers, still free', tier: 'free' };
 
   useEffect(() => {
     if (!open) return;
@@ -107,7 +107,7 @@ export default function VendoraAI({ biz }) {
   const [busy, setBusy] = useState(false);
   const [models, setModels] = useState([]);
   const [model, setModel] = useState(() => {
-    try { return localStorage.getItem('vendora-model') || 'gemini-flash'; } catch { return 'gemini-flash'; }
+    try { return localStorage.getItem('vendora-model') || 'gemini-flash-full'; } catch { return 'gemini-flash-full'; } // full (not lite) default: complete answers, still free — lite stays one tap away
   });
   const threadRef = useRef(null); // the scrollable thread (we scroll THIS, never the page)
   const stick = useRef(true); // true = pinned to bottom (auto-follow new messages)
@@ -148,19 +148,20 @@ export default function VendoraAI({ biz }) {
     toast('Switched to ' + (m ? m.label : id), 'ok'); // visible proof the switch stuck
   }
 
-  async function send(text) {
+  async function send(text, base) {
     const clean = (text ?? input).trim();
     if (!clean || busy) return;
     if (clean.length > 2000) return toast('Keep it under 2000 characters', 'err');
     stick.current = true; // sending = re-pin to bottom (user wants to see the answer)
     const pickedId = model;
     const pickedLabel = (models.find((m) => m.id === pickedId) || {}).label || 'AI';
-    const next = [...msgs, { from: 'you', text: clean }];
+    const log = base ?? msgs; // base override lets regenerate() resend without duplicating bubbles
+    const next = [...log, { from: 'you', text: clean }];
     setMsgs(next); setInput(''); setBusy(true);
     try {
       const { ok, status, data } = await api('/api/me/ask', {
         method: 'POST',
-        body: JSON.stringify({ message: clean, history: next.slice(-12), model: pickedId }),
+        body: JSON.stringify({ message: clean, history: log.slice(-12), model: pickedId }), // log (NOT next): history excludes the current question — no duplicate context
       });
       if (ok && data.reply) {
         // via = ACTUAL answerer from server (never assume = picked).
@@ -184,6 +185,13 @@ export default function VendoraAI({ biz }) {
       toast('Network hiccup', 'err');
     }
     setBusy(false);
+  }
+
+  async function regenerate() { // short/weak answer? re-ask the last question (backend stub-guard usually already fixed it — this is the manual override)
+    if (busy) return;
+    const idx = msgs.map((m) => m.from).lastIndexOf('you'); // last question asked…
+    if (idx < 0) return;
+    await send(msgs[idx].text, msgs.slice(0, idx)); // …resent with history BEFORE it (no duplicated bubbles)
   }
 
   const current = models.find((m) => m.id === model);
@@ -223,6 +231,9 @@ export default function VendoraAI({ biz }) {
               <img src="/logo.png" alt="" className="vai-mini" />
               <div className="vai-bubble typing"><span /><span /><span /></div>
             </div>
+          )}
+          {!busy && msgs.length > 0 && msgs[msgs.length - 1].from === 'ai' && (
+            <button className="vai-regen" onClick={regenerate}>↻ Regenerate answer</button> // manual override for short/weak replies (resends the last question)
           )}
         </div>
       )}

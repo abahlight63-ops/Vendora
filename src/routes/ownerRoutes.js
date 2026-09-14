@@ -30,7 +30,7 @@ router.get('/me/telegram', ownerController.telegramStatus);
 router.post('/me/telegram/token', ownerController.telegramToken);
 router.post('/me/telegram/link', ownerController.telegramLink);
 router.get('/me/complaints', ownerController.complaintMine);
-router.post('/me/complaints', ownerController.complaintCreate); // log a sponsor click (per-click billing)
+router.post('/me/complaints', ownerController.complaintCreate); // file a support ticket (shows in Admin → Complaints)
 router.get('/me/notifications', ownerController.getNotifications); // bell inbox (newest first + unread count)
 router.post('/me/notifications/read', ownerController.readNotifications); // mark all read on open
 

@@ -310,6 +310,8 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .vai-bubble.typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); animation: blink 1s infinite; }
 .vai-bubble.typing span:nth-child(2) { animation-delay: 0.15s; }
 .vai-bubble.typing span:nth-child(3) { animation-delay: 0.3s; }
+.vai-regen { align-self: flex-start; background: none; border: 1px solid var(--line); color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 14px; border-radius: 999px; cursor: pointer; }
+.vai-regen:hover { border-color: var(--green); color: var(--green-dark); }
 .vai-bar { position: sticky; bottom: 0; padding: 10px 0 6px; background: linear-gradient(transparent, var(--bg) 30%); }
 .vai-input { display: flex; align-items: center; gap: 8px; background: var(--card); border: 1.5px solid var(--line); border-radius: 999px; padding: 6px 6px 6px 20px; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
 .vai-input:focus-within { border-color: var(--green); box-shadow: 0 0 0 3px rgba(18, 140, 74, 0.12); }

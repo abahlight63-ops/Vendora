@@ -15,9 +15,9 @@
  * Model IDs stay env-overridable so a retired model name never needs a code change.
  */
 const CATALOG = [
-  { id: 'gemini-flash', label: 'Gemini Flash Lite', provider: 'gemini', tier: 'free', badge: 'Fast', desc: 'Google · lite default, fastest + cheapest', // default choice (id used when frontend sends nothing)
-    model: () => (process.env.GEMINI_LITE_MODEL || 'gemini-2.5-flash-lite').trim() }, // pinned lite default; set GEMINI_LITE_MODEL=gemini-3.5-flash-lite once Google ships that name — no deploy needed
-  { id: 'gemini-flash-full', label: 'Gemini Flash (full)', provider: 'gemini', tier: 'free', badge: 'Smart', desc: 'Google · fuller answers, still free',
+  { id: 'gemini-flash', label: 'Gemini Flash Lite', provider: 'gemini', tier: 'free', badge: 'Fast', desc: 'Google · fastest + cheapest, brief answers', // speed pick (id used when frontend sends nothing)
+    model: () => (process.env.GEMINI_LITE_MODEL || 'gemini-2.5-flash-lite').trim() }, // pinned lite; set GEMINI_LITE_MODEL=gemini-3.5-flash-lite once Google ships that name — no deploy needed
+  { id: 'gemini-flash-full', label: 'Gemini Flash (full)', provider: 'gemini', tier: 'free', badge: 'Smart', desc: 'Google · fuller answers (default), still free',
     model: () => (process.env.GEMINI_FULL_MODEL || 'gemini-2.5-flash').trim() },
   { id: 'llama-8b', label: 'Llama 3.1 8B', provider: 'groq', tier: 'free', badge: 'Fast', desc: 'Meta via Groq · speed king', // speed king + highest free limits (14,400 req/day on Groq free!)
     model: () => process.env.GROQ_FAST_MODEL || 'llama-3.1-8b-instant' },

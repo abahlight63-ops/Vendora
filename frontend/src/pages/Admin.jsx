@@ -83,6 +83,8 @@ export default function Admin() {
         : tab === 'transfers' ? <Transfers rows={d} act={act} />
         : <Complaints rows={d} act={act} />}
       <Broadcast act={act} /> {/* always mounted: announce updates to every bell */}
+      <WarnUser act={act} /> {/* always mounted: warn ONE user straight to their bell */}
+      <AdsStatus /> {/* always mounted: are the Render ad keys live? (booleans only) */}
     </>
   );
 }
@@ -104,6 +106,45 @@ function Broadcast({ act }) { // APP UPDATES: one broadcast → every owner's �
       <label>What changed (1–2 lines)</label>
       <textarea value={b} onChange={(e) => setB(e.target.value)} rows="2" placeholder="e.g. Fuller answers, Lite default, no more scroll jump…" maxLength={500} />
       <button className="btn" style={{ marginTop: 10 }} onClick={send}><Ic n="send" s={16} />Send to all bells</button>
+    </div>
+  );
+}
+
+function WarnUser({ act }) { // ONE user, not all: a warning/notice → their 🔔 bell only…
+  const [who, setWho] = useState(''); // business ID, account email, or WhatsApp number (server resolves all three)
+  const [t, setT] = useState('');
+  const [b, setB] = useState('');
+  async function send() {
+    if (!who.trim()) return toast('Say who — email, business ID, or WhatsApp number', 'err');
+    if (!t.trim()) return toast('Give the warning a title', 'err');
+    await act('/api/admin/notify', { business_id: /^\d+$/.test(who.trim()) ? Number(who.trim()) : undefined, email: who.includes('@') ? who.trim() : undefined, whatsapp_number: !/^\d+$/.test(who.trim()) && !who.includes('@') ? who.trim() : undefined, title: t.trim(), body: b.trim(), link: '/dashboard' }, 'Warning sent to their bell.');
+    setWho(''); setT(''); setB('');
+  }
+  return (
+    <div className="card" style={{ borderColor: 'var(--red-line)' }}>
+      <h2>⚠️ Warn one user</h2>
+      <p className="desc">Lands in that owner's notification bell only (web + phone app, within a minute). Use for payment issues, abuse, or personal notices.</p>
+      <label>Who (email, business ID, or WhatsApp number)</label>
+      <input value={who} onChange={(e) => setWho(e.target.value)} placeholder="e.g. amaka@shop.com · 12 · 0803 123 4567" />
+      <label>Title</label>
+      <input value={t} onChange={(e) => setT(e.target.value)} placeholder="e.g. Payment issue — action needed" maxLength={120} />
+      <label>Message (1–3 lines)</label>
+      <textarea value={b} onChange={(e) => setB(e.target.value)} rows="2" placeholder="e.g. We couldn't match your transfer of ₦7,500. Reply here or resend with the correct reference…" maxLength={500} />
+      <button className="btn danger" style={{ marginTop: 10 }} onClick={send}><Ic n="send" s={16} />Send warning</button>
+    </div>
+  );
+}
+
+function AdsStatus() { // AD KEYS LIVE? booleans only — key VALUES never leave the server…
+  const [s, setS] = useState(null); // null = loading (skeleton first — same habit as tabs!)
+  useEffect(() => { api('/api/admin/ads/status').then(({ ok, data }) => { if (ok) setS(data); }); }, []); // mount-only probe (admin session already open — 401 impossible here!)
+  if (!s) return <div className="card"><div className="skel" /></div>;
+  const dot = (on) => (on ? '✅' : '❌'); // boolean → at-a-glance glyph (no key values shown, ever!)
+  return (
+    <div className="card">
+      <h2>💰 Ad keys live?</h2>
+      <p className="desc">Network 1 ({s.provider1}): {dot(s.network1)} · Network 2 ({s.provider2}): {dot(s.network2)} · Sponsor “{(s.sponsorTitle || '—')}”: {dot(s.sponsor)} · Sponsor rate: ₦{s.rateNaira}/click</p>
+      <p className="hint">{s.note}</p>
     </div>
   );
 }

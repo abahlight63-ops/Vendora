@@ -194,10 +194,17 @@ class ApiClient {
           .cast<String, dynamic>();
 
   /// Vendora AI chat → { reply, via, model, fallback }.
-  Future<Map<String, dynamic>> ask(String message, [String? model]) async =>
+  /// history = prior bubbles oldest-first [{from: 'you'|'ai', text}…],
+  /// EXCLUDING the current message (web parity: context without duplication).
+  Future<Map<String, dynamic>> ask(
+    String message, [
+    String? model,
+    List<Map<String, String>>? history,
+  ]) async =>
       (await post('/api/me/ask', {
         'message': message,
         ...?model == null ? null : {'model': model},
+        ...?history == null ? null : {'history': history},
       }) as Map)
           .cast<String, dynamic>();
 

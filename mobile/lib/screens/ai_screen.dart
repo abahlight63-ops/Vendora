@@ -26,7 +26,9 @@ class _AiScreenState extends State<AiScreen> {
   final _scroll = ScrollController();
   final List<_AiMessage> _msgs = [];
   List<dynamic> _models = [];
-  String? _model; // null = server default (Lite)
+  // Web parity: full-model default (complete answers, still free).
+  // Server resolves null → Lite, so we pin full explicitly like the web app.
+  String? _model = 'gemini-flash-full';
   bool _busy = false;
   bool _testBot = false; // false = Vendora AI (/ask), true = shop test-bot (/playground)
 
@@ -46,6 +48,10 @@ class _AiScreenState extends State<AiScreen> {
   Future<void> _loadModels() async {
     try {
       _models = await ApiClient.instance.aiModels();
+      // Backend without our default id (older server) → fall back to Auto
+      // instead of sending an id the server calls "Unknown AI".
+      final ids = {for (final m in _models) '${(m as Map)['id']}'};
+      if (_model != null && !ids.contains(_model)) _model = null;
       if (mounted) setState(() {});
     } catch (_) {
       // Models optional — default still chats.
@@ -65,12 +71,23 @@ class _AiScreenState extends State<AiScreen> {
   Future<void> _send() async {
     final text = _input.text.trim();
     if (text.isEmpty || _busy) return;
+    _input.clear();
+    await _sendWith(text, List<_AiMessage>.from(_msgs));
+  }
+
+  /// Shared sender: [base] = bubbles BEFORE this question (no duplication),
+  /// history = last 12 of base so the brain sees the conversation like web.
+  Future<void> _sendWith(String text, List<_AiMessage> base) async {
     setState(() {
-      _msgs.add(_AiMessage(true, text));
+      _msgs
+        ..clear()
+        ..addAll([...base, _AiMessage(true, text)]);
       _busy = true;
     });
-    _input.clear();
     _jump();
+    final window =
+        base.where((m) => m.meta != 'error').toList(); // error bubbles teach nothing
+    final tail = window.length > 12 ? window.sublist(window.length - 12) : window;
     try {
       if (_testBot) {
         // Shop test-bot: answers AS your catalog (like a customer).
@@ -81,7 +98,10 @@ class _AiScreenState extends State<AiScreen> {
             '${reply ?? r['reason'] ?? '…'}',
             reply == null ? 'handed to human' : null)));
       } else {
-        final r = await ApiClient.instance.ask(text, _model);
+        final r = await ApiClient.instance.ask(text, _model, [
+          for (final m in tail)
+            {'from': m.mine ? 'you' : 'ai', 'text': m.text},
+        ]);
         final meta = [
           if (r['via'] != null) 'via ${r['via']}',
           if (r['fallback'] == true) 'fallback brain',
@@ -100,6 +120,14 @@ class _AiScreenState extends State<AiScreen> {
     }
   }
 
+  /// Web parity: short/weak answer → re-ask the last question.
+  Future<void> _regenerate() async {
+    if (_busy || _msgs.isEmpty || _testBot) return;
+    final idx = _msgs.lastIndexWhere((m) => m.mine);
+    if (idx < 0) return;
+    await _sendWith(_msgs[idx].text, _msgs.sublist(0, idx));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(children: [
@@ -114,7 +142,11 @@ class _AiScreenState extends State<AiScreen> {
           selected: {_testBot},
           onSelectionChanged: (s) => setState(() {
             _testBot = s.first;
-            if (_testBot) _model = null;
+            if (_testBot) {
+              _model = null; // test-bot takes no model (server catalog chain)
+            } else if (_model == null) {
+              _model = 'gemini-flash-full'; // back to AI → restore full default
+            }
           }),
         ),
       ),
@@ -203,6 +235,21 @@ class _AiScreenState extends State<AiScreen> {
                 },
               ),
       ),
+      // Web parity: manual override for short/weak replies.
+      if (!_busy &&
+          _msgs.isNotEmpty &&
+          !_msgs.last.mine &&
+          !_testBot &&
+          _msgs.last.meta != 'error')
+        Padding(
+          padding: const EdgeInsets.only(bottom: 2),
+          child: TextButton.icon(
+            onPressed: _regenerate,
+            icon: const Icon(Icons.refresh, size: 15),
+            label: const Text('Regenerate answer',
+                style: TextStyle(fontSize: 12.5)),
+          ),
+        ),
       Padding(
         padding: const EdgeInsets.all(12),
         child: Row(children: [

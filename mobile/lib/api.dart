@@ -222,6 +222,12 @@ class ApiClient {
     return (b as Map).cast<String, dynamic>();
   }
 
+  /// Sponsor click log (per-click billing for direct + video sponsors).
+  /// Mirrors web ads.js: logged BEFORE the visit, never blocks it.
+  Future<void> adClick(String slot, String url) async {
+    await post('/api/me/ads/click', {'slot': slot, 'target_url': url});
+  }
+
   // ── Bell inbox: { items: [{id,title,body,link,is_read,created_at}…],
   // unread: n }. Newest first, max 20.
   Future<Map<String, dynamic>> notifications() async =>

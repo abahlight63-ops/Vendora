@@ -2,8 +2,11 @@
 // WHAT: Vendora AI chat (POST /api/me/ask {message, model?} →
 // {reply, via, model, fallback}) + model picker (GET /api/me/ai-models).
 // 402 = locked premium model, 429 = daily cap — both shown, never crash.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../ads.dart';
 import '../api.dart';
 import '../motion.dart';
 
@@ -31,6 +34,7 @@ class _AiScreenState extends State<AiScreen> {
   String? _model = 'gemini-flash-full';
   bool _busy = false;
   bool _testBot = false; // false = Vendora AI (/ask), true = shop test-bot (/playground)
+  Timer? _reveal; // typewriter ticker (web parity: answers write small-small)
 
   @override
   void initState() {
@@ -40,6 +44,7 @@ class _AiScreenState extends State<AiScreen> {
 
   @override
   void dispose() {
+    _reveal?.cancel(); // stop typing on exit (no setState on dead widget)
     _input.dispose();
     _scroll.dispose();
     super.dispose();
@@ -75,9 +80,39 @@ class _AiScreenState extends State<AiScreen> {
     await _sendWith(text, List<_AiMessage>.from(_msgs));
   }
 
+  /// Progressive reveal (web parity): the answer writes small-small instead
+  /// of dumping all at once. [_busy] stays true until typing finishes, so
+  /// send/regenerate stay locked and the scroll keeps following downward.
+  void _revealReply(String full, String? meta) {
+    _reveal?.cancel();
+    var n = 0;
+    final idx = _msgs.length; // bubble appended below lands exactly here
+    setState(() => _msgs.add(_AiMessage(false, '', meta)));
+    _jump();
+    _reveal = Timer.periodic(const Duration(milliseconds: 24), (t) {
+      n += 14;
+      if (!mounted || idx >= _msgs.length) {
+        t.cancel();
+        return;
+      }
+      if (n >= full.length) {
+        t.cancel();
+        setState(() {
+          _msgs[idx] = _AiMessage(false, full, meta);
+          _busy = false;
+        });
+      } else {
+        setState(
+            () => _msgs[idx] = _AiMessage(false, full.substring(0, n), meta));
+      }
+      _jump();
+    });
+  }
+
   /// Shared sender: [base] = bubbles BEFORE this question (no duplication),
   /// history = last 12 of base so the brain sees the conversation like web.
   Future<void> _sendWith(String text, List<_AiMessage> base) async {
+    _reveal?.cancel(); // new question kills any in-progress typing
     setState(() {
       _msgs
         ..clear()
@@ -106,16 +141,29 @@ class _AiScreenState extends State<AiScreen> {
           if (r['via'] != null) 'via ${r['via']}',
           if (r['fallback'] == true) 'fallback brain',
         ].join(' · ');
-        setState(() => _msgs.add(_AiMessage(
-            false, '${r['reply'] ?? '…'}', meta.isEmpty ? null : meta)));
+        final reply = '${r['reply'] ?? ''}';
+        if (reply.isEmpty) {
+          setState(() =>
+              _msgs.add(_AiMessage(false, '…', 'empty reply')));
+        } else {
+          _revealReply(reply, meta.isEmpty ? null : meta); // types out small-small; clears _busy when done
+          return; // skip the finally below — typing owns _busy now
+        }
       }
     } on ApiException catch (e) {
       setState(() => _msgs.add(_AiMessage(false, e.message, 'error')));
+      // Web parity: daily-limit wall doubles as the sponsor moment (free tier, max once/day).
+      if (e.status == 429 && mounted && !_testBot) {
+        unawaited(maybeShowSponsor(context));
+      }
     } catch (_) {
       setState(() =>
           _msgs.add(_AiMessage(false, 'No connection — try again.', 'error')));
     } finally {
-      if (mounted) setState(() => _busy = false);
+      // A live typewriter owns _busy until it finishes — don't unlock early.
+      if (_reveal == null || !_reveal!.isActive) {
+        if (mounted) setState(() => _busy = false);
+      }
       _jump();
     }
   }

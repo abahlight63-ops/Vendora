@@ -3,6 +3,7 @@
 // (POST → 201 row) + delete (DELETE → 204). Same rules as web Catalog.
 import 'package:flutter/material.dart';
 
+import '../ads.dart';
 import '../api.dart';
 import '../glass.dart';
 import '../motion.dart';
@@ -65,6 +66,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       _desc.clear();
       if (mounted) FocusScope.of(context).unfocus();
       _load();
+      if (mounted) unawaited(maybeShowSponsor(context)); // web parity: sponsor moment after adds (free tier, max once/day)
     } on ApiException catch (e) {
       if (mounted) showToast(context, e.message, type: 'err');
     }

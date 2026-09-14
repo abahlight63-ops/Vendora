@@ -10,6 +10,38 @@
 const productService = require('./productService');
 const client = require('./ai/client');
 
+/**
+ * Strip markdown to plain chat text. Models are told "plain text only" but
+ * still emit ###, **, backticks — which render as LITERAL junk characters
+ * in WhatsApp bubbles and our chat UI (no markdown renderer anywhere).
+ * Enforcement beats prompting: every brain output passes through here, so
+ * customers and owners NEVER see # * _ ` ~ | artifacts. Structure (numbered
+ * steps, line breaks, • bullets) is preserved — only the decoration dies.
+ */
+function cleanReply(text) {
+  if (!text || typeof text !== 'string') return text;
+  let t = text;
+  t = t.replace(/```[\s\S]*?```/g, (m) => m.replace(/```\w*/g, '').trim()); // fenced code blocks → inner text
+  t = t.replace(/`([^`]*)`/g, '$1'); // `inline code` → text
+  t = t.replace(/^#{1,6}[ \t]*/gm, ''); // ### Header → Header ([ \t] only: \s would eat the newline and glue lines together)
+  t = t.replace(/\*\*([^*\n]*)\*\*/g, '$1'); // **bold** → bold
+  t = t.replace(/__([^_\n]*)__/g, '$1'); // __bold__ → bold
+  t = t.replace(/(^|[\s(])\*([^*\n\s][^*\n]*)\*/g, '$1$2'); // *italic* → italic (not list bullets)
+  t = t.replace(/(^|[\s(])_([^_\n\s][^_\n]*)_/g, '$1$2'); // _italic_ → italic
+  t = t.replace(/~~([^~\n]*)~~/g, '$1'); // ~~struck~~ → struck
+  t = t.replace(/\[([^\]]*)\]\(([^)]*)\)/g, '$1'); // [text](url) → text
+  t = t.replace(/^[ \t]*>[ \t]?/gm, ''); // "> quote" → plain
+  t = t.replace(/^[ \t]*[-*+][ \t]+/gm, '• '); // "- item" → "• item"
+  t = t.replace(/^\s*\|.*\|\s*$/gm, (row) => row.replace(/\|/g, ' ').replace(/\s+/g, ' ').trim()); // | tables | → spaced words
+  t = t.replace(/^[ \t]*(\*{3,}|-{3,}|_{3,}|#{2,})[ \t]*$/gm, ''); // "***" / "---" / "###" junk lines → gone
+  t = t.replace(/^[ \t]*\*+[ \t]*$/gm, ''); // lone "*" run on its own line (crumb left when "*****" is split by the bold rule) → gone
+  t = t.replace(/\*{2,}/g, ''); // leftover ** runs (e.g. "*****") → gone
+  t = t.replace(/^[ \t]*#[ \t]+/gm, ''); // leftover "# " line starts → gone
+  t = t.replace(/[ \t]+$/gm, ''); // trailing spaces per line
+  t = t.replace(/\n{3,}/g, '\n\n'); // max one blank line between blocks
+  return t.trim();
+}
+
 // Re-exported for /health + tests (single import point for callers).
 const PROVIDER = (process.env.AI_PROVIDER || 'gemini').toLowerCase();
 const configuredProviders = client.configuredProviders;
@@ -77,7 +109,7 @@ SMALL TALK ("how are you?", "who are you?", "what can you do?"): answer warmly, 
 
 DEPTH (the important part — NEVER give one-liners to real questions): a how/what/why/strategy/writing question ALWAYS gets a complete answer. Explain the why, give ordered steps, and include at least one concrete example with real numbers/names suited to a small Nigerian business where it fits. A pricing question gets a mini-framework PLUS an example calculation. A caption/description/customer-reply request gets 3 ready-to-copy options, NOT advice about writing. Structure with short headings or numbered steps so long answers stay scannable. Length guide: greetings/small-talk = 2-4 sentences; substantive questions = 150-450 words of real content, never padded with fluff. Every substantive answer ends with ONE concrete next step or follow-up question.
 
-FORMATTING: short paragraphs, one idea per line. Each step/option on its OWN line (line breaks are preserved in the chat bubble). Simple numbered or dashed lists for steps/options. No markdown tables (they break in chat bubbles).
+FORMATTING: PLAIN TEXT ONLY — never type #, *, underscores, backticks, ~, | or [text](url). The chat shows RAW characters, so ### and ** appear as ugly junk to the reader. Structure with plain numbered steps (1. 2. 3.), simple dash lines for bullets, short paragraphs, one idea per line. Each step/option on its OWN line (line breaks are preserved in the bubble). No markdown tables (they break in chat bubbles).
 
 VENDORA FACTS: Vendora is a WhatsApp AI sales assistant for small businesses (answers customers in English + Pidgin, 24/7, learns the catalog, hands off to a human when unsure).`;
   // Drop a trailing duplicate of the current message (the frontend used to send
@@ -138,7 +170,9 @@ VENDORA FACTS: Vendora is a WhatsApp AI sales assistant for small businesses (an
     }
     const { text, via, modelId, fallback, requested } = answered;
     if (!text) return { reply: null, reason: 'Empty AI response' };
-    return { reply: text, via, modelId, fallback, requested };
+    const clean = cleanReply(text); // enforce plain text (see cleanReply: prompts alone don't stop ###/**)
+    if (!clean) return { reply: null, reason: 'Empty AI response' };
+    return { reply: clean, via, modelId, fallback, requested };
   } catch (err) {
     console.error('askGeneral error:', err.message);
     return { reply: null, reason: 'AI service unavailable' };
@@ -200,7 +234,7 @@ Rules:
 5. If the answer is not covered above (custom orders, complaints, negotiation,
    payment details, something not in the catalog), respond with exactly:
    NEED_HUMAN: <brief reason>
-6. Keep replies short and WhatsApp-friendly (1-5 sentences, plain text, no markdown).
+ 6. Keep replies short and WhatsApp-friendly (1-5 sentences). PLAIN TEXT ONLY — never type #, *, underscores, backticks, ~, | or [text](url): WhatsApp shows RAW characters, so ### and ** look broken to the customer. Steps (if any) as plain "1. 2. 3." lines.
 7. If a product the customer wants is out of stock, say so honestly and offer alternatives from the catalog.
 8. PERSONAL CHIT-CHAT: if the message is purely social with zero buying signal (greetings alone, jokes, "lol", "where are you", memes, personal banter), do NOT pitch products — respond with exactly: NEED_HUMAN: personal chat, no sales intent. A friend saying hi must never get a sales pitch.
 ${maxDisc > 0 ? `9. SMARTDEAL NEGOTIATION: The owner allows you to offer up to ${maxDisc}% off${minOrder ? ` on orders worth at least ₦${minOrder.toLocaleString()}` : ''} ONLY when the customer hesitates, complains about price, or says it's too expensive AND they clearly want to buy. Offer it once, as a special one-time price — never volunteer discounts to happy customers, never exceed ${maxDisc}%. Phrase it like the owner is doing them a favour.` : '9. Do NOT offer any discounts — the owner has not enabled negotiation.'}
@@ -209,7 +243,8 @@ ${image ? '10. The customer also sent a PHOTO. Look at it, describe briefly what
   const userPrompt = `Customer message: "${customerMessage}"${image ? '\n(A photo is attached — analyze it.)' : ''}\n\nRespond per your rules.`;
 
   try {
-    const text = await client.callAI(systemPrompt, userPrompt, image);
+    const raw = await client.callAI(systemPrompt, userPrompt, image);
+    const text = cleanReply(raw); // plain text enforced; ALSO normalizes "**NEED_HUMAN:**" variants into a detectable flag
     if (text.startsWith('NEED_HUMAN')) {
       return { reply: null, needsHuman: true, reason: text.slice(11).trim() || 'Unsure how to answer' };
     }
@@ -288,6 +323,7 @@ module.exports = {
   extractProducts,
   askGeneral,
   callChoice,
+  cleanReply,
   parseInventoryAction,
   INVENTORY_HINT,
   PROVIDER,

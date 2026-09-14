@@ -143,7 +143,7 @@ function AdsStatus() { // AD KEYS LIVE? booleans only — key VALUES never leave
   return (
     <div className="card">
       <h2>💰 Ad keys live?</h2>
-      <p className="desc">Network 1 ({s.provider1}): {dot(s.network1)} · Network 2 ({s.provider2}): {dot(s.network2)} · Sponsor “{(s.sponsorTitle || '—')}”: {dot(s.sponsor)} · Sponsor rate: ₦{s.rateNaira}/click</p>
+      <p className="desc">Network 1 ({s.provider1}): {dot(s.network1)} · Network 2 ({s.provider2}): {dot(s.network2)} · Sponsor “{(s.sponsorTitle || '—')}”: {dot(s.sponsor)}{s.sponsor ? <> · Video: {dot(s.sponsorVideo)}</> : null} · Sponsor rate: ₦{s.rateNaira}/click</p>
       <p className="hint">{s.note}</p>
     </div>
   );

@@ -28,7 +28,8 @@ async function getMe(req, res) {
   if (tier !== 'pro') { // free users only past this point…
     const sponsor = process.env.SPONSOR_TITLE && process.env.SPONSOR_LINK
       ? { title: process.env.SPONSOR_TITLE, text: process.env.SPONSOR_TEXT || '', // && = both must exist; || '' = optional fields default empty
-          link: process.env.SPONSOR_LINK, image: process.env.SPONSOR_IMAGE || '' }
+          link: process.env.SPONSOR_LINK, image: process.env.SPONSOR_IMAGE || '',
+          video: (process.env.SPONSOR_VIDEO_URL || '').trim() || null } // optional mp4: plays inside the interstitial (video ads without any network!)
       : null; // no sponsor configured → null (frontend hides the interstitial logic)
     // One entry per network (Monetag primary, Adsterra Social Bar secondary…).
     // Different formats per network — never two popunder codes at once.

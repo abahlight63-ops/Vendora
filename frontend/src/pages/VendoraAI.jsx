@@ -111,6 +111,27 @@ export default function VendoraAI({ biz }) {
   });
   const threadRef = useRef(null); // the scrollable thread (we scroll THIS, never the page)
   const stick = useRef(true); // true = pinned to bottom (auto-follow new messages)
+  const revealTimer = useRef(null); // typewriter interval (cleared on unmount / new question)
+  useEffect(() => () => clearInterval(revealTimer.current), []); // unmount → stop typing (no setState on dead component)
+
+  // Progressive reveal: write the answer small-small (~14 chars per tick) so
+  // long answers READ downward instead of dumping all at once at the bottom.
+  // The anchored-follow effect below re-runs on every tick (msgs changes).
+  function reveal(idx, full, done) {
+    clearInterval(revealTimer.current);
+    let n = 0;
+    revealTimer.current = setInterval(() => {
+      n += 14;
+      if (n >= full.length) {
+        clearInterval(revealTimer.current);
+        setMsgs((m) => m.map((b, i) => (i === idx ? { ...b, text: full } : b)));
+        done();
+      } else {
+        const slice = full.slice(0, n);
+        setMsgs((m) => m.map((b, i) => (i === idx ? { ...b, text: slice } : b)));
+      }
+    }, 24);
+  }
   const [upsell, setUpsell] = useState(false);
   const first = (biz?.name || 'there').split(' ')[0];
 
@@ -151,6 +172,7 @@ export default function VendoraAI({ biz }) {
   async function send(text, base) {
     const clean = (text ?? input).trim();
     if (!clean || busy) return;
+    clearInterval(revealTimer.current); // new question kills any in-progress typing
     if (clean.length > 2000) return toast('Keep it under 2000 characters', 'err');
     stick.current = true; // sending = re-pin to bottom (user wants to see the answer)
     const pickedId = model;
@@ -169,7 +191,11 @@ export default function VendoraAI({ biz }) {
         const viaText = data.fallback && data.requested
           ? `${data.via} (your pick ${data.requested} was busy)`
           : (data.via || pickedLabel);
-        setMsgs((m) => [...m, { from: 'ai', text: data.reply, via: viaText, modelId: data.model || pickedId }]);
+        const idx = next.length; // the AI bubble's index (next = base + user msg, bubble appends right after)
+        const full = data.reply;
+        setMsgs((m) => [...m, { from: 'ai', text: '', via: viaText, modelId: data.model || pickedId }]);
+        reveal(idx, full, () => setBusy(false)); // type out small-small; busy clears when typing finishes
+        return; // NOTE: early return — setBusy(false) below is skipped while revealing
       } else if (status === 402) {
         setUpsell(true);
       } else if (status === 429) {

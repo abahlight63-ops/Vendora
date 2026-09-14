@@ -353,6 +353,7 @@ async function adsStatus(req, res) {
     provider2: process.env.ADS_PROVIDER_2 || 'custom',
     sponsor: !!(process.env.SPONSOR_TITLE || '').trim() && !!(process.env.SPONSOR_LINK || '').trim(),
     sponsorTitle: (process.env.SPONSOR_TITLE || '').slice(0, 60),
+    sponsorVideo: !!(process.env.SPONSOR_VIDEO_URL || '').trim(), // video file set? (plays inside the interstitial — no network needed)
     rateNaira: Number(process.env.SPONSOR_RATE_PER_CLICK || 50),
     note: 'Ads serve to FREE-tier owners only — Pro and trial accounts get ads:null by design. Test with a free account and no ad-blocker.',
   });

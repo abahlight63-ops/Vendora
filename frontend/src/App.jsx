@@ -22,6 +22,7 @@ import Catalog from './pages/Catalog.jsx'; // products + Pro profile-sync
 import Connect from './pages/Connect.jsx'; // channel switchboard (WhatsApp Embedded Signup + Telegram + brain pick)
 import Chats from './pages/Chats.jsx'; // inbox + threads
 import Billing from './pages/Billing.jsx'; // plans + status + trial countdown
+import ContactSales from './pages/ContactSales.jsx'; // enterprise enquiry form (new-tab from Billing!)
 import Playground from './pages/Playground.jsx'; // test-bot (no WhatsApp needed)
 import Insights from './pages/Insights.jsx'; // AI-handled % + flag reasons
 import Settings from './pages/Settings.jsx'; // SmartDeal discounts + handoff text
@@ -76,6 +77,7 @@ export default function App() { // ROOT component (main.jsx renders this)
       <Route path="/playground" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Playground /></Guard>} />
       <Route path="/insights" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Insights /></Guard>} />
       <Route path="/billing" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Billing /></Guard>} />
+      <Route path="/contact-sales" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><ContactSales /></Guard>} /> {/* enterprise form (Billing opens it in a new tab!) */}
       <Route path="/profile" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Profile biz={me} /></Guard>} />
       <Route path="/settings" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Settings biz={me} /></Guard>} />
       <Route path="/help" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Help /></Guard>} />

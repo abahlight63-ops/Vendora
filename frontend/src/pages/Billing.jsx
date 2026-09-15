@@ -1,9 +1,11 @@
 // ── frontend/src/pages/Billing.jsx ─────────────────────────────────
-// WHAT: subscriptions HQ — status banner (+ trial countdown), Free-vs-Pro
-// explainer, tier cards (Pro + Pro Plus, monthly/yearly in the shop's
-// currency), Enterprise contact card. CARD ONLY: the checkout route is picked
-// by LOCATION on the backend — brand names never appear in this UI (shoppers
-// pay on a secure checkout page; logos live there, not here).
+// WHAT: subscriptions HQ — status banner (+ trial countdown), Free card +
+// Pro/Pro Plus tier cards (monthly/yearly in the shop's currency), a Compare
+// plans table (what each tier actually gets), Enterprise contact card.
+// CARD ONLY: the checkout route is picked by LOCATION on the backend — brand
+// names never appear in this UI (shoppers pay on a secure checkout page;
+// logos live there, not here). Enterprise opens a form in a NEW TAB (never a
+// mailto — owners fill + we reply; the address stays private).
 // FLOWS: pay() → provider session → redirect. All money via money() helper
 // (NGN ₦ / USD $). Backend is source of truth for prices (display fallbacks!).
 import { useEffect, useState } from 'react'; // useState = bill/busy/period; useEffect = load on mount
@@ -27,6 +29,33 @@ const PLUS_EXTRAS = [ // Pro Plus: everything in Pro, PLUS these (voice + heavy 
   'Voice-note transcription (Whisper AI)',
   '2 heavy work models (Kimi K2 + GPT-4o mini)',
   'Priority support — jump the queue',
+];
+
+const FREE_FEATS = [ // Free forever: the honest starter (bot NEVER pauses — manual catalog keeps replying!)
+  'AI replies from products you add or teach',
+  'Catalog LEARN mode from WhatsApp',
+  'Full inbox + chat history',
+  'Instant owner alerts for hot orders',
+  '50 bot replies per day',
+];
+
+// Compare-plans rows: [label, free, pro, plus] — true = check, false = dash,
+// string = exact cell text. Keep in sync with PRO_FEATS/PLUS_EXTRAS above!
+const COMPARE_ROWS = [
+  ['Price', '₦0 forever', 'Paid monthly/yearly', 'Paid monthly/yearly'],
+  ['AI replies from your manual catalog', true, true, true],
+  ['Teach with LEARN: messages', true, true, true],
+  ['Full inbox + chat history', true, true, true],
+  ['Hot-order owner alerts', true, true, true],
+  ['Bot replies per day', '50', '500', '1,000'],
+  ['Profile sync + verified products', false, true, true],
+  ['Product photos inside replies', false, true, true],
+  ['Suggestive selling (up to 5 options)', false, true, true],
+  ['ComeBack abandoned-buyer follow-ups', false, true, true],
+  ['Insights: handled %, peak hours', false, true, true],
+  ['Voice-note transcription', false, false, true],
+  ['Heavy work models (Kimi K2 + GPT-4o mini)', false, false, true],
+  ['Priority support', false, false, true],
 ];
 
 const FALLBACK_PLANS = { // display defaults while /api/me/billing loads (MUST match server defaults! backend remains the real truth)
@@ -75,9 +104,30 @@ export default function Billing() {
   const plans = bill?.plans || FALLBACK_PLANS; // backend prices or display defaults
   const pro = plans.pro || FALLBACK_PLANS.pro; // nested tier (backend shape); || fallback guards old cached responses
   const plus = plans.plus || FALLBACK_PLANS.plus;
-  const salesEmail = bill?.sales_email || plans.sales_email || FALLBACK_PLANS.sales_email; // top-level first, then nested, then fallback
   const amt = (p) => money(p?.amount ?? 0, cur); // helper: canonical amount → formatted (?. + ?? = bulletproof against EITHER shape!)
   const trialLeft = bill?.trial_days_left; // whole days left (number when trialing, null otherwise!)
+
+  const freeCard = () => { // FREE tier card (₦0/$0 — no checkout exists; cancelling = just stop paying!)
+    const label = status === 'active' ? 'Paid plan active — free is your fallback'
+      : status === 'trialing' ? 'Free waits for you after the trial'
+      : 'Current plan'; // expired/never-paid → free IS the plan (bot keeps replying!)
+    return (
+      <div className="plan">
+        <span className="plan-badge" style={{ background: 'linear-gradient(135deg,#128c4a,#0b6b38)' }}>FREE FOREVER</span>
+        <h2>Free</h2>
+        <p className="desc">The honest starter — your bot never stops replying.</p>
+        <div className="plan-price">{money(0, cur)}<small>/forever</small></div>
+        <ul className="plan-feats">{FREE_FEATS.map((f) => (<li key={f}><Ic n="checkCircle" s={15} /><span>{f}</span></li>))}</ul>
+        <button className="btn ghost" disabled>{label}</button> {/* disabled = no action to take (free needs no checkout, no cancel button!) */}
+      </div>
+    );
+  };
+
+  const compareCell = (v) => { // true → check icon; false → dash; string → exact text
+    if (v === true) return <Ic n="checkCircle" s={16} />;
+    if (v === false) return <span style={{ color: 'var(--faint)' }}>—</span>;
+    return <span>{v}</span>;
+  };
 
   const statusLine = !bill ? 'Loading…' // 4-way status message (reads like a human wrote each one):
     : status === 'active' ? `Pro active until ${fmtDate(bill.expires)}. Profile sync, photos + priority support on.` // backticks interpolate the date
@@ -108,7 +158,7 @@ export default function Billing() {
 
   return (
     <>
-      <div className="page-head"><div><h1>Billing</h1><p>Two tiers, two periods. Cancel anytime — your catalog stays yours.</p></div></div>
+      <div className="page-head"><div><h1>Billing</h1><p>Free forever, Pro, Pro Plus — or Enterprise. Cancel anytime, your catalog stays yours.</p></div></div>
 
       <div className="card"> {/* subscription status banner (+ live trial countdown!) */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}> {/* inline flex (title left, pills right, wraps on phones) */}
@@ -141,12 +191,28 @@ export default function Billing() {
         <span className="hint">Yearly saves {pro.yearly?.save_pct ?? 22}% on Pro, {plus.yearly?.save_pct ?? 33}% on Pro Plus.</span>
       </div>
 
-      <div className="plan-grid"> {/* 2 tier cards (CSS grid → stack on mobile) */}
+      <div className="plan-grid"> {/* 3 tier cards (CSS grid → stack on mobile) */}
+        {freeCard()}
         {tierCard('pro', pro, false, null)}
         {tierCard('plus', plus, true, 'MOST POWER')}
       </div>
 
-      <div className="card" style={{ marginTop: 14 }}> {/* Enterprise: NO self-serve checkout — personal sales conversation */}
+      <div className="card" style={{ marginTop: 14 }}> {/* Compare plans: what each tier actually gets (kills "what am I paying for?" doubts) */}
+        <h2>Compare plans</h2>
+        <p className="desc">Every tier keeps the bot replying — paid tiers add automation, volume and premium brains.</p>
+        <div className="table-wrap" style={{ marginTop: 10 }}>
+          <table>
+            <thead><tr><th>What you get</th><th>Free</th><th>Pro</th><th>Pro Plus</th></tr></thead>
+            <tbody>
+              {COMPARE_ROWS.map(([label, free, proV, plusV]) => (
+                <tr key={label}><td><b>{label}</b></td><td>{compareCell(free)}</td><td>{compareCell(proV)}</td><td>{compareCell(plusV)}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginTop: 14 }}> {/* Enterprise: NO self-serve checkout — a sales conversation via form (new tab!) */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <div><h2>Enterprise</h2><p className="desc" style={{ margin: 0 }}>For chains, franchises and high-volume shops. Everything in Pro Plus, plus:</p></div>
           <span className="plan-badge" style={{ background: 'linear-gradient(135deg,#b54708,#7a2e0e)' }}>CONTACT SALES</span>
@@ -156,12 +222,11 @@ export default function Billing() {
           'Dedicated onboarding call — we connect your numbers and train your team',
           'Priority support with a real human, same-day response',
           'Custom integrations and reports built for how you work',
-          'Annual invoicing — pay by card or bank transfer, receipt included',
+          'Annual invoicing with receipts included',
         ].map((f) => (<li key={f}><Ic n="checkCircle" s={15} /><span>{f}</span></li>))}</ul>
         <div style={{ marginTop: 12 }}>
-          <a className="btn ghost" href={`mailto:${salesEmail}?subject=${encodeURIComponent('Vendora Enterprise enquiry')}&body=${encodeURIComponent('Hello Vendora team,\n\nShop name:\nNumber of branches:\nWhatsApp numbers to connect:\n\nThanks!')}`}>Contact sales — {salesEmail}</a>
+          <a className="btn" href="/contact-sales" target="_blank" rel="noreferrer">Contact sales</a> {/* new tab form (no email shown — enquiry lands as a ticket we reply to!) */}
         </div>
-        <p className="hint" style={{ marginTop: 8 }}>Old pay-once buyers keep lifetime access — nothing changes for you.</p>
       </div>
 
       <p className="hint" style={{ marginTop: 12 }}>Secure card checkout — {cur === 'USD' ? 'international cards welcome' : 'all Nigerian cards + bank channels'}. Activation is instant.</p>

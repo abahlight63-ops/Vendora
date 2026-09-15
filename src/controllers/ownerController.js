@@ -95,13 +95,20 @@ async function getProducts(req, res) {
   res.json(products); // array (frontend Catalog renders it)
 }
 
-async function upsertProduct(req, res) {
+async function upsertProduct(req, res, next) {
   const { name, price, description, available } = req.body || {}; // single-product add/edit from the dashboard form
   if (!name || typeof name !== 'string') return res.status(400).json({ error: 'Product name required' }); // the one hard requirement
-  const saved = await productService.upsertProducts(req.session.businessId, [ // wrap single object in [array] — service takes arrays
-    { name, price: price || null, description: description || null, available: available ?? true }, // ?? keeps explicit false (|| would turn false→true!)
-  ]);
-  res.status(201).json(saved[0]); // 201 + the saved row (frontend clears the form + reloads)
+  const draft = { name, price: price || null, description: description || null, available: available ?? true }; // ?? keeps explicit false (|| would turn false→true!)
+  if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'image_url')) draft.image_url = req.body.image_url; // photo key PRESENT → validate/set/clear inside the service; ABSENT → preserve existing (stock toggles omit it!)
+  try {
+    const saved = await productService.upsertProducts(req.session.businessId, [draft]); // wrap single object in [array] — service takes arrays
+    res.status(201).json(saved[0]); // 201 + the saved row (frontend clears the form + reloads)
+  } catch (e) {
+    if (e && e.status === 400) return res.status(400).json({ error: e.message }); // bad photo URL → 400 with the validator's message (not a 500!)
+    if (typeof next === 'function') return next(e); // anything else → central error handler (never swallow, never crash on unhandled rejection!)
+    console.error('upsertProduct error:', e);
+    return res.status(500).json({ error: 'Could not save product' });
+  }
 }
 
 async function deleteProduct(req, res) {

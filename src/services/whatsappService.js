@@ -9,7 +9,7 @@
  * Sends a plain-text WhatsApp message. Fire-and-log: failures are logged,
  * never thrown (a failed send must not crash the webhook around it).
  */
-async function sendWhatsAppReply(toCustomer, message) {
+async function sendWhatsAppReply(toCustomer, message, mediaUrl) {
   const sid = process.env.TWILIO_ACCOUNT_SID; // from .env (AC… string)
   const token = process.env.TWILIO_AUTH_TOKEN; // from .env (secret)
   const from = process.env.TWILIO_WHATSAPP_NUMBER; // e.g. whatsapp:+14155238886
@@ -17,17 +17,25 @@ async function sendWhatsAppReply(toCustomer, message) {
     console.log('Twilio credentials not set; skipping outbound send. Reply was:', message); // dev mode: print instead of sending
     return; // early return = "do nothing gracefully"
   }
-  const params = new URLSearchParams({ From: from, To: toCustomer, Body: message }); // URLSearchParams builds form bodies + encodes special chars
-  const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, { // Twilio REST: POST …/Accounts/{sid}/Messages.json creates a message (2010-04-01 = API version in the URL)
-    method: 'POST',
-    headers: {
-      Authorization: 'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64'), // HTTP Basic: base64("sid:token")
-      'Content-Type': 'application/x-www-form-urlencoded', // Twilio speaks HTML forms, not JSON
-    },
-    body: params, // fetch sends URLSearchParams with the right encoding automatically
-  });
+  const send = (withMedia) => { // closure: builds + posts one message attempt (withMedia toggles the photo attach!)
+    const params = new URLSearchParams({ From: from, To: toCustomer, Body: message }); // URLSearchParams builds form bodies + encodes special chars
+    if (withMedia) params.append('MediaUrl', mediaUrl); // MediaUrl = Twilio fetches the photo server-side and delivers it as a picture bubble (MMS-style param, works on WhatsApp!)
+    return fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, { // Twilio REST: POST …/Accounts/{sid}/Messages.json creates a message (2010-04-01 = API version in the URL)
+      method: 'POST',
+      headers: {
+        Authorization: 'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64'), // HTTP Basic: base64("sid:token")
+        'Content-Type': 'application/x-www-form-urlencoded', // Twilio speaks HTML forms, not JSON
+      },
+      body: params, // fetch sends URLSearchParams with the right encoding automatically
+    });
+  };
+  const res = await send(!!mediaUrl); // first attempt: WITH photo when one was resolved (photoUrl already validated https-only at save time!)
   if (!res.ok) {
     console.error('Twilio send failed:', res.status, await res.text()); // log code + Twilio's reason (bad number? trial limit?)
+    if (mediaUrl) { // photo attach failed (dead URL? blocked host?) → retry TEXT-ONLY so the customer still gets the answer (photo must never eat the reply!)
+      const retry = await send(false);
+      if (!retry.ok) console.error('Twilio text retry failed:', retry.status, await retry.text());
+    }
   }
 }
 

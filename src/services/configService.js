@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS products ( -- the catalog the AI answers from
   price TEXT, -- TEXT not number: keeps unit symbols exactly as written
   description TEXT,
   available BOOLEAN NOT NULL DEFAULT true, -- false = AI says "out of stock"
+  image_url TEXT, -- product photo (public https URL — the bot sends it on WhatsApp for Pro shops)
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (business_id, name) -- same name twice = update, never duplicate (upsert key)
@@ -141,6 +142,7 @@ ALTER TABLE businesses ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT '
 -- Agentic inventory: stock counts per product (forward-compatible with the
 -- back-office plan: low_threshold + supplier_id arrive with reorder drafts)
 ALTER TABLE products ADD COLUMN IF NOT EXISTS quantity INTEGER NOT NULL DEFAULT 0; -- integer counts (never floats — stock is whole units!)
+ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT; -- product photo URL (Pro shops: bot sends it on WhatsApp; NULL = older product, text-only)
 ALTER TABLE products ADD COLUMN IF NOT EXISTS low_threshold INTEGER NOT NULL DEFAULT 5; -- reorder watch level (used later, harmless now)
 
 -- Inventory audit log: EVERY stock change, append-only (never edited, never

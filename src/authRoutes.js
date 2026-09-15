@@ -129,13 +129,20 @@ router.get('/me/products', auth.requireAuth, async (req, res) => {
   res.json(products);
 });
 
-router.post('/me/products', auth.requireAuth, async (req, res) => { // POST = add (or update same-name)
+router.post('/me/products', auth.requireAuth, async (req, res, next) => { // POST = add (or update same-name)
   const { name, price, description, available } = req.body || {};
   if (!name || typeof name !== 'string') return res.status(400).json({ error: 'Product name required' });
-  const saved = await productService.upsertProducts(req.session.businessId, [
-    { name, price: price || null, description: description || null, available: available ?? true }, // ?? = nullish coalescing (null/undefined → true, but false stays false)
-  ]);
-  res.status(201).json(saved[0]); // 201 + the saved product
+  const draft = { name, price: price || null, description: description || null, available: available ?? true }; // ?? = nullish coalescing (null/undefined → true, but false stays false)
+  if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'image_url')) draft.image_url = req.body.image_url; // legacy mirror of ownerController: present → set/clear, absent → preserve
+  try {
+    const saved = await productService.upsertProducts(req.session.businessId, [draft]);
+    res.status(201).json(saved[0]); // 201 + the saved product
+  } catch (e) {
+    if (e && e.status === 400) return res.status(400).json({ error: e.message });
+    if (typeof next === 'function') return next(e);
+    console.error('legacy upsertProduct error:', e);
+    return res.status(500).json({ error: 'Could not save product' });
+  }
 });
 
 router.delete('/me/products/:id', auth.requireAuth, async (req, res) => {

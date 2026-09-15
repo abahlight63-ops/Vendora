@@ -99,6 +99,15 @@ app.use('/api', (req, res, next) => {
   return res.status(401).json({ error: 'Unauthorized' }); // everyone else → 401
 }, adminRoutes); // Express runs middleware THEN the router (chain!)
 
+// Central API error handler — catches next(e) from async controllers
+// (Express 4 does NOT catch async throws, so controllers must call next(e)).
+// Must sit AFTER API routes but BEFORE the SPA fallback so /api errors stay JSON.
+app.use('/api', (err, req, res, next) => { // 4 args = Express treats this as error middleware (only runs on errors!)
+  console.error('API error:', err && err.message ? err.message : err); // log short reason (full stack in dev logs)
+  if (res.headersSent) return next(err); // response already started → delegate (never double-send!)
+  res.status((err && err.status) || 500).json({ error: (err && err.message) || 'Something went wrong' });
+});
+
 const fs = require('fs'); // Node built-in: check if files exist
 // React-only UI: dist/ build + public/ assets (logo)
 // `vite build` outputs the React app into dist/ — Express serves those STATIC files,

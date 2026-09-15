@@ -22,6 +22,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
   final _name = TextEditingController();
   final _price = TextEditingController();
   final _desc = TextEditingController();
+  final _photo = TextEditingController(); // optional https photo link (Pro: bot sends it!)
 
   @override
   void initState() {
@@ -34,6 +35,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
     _name.dispose();
     _price.dispose();
     _desc.dispose();
+    _photo.dispose();
     super.dispose();
   }
 
@@ -60,13 +62,37 @@ class _CatalogScreenState extends State<CatalogScreen> {
     }
     try {
       await ApiClient.instance
-          .addProduct(_name.text.trim(), _price.text, _desc.text);
+          .addProduct(_name.text.trim(), _price.text, _desc.text, _photo.text);
       _name.clear();
       _price.clear();
       _desc.clear();
+      _photo.clear();
       if (mounted) FocusScope.of(context).unfocus();
       _load();
       if (mounted) unawaited(maybeShowSponsor(context)); // web parity: sponsor moment after adds (free tier, max once/day)
+    } on ApiException catch (e) {
+      if (mounted) showToast(context, e.message, type: 'err');
+    }
+  }
+
+  Future<void> _toggle(Map<String, dynamic> p) async {
+    try {
+      await ApiClient.instance.toggleProduct(p); // image_url omitted = photo preserved (web parity!)
+      if (mounted) {
+        showToast(context,
+            (p['available'] != false) ? 'Marked out of stock.' : 'Back in stock — AI can sell it.');
+      }
+      _load();
+    } on ApiException catch (e) {
+      if (mounted) showToast(context, e.message, type: 'err');
+    }
+  }
+
+  Future<void> _clearPhoto(Map<String, dynamic> p) async {
+    try {
+      await ApiClient.instance.clearProductPhoto(p); // explicit null = clear just the photo!
+      if (mounted) showToast(context, 'Photo removed.');
+      _load();
     } on ApiException catch (e) {
       if (mounted) showToast(context, e.message, type: 'err');
     }
@@ -100,6 +126,13 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         decoration: const InputDecoration(
                             labelText: 'Note (optional)'))),
               ]),
+              const SizedBox(height: 8),
+              TextField(
+                  controller: _photo,
+                  keyboardType: TextInputType.url,
+                  decoration: const InputDecoration(
+                      labelText: 'Photo link (optional, Pro)',
+                      hintText: 'https://…')),
               const SizedBox(height: 10),
               FilledButton.icon(
                   onPressed: _add,
@@ -139,24 +172,73 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                 margin: const EdgeInsets.symmetric(
                                     horizontal: 12, vertical: 5),
                                 child: ListTile(
+                                  leading: (p['image_url'] is String &&
+                                          (p['image_url'] as String)
+                                              .startsWith('https://'))
+                                      ? ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          child: Image.network(
+                                            p['image_url'] as String,
+                                            width: 44,
+                                            height: 44,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) =>
+                                                const Icon(Icons
+                                                    .image_not_supported_outlined),
+                                          ),
+                                        )
+                                      : null, // no photo → no leading (dead links fall back to an icon, never a red box!)
                                   title: Text('${p['name']}'),
                                   subtitle: Text(
                                       '${p['price'] ?? ''} ${p['description'] ?? ''}'
                                           .trim()),
-                                  trailing: IconButton(
-                                    icon: const Icon(Icons.delete_outline),
-                                    onPressed: () async {
-                                      try {
-                                        await ApiClient.instance
-                                            .deleteProduct(p['id']);
-                                        _load();
-                                    } on ApiException catch (e) {
-                                      if (context.mounted) {
-                                        showToast(context, e.message,
-                                            type: 'err');
-                                      }
-                                    }
-                                    },
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      // Stock toggle (web parity: pill-as-button flips in/out of stock, photo preserved!)
+                                      TextButton(
+                                        onPressed: () => _toggle(p),
+                                        child: Text(
+                                          (p['available'] != false)
+                                              ? 'in stock'
+                                              : 'out of stock',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            color: (p['available'] != false)
+                                                ? Colors.green
+                                                : Colors.orange,
+                                          ),
+                                        ),
+                                      ),
+                                      // Remove photo only (visible when a photo exists — keeps name/price/stock!)
+                                      if (p['image_url'] is String &&
+                                          (p['image_url'] as String)
+                                              .startsWith('https://'))
+                                        IconButton(
+                                          icon: const Icon(
+                                              Icons.hide_image_outlined),
+                                          tooltip: 'Remove photo',
+                                          onPressed: () => _clearPhoto(p),
+                                        ),
+                                      IconButton(
+                                        icon:
+                                            const Icon(Icons.delete_outline),
+                                        onPressed: () async {
+                                          try {
+                                            await ApiClient.instance
+                                                .deleteProduct(p['id']);
+                                            _load();
+                                          } on ApiException catch (e) {
+                                            if (context.mounted) {
+                                              showToast(context, e.message,
+                                                  type: 'err');
+                                            }
+                                          }
+                                        },
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),

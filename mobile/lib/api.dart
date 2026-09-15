@@ -165,18 +165,47 @@ class ApiClient {
   Future<Map<String, dynamic>> addProduct(
     String name,
     String price,
-    String description,
-  ) async =>
+    String description, [
+    String? imageUrl,
+  ]) async =>
       (await post('/api/me/products', {
         'name': name,
         if (price.trim().isNotEmpty) 'price': price.trim(),
         if (description.trim().isNotEmpty)
           'description': description.trim(),
+        if (imageUrl != null && imageUrl.trim().isNotEmpty)
+          'image_url': imageUrl.trim(), // omitted when blank = preserve existing on same-name updates (web parity!)
       }) as Map)
           .cast<String, dynamic>();
 
   Future<void> deleteProduct(dynamic id) =>
       delete('/api/me/products/$id');
+
+  /// Stock toggle: re-POST same product with flipped available.
+  /// image_url OMITTED on purpose — absent key = preserve the photo (web parity!).
+  Future<Map<String, dynamic>> toggleProduct(
+      Map<String, dynamic> p) async =>
+      (await post('/api/me/products', {
+        'name': '${p['name']}',
+        if (p['price'] != null) 'price': '${p['price']}',
+        if (p['description'] != null)
+          'description': '${p['description']}',
+        'available': !(p['available'] != false),
+      }) as Map)
+          .cast<String, dynamic>();
+
+  /// Remove just the photo (keeps name/price/stock — explicit null = clear!).
+  Future<Map<String, dynamic>> clearProductPhoto(
+      Map<String, dynamic> p) async =>
+      (await post('/api/me/products', {
+        'name': '${p['name']}',
+        if (p['price'] != null) 'price': '${p['price']}',
+        if (p['description'] != null)
+          'description': '${p['description']}',
+        'available': p['available'] != false,
+        'image_url': null,
+      }) as Map)
+          .cast<String, dynamic>();
 
   Future<List<dynamic>> conversations() async =>
       List<dynamic>.from(await get('/api/me/conversations'));

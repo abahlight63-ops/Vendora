@@ -35,6 +35,27 @@ async function sendText(token, chatId, text) {
   }
 }
 
+// Send a product photo with the reply as its caption (Pro catalog photos).
+// Returns true when Telegram accepted it, false = caller falls back to text.
+async function sendPhoto(token, chatId, photoUrl, caption) {
+  if (!token || !chatId || !photoUrl) return false; // guards (empty token = shop never connected Telegram!)
+  try {
+    const res = await fetch(`${api(token)}/sendPhoto`, { // Bot API sendPhoto (POST JSON: photo URL + caption ride together!)
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, photo: photoUrl, caption: String(caption || '').slice(0, 1000) }), // slice 1024-limit guard (captions cap lower than messages — truncate, never fail!)
+    });
+    if (!res.ok) { // dead URL? blocked host?…
+      console.error(`Telegram photo send failed: ${res.status} ${(await res.text()).slice(0, 150)}`); // …log short reason…
+      return false; // …caller falls back to plain text (photo must never eat the reply!)
+    }
+    return true;
+  } catch (e) {
+    console.error('Telegram photo send error:', e.message); // network down → log only (webhook must never crash!)
+    return false;
+  }
+}
+
 // Download a file by file_id: getFile → file_path → download bytes.
 // Returns { mime, base64 } (same shape as Twilio fetchMedia audio/image twins!).
 async function downloadFile(token, fileId, mime) {
@@ -81,4 +102,4 @@ function parseInbound(update) {
   return null; // anything else (polls, locations, contacts…) ignored for v1 (scope!)
 }
 
-module.exports = { verifySecret, sendText, downloadFile, parseInbound }; // route + webhook import these four
+module.exports = { verifySecret, sendText, sendPhoto, downloadFile, parseInbound }; // route + webhook import these five

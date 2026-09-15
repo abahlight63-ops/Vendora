@@ -13,7 +13,7 @@ import Ic from '../components/icons.jsx'; // trash icon
 
 export default function Catalog() { // no props needed (fetches everything itself)
   const [products, setProducts] = useState(null); // null = loading (skeleton rows); [] = loaded-but-empty (empty state!)
-  const [f, setF] = useState({ name: '', price: '', desc: '' }); // CONTROLLED FORM: inputs mirror this object (value={f.name} + onChange writes back)
+  const [f, setF] = useState({ name: '', price: '', desc: '', photo: '' }); // CONTROLLED FORM: inputs mirror this object (value={f.name} + onChange writes back)
   const [tier, setTier] = useState('free'); // 'free' default → upgrade card flashes first if billing is slow (safe default: never show Pro tools to free users!)
   const [syncText, setSyncText] = useState(''); // pasted profile text (controlled textarea)
   const [syncInfo, setSyncInfo] = useState(null); // {synced, synced_at} from GET /api/me/profile-sync ("Last synced" label)
@@ -40,15 +40,24 @@ export default function Catalog() { // no props needed (fetches everything itsel
   }
   async function add() { // manual add (free forever)
     if (!f.name.trim()) return toast('Product name is required', 'err'); // only hard rule (price optional — "call for price" shops exist!)
-    const { ok, data } = await api('/api/me/products', { method: 'POST', body: JSON.stringify({ name: f.name.trim(), price: f.price.trim() || null, description: f.desc.trim() || null, available: true }) }); // trim + empty→null (DB stores NULL, not "")
-    if (ok) { pop('ok', 'Product added!', 'The AI can sell it from now on.'); setF({ name: '', price: '', desc: '' }); load(); maybeShowSponsor(); } // success popup + clear form + reload + sponsor hook (fire-and-forget: no await — sponsor must never block!)
-    else pop('err', 'Could not add product', data.error || 'Please try again.'); // failure popup (data.error from backend validation)
+    const body = { name: f.name.trim(), price: f.price.trim() || null, description: f.desc.trim() || null, available: true }; // trim + empty→null (DB stores NULL, not "")
+    if (f.photo.trim()) body.image_url = f.photo.trim(); // photo key ONLY when pasted (omitted = preserve existing on same-name updates — re-adding a price never wipes the photo!)
+    const { ok, data } = await api('/api/me/products', { method: 'POST', body: JSON.stringify(body) });
+    if (ok) { pop('ok', 'Product added!', 'The AI can sell it from now on.'); setF({ name: '', price: '', desc: '', photo: '' }); load(); maybeShowSponsor(); } // success popup + clear form + reload + sponsor hook (fire-and-forget: no await — sponsor must never block!)
+    else pop('err', 'Could not add product', data.error || 'Please try again.'); // failure popup (data.error from backend validation — includes bad-photo-URL messages!)
   }
   async function toggle(p) { // stock toggle: re-POSTs same product with flipped available (upsert by NAME = same row updated!)
-    const { ok } = await api('/api/me/products', { method: 'POST', body: JSON.stringify({ name: p.name, price: p.price, description: p.description, available: !p.available }) }); // ! flips true↔false
+    const { ok } = await api('/api/me/products', { method: 'POST', body: JSON.stringify({ name: p.name, price: p.price, description: p.description, available: !p.available }) }); // ! flips true↔false (image_url OMITTED on purpose — absent key = preserve the photo!)
     if (ok) toast(p.available ? 'Marked out of stock.' : 'Back in stock — AI can sell it.'); // message mirrors the ACTION taken (p.available = state BEFORE flip!)
     else toast('Could not update stock', 'err');
     load(); // reload either way (cheap + always truthful)
+  }
+  async function clearPhoto(p) { // remove just the photo (keeps name/price/stock — explicit null = clear!)
+    if (!confirm('Remove the photo for "' + p.name + '"?')) return; // confirm() = browser dialog (Cancel → stop)
+    const { ok, data } = await api('/api/me/products', { method: 'POST', body: JSON.stringify({ name: p.name, price: p.price, description: p.description, available: p.available, image_url: null }) });
+    if (ok) toast('Photo removed.'); // small toast (minor change — no big popup)
+    else toast(data.error || 'Could not remove photo', 'err');
+    load();
   }
   async function del(id) { // delete with native confirm()…
     if (!confirm('Remove this product?')) return; // confirm() = browser dialog, returns boolean (Cancel → stop)
@@ -67,16 +76,17 @@ export default function Catalog() { // no props needed (fetches everything itsel
         <h2>Products</h2>
         <p className="desc">Tip: from your WhatsApp send <b>LEARN: Blue gown ₦45,000</b> — same result, no dashboard needed.</p> {/* <b> inside <p> = inline bold (teaches the WhatsApp shortcut!) */}
         <div className="table-wrap"><table> {/* .table-wrap = horizontal scroll on small screens (responsive tables 101) */}
-          <thead><tr><th>Product</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead> {/* <thead>/<th> = semantic header row (empty last <th> = actions column; Stock = live quantity!) */}
+          <thead><tr><th></th><th>Product</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead> {/* <thead>/<th> = semantic header row (empty first <th> = photo thumb; empty last <th> = actions column; Stock = live quantity!) */}
           <tbody> {/* three states: loading → empty → rows (classic async trilogy!) */}
-            {products === null ? <tr><td colSpan="5"><div className="skel-grid">{[0, 1, 2].map((i) => (<div key={i} className="skel-row"><div className="skel-lines"><div className="skel" style={{ width: '35%' }} /><div className="skel" style={{ width: '60%' }} /></div><div className="skel" style={{ width: 70 }} /><div className="skel" style={{ width: 90 }} /></div>))}</div></td></tr>
-              : products.length === 0 ? <tr><td colSpan="5"><div className="empty"><b>No products yet</b>Add your first one below — it takes 10 seconds.</div></td></tr>
+            {products === null ? <tr><td colSpan="6"><div className="skel-grid">{[0, 1, 2].map((i) => (<div key={i} className="skel-row"><div className="skel-lines"><div className="skel" style={{ width: '35%' }} /><div className="skel" style={{ width: '60%' }} /></div><div className="skel" style={{ width: 70 }} /><div className="skel" style={{ width: 90 }} /></div>))}</div></td></tr>
+              : products.length === 0 ? <tr><td colSpan="6"><div className="empty"><b>No products yet</b>Add your first one below — it takes 10 seconds.</div></td></tr>
               : products.map((p) => (<tr key={p.id}> {/* key={p.id} = stable DB id (rows never shuffle wrongly!) */}
+                <td>{p.image_url ? <img src={p.image_url} alt="" width="40" height="40" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8, display: 'block' }} loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} /> : <span className="hint">—</span>}</td> {/* thumb (onError hides dead links — dashboard never shows broken-image icons!) */}
                 <td><b>{p.name}</b><br /><span className="hint">{p.description || ''}</span></td> {/* <br/> stacks description under name */}
                 <td>{p.price || '—'}</td> {/* || '—' : null prices show dash, never "null" */}
                 <td><b>{p.quantity ?? 0}</b></td> {/* live stock count (?? 0: legacy rows show 0, never blank — WhatsApp updates land here instantly!) */}
                 <td><button className={'pill ' + (p.available ? 'ok' : 'flag')} style={{ cursor: 'pointer', border: '1px solid' }} onClick={() => toggle(p)} title="Click to toggle stock">{p.available ? 'in stock' : 'out of stock'}</button></td> {/* pill AS button: color shows state, click flips it (title = hover tooltip teaching the trick) */}
-                <td style={{ textAlign: 'right' }}><button className="del" onClick={() => del(p.id)} title="Remove"><Ic n="trash" s={15} /></button></td> {/* .del = red hover trash (arrow fn passes id — onClick={() => del(p.id)} delays the call until click!) */}
+                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{p.image_url && <button className="del" onClick={() => clearPhoto(p)} title="Remove photo" style={{ marginRight: 6 }}>📷✕</button>}<button className="del" onClick={() => del(p.id)} title="Remove"><Ic n="trash" s={15} /></button></td> {/* .del = red hover trash (arrow fn passes id — onClick={() => del(p.id)} delays the call until click!); 📷✕ only on photo rows (removes JUST the photo!) */}
               </tr>))}
           </tbody>
         </table></div>
@@ -112,6 +122,8 @@ export default function Catalog() { // no props needed (fetches everything itsel
         </div>
         <label>Details (optional)</label>
         <input value={f.desc} onChange={(e) => setF({ ...f, desc: e.target.value })} placeholder="Sizes M–XL, cotton…" />
+        <label>Photo link (optional, Pro)</label>
+        <input value={f.photo} onChange={(e) => setF({ ...f, photo: e.target.value })} placeholder="https://… Pro shops: the bot sends this photo on WhatsApp" inputMode="url" /> {/* Pro perk: WhatsApp/Telegram photo attach (free shops: saved, just not sent!) */}
         <div style={{ marginTop: 14 }}><button className="btn" onClick={add}>Add product</button></div>
       </div>
     </>

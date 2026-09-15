@@ -31,9 +31,13 @@ async function handleInbound(req, res) {
       console.error(`No business configured for number ${To}`); // onboarding gap — log it
       return res.status(200).send(''); // 200 anyway: config issues must NOT trigger Twilio retries
     }
+    const telegram = require('../services/channels/telegram'); // hoisted here: the photo branch below reuses sendPhoto (lazy require above stays for sendText parity!)
     const reply = tgCtx // ONE sender for every reply below (Telegram bot OR Twilio — call sites stay identical!)…
-      ? (to, msg) => require('../services/channels/telegram').sendText(tgCtx.botToken, tgCtx.chatId, msg) // …Telegram door: bot → chat (lazy require, no cycle!)…
-      : (to, msg) => whatsappService.sendWhatsAppReply(to, msg); // …WhatsApp door: Twilio as before (arrow wrappers keep signatures identical!)
+      ? async (to, msg, mediaUrl) => { // …Telegram door: photo+caption when a catalog photo matched, plain text otherwise…
+          if (mediaUrl && await telegram.sendPhoto(tgCtx.botToken, tgCtx.chatId, mediaUrl, msg)) return; // sendPhoto true = delivered (caption IS the reply — nothing more to send!)
+          return telegram.sendText(tgCtx.botToken, tgCtx.chatId, msg); // false/no-photo → plain text fallback (photo must never eat the reply!)
+        }
+      : (to, msg, mediaUrl) => whatsappService.sendWhatsAppReply(to, msg, mediaUrl); // …WhatsApp door: Twilio MediaUrl attach + text-only retry inside (arrow wrappers keep signatures identical!)
 
     // ---- LEARN mode ----
     if ( // three guards: LEARN: prefix + owner number exists + sender IS the owner
@@ -251,8 +255,15 @@ async function handleInbound(req, res) {
     const result = await replyEngine.generateReply(body, business, image, history); // THE AI CALL (Pro flag resolved inside via planService)
 
     if (result.reply) { // confident answer → deliver + clear any old flag
-      await reply(From, result.reply); // send to customer (From = customer number here)
-      await conversationService.logMessage(customerId, 'out', result.reply); // store our reply
+      let photoUrl = null; // catalog photo to attach (null = text-only, the default!)
+      if (planService.isPro(business)) { // PRO-ONLY: photos are a premium selling point (free tier gets the same WORDS, just no picture!)
+        try { // try/catch: a catalog read failure must never eat the reply (text still goes out!)
+          const catalog = await productService.getProducts(business.id); // fresh catalog (photos editable from the dashboard anytime!)
+          photoUrl = pickProductPhoto(catalog, body, result.reply); // name-match against what was asked + answered (first photo wins!)
+        } catch (e) { console.error('photo resolve error:', e.message); }
+      }
+      await reply(From, result.reply, photoUrl); // send to customer (From = customer number here)
+      await conversationService.logMessage(customerId, 'out', result.reply, photoUrl); // store our reply (+ photo URL so the inbox shows what was sent!)
       await db.query( // update chat preview + unflag (it might have been flagged before)
         'UPDATE conversations SET last_reply = $1, needs_human = false, flag_reason = NULL, updated_at = now() WHERE id = $2',
         [result.reply, customerId]
@@ -277,6 +288,23 @@ async function handleInbound(req, res) {
   }
 }
 
+// Pick ONE catalog photo to attach to a bot reply (Pro shops only — caller gates!).
+// Matches product names (3+ chars) against the customer message + the reply text;
+// first product WITH an image_url wins. Returns the URL or null (text-only).
+// WHY both texts: the customer may ask vaguely ("how much is the gown?") while the
+// reply names it ("Blue gown is ₦45,000") — matching both catches either side.
+function pickProductPhoto(catalog, customerText, replyText) {
+  if (!Array.isArray(catalog) || catalog.length === 0) return null; // empty shelf → nothing to attach
+  const hay = `${customerText || ''}\n${replyText || ''}`.toLowerCase(); // one lowercase blob (includes() matching below!)
+  for (const p of catalog) { // catalog order = oldest first (stable, predictable: first photo wins!)
+    const name = String(p && p.name || '').trim().toLowerCase();
+    if (name.length < 3) continue; // tiny names ("oil", "it") would match EVERYTHING — skip (precision over recall!)
+    if (!p.image_url) continue; // no photo on this product (text-only, as before!)
+    if (hay.includes(name)) return p.image_url; // named in the conversation → attach its photo
+  }
+  return null; // no named photo product → text-only (unchanged behavior!)
+}
+
 async function alertOwner(business, customerNumber, customerName, message, reason) {
   const summary = // the page: who, what, why, how to reach them
     `🔔 NEW ORDER / INQUIRY — ${business.name}\n\n` +
@@ -294,4 +322,4 @@ async function alertOwner(business, customerNumber, customerName, message, reaso
   await Promise.all(jobs); // Promise.all = parallel (one slow door never delays the other!)
 }
 
-module.exports = { handleInbound }; // routes/webhookRoutes.js wires this to POST /webhook/whatsapp
+module.exports = { handleInbound, _pickProductPhoto: pickProductPhoto }; // routes/webhookRoutes.js wires handleInbound to POST /webhook/whatsapp (_pick exported for smoke tests!)

@@ -4,6 +4,7 @@
 // Props: show (bool), title, lines[] (benefits), onClose. Billing CTA inside.
 // No npm modules — React + CSS (backdrop-filter glassmorphism!).
 import { Link } from 'react-router-dom'; // Billing CTA (client-side nav!)
+import Ic from './icons.jsx'; // drawn lock + check glyphs (never emoji!)
 
 export default function GlassUpsell({ show, title, lines, onClose }) {
   if (!show) return null; // hidden → render nothing (parent toggles!)
@@ -11,7 +12,7 @@ export default function GlassUpsell({ show, title, lines, onClose }) {
     <div className="glass-overlay" onClick={onClose}> {/* fullscreen dim; click outside = close (low-pressure UX — premium never begs!) */}
       <div className="glass-card" onClick={(e) => e.stopPropagation()}> {/* stopPropagation = clicks INSIDE don't dismiss (only backdrop does!) */}
         <div className="glass-shine" /> {/* moving light streak (pure CSS shimmer — the "premium" feel!) */}
-        <div className="glass-badge">✦ PRO</div> {/* sparkle badge (CSS glow!) */}
+        <div className="glass-badge"><Ic n="lock" s={12} /> PREMIUM</div> {/* drawn padlock badge (SVG, theme-safe!) */}
         <h2>{title || 'Tired of slow messages?'}</h2> {/* emotional headline (user's words: speed pain → upgrade!) */}
         <p className="hint">Premium AIs answer sharper, reason deeper, and never queue behind free traffic.</p>
         <ul className="glass-feats">
@@ -21,7 +22,7 @@ export default function GlassUpsell({ show, title, lines, onClose }) {
             'Voice-note transcription on WhatsApp',
             '50 premium chats daily + unlimited free AIs',
             'Zero ads, priority support',
-          ]).map((t) => (<li key={t}><span className="glass-tick">✓</span>{t}</li>))} {/* key={t} unique strings (static list!) */}
+          ]).map((t) => (<li key={t}><span className="glass-tick"><Ic n="check" s={12} /></span>{t}</li>))} {/* key={t} unique strings (static list!) */}
         </ul>
         <Link className="btn glass-cta" to="/billing" onClick={onClose}>Upgrade to Pro</Link> {/* shimmer CTA → billing (closes modal AND navigates!) */}
         <button className="skip" onClick={onClose}>Maybe later</button> {/* low-pressure exit (forced upsells breed resentment!) */}

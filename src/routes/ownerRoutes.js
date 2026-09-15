@@ -14,6 +14,7 @@ router.put('/me/business', ownerController.updateBusiness); // PUT = update prof
 router.post('/me/setup', ownerController.saveSetup); // POST = welcome niche + heard-from (no name required!)
 router.get('/me/products', ownerController.getProducts); // list catalog
 router.post('/me/products', ownerController.upsertProduct); // POST = add/update one product
+router.post('/me/product-photo', ownerController.uploadProductPhoto); // Upload media: host a file-picker image, get back a URL
 router.delete('/me/products/:id', ownerController.deleteProduct); // :id = URL param (req.params.id)
 router.get('/me/conversations', ownerController.getConversations); // inbox list (latest 100)
 router.get('/me/conversations/:id/messages', ownerController.getMessages); // full thread (ownership-checked!)
@@ -30,6 +31,14 @@ router.post('/me/conversations/:id/takeover', ownerController.chatTakeover);
 router.get('/me/telegram', ownerController.telegramStatus);
 router.post('/me/telegram/token', ownerController.telegramToken);
 router.post('/me/telegram/link', ownerController.telegramLink);
+router.get('/me/channels', ownerController.channelsStatus); // Connect page: WhatsApp LIVE/OFF + channel + model (secrets never returned!)
+router.put('/me/whatsapp-model', ownerController.whatsappModel); // per-shop WhatsApp brain pick (tier-gated!)
+router.post('/me/channels/twilio', ownerController.twilioConnect); // step 1: validate SID/token → number picker
+router.post('/me/channels/twilio/select', ownerController.twilioSelect); // step 2: adopt number + auto-set webhook
+router.post('/me/channels/twilio/disconnect', ownerController.twilioDisconnect); // forget creds
+router.post('/me/channels/meta', ownerController.metaConnect); // validate ID/token → arm Meta door
+router.post('/me/channels/meta/disconnect', ownerController.metaDisconnect); // forget creds → Twilio door
+router.post('/me/channels/meta/pull-profile', ownerController.metaPullProfile); // one-tap auto-sync (Pro!)
 router.get('/me/complaints', ownerController.complaintMine);
 router.post('/me/complaints', ownerController.complaintCreate); // file a support ticket (shows in Admin → Complaints)
 router.get('/me/notifications', ownerController.getNotifications); // bell inbox (newest first + unread count)

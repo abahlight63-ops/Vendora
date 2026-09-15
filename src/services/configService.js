@@ -232,6 +232,26 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_notifications_business ON notifications(business_id, created_at DESC);
+
+-- AI voice controls: the owner's own words for greetings + human handoff.
+-- Empty = built-in polite defaults (replyEngine + webhookController fall back).
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS greeting_msg TEXT NOT NULL DEFAULT '';
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS handoff_msg TEXT NOT NULL DEFAULT '';
+
+-- Channel connections (Connect page): which brain answers each shop's WhatsApp.
+-- whatsapp_model = per-shop AI pick for WhatsApp/Playground replies (default full).
+-- wa_channel = 'twilio' (default) or 'meta' (Meta Cloud API direct, no middleman).
+-- Twilio creds = the SHOP's own SID/token (never returned to browsers!).
+-- Meta creds = Phone Number ID + token from developers.facebook.com.
+-- whatsapp_last_inbound_at = LIVE pill + TEST-verify (stamped per inbound).
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS whatsapp_model TEXT NOT NULL DEFAULT 'gemini-flash-full';
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS wa_channel TEXT NOT NULL DEFAULT 'twilio';
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS twilio_account_sid TEXT NOT NULL DEFAULT '';
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS twilio_auth_token TEXT NOT NULL DEFAULT '';
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_token TEXT NOT NULL DEFAULT '';
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_phone_number_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_verify_token TEXT NOT NULL DEFAULT '';
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS whatsapp_last_inbound_at TIMESTAMPTZ;
 `;
 
 async function ensureSchema() {

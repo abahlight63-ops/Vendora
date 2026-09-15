@@ -1,8 +1,9 @@
 // ── frontend/src/pages/Billing.jsx ─────────────────────────────────
 // WHAT: subscriptions HQ — status banner (+ trial countdown), Free-vs-Pro
 // explainer, tier cards (Pro + Pro Plus, monthly/yearly in the shop's
-// currency), pay-once contact card. CARD ONLY: Naira shops pay with Paystack,
-// Dollar shops with Flutterwave (backend picks amounts — never the browser!).
+// currency), Enterprise contact card. CARD ONLY: the checkout route is picked
+// by LOCATION on the backend — brand names never appear in this UI (shoppers
+// pay on a secure checkout page; logos live there, not here).
 // FLOWS: pay() → provider session → redirect. All money via money() helper
 // (NGN ₦ / USD $). Backend is source of truth for prices (display fallbacks!).
 import { useEffect, useState } from 'react'; // useState = bill/busy/period; useEffect = load on mount
@@ -54,15 +55,14 @@ export default function Billing() {
   }
   useEffect(() => { load(); }, []); // [] = mount-only
 
-  async function pay(plan) { // CARD FLOW: provider session → redirect the whole page there
-    const isUSD = (bill?.currency === 'USD'); // Dollar shops → Flutterwave, Naira shops → Paystack (location does the routing!)
-    const endpoint = isUSD ? '/api/billing/flutterwave/initialize' : '/api/billing/initialize'; // Flutterwave = USD/intl cards, Paystack = NGN cards
-    const provider = isUSD ? 'Flutterwave' : 'Paystack';
+  async function pay(plan) { // CARD FLOW: secure checkout session → redirect the whole page there
+    const isUSD = (bill?.currency === 'USD'); // Dollar shops → international checkout, Naira shops → local checkout (location does the routing, silently!)
+    const endpoint = isUSD ? '/api/billing/flutterwave/initialize' : '/api/billing/initialize'; // backend route differs; the SHOPPER never sees brand names
     setBusy(plan); // lock buttons (busy string = this plan's button shows 'Starting…')
     const { ok, data } = await api(endpoint, { method: 'POST', body: JSON.stringify({ plan }) }); // send ONLY the plan key (amount enforced server-side!)
     setBusy(''); // unlock (ALWAYS — success navigates away anyway, failure must unlock!)
     if (ok && data.authorization_url) { // session created → checkout URL received…
-      pop('ok', 'Opening secure checkout…', `Complete your payment with ${provider} to activate instantly.`); // success popup FIRST (user sees confirmation)…
+      pop('ok', 'Opening secure checkout…', 'Complete your payment on the secure page to activate instantly.'); // success popup FIRST (user sees confirmation)…
       setTimeout(() => { location.href = data.authorization_url; }, 1200); // …then leave after 1.2s (location.href = full-page navigation, exits the SPA!)
     } else { // backend refused (no keys, unknown plan, no email…)…
       pop('err', 'Payment failed to start', data.error || 'Could not start payment. Contact support from Help.'); // …error popup WITH direction (never dead-end the user!)
@@ -72,7 +72,6 @@ export default function Billing() {
   const status = bill?.status || '…'; // ?. + || : loading → '…' placeholder (never crash on null bill)
   const pill = status === 'active' ? 'ok' : status === 'trialing' ? 'flag' : status === 'pending' ? 'info' : 'off'; // chained ternary: status → pill color
   const cur = bill?.currency === 'USD' ? 'USD' : 'NGN'; // whitelist to two currencies (default NGN while loading)
-  const provider = cur === 'USD' ? 'Flutterwave' : 'Paystack'; // checkout brand shown on buttons (location-based!)
   const plans = bill?.plans || FALLBACK_PLANS; // backend prices or display defaults
   const pro = plans.pro || FALLBACK_PLANS.pro; // nested tier (backend shape); || fallback guards old cached responses
   const plus = plans.plus || FALLBACK_PLANS.plus;
@@ -102,7 +101,7 @@ export default function Billing() {
           <span className="plan-save">Save {money(price.save, cur)} — {price.save_pct}% off monthly</span> // server-computed save + pct (NGN 22%/33%, USD mirrors!)
         )}
         <ul className="plan-feats">{feats.map((f) => (<li key={f}><Ic n="checkCircle" s={15} /><span>{f}</span></li>))}</ul>
-        <button className={'btn' + (isHot ? '' : ' ghost')} disabled={!!busy} onClick={() => pay(planKey)}>{busy === planKey ? 'Starting…' : status === 'active' ? `Extend ${tierKey === 'plus' ? 'Pro Plus' : 'Pro'} ${period}` : `Pay with ${provider} — ${tierKey === 'plus' ? 'Pro Plus' : 'Pro'} ${period}`}</button>
+        <button className={'btn' + (isHot ? '' : ' ghost')} disabled={!!busy} onClick={() => pay(planKey)}>{busy === planKey ? 'Starting…' : status === 'active' ? `Extend ${tierKey === 'plus' ? 'Pro Plus' : 'Pro'} ${period}` : `${amt(price)}/${period === 'monthly' ? 'month' : 'year'} — ${tierKey === 'plus' ? 'Pro Plus' : 'Pro'}`}</button>
       </div>
     );
   };
@@ -114,8 +113,7 @@ export default function Billing() {
       <div className="card"> {/* subscription status banner (+ live trial countdown!) */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}> {/* inline flex (title left, pills right, wraps on phones) */}
           <div><h2>Your subscription</h2><p className="desc" style={{ margin: 0 }}>{statusLine}</p></div>
-          <span style={{ display: 'inline-flex', gap: 6 }}> {/* pill cluster: provider + currency + tier + status */}
-            <span className="pill info">{provider}</span> {/* checkout brand (location-based: Paystack NGN / Flutterwave USD) */}
+          <span style={{ display: 'inline-flex', gap: 6 }}> {/* pill cluster: currency + tier + status */}
             <span className="pill info">{cur === 'USD' ? 'USD $' : 'NGN ₦'}</span> {/* currency badge (ternary text) */}
             {bill?.tier && <span className={'pill ' + (bill.tier === 'pro' ? 'ok' : 'info')}>{bill.tier === 'pro' ? 'PRO' : 'FREE'}</span>} {/* && conditional: tier pill only when loaded */}
             <span className={'pill ' + pill}>{status}</span> {/* status pill (color var above) */}
@@ -148,17 +146,25 @@ export default function Billing() {
         {tierCard('plus', plus, true, 'MOST POWER')}
       </div>
 
-      <div className="card" style={{ marginTop: 14 }}> {/* pay-once: NO self-serve checkout — personal sales call */}
+      <div className="card" style={{ marginTop: 14 }}> {/* Enterprise: NO self-serve checkout — personal sales conversation */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <div><h2>Pay once, own it</h2><p className="desc" style={{ margin: 0 }}>One payment, lifetime access. Handled personally — write us and we set you up.</p></div>
+          <div><h2>Enterprise</h2><p className="desc" style={{ margin: 0 }}>For chains, franchises and high-volume shops. Everything in Pro Plus, plus:</p></div>
           <span className="plan-badge" style={{ background: 'linear-gradient(135deg,#b54708,#7a2e0e)' }}>CONTACT SALES</span>
         </div>
+        <ul className="plan-feats" style={{ marginTop: 12 }}>{[
+          'Multiple branches, one dashboard — each shop keeps its own catalog and inbox',
+          'Dedicated onboarding call — we connect your numbers and train your team',
+          'Priority support with a real human, same-day response',
+          'Custom integrations and reports built for how you work',
+          'Annual invoicing — pay by card or bank transfer, receipt included',
+        ].map((f) => (<li key={f}><Ic n="checkCircle" s={15} /><span>{f}</span></li>))}</ul>
         <div style={{ marginTop: 12 }}>
-          <a className="btn ghost" href={`mailto:${salesEmail}?subject=${encodeURIComponent('Vendora pay-once plan')}`}>Contact sales — {salesEmail}</a>
+          <a className="btn ghost" href={`mailto:${salesEmail}?subject=${encodeURIComponent('Vendora Enterprise enquiry')}&body=${encodeURIComponent('Hello Vendora team,\n\nShop name:\nNumber of branches:\nWhatsApp numbers to connect:\n\nThanks!')}`}>Contact sales — {salesEmail}</a>
         </div>
+        <p className="hint" style={{ marginTop: 8 }}>Old pay-once buyers keep lifetime access — nothing changes for you.</p>
       </div>
 
-      <p className="hint" style={{ marginTop: 12 }}>Secure card checkout via {provider} — {cur === 'USD' ? 'international cards welcome' : 'all Nigerian cards + bank channels'}. Activation is instant. Pay-once in {cur === 'USD' ? 'USD' : 'Naira'}? Write {salesEmail}.</p>
+      <p className="hint" style={{ marginTop: 12 }}>Secure card checkout — {cur === 'USD' ? 'international cards welcome' : 'all Nigerian cards + bank channels'}. Activation is instant.</p>
     </>
   );
 }

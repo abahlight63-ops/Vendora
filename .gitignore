@@ -22,3 +22,5 @@ mobile/*.iml
 **/android/key.properties
 *.jks
 *.keystore
+# Owner-uploaded product photos (runtime files, never committed)
+public/uploads/

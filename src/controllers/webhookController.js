@@ -26,18 +26,30 @@ async function handleInbound(req, res) {
     }
 
     const tgCtx = req.telegram || null; // Telegram door? (route pre-resolved business + sender — see routes/telegramRoutes.js!)
-    const business = tgCtx && tgCtx.business ? tgCtx.business : await configService.getBusinessByWhatsAppNumber(To); // Telegram skips the number lookup (identity came from bot token / link binding!)
+    const metaCtx = req.meta || null; // Meta door? (route pre-resolved business + sender — see routes/webhookRoutes.js!)
+    const business = (tgCtx && tgCtx.business) || (metaCtx && metaCtx.business)
+      ? (tgCtx && tgCtx.business) || metaCtx.business
+      : await configService.getBusinessByWhatsAppNumber(To); // classic door: identity = recipient Twilio number
     if (!business) {
       console.error(`No business configured for number ${To}`); // onboarding gap — log it
       return res.status(200).send(''); // 200 anyway: config issues must NOT trigger Twilio retries
     }
+    if (!tgCtx) { // WhatsApp-class doors stamp last-inbound (Connect LIVE pill + TEST-verify read this!)
+      try { await db.query('UPDATE businesses SET whatsapp_last_inbound_at = now() WHERE id = $1', [business.id]); } catch (e) { console.error('inbound stamp error:', e.message); } // guarded: a stamp must never break a reply
+    }
     const telegram = require('../services/channels/telegram'); // hoisted here: the photo branch below reuses sendPhoto (lazy require above stays for sendText parity!)
-    const reply = tgCtx // ONE sender for every reply below (Telegram bot OR Twilio — call sites stay identical!)…
+    const meta = require('../services/channels/meta'); // Meta Cloud API sender (shop token — never logged!)
+    const shopCreds = (business.twilio_account_sid && business.twilio_auth_token) // shop connected its OWN Twilio number?…
+      ? { sid: business.twilio_account_sid, token: business.twilio_auth_token, from: business.whatsapp_number } // …replies leave FROM their number via their credentials (customer sees THEIR shop!)
+      : null; // …else the platform default (sandbox / shared sender!)
+    const reply = tgCtx // ONE sender for every reply below (Telegram bot OR WhatsApp — call sites stay identical!)…
       ? async (to, msg, mediaUrl) => { // …Telegram door: photo+caption when a catalog photo matched, plain text otherwise…
           if (mediaUrl && await telegram.sendPhoto(tgCtx.botToken, tgCtx.chatId, mediaUrl, msg)) return; // sendPhoto true = delivered (caption IS the reply — nothing more to send!)
           return telegram.sendText(tgCtx.botToken, tgCtx.chatId, msg); // false/no-photo → plain text fallback (photo must never eat the reply!)
         }
-      : (to, msg, mediaUrl) => whatsappService.sendWhatsAppReply(to, msg, mediaUrl); // …WhatsApp door: Twilio MediaUrl attach + text-only retry inside (arrow wrappers keep signatures identical!)
+      : (metaCtx && business.wa_channel === 'meta' && business.meta_token && business.meta_phone_number_id) // …Meta door: shop token + number id…
+        ? (to, msg, mediaUrl) => meta.sendText(business.meta_token, business.meta_phone_number_id, metaCtx.chatId, msg, mediaUrl) // …photo-by-link + caption, text-only retry inside!
+        : (to, msg, mediaUrl) => whatsappService.sendWhatsAppReply(to, msg, mediaUrl, shopCreds); // …classic door: Twilio (shop creds when connected!) + text-only retry inside
 
     // ---- LEARN mode ----
     if ( // three guards: LEARN: prefix + owner number exists + sender IS the owner
@@ -57,7 +69,7 @@ async function handleInbound(req, res) {
       }
       const saved = await productService.upsertProducts(business.id, products); // insert-or-update (same name = price update)
       const list = saved.map((p) => `• ${p.name}${p.price ? ' — ' + p.price : ''}`).join('\n'); // "• name — price" per line
-      await reply(From, `✅ Catalog updated (${saved.length} product${saved.length > 1 ? 's' : ''}):\n${list}\n\nI'll now use these to answer customers.`); // ternary pluralizes correctly
+      await reply(From, `Catalog updated (${saved.length} product${saved.length > 1 ? 's' : ''}):\n${list}\n\nI'll now use these to answer customers.`); // ternary pluralizes correctly
       return res.status(200).send('');
     }
 
@@ -82,7 +94,7 @@ async function handleInbound(req, res) {
       const saved = await productService.upsertProducts(business.id, products); // scaffold the catalog…
       await db.query('UPDATE businesses SET profile_snapshot = $1, profile_synced_at = now() WHERE id = $2', [profileText.slice(0, 4000), business.id]); // …AND store the snapshot (generateReply grounds Pro answers in it; slice caps at 4000 chars)
       const list = saved.map((p) => `• ${p.name}${p.price ? ' — ' + p.price : ''}`).join('\n');
-      await reply(From, `✅ Profile synced — ${saved.length} verified product${saved.length > 1 ? 's' : ''}:\n${list}\n\nI'll now verify customer questions against your business profile.`);
+      await reply(From, `Done — profile synced: ${saved.length} verified product${saved.length > 1 ? 's' : ''}:\n${list}\n\nI'll now verify customer questions against your business profile.`);
       return res.status(200).send('');
     }
 
@@ -98,7 +110,7 @@ async function handleInbound(req, res) {
       if (upperBody === 'RESUME') { // resume everything…
         await db.query('UPDATE businesses SET bot_enabled = true WHERE id = $1', [business.id]); // …global switch on…
         await db.query('UPDATE conversations SET bot_paused = false WHERE business_id = $1', [business.id]); // …plus every taken-over chat released
-        await reply(From, '✅ Bot resumed — I reply to customers again. Send PAUSE anytime to silence me.');
+        await reply(From, 'Bot resumed — I reply to customers again. Send PAUSE anytime to silence me.');
         return res.status(200).send('');
       }
       const target = Body.trim().slice(5).trim(); // "PAUSE <digits>" → the digits (slice(5) strips "PAUSE")
@@ -168,15 +180,15 @@ async function handleInbound(req, res) {
         }
         const arrow = `${done.before} → ${done.after}`; // the before/after core (your rule #4 — always shown!)
         if (done.operation === 'add') {
-          await reply(From, `✅ Stock updated: ${done.item} ${arrow} (+${intent.quantity} received).`);
+          await reply(From, `Stock updated: ${done.item} ${arrow} (+${intent.quantity} received).`);
         } else if (done.operation === 'remove') { // remove splits: clean sale vs oversell-clamp (different copy — owner must SEE the difference!)…
           if (done.clamped) {
             await reply(From, `⚠️ Only ${done.before} in stock — recorded the sale, stock now 0 (was short by ${intent.quantity - done.before}). Check this one!`); // oversell math shown (shortfall = asked − had!)
           } else {
-            await reply(From, `✅ Sold recorded: ${done.item} ${arrow} (−${intent.quantity}).`);
+            await reply(From, `Sale recorded: ${done.item} ${arrow} (−${intent.quantity}).`);
           }
         } else { // 'set' (count corrections)…
-          await reply(From, `✅ Stock count set: ${done.item} ${arrow}.`);
+          await reply(From, `Stock count set: ${done.item} ${arrow}.`);
         }
         return res.status(200).send('');
       }
@@ -252,7 +264,28 @@ async function handleInbound(req, res) {
 
     // Free tier keeps working from the manual catalog — only Pro unlocks
     // profile verification. Nothing is ever paused for non-payment.
-    const result = await replyEngine.generateReply(body, business, image, history); // THE AI CALL (Pro flag resolved inside via planService)
+    // Paid-model guard: a shop that picked Kimi/Claude/GPT for WhatsApp spends
+    // API money per reply — cap it DAILY (same 50 as the VendoraAI page). Over
+    // the cap? The reply still goes out, just answered by the free default
+    // (customers NEVER see paywalls — the shop sees the cap in Insights!).
+    const PAID_WA_PER_DAY = Number(process.env.PAID_AI_PER_DAY || 50); // shared paid-model budget (one number for page + WhatsApp!)
+    try {
+      const aiModels = require('../services/aiModels');
+      const pick = aiModels.resolveChoice(business.whatsapp_model || 'gemini-flash-full', planService.effectiveTier(business));
+      if (!pick.error && pick.entry.tier === 'paid') {
+        const { rows: cap } = await db.query(
+          `INSERT INTO ai_usage (business_id, day) VALUES ($1, CURRENT_DATE)
+           ON CONFLICT (business_id, day) DO UPDATE SET business_id = EXCLUDED.business_id
+           RETURNING paid_count`,
+          [business.id]
+        );
+        if (cap[0] && cap[0].paid_count >= PAID_WA_PER_DAY) {
+          business = { ...business, whatsapp_model: 'gemini-flash-full' }; // downgrade THIS reply only (spread = no DB write, no mutation of the cached row!)
+          console.log(`WhatsApp paid cap hit for biz ${business.id} — free default answers this one`);
+        }
+      }
+    } catch (e) { console.error('paid-cap check error:', e.message); } // guarded: caps must never eat a reply
+    const result = await replyEngine.generateReply(body, business, image, history); // THE AI CALL (model + tier resolved inside!)
 
     if (result.reply) { // confident answer → deliver + clear any old flag
       let photoUrl = null; // catalog photo to attach (null = text-only, the default!)
@@ -264,6 +297,15 @@ async function handleInbound(req, res) {
       }
       await reply(From, result.reply, photoUrl); // send to customer (From = customer number here)
       await conversationService.logMessage(customerId, 'out', result.reply, photoUrl); // store our reply (+ photo URL so the inbox shows what was sent!)
+      if (result.paidModel) { // paid brain answered → count it (same daily budget as the VendoraAI page!)
+        try {
+          await db.query(
+            `INSERT INTO ai_usage (business_id, day, paid_count) VALUES ($1, CURRENT_DATE, 1)
+             ON CONFLICT (business_id, day) DO UPDATE SET paid_count = ai_usage.paid_count + 1`,
+            [business.id]
+          );
+        } catch (e) { console.error('paid-count error:', e.message); } // guarded: counting must never break logging
+      }
       await db.query( // update chat preview + unflag (it might have been flagged before)
         'UPDATE conversations SET last_reply = $1, needs_human = false, flag_reason = NULL, updated_at = now() WHERE id = $2',
         [result.reply, customerId]
@@ -275,7 +317,8 @@ async function handleInbound(req, res) {
          WHERE id = $2`, // gold flag + reason (Insights aggregates these reasons)
         [result.reason || 'AI could not answer confidently', customerId]
       );
-      const handoffMsg = 'Thanks for your message! A member of our team will get back to you shortly.'; // customer never left hanging…
+      const handoffMsg = (business.handoff_msg && String(business.handoff_msg).trim()) // owner's own handoff words (AI settings page!)…
+        || 'Thanks for your message! A member of our team will get back to you shortly.'; // …or the built-in polite fallback (customer never left hanging!)
       await reply(From, handoffMsg);
       await conversationService.logMessage(customerId, 'out', handoffMsg);
       await alertOwner(business, From, ProfileName, Body, result.reason); // …and the owner is paged instantly
@@ -306,11 +349,11 @@ function pickProductPhoto(catalog, customerText, replyText) {
 }
 
 async function alertOwner(business, customerNumber, customerName, message, reason) {
-  const summary = // the page: who, what, why, how to reach them
-    `🔔 NEW ORDER / INQUIRY — ${business.name}\n\n` +
-    `👤 Customer: ${customerName || 'Unknown'} (${customerNumber})\n` +
-    `💬 Message: "${message}"\n` +
-    `❓ Why you're needed: ${reason || 'AI could not answer'}\n\n` +
+  const summary = // the page: who, what, why, how to reach them (plain text — no emoji icons!)
+    `NEW ORDER / INQUIRY — ${business.name}\n\n` +
+    `Customer: ${customerName || 'Unknown'} (${customerNumber})\n` +
+    `Message: "${message}"\n` +
+    `Why you are needed: ${reason || 'AI could not answer'}\n\n` +
     `Reply to them directly on WhatsApp: ${customerNumber}`;
   const jobs = []; // fan-out list (both doors alerted in PARALLEL — owner gets paged wherever they live!)
   if (business.owner_number) jobs.push(whatsappService.sendWhatsAppReply(business.owner_number, summary)); // WhatsApp door (unchanged behavior!)

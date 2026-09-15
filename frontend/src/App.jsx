@@ -19,6 +19,7 @@ import Welcome from './pages/Welcome.jsx'; // niche + heard-from setup (tour →
 import Dashboard from './pages/Dashboard.jsx'; // overview: stats + attention + checklist
 import Profile from './pages/Profile.jsx'; // business name/number/hours/tone/FAQs/currency/timezone
 import Catalog from './pages/Catalog.jsx'; // products + Pro profile-sync
+import Connect from './pages/Connect.jsx'; // channel switchboard (WhatsApp Meta/Twilio + Telegram + brain pick)
 import Chats from './pages/Chats.jsx'; // inbox + threads
 import Billing from './pages/Billing.jsx'; // plans + status + trial countdown
 import Playground from './pages/Playground.jsx'; // test-bot (no WhatsApp needed)
@@ -71,6 +72,7 @@ export default function App() { // ROOT component (main.jsx renders this)
       <Route path="/dashboard" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Dashboard biz={me} /></Guard>} /> {/* Guard pattern: <Guard …><Page/></Guard> = page becomes `children` */}
       <Route path="/chats" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Chats /></Guard>} />
       <Route path="/catalog" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Catalog /></Guard>} />
+      <Route path="/connect" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Connect /></Guard>} />
       <Route path="/playground" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Playground /></Guard>} />
       <Route path="/insights" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Insights /></Guard>} />
       <Route path="/billing" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Billing /></Guard>} />

@@ -56,8 +56,8 @@ function ModelPicker({ models, model, onPick, onLocked }) {
         <span className="mpick-spark"><Ic n="spark" s={15} /></span>
         <span className="mpick-label">{current.label}</span>
         <span className={'pill ' + badgeClass(current.badge || 'Smart')}>{current.badge || 'Smart'}</span>
-        {current.tier === 'paid' && <span className="mpick-pro">PRO</span>}
-        <span className={'mpick-chev' + (open ? ' open' : '')}>▾</span>
+        {current.tier === 'paid' && <span className="mpick-lock"><Ic n="lock" s={12} /></span>}
+        <span className={'mpick-chev' + (open ? ' open' : '')}><Ic n="chev" s={13} /></span>
       </button>
       {open && (
         <div className="mpick-pop" role="listbox" aria-label="Choose AI model">
@@ -67,7 +67,7 @@ function ModelPicker({ models, model, onPick, onLocked }) {
             if (!items.length) return null;
             return (
               <div key={g} className="mpick-group">
-                <div className="mpick-ghead">{g === 'Premium' ? '✦ Premium (Pro)' : g}</div>
+                <div className="mpick-ghead">{g === 'Premium' ? (<span className="mpick-glock">Premium <Ic n="lock" s={11} /></span>) : g}</div>
                 {items.map((m) => (
                   <button
                     key={m.id}
@@ -79,18 +79,18 @@ function ModelPicker({ models, model, onPick, onLocked }) {
                   >
                     <span className="mpick-check">{m.id === model ? '●' : ''}</span>
                     <span className="mpick-main">
-                      <span className="mpick-name">{m.locked ? '🔒 ' : ''}{m.label}</span>
-                      <span className="mpick-desc">{m.desc || (m.tier === 'paid' ? 'Pro · premium quality' : 'Free · no cost')}</span>
+                      <span className="mpick-name">{m.locked ? (<><Ic n="lock" s={12} /> </>) : null}{m.label}</span>
+                      <span className="mpick-desc">{m.desc || (m.tier === 'paid' ? 'Premium quality — tap to see plans' : 'Free · no cost')}</span>
                     </span>
                     {m.tier === 'paid'
-                      ? <span className="pill off">PRO</span>
+                      ? <span className="mpick-lock"><Ic n="lock" s={13} /></span>
                       : <span className={'pill ' + badgeClass(m.badge || 'Smart')}>{m.badge || 'Smart'}</span>}
                   </button>
                 ))}
               </div>
             );
           })}
-          <div className="mpick-foot">Free AIs cost you nothing. Premium AIs need Pro (heavy work models need Pro Plus) — tap one to see why.</div>
+          <div className="mpick-foot">Free AIs cost you nothing. Locked AIs need an upgrade (heavy work models need the top plan) — tap one to see why.</div>
         </div>
       )}
     </div>
@@ -222,7 +222,7 @@ export default function VendoraAI({ biz }) {
     <div className="vai">
       <div className="vai-modelbar">
         <ModelPicker models={models} model={model} onPick={persistPick} onLocked={() => setUpsell(true)} />
-        {current?.locked && <Link className="mini-link" to="/billing">{current?.minTier === 'plus' ? 'Unlock Pro Plus' : 'Unlock Pro'}</Link>} {/* lock copy matches the floor (heavy models → Plus!) */}
+        {current?.locked && <Link className="mini-link" to="/billing">See upgrade options</Link>} {/* locked pick → billing (modal already explains why!) */}
         <span className="mpick-hint">Switch brains anytime — the caption under each reply tells you who answered.</span>
         <GlassUpsell show={upsell} onClose={() => setUpsell(false)} />
       </div>
@@ -255,7 +255,7 @@ export default function VendoraAI({ biz }) {
             </div>
           )}
           {!busy && msgs.length > 0 && msgs[msgs.length - 1].from === 'ai' && (
-            <button className="vai-regen" onClick={regenerate}>↻ Regenerate answer</button> // manual override for short/weak replies (resends the last question)
+            <button className="vai-regen" onClick={regenerate}><Ic n="refresh" s={14} /> Regenerate answer</button> // manual override for short/weak replies (resends the last question)
           )}
         </div>
       )}

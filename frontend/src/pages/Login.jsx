@@ -316,7 +316,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
             <p className="hint" style={{ textAlign: 'center', marginBottom: 8 }}>Watch it sell — live demo</p>
             <DemoChat /> {/* mobile ALSO gets the demo (auth-side hidden on phones, so duplicate here for small screens!) */}
           </div>
-          <p className="auth-hint">Cards · Transfer · USSD via Paystack — only after your free days<br /><a href="/faq">FAQ</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p> {/* trust footer + legal links (plain <a href> = full navigation, fine for public pages) */}
+          <p className="auth-hint">Secure card checkout — only after your free days<br /><a href="/faq">FAQ</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p> {/* trust footer + legal links (plain <a href> = full navigation, fine for public pages) */}
           </>)} {/* close the login/signup wrapper (otp/forgot branches above replace it!) */}
           {mode === 'login' && <p className="auth-toggle"><a onClick={() => switchMode('forgot')}>Forgot password?</a></p>} {/* && conditional: forgot link ONLY on login (signup users don't have passwords to forget yet!) */}
         </div>

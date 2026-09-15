@@ -1,8 +1,8 @@
 // ── lib/screens/billing_screen.dart ──────────────────────────────
 // WHAT: subscription status + tiers (GET /api/me/billing) + trial countdown.
-// Card checkout stays in the BROWSER (Paystack NGN / Flutterwave USD redirect
-// + receipt flow need a full web page) — this screen deep-links there with
-// one tap. Same account, same session state server-side.
+// Card checkout stays in the BROWSER (secure checkout redirect needs a full
+// web page) — this screen deep-links there with one tap. Same account, same
+// session state server-side. Checkout brand names never appear here.
 // TIERS: Pro (₦7,499/mo · ₦69,999/yr ≈ 22% off) + Pro Plus (₦14,999/mo ·
 // ₦120,000/yr ≈ 33% off, + voice notes + 2 heavy work models). Pay-once
 // goes via sales email (no self-serve lifetime checkout).
@@ -121,7 +121,6 @@ class _BillingScreenState extends State<BillingScreen> {
       ]));
     }
     final cur = '${_bill!['currency'] ?? 'NGN'}';
-    final provider = cur == 'USD' ? 'Flutterwave' : 'Paystack'; // checkout brand (location-based, web parity!)
     final trialLeft = _bill!['trial_days_left']; // whole days left (number when trialing, null otherwise!)
     final plans = (_bill!['plans'] as Map? ?? {}).cast<String, dynamic>();
     // Nested tiers (new backend) with legacy fallback (old backend / cache).
@@ -156,12 +155,14 @@ class _BillingScreenState extends State<BillingScreen> {
                           TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 6),
                   Text('Status: ${_bill!['status'] ?? '—'}'),
-                  Text('Checkout: $provider ${cur == 'USD' ? '(intl cards)' : '(NGN cards)'}'),
+                  Text(cur == 'USD'
+                      ? 'Secure checkout (intl cards)'
+                      : 'Secure checkout (NGN cards + bank)'),
                   if (_bill!['expires'] != null)
                     Text('Pro until: ${_bill!['expires']}'),
                   if (_bill!['status'] == 'trialing' && trialLeft is num)
                     Text(
-                        'Pro trial: $trialLeft day${trialLeft == 1 ? '' : 's'} left ⏳',
+                        'Pro trial: $trialLeft day${trialLeft == 1 ? '' : 's'} left',
                         style: const TextStyle(fontWeight: FontWeight.w700)),
                   if (_bill!['trial_ends'] != null)
                     Text('Trial ends: ${_bill!['trial_ends']}'),
@@ -214,7 +215,7 @@ class _BillingScreenState extends State<BillingScreen> {
           hot: true,
           badge: 'MOST POWER',
         ),
-        // Pay-once: personal sales call (no self-serve checkout).
+        // Enterprise: personal sales conversation (no self-serve checkout).
         GlassCard(
           margin: const EdgeInsets.only(bottom: 12),
           radius: 16,
@@ -223,21 +224,48 @@ class _BillingScreenState extends State<BillingScreen> {
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Pay once, own it',
+                  const Text('Enterprise',
                       style: TextStyle(
                           fontSize: 18, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
                   const Text(
-                      'One payment, lifetime access. Handled personally — write us and we set you up.',
+                      'Chains, franchises, high-volume shops. Everything in Pro Plus, plus:',
                       style: TextStyle(fontSize: 13)),
+                  const SizedBox(height: 8),
+                  for (final f in const [
+                    'Multiple branches, one dashboard',
+                    'Dedicated onboarding call + team training',
+                    'Priority support, same-day response',
+                    'Custom integrations and reports',
+                    'Annual invoicing — card or transfer',
+                  ])
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 5),
+                      child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.check_circle,
+                                size: 15,
+                                color: Theme.of(context).colorScheme.primary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                                child: Text(f,
+                                    style:
+                                        const TextStyle(fontSize: 13))),
+                          ]),
+                    ),
                   const SizedBox(height: 10),
                   FilledButton.tonalIcon(
                     onPressed: () => launchUrl(
                         Uri.parse(
-                            'mailto:$salesEmail?subject=${Uri.encodeComponent('Vendora pay-once plan')}')),
+                            'mailto:$salesEmail?subject=${Uri.encodeComponent('Vendora Enterprise enquiry')}&body=${Uri.encodeComponent('Hello Vendora team,\n\nShop name:\nNumber of branches:\nWhatsApp numbers to connect:\n\nThanks!')}')),
                     icon: const Icon(Icons.email_outlined),
                     label: Text('Contact sales — $salesEmail'),
                   ),
+                  const SizedBox(height: 6),
+                  const Text(
+                      'Old pay-once buyers keep lifetime access.',
+                      style: TextStyle(fontSize: 11)),
                 ]),
           ),
         ),

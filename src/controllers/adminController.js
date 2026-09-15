@@ -197,7 +197,7 @@ async function transferApprove(req, res) {
   );
   await db.query("UPDATE payments SET status = 'active' WHERE id = $1", [req.params.id]); // ledger flips pending → active (revenue counts it now!)
   require('../services/notifyService').notify(pay.business_id, { // bell: verified (fire-and-forget — never breaks approval)
-    title: '✅ Payment verified — Pro is active!',
+    title: 'Payment verified — your upgrade is active!',
     body: `Your ${pay.plan} payment was confirmed. Enjoy ${days} days of Pro — nothing else to do.`,
     link: '/billing',
   });

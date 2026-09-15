@@ -77,7 +77,7 @@ app.use(
 app.get('/health', (req, res) => res.json({ status: 'ok' })); // GET /health → {"status":"ok"}
 
 // Version — the Shell checks this on load: version changed since last visit
-// → "Vendora updated 🎉" toast + bell badge. Bump src/version.js per release.
+// → "Vendora updated" toast + bell badge. Bump src/version.js per release.
 app.get('/api/version', (req, res) => {
   const { APP_VERSION, WHATS_NEW } = require('./version');
   res.json({ version: APP_VERSION, whatsNew: WHATS_NEW });
@@ -139,7 +139,7 @@ const spa = (req, res) => {
   return res.status(503).json({ error: 'Frontend not built. Run: npm run build' }); // 503 = not ready
 };
 // All app routes → React SPA
-['/', '/login', '/reset', '/onboarding', '/welcome', '/dashboard', '/profile', '/catalog', '/chats', '/billing', '/playground', '/insights', '/vendora-ai', '/settings', '/help', '/privacy', '/terms', '/faq', '/admin'].forEach((r) => app.get(r, spa)); // register each page → same handler
+['/', '/login', '/reset', '/onboarding', '/welcome', '/dashboard', '/profile', '/catalog', '/connect', '/chats', '/billing', '/playground', '/insights', '/vendora-ai', '/settings', '/help', '/privacy', '/terms', '/faq', '/admin'].forEach((r) => app.get(r, spa)); // register each page → same handler
 
 const port = process.env.PORT || 3000; // hosts (Render) inject PORT; locally default 3000
 // Self-migrating boot: new columns apply on EVERY deploy automatically

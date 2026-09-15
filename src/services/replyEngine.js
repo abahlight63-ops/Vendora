@@ -38,6 +38,8 @@ function cleanReply(text) {
   t = t.replace(/\*{2,}/g, ''); // leftover ** runs (e.g. "*****") → gone
   t = t.replace(/^[ \t]*#[ \t]+/gm, ''); // leftover "# " line starts → gone
   t = t.replace(/[ \t]+$/gm, ''); // trailing spaces per line
+  t = t.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{1F1E6}-\u{1F1FF}]/gu, ''); // emoji → gone (prompts say "no emojis" but models still sneak them in — enforcement beats prompting; U+2022 • bullets are NOT in these ranges, so our option lists survive!)
+  t = t.replace(/[ \t]{2,}/g, ' '); // collapse gaps the emoji strip leaves behind
   t = t.replace(/\n{3,}/g, '\n\n'); // max one blank line between blocks
   return t.trim();
 }
@@ -125,7 +127,11 @@ async function askGeneral(message, history, choiceId, tier, bizName, niche) {
 
 PERSONALITY: knowledgeable friend + sharp business coach. Friendly, respectful, encouraging. Greet warmly, always offer a concrete next step.
 
-GREETINGS ("hey", "hi", "hello", "sup", "good morning", "how far", "abeg"): NEVER curt. Reply politely, use their shop name when known ("Hey ${shop}! 👋 Great to see you — what are we working on today?"). Match vibe: English → warm English; Pidgin → natural Pidgin ("Hey! I dey here for you — wetin I fit help you do today?"); Yoruba/Hausa/Igbo greetings → greet back, then follow their language lead.
+GREETINGS ("hey", "hi", "hello", "sup", "good morning", "how far", "abeg"): NEVER curt. Reply politely, use their shop name when known ("Hey ${shop}! Great to see you — how are you doing today? What can we help you with?"). Match vibe: English → warm English; Pidgin → natural Pidgin ("Hey! I dey here for you — how you dey? Wetin I fit help you do today?"); Yoruba/Hausa/Igbo greetings → greet back, then follow their language lead.
+
+RESPECT (non-negotiable — this protects the business legally and commercially): unfailingly polite, patient and professional, like the best-trained shop assistant. NEVER rude, sarcastic, mocking, dismissive or insulting, no matter the customer's tone. NO profanity, ever — even if the customer swears: stay calm, stay kind, apologize for any frustration, and offer a human teammate ("I'm sorry about that — let me get a human teammate to sort this out for you."). Courtesy is the whole brand.
+
+EMOJI: none in replies — plain words only (chat bubbles render raw characters, and plain text reads professional).
 
 SMALL TALK ("how are you?", "who are you?", "what can you do?"): answer warmly, say you are Vendora AI inside Vendora, list 4-5 real capabilities (write sales captions, business name ideas, pricing strategy, difficult-customer replies, product descriptions, marketing plans), end with one question to keep helping.
 
@@ -221,12 +227,17 @@ async function generateReply(customerMessage, business, image, history) {
   }
   const maxDisc = business.max_discount_pct || 0;
   const minOrder = business.min_order_naira || 0;
+  const customGreeting = typeof business.greeting_msg === 'string' ? business.greeting_msg.trim().slice(0, 300) : '';
   const transcript = (history || [])
     .map((m) => `${m.direction === 'in' ? 'Customer' : 'You'}: ${m.body}`)
     .join('\n');
 
   const systemPrompt = `You are the friendly human shop assistant for ${business.name} on WhatsApp. You sound like a warm, sharp salesperson who loves helping — never a robot, never stiff. You answer using ONLY the business info and catalog below.
 It is ${now} (business local time, ${tz}).
+
+RESPECT FIRST (non-negotiable — this protects the business): unfailingly polite, patient and professional at ALL times. NEVER rude, sarcastic, mocking, dismissive or insulting, whatever the customer's tone. NO profanity, ever — even if the customer swears or insults you: stay calm, stay kind, and hand off warmly ("I'm sorry about that — a teammate will sort this out for you shortly."). Courtesy is the whole brand.
+
+${customGreeting ? `SHOP GREETING (the owner's own words — use this to greet, then offer help): "${customGreeting}"\n` : ''}GREETINGS ("hey", "hi", "hello", "good morning", "how far", "abeg", "how are you"): ALWAYS answer directly with a warm greeting — NEVER NEED_HUMAN for a greeting. Greet by shop name, ask how they are doing, and ask what you can help with today (e.g. "Hello! Welcome to ${business.name} — how are you doing today? What can we help you with?"). Match their language: Pidgin in → warm natural Pidgin out ("Hello! Welcome to ${business.name} — how you dey today? Wetin we fit do for you?").
 
 Business info:
 - Name: ${business.name}
@@ -252,23 +263,44 @@ HOW TO SELL LIKE A HUMAN (follow every time):
 7. NEVER invent prices, products, availability, or delivery promises. Only the catalog and FAQ. If the answer is not covered (custom orders, complaints, negotiation, payment details, anything not in the catalog), respond with exactly:
    NEED_HUMAN: <brief reason>
 8. BUSINESS HOURS: Compare now against opening hours. If CLOSED, say so warmly, state when you next open, and still help with catalog questions (prices, options).
-9. PERSONAL CHIT-CHAT: purely social with zero buying signal (greetings alone, jokes, "lol", memes) → exactly: NEED_HUMAN: personal chat, no sales intent. Never pitch to a friend saying hi.
-10. LENGTH + FORMAT: WhatsApp-friendly, warm, human. Direct answers stay short; when listing options allow up to ~150 words. PLAIN TEXT ONLY — never type #, *, underscores, backticks, ~, | or [text](url). Steps (if any) as plain "1. 2. 3." lines, options as "•" lines, each on its OWN line.
+9. PURE CHIT-CHAT (greetings alone, jokes, "lol", "thanks", memes — zero buying signal): answer warmly and briefly in one or two kind sentences, then invite them to ask about products ("Glad to hear that! Anything I can help you find in the shop today?"). NEVER pitch products uninvited, NEVER lecture, NEVER NEED_HUMAN for friendliness — only hand off if they are upset or ask for a human.
+10. LENGTH + FORMAT: WhatsApp-friendly, warm, human. Direct answers stay short; when listing options allow up to ~150 words. PLAIN TEXT ONLY — never type #, *, underscores, backticks, ~, | or [text](url), and no emojis — plain words only. Steps (if any) as plain "1. 2. 3." lines, options as "•" lines, each on its OWN line.
 ${maxDisc > 0 ? `11. SMARTDEAL NEGOTIATION: The owner allows up to ${maxDisc}% off${minOrder ? ` on orders worth at least ₦${minOrder.toLocaleString()}` : ''} ONLY when the customer hesitates, complains about price, or says it's too expensive AND clearly wants to buy. Offer once, as a one-time favour — never volunteer it to happy customers, never exceed ${maxDisc}%.` : '11. Do NOT offer discounts — the owner has not enabled negotiation.'}
 ${image ? '12. The customer also sent a PHOTO. Look at it, describe briefly what you see, match it to the closest catalog product(s), then suggest 2-4 similar in-stock alternatives the same way. If nothing matches, use NEED_HUMAN.' : ''}`;
 
   const userPrompt = `Customer message: "${customerMessage}"${image ? '\n(A photo is attached — analyze it.)' : ''}\n\nRespond per your rules.`;
 
+  // Per-shop brain pick (Connect page → whatsapp_model): the SAME catalog the
+  // VendoraAI dropdown offers, tier-gated the same way. Downgraded/locked picks
+  // fall back to the free default (customers NEVER see a paywall — the SHOP does!).
+  const aiModels = require('./aiModels');
+  const shopTier = planService.effectiveTier(business);
+  let entry = aiModels.get(business.whatsapp_model || 'gemini-flash-full') || aiModels.get('gemini-flash-full');
+  const check = aiModels.resolveChoice(entry.id, shopTier);
+  if (check.error) entry = aiModels.get('gemini-flash-full'); // locked (plan dropped?) → free default, silently
+  const waOpts = { temperature: 0.7, maxTokens: 1200 }; // warmer + roomier than the old chain (0.3/350 starved answers — the accuracy fix!)
+  const isSubstantive = (t) => t && t.trim().length > 40
+    && !/^(hi+|hey+|hello+|sup|good\s?(morning|afternoon|evening|day)|how far|yo|hiya|he+y+|how are you|who are you|what can you do|thanks|thank you|ok|okay|lol)\b/i.test(t.trim());
+
   try {
-    const raw = await client.callAI(systemPrompt, userPrompt, image);
-    const text = cleanReply(raw); // plain text enforced; ALSO normalizes "**NEED_HUMAN:**" variants into a detectable flag
+    let answered = await callChoice(entry, null, systemPrompt, userPrompt, image, waOpts);
+    if (answered.text && answered.text.trim().length < 140 && isSubstantive(customerMessage)) { // stub answer (a real question in ~2 sentences = a miss!)…
+      console.log(`WhatsApp answer too short (${answered.text.trim().length} chars) — expanding once`);
+      try { // …ONE expansion retry, same model (accuracy without extra cost surface!)
+        const expanded = await callChoice(entry, null, systemPrompt,
+          `${userPrompt}\n\n(Follow-up: that answer was too brief. Answer again PROPERLY — full explanation, ordered steps, and a concrete example from the catalog.)`,
+          image, waOpts);
+        if (expanded.text && expanded.text.trim().length > answered.text.trim().length) answered = expanded;
+      } catch (err) { console.error('generateReply expand retry failed:', err.message); }
+    }
+    const text = cleanReply(answered.text); // plain text enforced; ALSO normalizes "**NEED_HUMAN:**" variants into a detectable flag
     if (text.startsWith('NEED_HUMAN')) {
       return { reply: null, needsHuman: true, reason: text.slice(11).trim() || 'Unsure how to answer' };
     }
     if (!text) {
       return { reply: null, needsHuman: true, reason: 'Empty AI response' };
     }
-    return { reply: text, needsHuman: false };
+    return { reply: text, needsHuman: false, modelId: answered.modelId, paidModel: entry.tier === 'paid' };
   } catch (err) {
     console.error('replyEngine error:', err);
     return { reply: null, needsHuman: true, reason: 'AI service unavailable' };

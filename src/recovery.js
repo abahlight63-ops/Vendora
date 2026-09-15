@@ -37,7 +37,7 @@ async function sendRecovery() {
   for (const c of rows) { // one at a time (Twilio rate limits + per-chat error isolation)
     const firstName = (c.customer_name || '').split(' ')[0] || 'there'; // "Adaeze Obi" → "Adaeze"; unknown → "there"
     const nudge = // the friendly follow-up text (personalized with their own words)
-      `Hi ${firstName}! 👋 It's ${c.business_name}.\n\n` +
+      `Hi ${firstName}! It's ${c.business_name}.\n\n` +
       `You asked us about: "${c.last_message.slice(0, 90)}"\n\n` + // .slice caps length at 90 chars
       `Just checking in — that offer is still available if you'd like to go ahead. ` +
       `Reply here and we'll sort you out right away!`;

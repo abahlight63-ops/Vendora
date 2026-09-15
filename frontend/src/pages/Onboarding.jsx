@@ -128,6 +128,7 @@ export default function Onboarding() {
               {slide.checklist && ( // first-action checklist (slide 5)…
                 <div className="qa-list">
                   <Link className="qa" to="/catalog"><Ic n="box" s={17} /><div><b>Add your products</b><span className="hint">3–5 to start is plenty</span></div></Link>
+                  <Link className="qa" to="/connect"><Ic n="plug" s={17} /><div><b>Connect WhatsApp + Telegram</b><span className="hint">TEST to LIVE in minutes</span></div></Link>
                   <Link className="qa" to="/playground"><Ic n="play" s={17} /><div><b>Test like a customer</b><span className="hint">Ask for prices, then chaos</span></div></Link>
                 </div>
               )}

@@ -329,7 +329,10 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .mpick-btn:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 .mpick-spark { display: inline-flex; color: var(--green); }
 .mpick-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
-.mpick-pro { font-size: 10px; font-weight: 800; letter-spacing: 0.6px; color: #fff; background: linear-gradient(135deg,#b54708,#7a2e0e); padding: 2px 8px; border-radius: 999px; }
+.mpick-lock { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; color: #fff; background: linear-gradient(135deg,#b54708,#7a2e0e); flex: 0 0 auto; }
+.mpick-glock { display: inline-flex; align-items: center; gap: 5px; }
+.mpick-name { font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+.mpick-name svg { color: var(--gold); flex: 0 0 auto; }
 .mpick-chev { color: var(--faint); font-size: 13px; transition: transform 0.2s ease; }
 .mpick-chev.open { transform: rotate(180deg); }
 .mpick-pop { position: absolute; top: calc(100% + 8px); left: 0; z-index: 60; width: 340px; max-width: calc(100vw - 48px); max-height: 60vh; overflow-y: auto; background: var(--card); border: 1.5px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-lg); padding: 8px; animation: popIn 0.25s cubic-bezier(0.2,0.9,0.25,1.2) both; -webkit-overflow-scrolling: touch; }
@@ -408,11 +411,18 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 [data-theme="dark"] .glass-card .hint { color: #c9a06a; }
 .glass-shine { position: absolute; top: -60%; left: -30%; width: 60%; height: 220%; transform: rotate(18deg); background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent); animation: glassShine 3.2s ease-in-out infinite; pointer-events: none; }
 @keyframes glassShine { 0% { left: -30%; } 60%, 100% { left: 130%; } }
-.glass-badge { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #fff; background: linear-gradient(135deg, #b54708, #7a2e0e); padding: 5px 14px; border-radius: 999px; box-shadow: 0 4px 14px rgba(181, 71, 8, 0.45); }
+.glass-badge { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #fff; background: linear-gradient(135deg, #b54708, #7a2e0e); padding: 5px 14px; border-radius: 999px; box-shadow: 0 4px 14px rgba(181, 71, 8, 0.45); }
 .glass-feats { list-style: none; text-align: left; display: grid; gap: 10px; margin: 20px 0 22px; }
 .glass-feats li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: #5c3a12; }
 [data-theme="dark"] .glass-feats li { color: #ecd3a8; }
-.glass-tick { flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; background: #128c4a; color: #fff; font-size: 12px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+.glass-tick { flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; background: #128c4a; color: #fff; display: inline-flex; align-items: center; justify-content: center; }
+/* Lock buttons — the paywall affordance (padlock, tap → upgrade card) */
+.lock-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--gold-line); background: var(--gold-bg); color: var(--gold); cursor: pointer; transition: transform var(--t), box-shadow var(--t); vertical-align: middle; }
+.lock-btn:hover { transform: scale(1.08); box-shadow: 0 3px 12px rgba(181, 71, 8, 0.35); }
+.lock-btn:active { transform: scale(0.94); }
+.lock-btn span { font-size: 11px; font-weight: 800; }
+.card h2 svg { vertical-align: -3px; margin-right: 2px; }
+.vai-regen svg { vertical-align: -2px; margin-right: 4px; }
 .btn.glass-cta { width: 100%; background: linear-gradient(135deg, #e07b1f, #b54708); background-size: 200% 200%; animation: ctaShimmer 2.8s ease infinite; font-size: 15px; padding: 13px 18px; margin-bottom: 6px; }
 .btn.glass-cta:hover { filter: brightness(1.08); }
 @keyframes ctaShimmer { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
@@ -517,7 +527,10 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .nbell-btn { position: relative; width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: border-color var(--t), transform var(--t); }
 .nbell-btn:hover { border-color: var(--green); }
 .nbell-btn:active { transform: scale(0.94); }
-.nbell-ic { font-size: 18px; line-height: 1; }
+.nbell-btn.has-unread { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
+.nbell-ic { display: inline-flex; align-items: center; justify-content: center; color: var(--text-1); line-height: 1; }
+.nbell-btn.has-unread .nbell-ic { color: var(--green-dark); animation: bellRing 0.6s ease; }
+@keyframes bellRing { 0% { transform: rotate(0); } 20% { transform: rotate(14deg); } 40% { transform: rotate(-12deg); } 60% { transform: rotate(7deg); } 80% { transform: rotate(-5deg); } 100% { transform: rotate(0); } }
 .nbell-badge { position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: linear-gradient(135deg, #e5484d, #b42318); color: #fff; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(217, 45, 32, 0.5); animation: icPop 0.4s cubic-bezier(0.2, 0.9, 0.25, 1.4) both; }
 .nbell-pop { position: absolute; top: calc(100% + 10px); right: 0; z-index: 120; width: 360px; max-width: calc(100vw - 32px); max-height: 60vh; overflow-y: auto; background: var(--card); border: 1.5px solid var(--line); border-radius: 18px; box-shadow: var(--shadow-lg); padding: 10px; animation: popIn 0.25s cubic-bezier(0.2, 0.9, 0.25, 1.2) both; -webkit-overflow-scrolling: touch; }
 .nbell-head { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 10px; font-size: 15px; }

@@ -259,7 +259,7 @@ class _AiScreenState extends State<AiScreen> {
                   value: '${(m as Map)['id']}',
                   enabled: (m['locked'] != true),
                   child: Text(
-                      '${m['label'] ?? m['id']}${m['locked'] == true ? (m['minTier'] == 'plus' ? ' 🔒 Plus' : ' 🔒 Pro') : ''}'),
+                      '${m['label'] ?? m['id']}${m['locked'] == true ? ' (Locked)' : ''}'),
                 ),
             ],
             onChanged: (v) => setState(() => _model = v),

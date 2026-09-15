@@ -97,15 +97,15 @@ async function sendWeeklyDigest() {
 
     // Build the pretty report with + string concatenation across lines.
     const digest =
-      `📊 WEEKLY REPORT — ${biz.name} (last 7 days)\n\n` +
-      `💬 Customer messages received: ${m.inbound}\n` +
-      `🤖 AI replies sent: ${m.outbound}\n` +
-      `👥 Conversations: ${t.convos}\n\n` +
-      `📌 Message types:\n` +
+      `WEEKLY REPORT — ${biz.name} (last 7 days)\n\n` +
+      `Customer messages received: ${m.inbound}\n` +
+      `AI replies sent: ${m.outbound}\n` +
+      `Conversations: ${t.convos}\n\n` +
+      `Message types:\n` +
       `   • Price questions: ${ty.price_q}\n` +
       `   • Stock/delivery questions: ${ty.stock_q}\n` +
       `   • Other: ${Math.max(0, ty.total - ty.price_q - ty.stock_q)}\n\n` + // Math.max avoids negative on overlaps
-      `🔔 Flagged for you: ${t.flagged}\n\n` +
+      `Flagged for you: ${t.flagged}\n\n` +
       (t.flagged > 0 ? 'Check flagged chats in your dashboard to close those sales!' : 'Great week — the AI handled everything confidently.'); // ternary = inline if/else
 
     await sendToOwner(biz.owner_number, digest); // send it

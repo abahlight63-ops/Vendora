@@ -20,11 +20,13 @@ function greeting() { // NOT a component (lowercase, returns a string): time-bas
 export default function Dashboard({ biz }) { // biz = business object from App (useMe) — name, hours, owner_number…
   const [s, setS] = useState(null); // s = summary {convos, pct, needs, products, flagged[], latest[]} (null = loading → skeletons!)
   const [bill, setBill] = useState(null); // billing object (status, trial_ends… for the trial strip)
+  const [live, setLive] = useState(false); // any channel LIVE? (WhatsApp inbound seen OR Telegram connected — Connect page owns this!)
   useEffect(() => { // runs ONCE on mount ([]): fetch everything in parallel…
     (async () => { // async IIFE (effects can't be async directly — so define + call an async fn inside)
-      const [{ data: products }, { data: convos }, { data: b }] = await Promise.all([ // Promise.all = 3 requests AT ONCE (faster than sequential); destructure each {data}
-        api('/api/me/products'), api('/api/me/conversations'), api('/api/me/billing'),
+      const [{ data: products }, { data: convos }, { data: b }, { data: ch }] = await Promise.all([ // Promise.all = 4 requests AT ONCE (faster than sequential); destructure each {data}
+        api('/api/me/products'), api('/api/me/conversations'), api('/api/me/billing'), api('/api/me/channels'),
       ]);
+      if (ch && ch.whatsapp && (ch.whatsapp.live || (ch.telegram && ch.telegram.connected))) setLive(true); // checklist step ticks (WhatsApp TEST passed OR Telegram on!)
       const c = convos || [], needs = c.filter((x) => x.needs_human); // || [] guards null; .filter picks flagged chats
       setS({ // crunch into ONE setState (single re-render, not three!)
         convos: c.length, // total chats
@@ -45,6 +47,7 @@ export default function Dashboard({ biz }) { // biz = business object from App (
   try { tested = localStorage.getItem('vendora-tested') === '1'; } catch {} // Playground sets '1' on first test send
   const steps = [ // checklist DATA (not JSX): done flags computed from REAL data (self-ticking!)…
     { done: (s?.products || 0) > 0, label: 'Add your first product', hint: 'The AI only quotes your catalog', to: '/catalog' }, // to = where the step links
+    { done: live, label: 'Connect your channels', hint: 'WhatsApp + Telegram — TEST to LIVE in minutes', to: '/connect' }, // live = TEST passed or Telegram on (Connect page owns it!)
     { done: tested || (s?.convos || 0) > 0, label: 'Test like a customer', hint: 'Ask prices, then something you don\'t sell', to: '/playground' }, // \' escapes apostrophe in single-quoted string
     { done: !!(biz?.hours && biz?.owner_number), label: 'Set hours + owner number', hint: 'So closed-hours replies feel human', to: '/profile' }, // !! forces boolean (&& returns the last value, not true/false!)
     { done: (s?.convos || 0) > 0, label: 'Get your first real chat', hint: 'Share your WhatsApp number with customers', to: '/chats' },

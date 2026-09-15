@@ -22,6 +22,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, dynamic>? _me;
   Map<String, dynamic>? _bill;
+  Map<String, dynamic>? _channels; // Connect status (checklist "Connect" step ticks from this!)
   List<dynamic> _products = [];
   List<dynamic> _convos = [];
   String? _err;
@@ -39,17 +40,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _err = null;
     });
     try {
-      // Same 3-at-once fetch as web (faster than sequential).
+      // Same parallel fetch as web (faster than sequential).
       final results = await Future.wait([
         ApiClient.instance.me(),
         ApiClient.instance.products(),
         ApiClient.instance.conversations(),
         ApiClient.instance.billing(),
+        ApiClient.instance.channels(),
       ]);
       _me = (results[0] as Map).cast<String, dynamic>();
       _products = results[1] as List<dynamic>;
       _convos = results[2] as List<dynamic>;
       _bill = (results[3] as Map).cast<String, dynamic>();
+      _channels = (results[4] as Map).cast<String, dynamic>();
     } on ApiException catch (e) {
       _err = e.message;
     } catch (_) {
@@ -106,11 +109,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final botOn = (biz['bot_enabled'] ?? true) as bool;
 
     // Setup checklist (self-ticking from REAL data, like web steps).
+    final waLive = ((_channels?['whatsapp'] as Map?)?['live'] == true);
+    final tgOn = ((_channels?['telegram'] as Map?)?['connected'] == true);
     final steps = [
       _Step(_products.isNotEmpty, 'Add your first product',
           'The AI only quotes your catalog', 2),
+      _Step(waLive || tgOn, 'Connect your channels',
+          'WhatsApp + Telegram — TEST to LIVE', 3),
       _Step(_convos.isNotEmpty, 'Test like a customer',
-          'Ask prices in Vendora AI', 3),
+          'Ask prices in Vendora AI', 4),
       _Step(
           '${biz['hours'] ?? ''}'.isNotEmpty &&
               '${biz['owner_number'] ?? ''}'.isNotEmpty,
@@ -187,7 +194,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             icon: const Icon(Icons.add, size: 16),
                             label: const Text('Add product')),
                         OutlinedButton.icon(
-                            onPressed: () => widget.onGoTab(3),
+                            onPressed: () => widget.onGoTab(4),
                             icon: const Icon(Icons.smart_toy, size: 16),
                             label: const Text('Test bot')),
                       ]),
@@ -211,9 +218,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         style: const TextStyle(fontSize: 13),
                       ),
                     ),
-                    TextButton(
-                        onPressed: () => widget.onGoTab(4),
-                        child: const Text('Billing')),
+                     TextButton(
+                         onPressed: () => widget.onGoTab(5),
+                         child: const Text('Billing')),
                   ]),
                 ),
               ),

@@ -2,11 +2,14 @@
 // WHAT: products list (GET /api/me/products → array) + add
 // (POST → 201 row) + delete (DELETE → 204). Same rules as web Catalog.
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../ads.dart';
 import '../api.dart';
 import '../glass.dart';
 import '../motion.dart';
+
+const _webBilling = 'https://vendorabot.vercel.app/billing'; // checkout lives in the browser (same as Billing tab!)
 
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
@@ -22,7 +25,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
   final _name = TextEditingController();
   final _price = TextEditingController();
   final _desc = TextEditingController();
-  final _photo = TextEditingController(); // optional https photo link (Pro: bot sends it!)
+  final _photo = TextEditingController(); // optional photo link (upgraded shops: bot sends it!)
 
   @override
   void initState() {
@@ -73,6 +76,42 @@ class _CatalogScreenState extends State<CatalogScreen> {
     } on ApiException catch (e) {
       if (mounted) showToast(context, e.message, type: 'err');
     }
+  }
+
+  /// Lock tap → upgrade card (glass bottom sheet). The ONLY paywall
+  /// affordance: a drawn padlock, never "PRO" text on the feature.
+  Future<void> _showUpgrade() {
+    return glassSheet(
+      context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(children: [
+            Icon(Icons.lock_outline, size: 20),
+            SizedBox(width: 8),
+            Text('Unlock product photos',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+          ]),
+          const SizedBox(height: 10),
+          const Text(
+              'Upgraded shops send catalog pictures inside the chat bubble with each reply — WhatsApp + Telegram.'),
+          const SizedBox(height: 6),
+          const Text('• Photo replies that sell while you sleep'),
+          const Text('• Profile sync + verified products'),
+          const Text('• Zero ads, priority support'),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () =>
+                  launchUrl(Uri.parse(_webBilling), mode: LaunchMode.externalApplication),
+              child: const Text('See upgrade options'),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _toggle(Map<String, dynamic> p) async {
@@ -127,8 +166,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
                             labelText: 'Note (optional)'))),
               ]),
               const SizedBox(height: 8),
-              // PRO photo box: paste a public https link — the bot sends it
-              // with its reply (Pro shops). Free shops: saved, not sent.
+              // Photo box: Upload-media on web, https link here — the bot sends it
+              // with its reply (upgraded shops). Free shops: saved, not sent.
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -148,20 +187,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
                       const Text('Product photo',
                           style: TextStyle(fontWeight: FontWeight.w700)),
                       const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text('PRO',
-                            style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800)),
+                      IconButton(
+                        tooltip: 'Locked — tap to see upgrade options',
+                        onPressed: _showUpgrade,
+                        icon: const Icon(Icons.lock_outline, size: 16),
                       ),
                       const Spacer(),
                       if (_photo.text.trim().startsWith('https://'))
@@ -198,7 +227,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                           const SizedBox(width: 8),
                           const Expanded(
                             child: Text(
-                              'Pro ON: the bot sends this photo with its reply on WhatsApp + Telegram.',
+                              'Photo attached: the bot sends it with its reply on WhatsApp + Telegram.',
                               style: TextStyle(fontSize: 11),
                             ),
                           ),
@@ -208,7 +237,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                       const Padding(
                         padding: EdgeInsets.only(top: 6),
                         child: Text(
-                          'Pro perk: free shops save the photo, Pro shops send it inside the chat bubble.',
+                          'Saved for you — upgraded shops send the photo inside the chat bubble. Tap the lock above to switch it on.',
                           style: TextStyle(fontSize: 11),
                         ),
                       ),

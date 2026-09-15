@@ -14,7 +14,7 @@ async function getMe(req, res) {
     `SELECT b.id, b.name, b.whatsapp_number, b.owner_number, b.hours, b.faq, b.tone,
             b.max_discount_pct, b.min_order_naira, b.currency, b.timezone,
             b.bot_enabled, b.personal_contacts, b.plan_tier,
-            b.business_niche, b.heard_from,
+            b.business_niche, b.heard_from, b.greeting_msg, b.handoff_msg,
             b.subscription_status, b.subscription_expires, b.trial_started_at,
             b.trial_warned, b.trial_expiry_notified
      FROM businesses b WHERE b.id = $1`, // b = alias; WHERE session id (never a client id!)
@@ -122,7 +122,7 @@ async function checkTrialLifecycle(businessId, b) {
     } else if (left <= 2 && left > 0 && !b.trial_warned) { // last 2 days → warn (once!)
       await db.query('UPDATE businesses SET trial_warned = true WHERE id = $1', [businessId]);
       await notify.notify(businessId, {
-        title: `Pro trial: ${left} day${left === 1 ? '' : 's'} left ⏳`,
+        title: `Pro trial: ${left} day${left === 1 ? '' : 's'} left`,
         body: 'Your Pro trial ends soon. Pick Pro or Pro Plus on Billing to keep profile sync, photos + premium AIs — or stay free, your catalog stays yours.',
         link: '/billing',
       });
@@ -166,6 +166,47 @@ async function upsertProduct(req, res, next) {
     console.error('upsertProduct error:', e);
     return res.status(500).json({ error: 'Could not save product' });
   }
+}
+
+// Upload media: host an owner-picked product photo (Catalog "Upload media"
+// button). Body: { filename, dataUrl } where dataUrl is a
+// "data:image/…;base64,…" string (no new deps — JSON, not multipart!).
+// Files land in public/uploads/ (served by express.static) and we hand back
+// an absolute URL the bot can attach on WhatsApp/Telegram.
+async function uploadProductPhoto(req, res) {
+  const fs = require('fs'); // built-in: mkdir + writeFileSync
+  const path = require('path'); // built-in: safe path joins
+  const { dataUrl } = req.body || {};
+  const m = typeof dataUrl === 'string'
+    && dataUrl.match(/^data:(image\/(jpeg|png|webp|gif));base64,([A-Za-z0-9+/=\s]+)$/); // MIME whitelist in the regex (jpg/png/webp/gif only!)
+  if (!m) return res.status(400).json({ error: 'Send an image file (jpg, png, webp or gif).' });
+  let buf;
+  try {
+    buf = Buffer.from(m[3].replace(/\s/g, ''), 'base64'); // \s strip: some pickers wrap lines (harmless either way!)
+  } catch {
+    return res.status(400).json({ error: 'Could not read that image.' });
+  }
+  if (buf.length === 0 || buf.length > 2.5 * 1024 * 1024) return res.status(400).json({ error: 'Image too large — max 2.5MB.' }); // cap: keeps disks + Twilio fetches cheap
+  const kind = m[2]; // jpeg | png | webp | gif (from the whitelist above!)
+  const magicOk = // magic-byte check: extension claims must match the actual bytes (renamed .exe files die here!)
+    (kind === 'jpeg' && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) ||
+    (kind === 'png' && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) ||
+    (kind === 'gif' && buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) ||
+    (kind === 'webp' && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP');
+  if (!magicOk) return res.status(400).json({ error: 'That file is not a real image.' });
+  const ext = kind === 'jpeg' ? 'jpg' : kind; // jpeg → jpg (shorter URLs!)
+  const dir = path.join(__dirname, '..', '..', 'public', 'uploads'); // public/ = served statically (server.js express.static!)
+  fs.mkdirSync(dir, { recursive: true }); // recursive: creates public/uploads on first use (deploy-safe!)
+  const safe = `biz${Number(req.session.businessId) || 0}-${Date.now()}.${ext}`; // server-built name (user filenames NEVER touch the disk — path-traversal impossible!)
+  try {
+    fs.writeFileSync(path.join(dir, safe), buf); // sync write: small files, request-scoped (simplest correct!)
+  } catch (e) {
+    console.error('product-photo write error:', e.message);
+    return res.status(500).json({ error: 'Could not save photo — try again.' });
+  }
+  const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '') // explicit public host wins (set it on Railway/Render!)…
+    || `${req.protocol}://${req.get('host')}`; // …else build from this request (right in local dev!)
+  res.json({ url: `${base}/uploads/${safe}` }); // absolute URL: Twilio/Telegram fetch it server-side!
 }
 
 async function deleteProduct(req, res) {
@@ -220,14 +261,25 @@ async function playground(req, res) {
 }
 
 async function updateSettings(req, res) {
-  const { max_discount_pct, min_order_naira } = req.body || {}; // SmartDeal guardrails from AI settings page
+  const { max_discount_pct, min_order_naira, greeting_msg, handoff_msg } = req.body || {}; // SmartDeal guardrails + AI voice (greeting + handoff in the owner's own words)
   const disc = Math.max(0, Math.min(50, Number(max_discount_pct) || 0)); // clamp 0–50 (Math.max lower-bounds, Math.min upper-bounds; || 0 handles NaN)
   const minOrder = Math.max(0, Number(min_order_naira) || 0); // clamp ≥0 (no negative order floors)
+  const greet = typeof greeting_msg === 'string' ? greeting_msg.trim().slice(0, 300) : null; // null = "don't touch" (300 chars: greetings stay short!)
+  const hand = typeof handoff_msg === 'string' ? handoff_msg.trim().slice(0, 500) : null; // 500 chars: handoffs stay textable
   await require('../db').query( // inline require again (same pool)
-    'UPDATE businesses SET max_discount_pct = $1, min_order_naira = $2 WHERE id = $3',
-    [disc, minOrder, req.session.businessId]
+    'UPDATE businesses SET max_discount_pct = $1, min_order_naira = $2'
+    + (greet !== null ? ', greeting_msg = $4' : '') // dynamic SET: only overwrite voice fields when the form sent them…
+    + (hand !== null ? (greet !== null ? ', handoff_msg = $5' : ', handoff_msg = $4') : '')
+    + ' WHERE id = $3',
+    greet !== null && hand !== null
+      ? [disc, minOrder, req.session.businessId, greet, hand]
+      : greet !== null
+        ? [disc, minOrder, req.session.businessId, greet]
+        : hand !== null
+          ? [disc, minOrder, req.session.businessId, hand]
+          : [disc, minOrder, req.session.businessId]
   );
-  res.json({ max_discount_pct: disc, min_order_naira: minOrder }); // echo SAVED (clamped) values so UI shows truth
+  res.json({ max_discount_pct: disc, min_order_naira: minOrder, greeting_msg: greet, handoff_msg: hand }); // echo SAVED (clamped) values so UI shows truth
 }
 
 async function getBilling(req, res) {
@@ -371,6 +423,139 @@ async function telegramStatus(req, res) {
   res.json({ connected: rows[0].connected, ownerLinked: rows[0].owner_linked, hasCode: !!(rows[0].telegram_link_code) }); // hasCode (not the code — codes only travel on explicit generate!)
 }
 
+// ---- Channel connections (Connect page) ----
+// One status call drives BOTH channel cards (WhatsApp LIVE/OFF + Telegram).
+// Secrets (tokens/SIDs) are NEVER returned — only masked proofs + booleans.
+function webhookUrl(req) {
+  const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '')
+    || `${req.protocol}://${req.get('host')}`; // explicit host wins (prod!); else this request's host (local dev!)
+  return `${base}/webhook/whatsapp`; // ONE webhook for Twilio + Meta (shape-sniffed inside!)
+}
+
+async function channelsStatus(req, res) {
+  const { rows } = await db.query(
+    `SELECT whatsapp_number, wa_channel, whatsapp_model, whatsapp_last_inbound_at,
+            twilio_account_sid, twilio_account_sid <> '' AS twilio_on, telegram_bot_token <> '' AS telegram_on,
+            meta_phone_number_id <> '' AS meta_on
+     FROM businesses WHERE id = $1`,
+    [req.session.businessId]
+  );
+  if (!rows.length) return res.status(404).json({ error: 'Not found' });
+  const b = rows[0];
+  const twilio = require('../services/channels/twilio');
+  res.json({
+    whatsapp: {
+      number: b.whatsapp_number, // shop's number (locked identity!)
+      channel: b.wa_channel || 'twilio', // 'twilio' | 'meta' (which door answers!)
+      model: b.whatsapp_model || 'gemini-flash-full', // per-shop brain pick!
+      live: !!b.whatsapp_last_inbound_at, // inbound EVER seen (TEST-verify flips this!)
+      lastInbound: b.whatsapp_last_inbound_at, // timestamp for "last seen" text
+      twilioConnected: !!b.twilio_on, // own SID/token stored (auto-configure armed!)
+      twilioSid: b.twilio_on ? twilio.maskSid(b.twilio_account_sid) : '', // masked proof ONLY (AC…1234 — the full secret never leaves!)
+      metaConnected: !!b.meta_on, // Phone Number ID + token stored!
+    },
+    telegram: { connected: !!b.telegram_on }, // full Telegram detail lives on GET /api/me/telegram!
+    webhookUrl: webhookUrl(req), // exact URL to paste into Twilio/Meta consoles (copy button!)
+  });
+}
+
+// Per-shop WhatsApp brain pick (Connect page dropdown). Tier-gated EXACTLY like
+// the VendoraAI dropdown (locked → 402, frontend opens the upgrade card!).
+async function whatsappModel(req, res) {
+  const planService = require('../services/planService');
+  const aiModels = require('../services/aiModels');
+  const { model } = req.body || {};
+  const { rows } = await db.query(
+    'SELECT subscription_status, subscription_expires, trial_started_at, plan_tier FROM businesses WHERE id = $1',
+    [req.session.businessId]
+  );
+  const resolved = aiModels.resolveChoice(model, planService.effectiveTier(rows[0] || {})); // exists? below-floor? ('' → free default!)
+  if (resolved.error) return res.status(402).json({ error: resolved.error }); // 402 = paywall (locked premium pick!)
+  await db.query('UPDATE businesses SET whatsapp_model = $1 WHERE id = $2', [resolved.entry.id, req.session.businessId]); // store the CATALOG id (stable key, not provider name!)
+  res.json({ model: resolved.entry.id, label: resolved.entry.label }); // echo truth (UI shows what stuck!)
+}
+
+// Twilio step 1: validate pasted SID + token, list their numbers (NOT stored yet!).
+async function twilioConnect(req, res) {
+  const twilio = require('../services/channels/twilio');
+  const { sid, token } = req.body || {};
+  const { numbers, error } = await twilio.listNumbers(sid, token);
+  if (error) return res.status(400).json({ error });
+  res.json({ numbers }); // [{sid, phone, smsUrl}] — the picker (creds stay client-side until Select!)
+}
+
+// Twilio step 2: pick a number → store creds, point its webhook at us, adopt it.
+async function twilioSelect(req, res) {
+  const twilio = require('../services/channels/twilio');
+  const { normalizePhone } = require('../utils/phone');
+  const { sid, token, numberSid, phone } = req.body || {};
+  const listed = await twilio.listNumbers(sid, token); // re-validate (creds must STILL work — no blind writes!)
+  if (listed.error) return res.status(400).json({ error: listed.error });
+  const found = (listed.numbers || []).find((n) => n.sid === numberSid); // chosen number MUST be theirs (no spoofed SIDs!)
+  if (!found) return res.status(400).json({ error: 'Pick one of your Twilio numbers.' });
+  const set = await twilio.setWebhook(sid, token, numberSid, webhookUrl(req)); // the auto-connect (Twilio points at us!)
+  if (set.error) return res.status(400).json({ error: set.error });
+  const wa = normalizePhone(found.phone || phone || ''); // normalize to whatsapp:+… (fallback to pasted phone!)
+  await db.query(
+    `UPDATE businesses SET twilio_account_sid = $1, twilio_auth_token = $2,
+      whatsapp_number = COALESCE(NULLIF($3, ''), whatsapp_number), wa_channel = 'twilio'
+     WHERE id = $4`, // COALESCE+NULLIF: adopt the number only when valid (else keep signup number!)
+    [String(sid).trim(), String(token).trim(), wa || '', req.session.businessId]
+  );
+  res.json({ ok: true, phone: found.phone, maskedSid: twilio.maskSid(sid) });
+}
+
+// Twilio disconnect: forget creds (number stays — inbound keeps routing!).
+async function twilioDisconnect(req, res) {
+  await db.query("UPDATE businesses SET twilio_account_sid = '', twilio_auth_token = '' WHERE id = $1", [req.session.businessId]);
+  res.json({ ok: true });
+}
+
+// Meta step 1+2 in one: validate ID + token, store, arm the channel.
+async function metaConnect(req, res) {
+  const meta = require('../services/channels/meta');
+  const { phone_number_id, token } = req.body || {};
+  const checked = await meta.checkCredentials(phone_number_id, token); // asks Meta whose number this is (invalid → friendly error!)
+  if (checked.error) return res.status(400).json({ error: checked.error });
+  const crypto = require('crypto');
+  const verify = 'VND' + crypto.randomBytes(8).toString('hex').toUpperCase(); // per-shop verify token (Meta echoes it on subscribe — proves ownership!)
+  await db.query(
+    `UPDATE businesses SET meta_token = $1, meta_phone_number_id = $2,
+      meta_verify_token = COALESCE(NULLIF(meta_verify_token, ''), $3), wa_channel = 'meta'
+     WHERE id = $4`, // keep an existing verify token (Meta already subscribed? don't break it!)
+    [String(token).trim(), String(phone_number_id).trim(), verify, req.session.businessId]
+  );
+  const { rows } = await db.query('SELECT meta_verify_token FROM businesses WHERE id = $1', [req.session.businessId]);
+  res.json({ ok: true, phone: checked.phone, verifyToken: rows[0].meta_verify_token, webhookUrl: webhookUrl(req) });
+}
+
+// Meta disconnect: forget creds, fall back to Twilio door.
+async function metaDisconnect(req, res) {
+  await db.query("UPDATE businesses SET meta_token = '', meta_phone_number_id = '', wa_channel = 'twilio' WHERE id = $1", [req.session.businessId]);
+  res.json({ ok: true });
+}
+
+// Meta auto-sync: pull the WhatsApp business profile → scaffold catalog.
+// (Pro-gated like SYNC: — same premium, new one-tap road!)
+async function metaPullProfile(req, res) {
+  const planService = require('../services/planService');
+  const replyEngine = require('../services/replyEngine');
+  const productService = require('../services/productService');
+  const meta = require('../services/channels/meta');
+  const { rows } = await db.query('SELECT * FROM businesses WHERE id = $1', [req.session.businessId]);
+  const business = rows[0];
+  if (!business) return res.status(404).json({ error: 'Not found' });
+  if (!planService.isPro(business)) return res.status(402).json({ error: 'Auto-sync is a premium feature. Manual teaching stays free.' });
+  if (!business.meta_token || !business.meta_phone_number_id) return res.status(400).json({ error: 'Connect Meta first.' });
+  const pulled = await meta.fetchBusinessProfile(business.meta_token, business.meta_phone_number_id);
+  if (pulled.error) return res.status(400).json({ error: pulled.error });
+  const { products, ok } = await replyEngine.extractProducts(pulled.profileText, business); // same extractor as LEARN/SYNC!
+  if (!ok || !products.length) return res.status(422).json({ error: 'Your Meta profile has no products listed — add them in WhatsApp Manager, or paste the text manually.' });
+  const saved = await productService.upsertProducts(business.id, products);
+  await db.query('UPDATE businesses SET profile_snapshot = $1, profile_synced_at = now() WHERE id = $2', [pulled.profileText.slice(0, 4000), business.id]);
+  res.json({ ok: true, count: saved.length, products: saved.map((p) => ({ name: p.name, price: p.price })) });
+}
+
 // Log a sponsor/ad click (per-click billing for direct sponsors).
 async function adClick(req, res) {
   const { slot, target_url } = req.body || {}; // which placement + where they went
@@ -493,6 +678,7 @@ module.exports = { // every handler the routes file wires up (miss one here = ro
   saveSetup,
   getProducts,
   upsertProduct,
+  uploadProductPhoto,
   deleteProduct,
   getConversations,
   getMessages,
@@ -511,6 +697,14 @@ module.exports = { // every handler the routes file wires up (miss one here = ro
   telegramToken,
   telegramLink,
   telegramStatus,
+  channelsStatus,
+  whatsappModel,
+  twilioConnect,
+  twilioSelect,
+  twilioDisconnect,
+  metaConnect,
+  metaDisconnect,
+  metaPullProfile,
   getNotifications,
   readNotifications,
 };

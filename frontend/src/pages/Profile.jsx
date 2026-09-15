@@ -3,6 +3,7 @@
 // number, hours, tone, currency, timezone, FAQs. Save → PUT /api/me/business.
 // The AI introduces the shop EXACTLY from this data (garbage in = garbage out).
 import React, { useEffect, useState } from 'react'; // React namespace (TelegramCard uses React.useState/useEffect); useEffect = Telegram status fetch on mount
+import { Link } from 'react-router-dom'; // Connect-page link (channels moved to their own page!)
 import { api, pop, toast } from '../lib/api.js'; // api() save; pop() big success/fail animation; toast() small toggle notes
 import { normalizePhone, prettyPhone } from '../lib/phone.js'; // live phone help: normalize (validate) + pretty (display)
 import Ic from '../components/icons.jsx'; // check icon for the "Saved as …" line
@@ -51,41 +52,17 @@ export default function Profile({ biz }) { // biz prop = business from App's use
   );
 }
 
-function TelegramCard() { // Telegram channel setup: paste-your-token path + owner-link button + live status (Help-grade docs inline!)
-  const [st, setSt] = React.useState(null); // null = loading; {connected, ownerLinked, hasCode}
-  const [token, setToken] = React.useState(''); // BotFather token draft (NEVER displayed back — write-only secret!)
-  const [busy, setBusy] = React.useState(false); // action lock (token save / link generate)
-  const [link, setLink] = React.useState(null); // {code, botName, note} after tapping Link (shown ONCE with copy hint!)
-  async function load() { const { ok, data } = await api('/api/me/telegram'); if (ok) setSt(data); } // status fetch (connected? owner linked?)
-  React.useEffect(() => { load(); }, []); // [] = mount-only (React namespace import below keeps the diff tiny!)
-  async function saveToken() { // connect/disconnect…
-    if (busy) return; setBusy(true);
-    const { ok, data } = await api('/api/me/telegram/token', { method: 'POST', body: JSON.stringify({ token: token.trim() }) });
-    setBusy(false);
-    if (ok) { setToken(''); load(); pop('ok', data.connected ? 'Telegram connected!' : 'Telegram disconnected.', data.connected ? 'Customers can now message your bot. Link your Telegram below for owner commands.' : 'Bot removed — WhatsApp keeps working.'); }
-    else pop('err', 'Token rejected', data.error || 'Check the token from BotFather and try again.');
-  }
-  async function makeLink() { // fresh owner-link code (invalidates the old — leaked links die!)…
-    if (busy) return; setBusy(true);
-    const { ok, data } = await api('/api/me/telegram/link', { method: 'POST', body: '{}' });
-    setBusy(false);
-    if (ok) setLink(data); // {code, botName, note} shown below (copy it into Telegram!)
-    else pop('err', 'Could not generate link', data.error || 'Try again.');
-  }
+function TelegramCard() { // Channels moved to the Connect page — this card just points there (one home for WhatsApp + Telegram!)
+  const [st, setSt] = React.useState(null); // null = loading; {connected}
+  React.useEffect(() => { api('/api/me/channels').then(({ ok, data }) => { if (ok) setSt(data); }); }, []); // [] = mount-only status fetch
+  const waLive = !!(st && st.whatsapp && st.whatsapp.live);
+  const tgOn = !!(st && st.telegram && st.telegram.connected);
   return (
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <div><h2>Telegram channel</h2><p className="desc" style={{ margin: 0 }}>{st ? (st.connected ? `Connected${st.ownerLinked ? ' · owner linked ✅' : ' · owner NOT linked'}` : 'Not connected — WhatsApp only for now.') : 'Checking…'}</p></div>
-        <span className={'pill ' + (st && st.connected ? 'ok' : 'off')}>{st ? (st.connected ? 'LIVE' : 'OFF') : '…'}</span>
+        <div><h2>Channels</h2><p className="desc" style={{ margin: 0 }}>{!st ? 'Checking…' : `WhatsApp: ${waLive ? 'LIVE' : 'OFF'} · Telegram: ${tgOn ? 'LIVE' : 'OFF'}`}</p></div>
+        <Link className="btn sm" to="/connect">Open Connect page</Link>
       </div>
-      <label style={{ marginTop: 12 }}>Bot token from BotFather</label> {/* create: open Telegram → @BotFather → /newbot → name it → copy token! */}
-      <input value={token} onChange={(e) => setToken(e.target.value)} placeholder="123456:ABC-DEF1234…" spellCheck="false" autoComplete="off" />
-      <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-        <button className="btn sm" disabled={busy} onClick={saveToken}>{token.trim() ? 'Connect bot' : 'Disconnect bot'}</button> {/* empty field = disconnect (same endpoint, '' clears!) */}
-        <button className="btn ghost sm" disabled={busy || !(st && st.connected)} onClick={makeLink}>Link my Telegram</button> {/* needs a connected bot first (disabled otherwise!) */}
-      </div>
-      {link && <div className="learn-box light" style={{ fontFamily: 'var(--font)', marginTop: 10 }}><b>Your code: {link.code}</b><br />{link.note}<br /><span className="hint">Send it in Telegram now — codes refresh on every tap.</span></div>} {/* shown once (copy now — regenerating kills this one!) */}
-      <p className="hint" style={{ marginTop: 8 }}>No token? Free tier pastes their own bot · Pro can also use the shared @VendoraBot — ask support for your link code.</p>
     </div>
   );
 }

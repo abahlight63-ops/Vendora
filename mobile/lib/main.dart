@@ -19,6 +19,7 @@ import 'screens/setup_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/chats_screen.dart';
 import 'screens/catalog_screen.dart';
+import 'screens/connect_screen.dart';
 import 'screens/ai_screen.dart';
 import 'screens/billing_screen.dart';
 
@@ -141,6 +142,7 @@ class _HomeShellState extends State<HomeShell> {
     'Overview',
     'Chats',
     'Catalog',
+    'Connect',
     'Vendora AI',
     'Billing'
   ];
@@ -168,7 +170,7 @@ class _HomeShellState extends State<HomeShell> {
       final last = prefs.getString('vendora-version');
       await prefs.setString('vendora-version', cur);
       if (mounted && last != null && last != cur) {
-        showToast(context, 'Vendora updated to v$cur 🎉 — check the 🔔 bell');
+        showToast(context, 'Vendora updated to v$cur — open the notification bell to see what changed');
         _refreshBell();
       }
     } catch (_) {}
@@ -249,7 +251,7 @@ class _HomeShellState extends State<HomeShell> {
           ),
         ),
         actions: [
-          // 🔔 bell (Notifications.jsx parity: badge + mark-read on open).
+          // Bell (Notifications.jsx parity: badge + mark-read on open).
           Stack(children: [
             IconButton(
               icon: const Icon(Icons.notifications_outlined),
@@ -295,6 +297,7 @@ class _HomeShellState extends State<HomeShell> {
         DashboardScreen(onGoTab: (i) => setState(() => _tab = i)),
         const ChatsScreen(),
         const CatalogScreen(),
+        const ConnectScreen(),
         const AiScreen(),
         const BillingScreen(),
       ]),
@@ -318,6 +321,10 @@ class _HomeShellState extends State<HomeShell> {
               icon: Icon(Icons.inventory_2_outlined),
               selectedIcon: Icon(Icons.inventory_2),
               label: 'Catalog'),
+          NavigationDestination(
+              icon: Icon(Icons.link_outlined),
+              selectedIcon: Icon(Icons.link),
+              label: 'Connect'),
           NavigationDestination(
               icon: Icon(Icons.smart_toy_outlined),
               selectedIcon: Icon(Icons.smart_toy),

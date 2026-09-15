@@ -50,7 +50,7 @@ async function handleInbound(req, res) {
       }
       const saved = await productService.upsertProducts(business.id, products); // insert-or-update each product
       const list = saved.map((p) => `• ${p.name}${p.price ? ' — ' + p.price : ''}`).join('\n'); // pretty "• name — price" lines
-      await sendWhatsAppReply(To, From, `✅ Catalog updated (${saved.length} product${saved.length > 1 ? 's' : ''}):\n${list}\n\nI'll now use these to answer customers.`);
+      await sendWhatsAppReply(To, From, `Catalog updated (${saved.length} product${saved.length > 1 ? 's' : ''}):\n${list}\n\nI'll now use these to answer customers.`);
       return res.status(200).send('');
     }
 
@@ -154,10 +154,10 @@ async function logMessage(conversationId, direction, body, mediaUrl) {
 async function alertOwner(business, customerNumber, customerName, message, reason) {
   if (!business.owner_number) return; // no owner number configured → can't alert
   const summary = // multi-line WhatsApp message built with + concatenation
-    `🔔 NEW ORDER / INQUIRY — ${business.name}\n\n` +
-    `👤 Customer: ${customerName || 'Unknown'} (${customerNumber})\n` +
-    `💬 Message: "${message}"\n` +
-    `❓ Why you're needed: ${reason || 'AI could not answer'}\n\n` +
+    `NEW ORDER / INQUIRY — ${business.name}\n\n` +
+    `Customer: ${customerName || 'Unknown'} (${customerNumber})\n` +
+    `Message: "${message}"\n` +
+    `Why you're needed: ${reason || 'AI could not answer'}\n\n` +
     `Reply to them directly on WhatsApp: ${customerNumber}`;
   await sendWhatsAppReply(process.env.TWILIO_WHATSAPP_NUMBER, business.owner_number, summary);
 }

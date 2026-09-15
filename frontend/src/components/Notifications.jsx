@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, toast } from '../lib/api.js';
+import Ic from './icons.jsx'; // drawn bell glyph (never an emoji!)
 
 export default function Notifications() {
   const [items, setItems] = useState([]);
@@ -63,14 +64,14 @@ export default function Notifications() {
 
   return (
     <div className="nbell" ref={wrap}>
-      <button className="nbell-btn" onClick={toggle} aria-label={unread ? `${unread} unread notifications` : 'Notifications'} aria-expanded={open}>
-        <span className="nbell-ic">🔔</span>
+      <button className={'nbell-btn' + (unread > 0 ? ' has-unread' : '')} onClick={toggle} aria-label={unread ? `${unread} unread notifications` : 'Notifications'} aria-expanded={open}>
+        <span className="nbell-ic"><Ic n="bell" s={20} /></span>
         {unread > 0 && <span className="nbell-badge">{unread > 9 ? '9+' : unread}</span>}
       </button>
       {open && (
         <div className="nbell-pop" role="dialog" aria-label="Notifications">
           <div className="nbell-head"><b>Notifications</b>{unread > 0 && <span className="pill info">{unread} new</span>}</div>
-          {items.length === 0 && <div className="nbell-empty">All caught up 🎉<span>Payment verifications and app updates will land here.</span></div>}
+          {items.length === 0 && <div className="nbell-empty">All caught up<span>Payment verifications and app updates will land here.</span></div>}
           {items.map((n) => (
             <button key={n.id} className={'nbell-item' + (n.is_read ? '' : ' fresh')} onClick={() => go(n)}>
               <span className="nbell-dot" />

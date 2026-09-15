@@ -8,19 +8,19 @@ import { startTour } from '../components/Tour.jsx'; // named import { } (NOT def
 import { api, fmtDate, pop, toast } from '../lib/api.js'; // api() tickets; fmtDate stamps; pop() filed-confirmation; toast() small errors
 
 const FAQS = [ // [question, answer] pairs — content lives HERE, markup below is generic (separation of content & presentation!)
-  ['How do I connect my WhatsApp?', 'Twilio sandbox first: join with the code, point the webhook to your server URL + /webhook/whatsapp. Then upgrade to a live sender when ready.'],
+  ['How do I connect my WhatsApp?', 'Open the Connect page and pick WhatsApp — Meta (free to start, ~5 minutes, 3 values to paste) or your own Twilio number (paste SID + token once, we point it at the bot). Finish with TEST and the page flips to LIVE.'],
   ['How does LEARN work?', 'From your owner number send: LEARN: Blue gown ₦45,000. The AI extracts name + price and updates the catalog. Same name overwrites.'],
   ['What if the AI doesn\'t know?', 'It sends a polite handoff, flags the chat gold in your inbox, and (if set) alerts your personal WhatsApp instantly. It never invents prices.'], // \' escapes apostrophe in single-quoted string
   ['Does it speak Pidgin?', 'Yes — it mirrors the customer. Pidgin in, Pidgin out. Formal English in, formal out.'],
   ['How do I test without WhatsApp?', 'Open Test bot, type like a customer: prices, stock, hours, then something you don\'t sell.'],
-  ['How does billing work?', 'Manual catalog is free forever. The 7-day trial unlocks the full Pro plan (countdown shown, bell warns before it ends); after that, pricing follows your location automatically — Naira shops pay by card with Paystack, Dollar shops with Flutterwave. Never paused — free keeps replying from your manual catalog.'],
-  ['Which AI answers my customers?', 'Gemini by default, with Groq and OpenRouter as automatic backups — if one is slow or down, the next takes over instantly. You never have to touch anything.'],
+  ['How does billing work?', 'Manual catalog is free forever. The 7-day trial unlocks the full Pro plan (countdown shown, bell warns before it ends); after that, pricing follows your location automatically on a secure card checkout. Never paused — free keeps replying from your manual catalog.'],
+  ['Which AI answers my customers?', 'Whichever brain you pick on the Connect page — Gemini Flash (full) by default, with automatic free backups if one is slow or down. You never have to touch anything after picking.'],
   ['What does profile sync do?', 'Pro only: paste your WhatsApp Business profile text (or send SYNC: + the text from your owner number) and the AI builds your catalog from it, then verifies customer questions against it.'],
   ['Can I get a refund?', "First payment within 7 days if the service genuinely failed you — message us here with details. Duplicate charges are always refunded in full."], // double quotes dodge the apostrophe problem (pick quote style per string!)
   ['How do I cancel?', "Just stop paying — you drop to free at period end, nothing deleted. To erase everything, ask us here and it's gone within 14 days."],
   ['Can the AI make mistakes?', 'Rarely, but yes — which is why unsure chats hand off to you instead of guessing. Keep your catalog accurate and review flagged chats daily.'],
   ['Why do I see sponsored messages?', 'The free plan is supported by clearly-labeled sponsor cards (max one a day) plus quiet network ads. Pro removes all of them — see Billing.'],
-  ['How do I connect Telegram?', 'Free: open Telegram → message @BotFather → /newbot → name it → copy the token → paste it in Profile → Telegram → Connect. Then tap Link my Telegram and send the code to your bot. Pro can also use the shared @VendoraBot — ask support for your link code.'],
+  ['How do I connect Telegram?', 'Open the Connect page and pick Telegram: message @BotFather → /newbot → name it → paste the token here. Then get your link code so owner commands work from your phone. Free, about a minute.'],
   ['Do voice notes work?', 'Yes — on Pro. Customers send voice notes on WhatsApp or Telegram, the bot transcribes them with Whisper and answers like normal text. Free tier gets a polite handoff instead.'],
   ['Which AI should I pick?', 'Fast (Llama 8B, Gemini) for speed, Smart (Llama 70B, Scout, GPT-OSS) for quality, Reasoning (DeepSeek, Qwen) for hard thinking. Premium (Kimi K2, Claude, GPT) is Pro-only — tap one to see what you get.'],
 ];

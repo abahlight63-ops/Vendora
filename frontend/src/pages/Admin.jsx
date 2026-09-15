@@ -89,7 +89,7 @@ export default function Admin() {
   );
 }
 
-function Broadcast({ act }) { // APP UPDATES: one broadcast → every owner's 🔔 bell…
+function Broadcast({ act }) { // APP UPDATES: one broadcast → every owner's bell…
   const [t, setT] = useState('');
   const [b, setB] = useState('');
   async function send() {
@@ -99,10 +99,10 @@ function Broadcast({ act }) { // APP UPDATES: one broadcast → every owner's �
   }
   return (
     <div className="card" style={{ borderColor: 'var(--gold-line)' }}>
-      <h2>📣 Broadcast app update</h2>
+      <h2><Ic n="mega" s={18} /> Broadcast app update</h2>
       <p className="desc">Title + 1–2 lines → lands in every owner's notification bell instantly. Use after each release.</p>
       <label>Title</label>
-      <input value={t} onChange={(e) => setT(e.target.value)} placeholder="e.g. Smarter Vendora AI is live 🎉" maxLength={120} />
+      <input value={t} onChange={(e) => setT(e.target.value)} placeholder="e.g. Smarter Vendora AI is live" maxLength={120} />
       <label>What changed (1–2 lines)</label>
       <textarea value={b} onChange={(e) => setB(e.target.value)} rows="2" placeholder="e.g. Fuller answers, Lite default, no more scroll jump…" maxLength={500} />
       <button className="btn" style={{ marginTop: 10 }} onClick={send}><Ic n="send" s={16} />Send to all bells</button>
@@ -110,7 +110,7 @@ function Broadcast({ act }) { // APP UPDATES: one broadcast → every owner's �
   );
 }
 
-function WarnUser({ act }) { // ONE user, not all: a warning/notice → their 🔔 bell only…
+function WarnUser({ act }) { // ONE user, not all: a warning/notice → their bell only…
   const [who, setWho] = useState(''); // business ID, account email, or WhatsApp number (server resolves all three)
   const [t, setT] = useState('');
   const [b, setB] = useState('');
@@ -122,7 +122,7 @@ function WarnUser({ act }) { // ONE user, not all: a warning/notice → their �
   }
   return (
     <div className="card" style={{ borderColor: 'var(--red-line)' }}>
-      <h2>⚠️ Warn one user</h2>
+      <h2><Ic n="warn" s={18} /> Warn one user</h2>
       <p className="desc">Lands in that owner's notification bell only (web + phone app, within a minute). Use for payment issues, abuse, or personal notices.</p>
       <label>Who (email, business ID, or WhatsApp number)</label>
       <input value={who} onChange={(e) => setWho(e.target.value)} placeholder="e.g. amaka@shop.com · 12 · 0803 123 4567" />
@@ -139,10 +139,10 @@ function AdsStatus() { // AD KEYS LIVE? booleans only — key VALUES never leave
   const [s, setS] = useState(null); // null = loading (skeleton first — same habit as tabs!)
   useEffect(() => { api('/api/admin/ads/status').then(({ ok, data }) => { if (ok) setS(data); }); }, []); // mount-only probe (admin session already open — 401 impossible here!)
   if (!s) return <div className="card"><div className="skel" /></div>;
-  const dot = (on) => (on ? '✅' : '❌'); // boolean → at-a-glance glyph (no key values shown, ever!)
+  const dot = (on) => (<span className={'pill ' + (on ? 'ok' : 'flag')} style={{ fontSize: 11 }}>{on ? 'Yes' : 'No'}</span>); // boolean → at-a-glance pill (no key values shown, ever!)
   return (
     <div className="card">
-      <h2>💰 Ad keys live?</h2>
+      <h2><Ic n="cash" s={18} /> Ad keys live?</h2>
       <p className="desc">Network 1 ({s.provider1}): {dot(s.network1)} · Network 2 ({s.provider2}): {dot(s.network2)} · Sponsor “{(s.sponsorTitle || '—')}”: {dot(s.sponsor)}{s.sponsor ? <> · Video: {dot(s.sponsorVideo)}</> : null} · Sponsor rate: ₦{s.rateNaira}/click</p>
       <p className="hint">{s.note}</p>
     </div>

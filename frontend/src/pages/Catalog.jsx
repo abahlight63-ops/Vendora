@@ -5,11 +5,25 @@
 // STATE: products (null = loading → skeletons), f (add-form draft), tier
 // (free/pro → sync box vs upgrade card), syncText/syncInfo/syncing.
 // Feedback: pop() for big outcomes, toast() for small ones, sponsor hook.
-import { useEffect, useState } from 'react'; // useState ×6 slices of UI state; useEffect = triple-fetch on mount
-import { Link } from 'react-router-dom'; // Link for the Upgrade-to-Pro button (client-side nav)
+import { useEffect, useRef, useState } from 'react'; // useState ×6 slices of UI state; useEffect = triple-fetch on mount
+import { Link } from 'react-router-dom'; // Link for the inline billing links (client-side nav)
 import { api, pop, toast } from '../lib/api.js'; // api() calls; pop() big animated results; toast() small notes
 import { maybeShowSponsor } from '../lib/ads.js'; // sponsor interstitial after adds (free tier, max once/day)
-import Ic from '../components/icons.jsx'; // trash icon
+import Ic from '../components/icons.jsx'; // trash + close glyphs
+import LockButton from '../components/LockButton.jsx'; // padlock → upgrade card (the ONLY paywall affordance!)
+
+const SYNC_LINES = [ // upgrade-card bullets for profile sync (LockButton feeds these to the modal!)
+  'Paste your WhatsApp Business profile — AI scaffolds your whole catalog',
+  'Every "is it available?" verified against your synced profile',
+  'Product photos inside WhatsApp + Telegram replies',
+  'Zero ads, priority support',
+];
+const PHOTO_LINES = [ // upgrade-card bullets for product photos
+  'Your product pictures sent inside the chat bubble with each reply',
+  'Works on WhatsApp + Telegram, matched to what the customer asked',
+  'Profile sync + verification included',
+  'Zero ads, priority support',
+];
 
 export default function Catalog() { // no props needed (fetches everything itself)
   const [products, setProducts] = useState(null); // null = loading (skeleton rows); [] = loaded-but-empty (empty state!)
@@ -18,6 +32,8 @@ export default function Catalog() { // no props needed (fetches everything itsel
   const [syncText, setSyncText] = useState(''); // pasted profile text (controlled textarea)
   const [syncInfo, setSyncInfo] = useState(null); // {synced, synced_at} from GET /api/me/profile-sync ("Last synced" label)
   const [syncing, setSyncing] = useState(false); // disables button + "Syncing…" label (prevents double-submit!)
+  const [uploading, setUploading] = useState(false); // photo upload in flight (button shows "Uploading…")
+  const fileRef = useRef(null); // hidden <input type="file"> — the Upload-media button clicks it open
   async function load() { const { data } = await api('/api/me/products'); setProducts(data || []); } // reusable reload (called after every mutation — simplest correct refresh strategy)
   useEffect(() => { // mount: three independent fetches (no await between = parallel-ish; .then chains don't block each other)
     load(); // products list
@@ -33,7 +49,7 @@ export default function Catalog() { // no props needed (fetches everything itsel
       pop('ok', 'Profile synced!', `${(data.products || []).length} verified products added to your catalog.`); // big success popup with COUNT
       setSyncText(''); setSyncInfo({ synced: true, synced_at: data.synced_at }); load(); // clear box, update label, reload table (three state updates = one re-render — React batches!)
     } else if (data?.error?.includes('Pro feature')) { // ?. chain guards missing error; .includes matches backend's 402 message specifically…
-      pop('err', 'Pro feature', 'Profile sync needs Pro — manual teaching stays free. Upgrade on the Billing page.'); // …friendly paywall (not a raw error dump)
+      pop('err', 'Locked feature', 'Profile sync is premium — tap the lock above to see upgrade options. Manual teaching stays free.'); // …friendly paywall (not a raw error dump)
     } else { // other failures (422 no-products-found, 500…)…
       pop('err', 'Sync failed', data.error || 'Please try again.'); // …show backend's message (|| fallback)
     }
@@ -45,6 +61,24 @@ export default function Catalog() { // no props needed (fetches everything itsel
     const { ok, data } = await api('/api/me/products', { method: 'POST', body: JSON.stringify(body) });
     if (ok) { pop('ok', 'Product added!', 'The AI can sell it from now on.'); setF({ name: '', price: '', desc: '', photo: '' }); load(); maybeShowSponsor(); } // success popup + clear form + reload + sponsor hook (fire-and-forget: no await — sponsor must never block!)
     else pop('err', 'Could not add product', data.error || 'Please try again.'); // failure popup (data.error from backend validation — includes bad-photo-URL messages!)
+  }
+  async function uploadMedia(file) { // Upload media: pick from YOUR files → hosted → URL fills the photo field
+    if (!file) return; // dialog cancelled → nothing to do
+    if (!String(file.type || '').startsWith('image/')) return toast('Please choose an image file', 'err'); // String() guards undefined type
+    if (file.size > 2.5 * 1024 * 1024) return toast('Image too large — max 2.5MB', 'err'); // server cap mirrored here (fail fast, no wasted upload!)
+    setUploading(true); // lock the button (double-tap protection!)
+    try {
+      const dataUrl = await new Promise((res, rej) => { // FileReader is callback-based → wrap in a Promise to await it
+        const r = new FileReader(); // built-in browser API (reads local files — nothing leaves the phone yet!)
+        r.onload = () => res(r.result); // result = "data:image/jpeg;base64,…"
+        r.onerror = () => rej(new Error('read failed'));
+        r.readAsDataURL(file); // start reading (onload fires when done)
+      });
+      const { ok, data } = await api('/api/me/product-photo', { method: 'POST', body: JSON.stringify({ filename: file.name, dataUrl }) }); // server hosts it, hands back a URL
+      if (ok && data.url) { setF({ ...f, photo: data.url }); toast('Photo uploaded.'); } // URL lands in the draft (preview appears below!)
+      else toast((data && data.error) || 'Upload failed', 'err');
+    } catch { toast('Upload failed — check your connection', 'err'); } // network/read failure (empty catch block with statement = fine!)
+    setUploading(false); // unlock either way (or the button stays dead!)
   }
   async function toggle(p) { // stock toggle: re-POSTs same product with flipped available (upsert by NAME = same row updated!)
     const { ok } = await api('/api/me/products', { method: 'POST', body: JSON.stringify({ name: p.name, price: p.price, description: p.description, available: !p.available }) }); // ! flips true↔false (image_url OMITTED on purpose — absent key = preserve the photo!)
@@ -86,15 +120,15 @@ export default function Catalog() { // no props needed (fetches everything itsel
                 <td>{p.price || '—'}</td> {/* || '—' : null prices show dash, never "null" */}
                 <td><b>{p.quantity ?? 0}</b></td> {/* live stock count (?? 0: legacy rows show 0, never blank — WhatsApp updates land here instantly!) */}
                 <td><button className={'pill ' + (p.available ? 'ok' : 'flag')} style={{ cursor: 'pointer', border: '1px solid' }} onClick={() => toggle(p)} title="Click to toggle stock">{p.available ? 'in stock' : 'out of stock'}</button></td> {/* pill AS button: color shows state, click flips it (title = hover tooltip teaching the trick) */}
-                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{p.image_url && <button className="del" onClick={() => clearPhoto(p)} title="Remove photo" style={{ marginRight: 6 }}>📷✕</button>}<button className="del" onClick={() => del(p.id)} title="Remove"><Ic n="trash" s={15} /></button></td> {/* .del = red hover trash (arrow fn passes id — onClick={() => del(p.id)} delays the call until click!); 📷✕ only on photo rows (removes JUST the photo!) */}
+                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{p.image_url && <button className="del" onClick={() => clearPhoto(p)} title="Remove photo" aria-label={'Remove photo for ' + p.name} style={{ marginRight: 6 }}><Ic n="x" s={14} /></button>}<button className="del" onClick={() => del(p.id)} title="Remove"><Ic n="trash" s={15} /></button></td> {/* photo-clear = drawn X (never an emoji!); trash = delete row */}
               </tr>))}
           </tbody>
         </table></div>
       </div>
-      <div className="card"> {/* Pro sync section: gated UI (tier state switches whole block) */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}> {/* inline flex: title left, pill right, wraps on mobile */}
+      <div className="card"> {/* sync section: gated UI (tier state switches whole block) */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}> {/* inline flex: title left, lock right, wraps on mobile */}
           <div><h2>Sync from WhatsApp Business profile</h2><p className="desc" style={{ margin: 0 }}>Paste your business profile text — the AI scaffolds your whole catalog and verifies products against it.</p></div>
-          <span className={'pill ' + (tier === 'pro' ? 'ok' : 'flag')}>{tier === 'pro' ? 'PRO ON' : 'PRO'}</span> {/* badge mirrors access (green unlocked / gold locked) */}
+          {tier === 'pro' ? <span className="pill ok">On</span> : <LockButton title="Unlock profile sync" lines={SYNC_LINES} />} {/* locked = padlock only (no PRO text!); tap → upgrade card */}
         </div>
         {tier === 'pro' ? ( // ternary: Pro tools vs upgrade pitch (default 'free' tier NEVER flashes Pro tools!)
           <>
@@ -106,10 +140,9 @@ export default function Catalog() { // no props needed (fetches everything itsel
             </div>
             <p className="hint" style={{ marginTop: 8 }}>Tip: from your WhatsApp you can also send <b>SYNC:</b> followed by the same text.</p>
           </>
-        ) : ( // free users: pitch, not tools (with a direct Upgrade button = conversion!)
+        ) : ( // free users: pitch, not tools (tap the lock = upgrade card!)
           <div style={{ marginTop: 12 }}>
-            <p className="hint">Profile sync is a Pro feature. Manual teaching with LEARN: stays free forever.</p>
-            <div style={{ marginTop: 10 }}><Link className="btn sm" to="/billing">Upgrade to Pro</Link></div> {/* Link styled as button (to=… navigates, className styles) */}
+            <p className="hint">Profile sync is a premium feature. Manual teaching with LEARN: stays free forever — tap the lock above to see upgrade options.</p>
           </div>
         )}
       </div>
@@ -122,19 +155,24 @@ export default function Catalog() { // no props needed (fetches everything itsel
         </div>
         <label>Details (optional)</label>
         <input value={f.desc} onChange={(e) => setF({ ...f, desc: e.target.value })} placeholder="Sizes M–XL, cotton…" />
-        <div style={{ marginTop: 12, border: '1px dashed #25D366', borderRadius: 12, padding: 12, background: 'rgba(37,211,102,0.05)' }}> {/* Pro photo box: dashed green = "premium attachment" affordance */}
+        <div style={{ marginTop: 12, border: '1px dashed #25D366', borderRadius: 12, padding: 12, background: 'rgba(37,211,102,0.05)' }}> {/* photo box: dashed green = "attachment" affordance */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <label style={{ margin: 0 }}>Product photo <span className={'pill ' + (tier === 'pro' ? 'ok' : 'flag')} style={{ marginLeft: 6, fontSize: 11 }}>PRO</span></label> {/* badge mirrors tier (green unlocked / gold locked) */}
-            {f.photo.trim().startsWith('https://') && <button className="del" style={{ fontSize: 12 }} onClick={() => setF({ ...f, photo: '' })}>Clear</button>} {/* draft clear (no confirm — not saved yet!) */}
+            <label style={{ margin: 0 }}>Product photo {tier !== 'pro' && <LockButton title="Unlock product photos" lines={PHOTO_LINES} />}</label> {/* locked = padlock beside the label (no PRO text!); tap → upgrade card */}
+            {f.photo.trim() && <button className="del" style={{ fontSize: 12 }} onClick={() => setF({ ...f, photo: '' })}>Clear</button>} {/* draft clear (no confirm — not saved yet!) */}
           </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+            <button type="button" className="btn sm" disabled={uploading} onClick={() => fileRef.current && fileRef.current.click()}><Ic n="camera" s={15} />{uploading ? 'Uploading…' : 'Upload media'}</button> {/* opens the phone's file picker (accept = images only!) */}
+            <span className="hint">…or paste an image link below</span>
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { uploadMedia(e.target.files && e.target.files[0]); e.target.value = ''; }} /> {/* hidden picker; value reset so the SAME file can be re-picked! */}
           <input value={f.photo} onChange={(e) => setF({ ...f, photo: e.target.value })} placeholder="Paste a public image link: https://…" inputMode="url" spellCheck="false" style={{ marginTop: 8 }} />
-          {f.photo.trim().startsWith('https://') ? ( // live preview: only for https drafts (backend rule, mirrored here so owners learn it!)
+          {f.photo.trim() ? ( // live preview: whenever the draft holds a URL (pasted OR uploaded!)
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 10 }}>
               <img src={f.photo.trim()} alt="" width="64" height="64" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 10, display: 'block' }} loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} />
-              <span className="hint">{tier === 'pro' ? 'Looks good — the bot will send this photo with its reply on WhatsApp + Telegram.' : 'Saved for you — the bot sends photos on Pro. Upgrade on the Billing page to switch it on.'}</span>
+              <span className="hint">{tier === 'pro' ? 'Looks good — the bot will send this photo with its reply on WhatsApp + Telegram.' : 'Saved for you — upgraded shops send photos in replies. Tap the lock above to switch it on.'}</span>
             </div>
           ) : (
-            <p className="hint" style={{ margin: '8px 0 0' }}>{tier === 'pro' ? 'Pro ON: paste any public https image link — customers see it inside the chat bubble with the reply.' : 'Pro perk: free shops save the photo, Pro shops send it. Paste the link now, upgrade later — nothing is lost.'} {tier !== 'pro' && <Link to="/billing">Upgrade to Pro</Link>}</p>
+            <p className="hint" style={{ margin: '8px 0 0' }}>{tier === 'pro' ? 'Choose Upload media to pick from your files, or paste any public https image link — customers see it inside the chat bubble with the reply.' : 'Free shops save the photo, upgraded shops send it. Upload now, upgrade later — nothing is lost.'} {tier !== 'pro' && <Link to="/billing">See plans</Link>}</p>
           )}
         </div>
         <div style={{ marginTop: 14 }}><button className="btn" onClick={add}>Add product</button></div>

@@ -9,10 +9,10 @@
  * Sends a plain-text WhatsApp message. Fire-and-log: failures are logged,
  * never thrown (a failed send must not crash the webhook around it).
  */
-async function sendWhatsAppReply(toCustomer, message, mediaUrl) {
-  const sid = process.env.TWILIO_ACCOUNT_SID; // from .env (AC… string)
-  const token = process.env.TWILIO_AUTH_TOKEN; // from .env (secret)
-  const from = process.env.TWILIO_WHATSAPP_NUMBER; // e.g. whatsapp:+14155238886
+async function sendWhatsAppReply(toCustomer, message, mediaUrl, creds) {
+  const sid = (creds && creds.sid) || process.env.TWILIO_ACCOUNT_SID; // shop's own SID when connected, else the platform's
+  const token = (creds && creds.token) || process.env.TWILIO_AUTH_TOKEN; // same rule (shop token never leaves the server!)
+  const from = (creds && creds.from) || process.env.TWILIO_WHATSAPP_NUMBER; // shop's own number when connected (customer sees THEIR shop, not us!)
   if (!sid || !token || !from) {
     console.log('Twilio credentials not set; skipping outbound send. Reply was:', message); // dev mode: print instead of sending
     return; // early return = "do nothing gracefully"

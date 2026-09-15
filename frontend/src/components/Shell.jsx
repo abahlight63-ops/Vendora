@@ -8,28 +8,30 @@ import { useEffect, useState } from 'react'; // useState = drawer open flag; use
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'; // NavLink (active-aware link), useLocation (current path), useNavigate (code navigation)
 import { api, toast } from '../lib/api.js'; // api() for the logout call (+ version check below)
 import ThemeToggle from './ThemeToggle.jsx'; // sun/moon button (topbar)
-import Notifications from './Notifications.jsx'; // 🔔 bell (payment + update alerts)
+import Notifications from './Notifications.jsx'; // bell (payment + update alerts)
 import Tour from './Tour.jsx'; // first-run coachmarks (mounted once here = available everywhere)
 
 const GROUPS = [ // sidebar sections: label + [iconKey, label, route] rows (data-driven nav = add a row, get a link)
-  { label: 'Sell', items: [['overview', 'Overview', '/dashboard'], ['chats', 'Inbox', '/chats'], ['catalog', 'Catalog', '/catalog'], ['playground', 'Test bot', '/playground']] }, // nested arrays: [icon, label, href] per item
+  { label: 'Sell', items: [['overview', 'Overview', '/dashboard'], ['chats', 'Inbox', '/chats'], ['catalog', 'Catalog', '/catalog'], ['connect', 'Connect', '/connect'], ['playground', 'Test bot', '/playground']] }, // nested arrays: [icon, label, href] per item
   { label: 'Grow', items: [['insights', 'Insights', '/insights'], ['vendoraai', 'Vendora AI', '/vendora-ai'], ['billing', 'Billing', '/billing']] },
   { label: 'Setup', items: [['profile', 'Business', '/profile'], ['settings', 'AI settings', '/settings'], ['help', 'Help', '/help']] },
 ];
 const ALL = GROUPS.flatMap((g) => g.items); // flatMap = map + flatten one level (all nav rows in one array for the mobile bar filter)
-const TITLES = { '/dashboard': 'Overview', '/chats': 'Inbox', '/catalog': 'Catalog', '/playground': 'Test your bot', '/insights': 'Insights', '/vendora-ai': 'Vendora AI', '/billing': 'Billing', '/profile': 'Business profile', '/settings': 'AI settings', '/help': 'Help', '/onboarding': 'Get started', '/login': 'Sign in' }; // object lookup: path → human title (topbar breadcrumb + document.title)
+const TITLES = { '/dashboard': 'Overview', '/chats': 'Inbox', '/catalog': 'Catalog', '/connect': 'Connect channels', '/playground': 'Test your bot', '/insights': 'Insights', '/vendora-ai': 'Vendora AI', '/billing': 'Billing', '/profile': 'Business profile', '/settings': 'AI settings', '/help': 'Help', '/onboarding': 'Get started', '/login': 'Sign in' }; // object lookup: path → human title (topbar breadcrumb + document.title)
 
 function Icon({ k }) { // tiny inline SVG set (stroke = inherits text color; no icon library installed)
   const p = { viewBox: '0 0 24 24', width: 17, height: 17, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' }; // shared props object spread into every <svg> (currentColor = matches surrounding text)
   if (k === 'overview') return (<svg {...p}><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></svg>); // {...p} = spread all shared props; each if = one icon (early returns)
   if (k === 'chats') return (<svg {...p}><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.4 8.6 8.6 0 0 1-3.9-.9L3 21l2-5.3a8.3 8.3 0 0 1-.9-3.7A8.4 8.4 0 0 1 12.5 3a8.4 8.4 0 0 1 9 8.5z" /></svg>); // speech bubble (SVG path = vector drawing commands)
   if (k === 'catalog') return (<svg {...p}><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8" /></svg>); // box/package
+  if (k === 'connect') return (<svg {...p}><path d="M9 7V2M15 7V2M7 7h10v4a5 5 0 0 1-10 0zM12 16v5" /></svg>); // plug (Connect page — drawn, never emoji)
   if (k === 'playground') return (<svg {...p}><path d="M12 3v4M9 13h.01M15 13h.01M9.5 16.5h5" /><rect x="5" y="7" width="14" height="12" rx="3" /></svg>); // bot face
   if (k === 'vendoraai') return (<svg {...p}><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z" /></svg>); // sparkles (Vendora AI = magic)
   if (k === 'insights') return (<svg {...p}><path d="M4 20V10M10 20V4M16 20v-6M22 20H2" /></svg>); // bar chart
   if (k === 'billing') return (<svg {...p}><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M7 15h4" /></svg>); // credit card
   if (k === 'profile') return (<svg {...p}><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5" /></svg>); // person
   if (k === 'settings') return (<svg {...p}><circle cx="12" cy="12" r="3" /><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z" /></svg>); // gear
+  if (k === 'x') return (<svg {...p}><path d="M18 6L6 18M6 6l12 12" /></svg>); // close (drawer + dialogs — drawn, never a text glyph)
   return (<svg {...p}><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 0 1 5 .2c0 1.7-2.5 2-2.5 3.6M12 17h.01" /></svg>); // default = help "?" (unknown keys never render broken)
 }
 
@@ -49,7 +51,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
       let last = null;
       try { last = localStorage.getItem('vendora-version'); } catch {}
       if (last && last !== data.version) {
-        toast('Vendora updated to v' + data.version + ' 🎉 — check the 🔔 bell for what changed', 'ok');
+        toast('Vendora updated to v' + data.version + ' — open the notification bell to see what changed', 'ok');
       }
       try { localStorage.setItem('vendora-version', data.version); } catch {}
     });
@@ -69,7 +71,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
         {menuOpen && <div className="drawer-backdrop" onClick={() => setMenuOpen(false)} />} {/* && conditional: backdrop ONLY when open; click = close */}
         <aside className={'sidebar' + (menuOpen ? ' open' : '')}> {/* .open slides the drawer in (CSS transform, mobile only) */}
           <div className="logo"><img src="/logo.png" alt="Vendora" /><span>VENDORA</span>
-            <button className="drawer-close" onClick={() => setMenuOpen(false)} aria-label="Close menu">✕</button> {/* ✕ visible on mobile only (CSS) */}
+            <button className="drawer-close" onClick={() => setMenuOpen(false)} aria-label="Close menu"><Icon k="x" /></button> {/* drawn X, mobile only (CSS) */}
           </div>
           {GROUPS.map((g) => ( // map sections → JSX (key = stable identity for React's reconciler — NEVER use array index when order can change; here labels are stable)
             <div key={g.label}>
@@ -91,7 +93,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
             </div>
             <div className="top-right">
               <span className="live-dot"><i />AI online</span> {/* pulsing status pill (<i> = the dot, CSS) */}
-              <Notifications /> {/* 🔔 bell sits before theme toggle (thumb-side on mobile) */}
+              <Notifications /> {/* bell sits before theme toggle (thumb-side on mobile) */}
               <ThemeToggle theme={theme} onToggle={onToggleTheme} /> {/* sun/moon switch */}
               <div className="avatar" title={safeName}>{initial}</div> {/* title = hover tooltip */}
               <button className="btn ghost sm signout-btn" onClick={logout}>Sign out</button> {/* ghost = outline style; sm = small; .signout-btn hides on phones (drawer carries sign-out instead) */}

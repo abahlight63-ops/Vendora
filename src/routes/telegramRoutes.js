@@ -48,7 +48,7 @@ async function handleParsed(business, botToken, parsed, req, res) {
     } else { // Plus: Whisper Large v3 (sub-second, free tier!)…
       const said = await whatsappService.transcribeAudio({ mime: parsed.mime, base64: media.base64 }); // same transcriber as WhatsApp path (one voice engine!)
       body = said // transcript wins, caption preserved below (both signals!)…
-        ? `🎤 Voice note: "${said}"${body ? `\n${body}` : ''}`
+        ? `Voice note: "${said}"${body ? `\n${body}` : ''}`
         : (body ? body + '\n' : '') + '[a voice note was sent that could not be transcribed]'; // …null → handoff cue (never silence, never invention!)
       media = null; // consumed into text (don't ALSO run vision on audio bytes!)
     }
@@ -84,7 +84,7 @@ router.post('/telegram/:bizId', async (req, res) => {
     const { rows } = await db.query('SELECT id FROM businesses WHERE telegram_link_code = $1 LIMIT 1', [startMatch[1].toUpperCase()]); // code lookup (uppercased — typable!)
     if (rows.length && Number(rows[0].id) === Number(business.id)) { // code belongs to THIS shop (cross-shop codes rejected!)
       await db.query('UPDATE businesses SET owner_telegram_id = $1 WHERE id = $2', [parsed.fromId, business.id]); // bind owner (owner commands now work from here!)
-      await tg.sendText(token, parsed.chatId, `✅ Telegram linked — owner commands work here now (LEARN:, SYNC:, PAUSE, UNDO:). Customers just message normally.`);
+      await tg.sendText(token, parsed.chatId, `Telegram linked — owner commands work here now (LEARN:, SYNC:, PAUSE, UNDO:). Customers just message normally.`);
     } else {
       await tg.sendText(token, parsed.chatId, 'That link code is not for this shop — tap Link Telegram in your dashboard for a fresh one.');
     }
@@ -110,7 +110,7 @@ router.post('/telegram/shared', async (req, res) => {
          ON CONFLICT (telegram_id) DO UPDATE SET business_id = EXCLUDED.business_id`, // re-linking SWITCHES shops (one user, one shop — simple mental model!)
         [parsed.fromId, rows[0].id]
       );
-      await tg.sendText(sharedToken, parsed.chatId, `✅ Connected to ${rows[0].name} — send your questions! (Pro shops: smarter models + voice included.)`);
+      await tg.sendText(sharedToken, parsed.chatId, `Connected to ${rows[0].name} — send your questions! (Pro shops: smarter models + voice included.)`);
       return res.status(200).send('');
     }
     await tg.sendText(sharedToken, parsed.chatId, 'Welcome to Vendora! Ask your shop for their link code — it looks like BIZ7X2K. (Shops: find yours in Profile → Telegram.)');

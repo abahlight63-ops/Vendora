@@ -242,6 +242,59 @@ class ApiClient {
     return List<dynamic>.from((b as Map)['models'] ?? []);
   }
 
+  // ── Channel switchboard (Connect screen) ──
+  // Status: WhatsApp LIVE/OFF + channel + brain pick (secrets never returned!).
+  Future<Map<String, dynamic>> channels() async =>
+      (await get('/api/me/channels') as Map).cast<String, dynamic>();
+
+  /// Per-shop WhatsApp brain pick (locked → 402 ApiException → upsell sheet!).
+  Future<Map<String, dynamic>> whatsappModel(String model) async =>
+      (await put('/api/me/whatsapp-model', {'model': model}) as Map)
+          .cast<String, dynamic>();
+
+  /// Twilio step 1: validate SID/token → number picker list.
+  Future<Map<String, dynamic>> twilioConnect(
+      String sid, String token) async =>
+      (await post('/api/me/channels/twilio', {'sid': sid, 'token': token})
+              as Map)
+          .cast<String, dynamic>();
+
+  /// Twilio step 2: adopt number + auto-set webhook.
+  Future<Map<String, dynamic>> twilioSelect(
+      String sid, String token, String numberSid) async =>
+      (await post('/api/me/channels/twilio/select',
+              {'sid': sid, 'token': token, 'numberSid': numberSid}) as Map)
+          .cast<String, dynamic>();
+
+  Future<void> twilioDisconnect() async {
+    await post('/api/me/channels/twilio/disconnect');
+  }
+
+  /// Meta: validate ID/token → armed channel + verify token + webhook URL.
+  Future<Map<String, dynamic>> metaConnect(
+      String phoneNumberId, String token) async =>
+      (await post('/api/me/channels/meta',
+              {'phone_number_id': phoneNumberId, 'token': token}) as Map)
+          .cast<String, dynamic>();
+
+  Future<void> metaDisconnect() async {
+    await post('/api/me/channels/meta/disconnect');
+  }
+
+  /// One-tap auto-sync: Meta business profile → catalog (Pro, 402 otherwise!).
+  Future<Map<String, dynamic>> metaPullProfile() async =>
+      (await post('/api/me/channels/meta/pull-profile') as Map)
+          .cast<String, dynamic>();
+
+  /// Telegram token save + owner link code (Connect screen reuses these!).
+  Future<Map<String, dynamic>> telegramToken(String token) async =>
+      (await post('/api/me/telegram/token', {'token': token}) as Map)
+          .cast<String, dynamic>();
+
+  Future<Map<String, dynamic>> telegramLink() async =>
+      (await post('/api/me/telegram/link', {}) as Map)
+          .cast<String, dynamic>();
+
   // ── Business profile (PUT /api/me/business) ──
   // Editable: name, owner_number, hours, faq, tone, currency, timezone.
   // whatsapp_number is LOCKED server-side (identity mustn't change).

@@ -50,9 +50,29 @@ Copy `.env.example` to `.env`, then fill the rows below.
 
 ### Telegram — second door (optional, free)
 1. Chat **@BotFather** → `/newbot` → copy the token → paste in app:
-   Profile → Telegram token. No `.env` key needed per shop.
+   Connect page → Telegram road. No `.env` key needed per shop.
 2. Set ONE `TELEGRAM_WEBHOOK_SECRET` in `.env` and the same value in every
    BotFather `setWebhook` call — wrong secret gets 403.
+
+### Meta Cloud API — WhatsApp direct (free to start, recommended road)
+No `.env` key needed — each shop pastes its own 2 values on the Connect page
+(never touch the server). Free test number included, 1,000 chats/month free.
+1. Go to https://developers.facebook.com → log in → **Create App**
+   (type Business) → any name.
+2. In the app dashboard → **Add Product** → **WhatsApp** — a free test
+   number appears instantly.
+3. Open **API Setup**: copy **Phone Number ID** (all digits) + the
+   **temporary token** (lasts 24h — enough to connect + TEST today).
+4. Open **Configuration**: paste the webhook URL + verify code from OUR
+   Connect page → **Verify and save** → tick the **messages** field.
+5. Back in our app: TEST → LIVE. Done.
+6. Later, for a token that never expires: Meta **Business Settings →
+   System Users** → add user → attach your app → **Generate token** —
+   swap it into the same box.
+7. Real business number: **Phone numbers → Add number** (free; Meta lifts
+   messaging limits after business verification — also free, takes days;
+   the test number works meanwhile).
+- Without it: use the Twilio road on the Connect page instead.
 
 ## 4. Email (nice to have)
 

@@ -25,7 +25,9 @@ function cleanImageUrl(raw) {
   const s = String(raw).trim();
   if (!s) return null; // empty = clear the photo (dashboard "remove photo" path)
   if (s.length > 2000) return { error: 'Photo URL is too long (max 2000 characters).' };
-  if (!/^https:\/\/\S+\.\S+/.test(s)) return { error: 'Photo must be a public https:// URL (paste an image link).' }; // https-only: Twilio/Telegram fetch server-side (http + data: + javascript: rejected — SSRF/XSS guard!)
+  const isHttps = /^https:\/\/\S+\.\S+/.test(s); // public links (Twilio/Telegram fetch server-side)
+  const isLocal = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(s); // our own /uploads/ URLs in local dev (Twilio can't reach these, but the dashboard preview can!)
+  if (!isHttps && !isLocal) return { error: 'Photo must be a public https:// URL (paste an image link).' }; // http + data: + javascript: rejected — SSRF/XSS guard!
   return s;
 }
 
@@ -72,7 +74,7 @@ async function upsertProducts(businessId, products) {
       saved.push(rows[0]); // push the new row
     }
   }
-  return saved; // array of saved rows (webhook formats these into the "✅ Catalog updated" message)
+  return saved; // array of saved rows (webhook formats these into the "Catalog updated" message)
 }
 
 /** Format the catalog for the AI prompt. Empty string if no products. */

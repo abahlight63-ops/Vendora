@@ -7,32 +7,48 @@
 const crypto = require('crypto'); // Node built-in: HMAC-SHA512 webhook verification
 const db = require('../db'); // shared pool
 
+// Pay-once plans are handled personally — no self-serve lifetime checkout.
+const SALES_EMAIL = process.env.SALES_EMAIL || 'vendorabot26@gmail.com';
+
 // Plans: amounts are server-side — the client only sends the plan key.
-// Dual currency: NGN for +234 businesses, USD (exact FX parity) for the world.
+// Two tiers × two periods. Dual currency: NGN for +234 businesses, USD for
+// the world (USD yearly picked to mirror the NGN discount %: Pro 22%, Plus 33%).
 const PLANS = {
-  monthly: { NGN: Number(process.env.PRICE_MONTHLY_NAIRA || 7500), USD: Number(process.env.PRICE_MONTHLY_USD || 5), days: 30, label: 'Monthly' }, // Number() because env vars are strings; || defaults
-  yearly: { NGN: Number(process.env.PRICE_YEARLY_NAIRA || 50000), USD: Number(process.env.PRICE_YEARLY_USD || 33), days: 365, label: 'Yearly' },
-  lifetime: { NGN: Number(process.env.PRICE_LIFETIME_NAIRA || 100000), USD: Number(process.env.PRICE_LIFETIME_USD || 65), days: 36500, label: 'Lifetime' }, // 36500 ≈ 100 years = "forever" in timestamp math
+  pro_monthly: { NGN: Number(process.env.PRICE_MONTHLY_NAIRA || 7499), USD: Number(process.env.PRICE_MONTHLY_USD || 5), days: 30, label: 'Pro Monthly', tier: 'pro' }, // Number() because env vars are strings; || defaults
+  pro_yearly: { NGN: Number(process.env.PRICE_YEARLY_NAIRA || 69999), USD: Number(process.env.PRICE_YEARLY_USD || 47), days: 365, label: 'Pro Yearly', tier: 'pro' }, // 7499×12−69999 = ₦19,989 saved ≈ 22%
+  plus_monthly: { NGN: Number(process.env.PRICE_PLUS_MONTHLY_NAIRA || 14999), USD: Number(process.env.PRICE_PLUS_MONTHLY_USD || 10), days: 30, label: 'Pro Plus Monthly', tier: 'plus' },
+  plus_yearly: { NGN: Number(process.env.PRICE_PLUS_YEARLY_NAIRA || 120000), USD: Number(process.env.PRICE_PLUS_YEARLY_USD || 80), days: 365, label: 'Pro Plus Yearly', tier: 'plus' }, // 14999×12−120000 = ₦59,988 saved ≈ 33%
 };
+// Legacy keys (old apps/clients send monthly/yearly) → Pro tier.
+PLANS.monthly = PLANS.pro_monthly;
+PLANS.yearly = PLANS.pro_yearly;
 
 // Shape PLANS for ONE currency (what getBilling sends the frontend).
 function planFor(currency) {
   const cur = currency === 'USD' ? 'USD' : 'NGN'; // whitelist: anything non-USD becomes NGN (injection-safe)
-  const out = {};
-  for (const [k, p] of Object.entries(PLANS)) { // Object.entries = [[key, value],…] — destructure each pair
-    out[k] = { amount: p[cur], currency: cur, days: p.days, label: p.label }; // amount = price in THIS currency
+  const shape = (p) => ({ amount: p[cur], currency: cur, days: p.days, label: p.label, tier: p.tier }); // amount = price in THIS currency
+  const pro = { monthly: shape(PLANS.pro_monthly), yearly: shape(PLANS.pro_yearly) };
+  const plus = { monthly: shape(PLANS.plus_monthly), yearly: shape(PLANS.plus_yearly) };
+  for (const t of [pro, plus]) { // per-tier yearly savings (monthly×12 − yearly)…
+    t.yearly.save = t.monthly.amount * 12 - t.yearly.amount; // e.g. Pro NGN: 7499×12−69999 = ₦19,989
+    t.yearly.save_pct = Math.round((t.yearly.save / (t.monthly.amount * 12)) * 100); // …as a % (Pro ≈ 22%, Plus ≈ 33%)
   }
-  out.yearly.save = out.monthly.amount * 12 - out.yearly.amount; // e.g. 7500×12−50000 = ₦40,000 saved
-  out.yearly.save_pct = Math.round((out.yearly.save / (out.monthly.amount * 12)) * 100); // 40000/90000 = 44%
-  return out;
+  return {
+    currency: cur,
+    pro, // { monthly, yearly{+save, save_pct} }
+    plus, // { monthly, yearly{+save, save_pct} }
+    sales_email: SALES_EMAIL, // pay-once / enterprise → contact sales
+    monthly: pro.monthly, yearly: pro.yearly, // legacy aliases (old mobile builds read these — never break them!)
+  };
 }
 async function initialize(req, res) {
   const secret = process.env.PAYSTACK_SECRET_KEY; // server-only secret (never reaches the browser)
   if (!secret || secret.includes('xxxxx')) return res.status(503).json({ error: "Card payment isn't available right now — please pay by bank transfer below." }); // 503 = payments not switched on (customer-friendly, zero dev-talk)
 
-  const planKey = String(req.body?.plan || 'monthly').toLowerCase(); // ?. guards missing body; default monthly
+  const planKey = String(req.body?.plan || 'pro_monthly').toLowerCase(); // ?. guards missing body; default Pro monthly
+  if (planKey === 'lifetime') return res.status(400).json({ error: `Pay-once plans are now handled personally — contact sales at ${SALES_EMAIL} and we will set you up.` }); // lifetime retired from self-serve (grandfathered buyers keep it!)
   const plan = PLANS[planKey]; // lookup: unknown keys → undefined…
-  if (!plan) return res.status(400).json({ error: 'Unknown plan. Choose monthly, yearly or lifetime.' }); // …→ 400
+  if (!plan) return res.status(400).json({ error: 'Unknown plan. Choose Pro or Pro Plus, monthly or yearly.' }); // …→ 400
 
   // Look the payer email up (legacy code read req.ownerEmail — NO middleware ever set it, so live payments failed; fixed here).
   let email = null;
@@ -95,7 +111,8 @@ async function initialize(req, res) {
 //  - Transfer block needs BANK_NAME + BANK_ACCOUNT_NUMBER + BANK_ACCOUNT_NAME.
 //    No bank env = transfer block hides entirely (never show half-details).
 async function reportTransfer(req, res) {
-  const planKey = String(req.body?.plan || 'monthly').toLowerCase();
+  const planKey = String(req.body?.plan || 'pro_monthly').toLowerCase();
+  if (planKey === 'lifetime') return res.status(400).json({ error: `Pay-once plans are now handled personally — contact sales at ${SALES_EMAIL} and we will set you up.` }); // same retirement as card checkout
   if (!PLANS[planKey]) return res.status(400).json({ error: 'Unknown plan.' }); // validate the key (same whitelist idea)
   const senderName = String(req.body?.sender_name || '').trim().slice(0, 80);
   const senderBank = String(req.body?.sender_bank || '').trim().slice(0, 80);
@@ -114,9 +131,10 @@ async function reportTransfer(req, res) {
     }
     const currency = bRows[0]?.currency === 'USD' ? 'USD' : 'NGN';
     if (currency !== 'NGN') return res.status(400).json({ error: 'Bank transfer is Naira-only for now — please pay by card above.' });
-    const expected = PLANS[planKey][currency]; // major units (₦7500, not kobo)
+    const expected = PLANS[planKey][currency]; // major units (₦7499, not kobo)
+    const sym = currency === 'USD' ? '$' : '₦'; // transfer is Naira-only today, but keep the message correct if that ever changes
     if (!Number.isFinite(amountPaid) || Math.round(amountPaid) !== expected) {
-      return res.status(400).json({ error: `Amount must be exactly ₦${expected.toLocaleString()} for ${planKey}. You entered ${req.body?.amount_paid ?? 'nothing'}. Send the exact amount, then report it.` });
+      return res.status(400).json({ error: `Amount must be exactly ${sym}${expected.toLocaleString()} for ${PLANS[planKey].label}. You entered ${req.body?.amount_paid ?? 'nothing'}. Send the exact amount, then report it.` });
     }
     // Same reference twice for this business = reject (replay protection).
     const { rows: dup } = await db.query(
@@ -176,7 +194,7 @@ async function handlePaystackWebhook(req, res) {
         const cur = (event.data.currency || 'NGN').toUpperCase(); // 'NGN' | 'USD' (upstream value, uppercased defensively)
         await db.query(
           'INSERT INTO payments (business_id, plan, currency, amount, method, status, reference) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-          [Number(business_id), PLANS[kind] ? kind : 'monthly', cur, Number(amt) || 0, 'paystack', 'active', event.data.reference || null]
+          [Number(business_id), PLANS[kind] ? kind : 'pro_monthly', cur, Number(amt) || 0, 'paystack', 'active', event.data.reference || null]
         );
       } catch (e) { console.error('payment ledger error:', e.message); } // ledger must NEVER break activation (inner try/catch isolates it!)
       console.log(`Subscription activated for business ${business_id} (+${days} days)`);
@@ -190,4 +208,4 @@ async function handlePaystackWebhook(req, res) {
   res.status(200).end(); // always 200 on verified events (Paystack retries anything else)
 }
 
-module.exports = { initialize, reportTransfer, handlePaystackWebhook, PLANS, planFor }; // routes + ownerController.getBilling import from here
+module.exports = { initialize, reportTransfer, handlePaystackWebhook, PLANS, planFor, SALES_EMAIL }; // routes + ownerController.getBilling import from here

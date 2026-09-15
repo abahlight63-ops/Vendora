@@ -187,7 +187,7 @@ async function getBilling(req, res) {
     ? new Date(new Date(b.trial_started_at).getTime() + trialDays * 86400000) // trial start + N days (ms math)
     : null; // no trial column (very old row) → null (frontend hides countdown)
   const currency = b.currency === 'USD' ? 'USD' : 'NGN'; // whitelist (DB could hold anything)
-  const plans = billingController.planFor(currency); // {monthly:{amount…}, yearly:{…, save, save_pct}, lifetime:…}
+  const plans = billingController.planFor(currency); // {pro:{monthly, yearly{+save}}, plus:{…}, sales_email, +legacy aliases}
   const planService = require('../services/planService');
   res.json({
     status: b.subscription_status, // trialing | active | pending | expired
@@ -196,11 +196,15 @@ async function getBilling(req, res) {
     pro: planService.isPro({ subscription_status: b.subscription_status, subscription_expires: b.subscription_expires, trial_started_at: b.trial_started_at }), // boolean for badges…
     tier: planService.tier({ subscription_status: b.subscription_status, subscription_expires: b.subscription_expires, trial_started_at: b.trial_started_at }), // …and 'pro'|'free' string for logic
     currency, // 'NGN' | 'USD' (frontend money() formats with this)
-    price_naira: plans.monthly.amount, // legacy name, current meaning: "monthly price in shop currency" (kept so old frontend doesn't break)
+    price_naira: plans.pro.monthly.amount, // legacy name, current meaning: "Pro monthly in shop currency" (kept so old frontend doesn't break)
+    sales_email: plans.sales_email, // pay-once / enterprise → contact sales (top-level AND inside plans for old clients)
     plans: { // naira keys kept for backward-compat; amount/save keys are the new canonical ones
-      monthly: { naira: plans.monthly.amount, amount: plans.monthly.amount },
-      yearly: { naira: plans.yearly.amount, amount: plans.yearly.amount, save_naira: plans.yearly.save, save: plans.yearly.save, save_pct: plans.yearly.save_pct },
-      lifetime: { naira: plans.lifetime.amount, amount: plans.lifetime.amount },
+      currency: plans.currency,
+      pro: plans.pro, // { monthly:{amount…}, yearly:{amount…, save, save_pct} }
+      plus: plans.plus, // { monthly:{amount…}, yearly:{amount…, save, save_pct} }
+      sales_email: plans.sales_email,
+      monthly: { naira: plans.monthly.amount, amount: plans.monthly.amount }, // legacy: Pro monthly (old apps read this!)
+      yearly: { naira: plans.yearly.amount, amount: plans.yearly.amount, save_naira: plans.yearly.save, save: plans.yearly.save, save_pct: plans.yearly.save_pct }, // legacy: Pro yearly
     },
     transfer: { // bank-transfer details (empty strings = hidden in UI — no dev-talk shown)
       bank: process.env.BANK_NAME || '',

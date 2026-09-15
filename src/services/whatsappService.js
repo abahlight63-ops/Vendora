@@ -71,7 +71,7 @@ async function fetchMedia(url, mime) {
 // upload (multipart/form-data — Node 18+ has global FormData/Blob built in!).
 async function transcribeAudio(audio) {
   const key = process.env.GROQ_API_KEY; // same key as chat (no new secret to manage!)
-  if (!key || key.includes('...') || key.includes('xxxxx')) return null; // placeholder/empty → skip silently (caller falls back to "voice is Pro" handoff!)
+  if (!key || key.includes('...') || key.includes('xxxxx')) return null; // placeholder/empty → skip silently (caller falls back to the "voice is Pro Plus" handoff!)
   if (!audio || !audio.base64) return null; // nothing to transcribe (guard clause)
   try {
     const buf = Buffer.from(audio.base64, 'base64'); // base64 → raw bytes…

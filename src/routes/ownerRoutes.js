@@ -11,6 +11,7 @@ router.use(requireAuth); // blanket guard: guests get 401 on everything below
 
 router.get('/me', ownerController.getMe); // business profile + tier + ads config
 router.put('/me/business', ownerController.updateBusiness); // PUT = update profile (name, hours, FAQs…)
+router.post('/me/setup', ownerController.saveSetup); // POST = welcome niche + heard-from (no name required!)
 router.get('/me/products', ownerController.getProducts); // list catalog
 router.post('/me/products', ownerController.upsertProduct); // POST = add/update one product
 router.delete('/me/products/:id', ownerController.deleteProduct); // :id = URL param (req.params.id)

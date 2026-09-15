@@ -181,13 +181,15 @@ async function handlePaystackWebhook(req, res) {
     const { business_id, kind, days: metaDays } = event.data.metadata || {}; // destructure OUR metadata back out (|| {} guards missing)
     const days = Number(metaDays) || (PLANS[kind] ? PLANS[kind].days : Number(process.env.SUBSCRIPTION_DAYS || 30)); // metadata days → plan table → env default (triple fallback, never NaN-activate)
     if (business_id) {
+      const boughtTier = (PLANS[kind] && PLANS[kind].tier) || 'pro'; // pro_monthly/yearly → pro, plus_* → plus (drives Plus-only gates!)
       await db.query( // activate: status=active, extend expiry (from existing expiry or now, whichever later — early renewals don't lose days!)
         `UPDATE businesses
          SET subscription_status = 'active',
              subscription_expires = GREATEST(COALESCE(subscription_expires, now()), now()) + make_interval(days => $1),
-             paystack_customer_code = $2
+             paystack_customer_code = $2,
+             plan_tier = $4
          WHERE id = $3`, // GREATEST(a,b) = later date; COALESCE(NULL, now()) = now; make_interval builds "N days"
-        [days, event.data.customer?.customer_code || null, Number(business_id)] // ?. guards missing customer object
+        [days, event.data.customer?.customer_code || null, Number(business_id), boughtTier] // ?. guards missing customer object
       );
       try { // ledger row: card payments are active IMMEDIATELY (verified webhook = proof of money!)…
         const amt = event.data.amount || 0; // Paystack sends amount in MINOR units already (kobo/cents — store as-is!)

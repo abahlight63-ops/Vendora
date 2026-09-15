@@ -91,15 +91,37 @@ async function callChoice(entry, model, system, user, image, opts) {
   throw new Error('All configured AIs failed — check keys and restart the server');
 }
 
+// Niche seeds: 2-3 example topics per niche so Vendora AI answers with
+// the owner's hustle in mind (freelancer → clients/gigs, baker → orders…).
+// Keys match the welcome picker labels; unknown niches fall back to DEFAULT.
+const NICHE_SEEDS = {
+  'DEFAULT': 'pricing, sales captions, and handling difficult customers',
+  'Clothing, Fashion & Accessories': 'pricing outfits, sales captions for new drops, and handling size/return questions',
+  'Beauty, Cosmetics & Personal Care': 'pricing services, booking captions, and rebooking clients',
+  'Baking, Catering & Homemade Food': 'pricing per plate/tray, order-deadline captions, and handling custom orders',
+  'Freelance Services': 'pricing gigs, writing proposals, building a portfolio, and handling late-paying clients',
+  'Tutoring, Coaching & Digital Info-Products': 'pricing sessions, course outlines, and enrolling students',
+  'Hair Salons, Barbers & Makeup Artists': 'pricing services, booking captions, and rebooking clients',
+  'Real Estate Agent or Property Broker': 'listing captions, qualifying buyers, and follow-up scripts',
+  'Sneakers & Footwear Reseller': 'pricing pairs, drop captions, and spotting fakes questions',
+  'Electronics, Gadgets & Phone Accessories': 'pricing gadgets, warranty answers, and spec comparisons',
+};
+
 /**
  * General-purpose chat (Vendora AI page) — NOT grounded in any catalog.
  * Smart + thorough: full explanations with examples, not one-liners.
  * choiceId comes from the dropdown and is validated against the tier.
+ * niche tailors examples + follow-ups to the owner's hustle (empty = generic).
  */
-async function askGeneral(message, history, choiceId, tier, bizName) {
+async function askGeneral(message, history, choiceId, tier, bizName, niche) {
   const aiModels = require('./aiModels');
   const shop = (bizName || '').split(' ')[0] || 'friend';
-  const system = `You are Vendora AI, a smart, warm general-purpose assistant inside the Vendora app.
+  const cleanNiche = typeof niche === 'string' ? niche.trim().slice(0, 80) : '';
+  const seeds = NICHE_SEEDS[cleanNiche] || NICHE_SEEDS.DEFAULT; // exact-label match, else generic (never crash on custom niches!)
+  const nicheLine = cleanNiche
+    ? `\nOWNER NICHE: "${cleanNiche}" — tailor EVERY example, caption, and suggestion to this hustle (think ${seeds}). When they ask open questions ("give me ideas", "help me sell"), default to this niche without asking what they sell.`
+    : '';
+  const system = `You are Vendora AI, a smart, warm general-purpose assistant inside the Vendora app.${nicheLine}
 
 PERSONALITY: knowledgeable friend + sharp business coach. Friendly, respectful, encouraging. Greet warmly, always offer a concrete next step.
 
@@ -210,6 +232,7 @@ Business info:
 - Name: ${business.name}
 - Opening hours: ${business.hours || 'not provided'}
 - Tone: ${business.tone || 'friendly and helpful'}
+${business.business_niche ? `- What they sell: ${business.business_niche} (recommend within this lane first!)` : ''}
 
 FAQ:
 ${(business.faq || []).map((f) => `Q: ${f.question}\nA: ${f.answer}`).join('\n') || '(none)'}

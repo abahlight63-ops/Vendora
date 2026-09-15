@@ -24,6 +24,37 @@ class _AiMessage {
   _AiMessage(this.mine, this.text, [this.meta]);
 }
 
+// Per-niche starter chips (web parity: freelancer sees gigs, baker sees
+// orders — never generic examples for the wrong hustle!). Unknown niches
+// fall back to _defaultChips (custom "Other" entries never break!).
+const _nicheChips = {
+  'Clothing, Fashion & Accessories': [
+    'Write a sales caption for my new drop',
+    'How do I price my outfits?',
+    'Draft a reply about sizes and returns',
+    'Give me 5 content ideas for this week',
+  ],
+  'Freelance Services': [
+    'Help me price my next gig',
+    'Draft a proposal for a client',
+    'What should my portfolio include?',
+    'Draft a reply to a late-paying client',
+  ],
+  'Baking, Catering & Homemade Food': [
+    'Help me price per tray',
+    'Write an order-deadline caption',
+    'Draft a reply about custom orders',
+    'Give me 5 content ideas for this week',
+  ],
+};
+
+const _defaultChips = [
+  'Write a sales caption for my new product',
+  'Give me 5 business name ideas',
+  'How do I price my products?',
+  'Draft a reply to a difficult customer',
+];
+
 class _AiScreenState extends State<AiScreen> {
   final _input = TextEditingController();
   final _scroll = ScrollController();
@@ -35,11 +66,27 @@ class _AiScreenState extends State<AiScreen> {
   bool _busy = false;
   bool _testBot = false; // false = Vendora AI (/ask), true = shop test-bot (/playground)
   Timer? _reveal; // typewriter ticker (web parity: answers write small-small)
+  List<String> _chips = _defaultChips; // niche starters (loaded below!)
 
   @override
   void initState() {
     super.initState();
     _loadModels();
+    _loadChips();
+  }
+
+  /// Niche starters: same labels as the setup picker (exact match, else
+  /// generic — the backend ALSO seeds examples from the niche, belt + braces!).
+  Future<void> _loadChips() async {
+    try {
+      final me = await ApiClient.instance.me();
+      final biz = (me['business'] as Map?)?.cast<String, dynamic>();
+      final niche = '${biz?['business_niche'] ?? ''}';
+      final hit = _nicheChips[niche];
+      if (mounted && hit != null) setState(() => _chips = hit);
+    } catch (_) {
+      // Offline → generic chips (never block the screen!).
+    }
   }
 
   @override
@@ -212,7 +259,7 @@ class _AiScreenState extends State<AiScreen> {
                   value: '${(m as Map)['id']}',
                   enabled: (m['locked'] != true),
                   child: Text(
-                      '${m['label'] ?? m['id']}${m['locked'] == true ? ' 🔒 Pro' : ''}'),
+                      '${m['label'] ?? m['id']}${m['locked'] == true ? (m['minTier'] == 'plus' ? ' 🔒 Plus' : ' 🔒 Pro') : ''}'),
                 ),
             ],
             onChanged: (v) => setState(() => _model = v),
@@ -221,9 +268,38 @@ class _AiScreenState extends State<AiScreen> {
       Expanded(
         child: _msgs.isEmpty
             ? Center(
-                child: Text(_testBot
-                    ? 'Ask like a customer — prices, stock, delivery.'
-                    : 'Ask anything — stock, prices, advice.'))
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_testBot
+                          ? 'Ask like a customer — prices, stock, delivery.'
+                          : 'Ask anything — stock, prices, advice.'),
+                      if (!_testBot) ...[
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.center,
+                          children: [
+                            for (final c in _chips)
+                              ActionChip(
+                                label: Text(c,
+                                    style:
+                                        const TextStyle(fontSize: 12)),
+                                onPressed: _busy
+                                    ? null
+                                    : () => _sendWith(
+                                        c, List<_AiMessage>.from(_msgs)),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              )
             : ListView.builder(
                 controller: _scroll,
                 padding: const EdgeInsets.all(12),

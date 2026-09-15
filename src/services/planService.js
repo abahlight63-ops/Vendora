@@ -31,7 +31,22 @@ function isPro(business) {
 }
 
 function tier(business) {
-  return isPro(business) ? 'pro' : 'free'; // ternary: the two strings the whole app switches on
+  return isPro(business) ? 'pro' : 'free'; // ternary: the two strings the whole app switches on (Plus counts as pro here — ads stay off for all paid!)
+}
+
+// STRICT tier: did this shop BUY Pro Plus (not trial, not Pro)?
+// Trial users are Pro, never Plus — Plus perks need a real Plus purchase.
+function isProPlus(business) {
+  if (!business) return false; // null-safety like isPro
+  if (!subscriptionActive(business)) return false; // expired/cancelled → free (trial falls through below, also not Plus)
+  return String(business.plan_tier || 'pro').toLowerCase() === 'plus'; // only an explicit 'plus' purchase counts
+}
+
+// Effective tier for capability gates: plus > pro > free.
+// Drives AI-model locks + voice transcription (Plus-only perks).
+function effectiveTier(business) {
+  if (isProPlus(business)) return 'plus';
+  return tier(business); // 'pro' (paid or trial) | 'free'
 }
 
 // Auto-currency: +234 numbers bill in NGN, everything else in USD.
@@ -43,4 +58,4 @@ function resolveCurrency(...numbers) {
   return 'NGN'; // no country code at all → default home market
 }
 
-module.exports = { isPro, tier, trialActive, subscriptionActive, trialDays, resolveCurrency }; // webhook, replyEngine, controllers all import from here
+module.exports = { isPro, isProPlus, tier, effectiveTier, trialActive, subscriptionActive, trialDays, resolveCurrency }; // webhook, replyEngine, controllers all import from here

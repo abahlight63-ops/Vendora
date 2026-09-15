@@ -13,7 +13,8 @@ async function getMe(req, res) {
   const { rows } = await db.query( // the owner's own business row + everything the dashboard needs…
     `SELECT b.id, b.name, b.whatsapp_number, b.owner_number, b.hours, b.faq, b.tone,
             b.max_discount_pct, b.min_order_naira, b.currency, b.timezone,
-            b.bot_enabled, b.personal_contacts,
+            b.bot_enabled, b.personal_contacts, b.plan_tier,
+            b.business_niche, b.heard_from,
             b.subscription_status, b.subscription_expires, b.trial_started_at
      FROM businesses b WHERE b.id = $1`, // b = alias; WHERE session id (never a client id!)
     [req.session.businessId]
@@ -88,6 +89,23 @@ async function updateBusiness(req, res) {
       : [name, owner || null, req.body.hours || '', JSON.stringify(faq || []), req.body.tone || 'friendly and helpful', currency, timezone, req.session.businessId]
   ); // JSON.stringify: faq ARRAY + personal ARRAY → JSONB columns need JSON strings
   res.json(rows[0]); // frontend Profile page uses the returned row (no refetch needed)
+}
+
+// Welcome setup: what the shop sells + where they found us (the /welcome
+// niche picker + heard-from page, and the mobile setup screen, all call this).
+// Niche drives Vendora AI suggestions + WhatsApp reply context. Free text
+// (≤80 chars) so new niches never need a deploy — the picker just suggests.
+async function saveSetup(req, res) {
+  const { business_niche: nicheRaw, heard_from: heardRaw } = req.body || {};
+  const niche = typeof nicheRaw === 'string' ? nicheRaw.trim().slice(0, 80) : '';
+  const heard = typeof heardRaw === 'string' ? heardRaw.trim().slice(0, 40) : '';
+  if (!niche) return res.status(400).json({ error: 'Pick what your business sells first.' }); // niche is the hard requirement (heard-from optional — skippable!)
+  const { rows } = await db.query( // session-scoped write (owners set ONLY their own niche!)
+    `UPDATE businesses SET business_niche = $1, heard_from = $2 WHERE id = $3
+     RETURNING business_niche, heard_from`, // RETURNING echoes truth (UI shows what stuck, no refetch!)
+    [niche, heard, req.session.businessId]
+  );
+  res.json(rows[0]);
 }
 
 async function getProducts(req, res) {
@@ -175,8 +193,8 @@ async function updateSettings(req, res) {
 
 async function getBilling(req, res) {
   const billingController = require('./billingController'); // reuse planFor() — ONE price table for the whole app
-  const { rows } = await db.query( // subscription state + currency (prices depend on it!)
-    `SELECT subscription_status, subscription_expires, trial_started_at, currency
+  const { rows } = await db.query( // subscription state + purchased tier + currency (prices depend on it!)
+    `SELECT subscription_status, subscription_expires, trial_started_at, plan_tier, currency
      FROM businesses WHERE id = $1`,
     [req.session.businessId]
   );
@@ -196,6 +214,7 @@ async function getBilling(req, res) {
     pro: planService.isPro({ subscription_status: b.subscription_status, subscription_expires: b.subscription_expires, trial_started_at: b.trial_started_at }), // boolean for badges…
     tier: planService.tier({ subscription_status: b.subscription_status, subscription_expires: b.subscription_expires, trial_started_at: b.trial_started_at }), // …and 'pro'|'free' string for logic
     currency, // 'NGN' | 'USD' (frontend money() formats with this)
+    plan_tier: String(b.plan_tier || 'pro').toLowerCase(), // purchased tier: 'pro' | 'plus' (trial buyers show 'pro' until they buy Plus!)
     price_naira: plans.pro.monthly.amount, // legacy name, current meaning: "Pro monthly in shop currency" (kept so old frontend doesn't break)
     sales_email: plans.sales_email, // pay-once / enterprise → contact sales (top-level AND inside plans for old clients)
     plans: { // naira keys kept for backward-compat; amount/save keys are the new canonical ones
@@ -334,12 +353,12 @@ async function adClick(req, res) {
 async function aiModels(req, res) {
   const planService = require('../services/planService');
   const aiModels = require('../services/aiModels');
-  const { rows } = await db.query( // only subscription fields needed for tier()
-    'SELECT subscription_status, subscription_expires, trial_started_at FROM businesses WHERE id = $1',
+  const { rows } = await db.query( // subscription + purchased tier (effectiveTier needs plan_tier for the Plus floor!)
+    'SELECT subscription_status, subscription_expires, trial_started_at, plan_tier FROM businesses WHERE id = $1',
     [req.session.businessId]
   );
-  const b = rows[0] || {}; // || {} : deleted business → tier('{}') = free (safe default)
-  res.json({ models: aiModels.listForTier(planService.tier(b)) }); // [{id, label, tier, locked}…] — model IDs never leak
+  const b = rows[0] || {}; // || {} : deleted business → effectiveTier('{}') = free (safe default)
+  res.json({ models: aiModels.listForTier(planService.effectiveTier(b)) }); // [{id, label, tier, minTier, locked}…] — model IDs never leak
 }
 
 const FREE_AI_PER_DAY = Number(process.env.FREE_AI_PER_DAY || 50); // free-tier Vendora AI chats/day, 50 for everything (env-tunable)
@@ -359,12 +378,13 @@ async function ask(req, res) {
     const aiModels = require('../services/aiModels');
     const replyEngine = require('../services/replyEngine');
     const { rows } = await db.query( // tier first (gates EVERYTHING below)
-      'SELECT subscription_status, subscription_expires, trial_started_at, name FROM businesses WHERE id = $1',
+      'SELECT subscription_status, subscription_expires, trial_started_at, plan_tier, name, business_niche FROM businesses WHERE id = $1',
       [req.session.businessId]
     );
-    const tier = planService.tier(rows[0] || {}); // 'pro' | 'free'
+    const tier = planService.effectiveTier(rows[0] || {}); // 'plus' | 'pro' | 'free' (Plus-only heavy models enforced inside resolveChoice!)
     const bizName = rows[0]?.name || '';
-    const resolved = aiModels.resolveChoice(model, tier); // validate dropdown id: exists? paid-but-free? → {entry, model} or {error}
+    const bizNiche = rows[0]?.business_niche || ''; // niche-aware suggestions (empty = generic chips)
+    const resolved = aiModels.resolveChoice(model, tier); // validate dropdown id: exists? below-floor? → {entry, model} or {error}
     if (resolved.error) return res.status(402).json({ error: resolved.error }); // 402 = paywall (locked premium model)
     const paid = resolved.entry.tier === 'paid'; // which counter to check/increment?
     // Daily caps — one row per business per day.
@@ -375,7 +395,7 @@ async function ask(req, res) {
       [req.session.businessId]
     );
     const usage = urows[0]; // today's counters
-    if (!paid && tier !== 'pro' && usage.free_count >= FREE_AI_PER_DAY) { // free user, free model, quota spent?…
+    if (!paid && tier === 'free' && usage.free_count >= FREE_AI_PER_DAY) { // free user, free model, quota spent?… (=== 'free': Plus/Pro users never hit the free cap!)
       return res.status(429).json({ error: `Free daily limit reached (${FREE_AI_PER_DAY} chats). Upgrade to Pro for unlimited chats + premium AIs.` }); // 429 = Too Many Requests (correct code for rate limits!)
     }
     if (paid && usage.paid_count >= PAID_AI_PER_DAY) { // anyone (even Pro) hammering premium models?…
@@ -390,7 +410,7 @@ async function ask(req, res) {
     if (mrows[0].count >= MODEL_DAILY_CAP) { // this business maxed THIS model today (quota justice: others' share untouched!)…
       return res.status(429).json({ error: `You've used ${resolved.entry.label} 50 times today — try another AI below, fresh quota!` }); // …redirect, don't dead-end (dropdown has 7 more!)
     }
-    const result = await replyEngine.askGeneral(message.trim(), Array.isArray(history) ? history.slice(-12) : [], resolved.entry.id, tier, bizName); // Array.isArray guards tampered history; slice(-12) caps context cost
+    const result = await replyEngine.askGeneral(message.trim(), Array.isArray(history) ? history.slice(-12) : [], resolved.entry.id, tier, bizName, bizNiche); // Array.isArray guards tampered history; slice(-12) caps context cost; niche tailors examples + follow-ups
     if (result.reply) { // SUCCESS → count it (only successful chats consume quota — failures are free retries!)
       await db.query( // dynamic column via ${} — SAFE here: `paid` is a boolean WE computed, not user input (never interpolate raw user text into SQL!)
         `UPDATE ai_usage SET ${paid ? 'paid_count = paid_count + 1' : 'free_count = free_count + 1'}
@@ -433,6 +453,7 @@ async function readNotifications(req, res) {
 module.exports = { // every handler the routes file wires up (miss one here = route crashes on boot!)
   getMe,
   updateBusiness,
+  saveSetup,
   getProducts,
   upsertProduct,
   deleteProduct,

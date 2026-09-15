@@ -185,12 +185,14 @@ async function transferApprove(req, res) {
   if (!pay) return res.status(404).json({ error: 'Not found' });
   if (pay.status !== 'pending') return res.status(400).json({ error: `Already ${pay.status} — refusing double-activation.` }); // idempotency guard (double-clicking Approve can't grant 2× days!)
   const days = billingController.PLANS[pay.plan] ? billingController.PLANS[pay.plan].days : 30; // plan → days (same table the webhook uses!)
+  const boughtTier = (billingController.PLANS[pay.plan] && billingController.PLANS[pay.plan].tier) || 'pro'; // pro_* → pro, plus_* → plus (same rule as the webhook!)
   await db.query( // same activation SQL shape as the Paystack webhook (consistent semantics!)…
     `UPDATE businesses
      SET subscription_status = 'active',
-         subscription_expires = GREATEST(COALESCE(subscription_expires, now()), now()) + make_interval(days => $1)
+         subscription_expires = GREATEST(COALESCE(subscription_expires, now()), now()) + make_interval(days => $1),
+         plan_tier = $3
      WHERE id = $2`,
-    [days, pay.business_id]
+    [days, pay.business_id, boughtTier]
   );
   await db.query("UPDATE payments SET status = 'active' WHERE id = $1", [req.params.id]); // ledger flips pending → active (revenue counts it now!)
   require('../services/notifyService').notify(pay.business_id, { // bell: verified (fire-and-forget — never breaks approval)

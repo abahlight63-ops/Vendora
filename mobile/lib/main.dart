@@ -15,6 +15,7 @@ import 'splash.dart';
 import 'motion.dart';
 import 'format.dart';
 import 'screens/auth_screen.dart';
+import 'screens/setup_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/chats_screen.dart';
 import 'screens/catalog_screen.dart';
@@ -32,6 +33,7 @@ class VendoraApp extends StatefulWidget {
 
 class _VendoraAppState extends State<VendoraApp> {
   bool? _authed; // null = checking
+  bool _needsSetup = false; // true = logged in but no niche yet (setup screen!)
   ThemeMode _mode = ThemeMode.system;
 
   @override
@@ -46,19 +48,37 @@ class _VendoraAppState extends State<VendoraApp> {
     final results = await Future.wait([
       wait,
       VendoraTheme.loadMode(),
-      (() async {
-        try {
-          await ApiClient.instance.me(); // cookie valid?
-          return true;
-        } catch (_) {
-          return false;
-        }
-      })(),
+      _checkAuth(),
     ]);
     if (!mounted) return;
     setState(() {
       _mode = results[1] as ThemeMode;
-      _authed = results[2] as bool;
+      _authed = (results[2] as List)[0] as bool;
+      _needsSetup = (results[2] as List)[1] as bool;
+    });
+  }
+
+  /// Session check + setup check in one: returns [authed, needsSetup].
+  /// needsSetup = logged in but business_niche empty (new signup!).
+  Future<List> _checkAuth() async {
+    try {
+      final me = await ApiClient.instance.me(); // cookie valid? (+ business row!)
+      final biz = (me['business'] as Map?)?.cast<String, dynamic>();
+      final niche = '${biz?['business_niche'] ?? ''}'.trim();
+      return [true, niche.isEmpty];
+    } catch (_) {
+      return [false, false];
+    }
+  }
+
+  /// Fresh login/signup just stamped the session → re-check (niche usually
+  /// empty for new accounts → setup screen, not the dashboard!).
+  Future<void> _onAuthed() async {
+    final r = await _checkAuth();
+    if (!mounted) return;
+    setState(() {
+      _authed = r[0] as bool;
+      _needsSetup = r[1] as bool;
     });
   }
 
@@ -83,12 +103,18 @@ class _VendoraAppState extends State<VendoraApp> {
       home: _authed == null
           ? const SplashView()
           : _authed!
-              ? HomeShell(
-                  mode: _mode,
-                  onMode: _setMode,
-                  onLogout: () => setState(() => _authed = false),
-                )
-              : AuthScreen(onAuthed: () => setState(() => _authed = true)),
+              ? _needsSetup
+                  ? SetupScreen(
+                      onDone: () => setState(() => _needsSetup = false))
+                  : HomeShell(
+                      mode: _mode,
+                      onMode: _setMode,
+                      onLogout: () => setState(() {
+                        _authed = false;
+                        _needsSetup = false;
+                      }),
+                    )
+              : AuthScreen(onAuthed: _onAuthed),
     );
   }
 }

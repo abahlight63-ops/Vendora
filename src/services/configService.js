@@ -160,6 +160,16 @@ CREATE TABLE IF NOT EXISTS inventory_logs (
 );
 CREATE INDEX IF NOT EXISTS idx_inventory_business ON inventory_logs(business_id, created_at DESC); -- fast per-shop history (latest-first!)
 
+-- Paid-tier tracking: which tier the shop BOUGHT (pro | plus). Trials count as
+-- Pro without touching this (planService.effectiveTier handles trial → pro).
+-- Old single-plan buyers default to pro (same features they paid for).
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS plan_tier TEXT NOT NULL DEFAULT 'pro';
+
+-- Welcome setup: what the shop sells + where they found us (niche drives
+-- Vendora AI suggestions + WhatsApp reply context; heard_from is analytics).
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS business_niche TEXT NOT NULL DEFAULT '';
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS heard_from TEXT NOT NULL DEFAULT '';
+
 -- Takeover controls: never let the bot fight the owner's personal chats
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS bot_enabled BOOLEAN NOT NULL DEFAULT true; -- global kill-switch (dashboard toggle + PAUSE/RESUME)
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS personal_contacts JSONB NOT NULL DEFAULT '[]'; -- WhatsApp numbers the bot ALWAYS ignores (friends/family)

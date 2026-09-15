@@ -251,6 +251,17 @@ class ApiClient {
     return (b as Map).cast<String, dynamic>();
   }
 
+  /// Welcome setup: niche + heard-from (no name required — the setup
+  /// screen and only the setup screen calls this).
+  Future<Map<String, dynamic>> saveSetup(
+      String niche, String heardFrom) async {
+    final b = await post('/api/me/setup', {
+      'business_niche': niche,
+      'heard_from': heardFrom,
+    });
+    return (b as Map).cast<String, dynamic>();
+  }
+
   /// Sponsor click log (per-click billing for direct + video sponsors).
   /// Mirrors web ads.js: logged BEFORE the visit, never blocks it.
   Future<void> adClick(String slot, String url) async {

@@ -40,12 +40,12 @@ async function handleParsed(business, botToken, parsed, req, res) {
     const dl = await tg.downloadFile(botToken, parsed.fileId, parsed.mime); // bytes via getFile (≤10MB guard inside!)
     if (dl) media = { kind: parsed.kind, mime: parsed.mime, base64: dl.base64 };
   }
-  // Voice → transcript HERE (Pro-gated: business known at route level!)…
+  // Voice → transcript HERE (Plus-gated: business known at route level!)…
   let body = parsed.text || ''; // typed text and/or caption (may be empty for pure voice/photo!)
   if (parsed.kind === 'voice' && media) {
-    if (!planService.isPro(business)) { // free tier: note it (brain hands off gracefully — premium selling point, not silence!)
-      body = (body ? body + '\n' : '') + '[a voice note was sent — voice notes are a Pro feature]';
-    } else { // Pro: Whisper Large v3 (sub-second, free tier!)…
+    if (!planService.isProPlus(business)) { // non-Plus: note it (brain hands off gracefully — premium selling point, not silence!)
+      body = (body ? body + '\n' : '') + '[a voice note was sent — voice notes are a Pro Plus feature]';
+    } else { // Plus: Whisper Large v3 (sub-second, free tier!)…
       const said = await whatsappService.transcribeAudio({ mime: parsed.mime, base64: media.base64 }); // same transcriber as WhatsApp path (one voice engine!)
       body = said // transcript wins, caption preserved below (both signals!)…
         ? `🎤 Voice note: "${said}"${body ? `\n${body}` : ''}`

@@ -36,7 +36,7 @@ const SLIDES = [ // slide SCRIPT: data, not JSX (add a slide = add an object!). 
   },
   {
     k: 'plans', icon: 'card', img: '/welcome-5', eyebrow: 'Free vs Pro', title: 'Free forever. Pro when ready.',
-    body: 'Manual catalog stays free forever. Pro adds profile sync, priority support and zero ads — from ₦7,500 / $5 per month.',
+    body: 'Manual catalog stays free forever. Pro adds profile sync, product photos and zero ads — from ₦7,499 / $5 per month. Pro Plus adds voice notes + heavy work models.',
     plans: true, cta: 'Almost done', // plans flag = free-vs-pro rows (Pro row LINKS to /billing!)
   },
   {
@@ -78,7 +78,7 @@ export default function Onboarding() {
       <div className="welcome-inner"> {/* centered column (max-width) */}
         <div className="welcome-top">
           <span className="landing-brand"><img src="/logo.png" alt="Vendora" />VENDORA</span> {/* brand lockup (logo + letterspaced name) */}
-          <button className="skip" onClick={() => nav('/dashboard')}>Skip intro</button> {/* link-styled skip (impatient users convert too!) */}
+          <button className="skip" onClick={() => nav('/welcome')}>Skip intro</button> {/* link-styled skip (impatient users convert too — still lands on niche setup!) */}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}> {/* counter + dots row */}
           <span className="hint" style={{ fontWeight: 800, letterSpacing: 1, whiteSpace: 'nowrap' }}>{String(step + 1).padStart(2, '0')} / {String(SLIDES.length).padStart(2, '0')}</span> {/* "03 / 06": String() + padStart(2,'0') zero-pads (AgriStock-style counter!) */}
@@ -122,7 +122,7 @@ export default function Onboarding() {
               {slide.plans && ( // Free-vs-Pro rows (slide 4 — Pro row is a real LINK!)…
                 <div className="qa-list">
                   <div className="qa static"><Ic n="checkCircle" s={17} /><div><b>Free forever</b><span className="hint">Manual catalog + AI replies</span></div></div> {/* div (not Link) = non-clickable row (.static kills hover) */}
-                  <Link className="qa" to="/billing"><Ic n="bolt" s={17} /><div><b>Pro — from ₦7,500/mo</b><span className="hint">Profile sync · no ads · priority · priced in your currency</span></div></Link> {/* clickable upsell row → billing (Billing page shows the exact local price!) */}
+                  <Link className="qa" to="/billing"><Ic n="bolt" s={17} /><div><b>Pro — from ₦7,499/mo</b><span className="hint">Profile sync · photos · no ads · priced in your currency</span></div></Link> {/* clickable upsell row → billing (Billing page shows the exact local price!) */}
                 </div>
               )}
               {slide.checklist && ( // first-action checklist (slide 5)…
@@ -137,7 +137,7 @@ export default function Onboarding() {
 
         <div className="foot-nav welcome-nav"> {/* bottom nav row */}
           <button className="btn ghost neu-btn" disabled={step === 0} onClick={() => go(step - 1)}><Ic n="back" s={15} /> Back</button> {/* disabled on first slide (can't go below 0 — go() would clamp anyway: defense in depth!) */}
-          <button className="btn" onClick={() => step < SLIDES.length - 1 ? go(step + 1) : nav('/dashboard')}>{slide.cta} <Ic n="next" s={15} /></button> {/* ternary: advance (per-slide CTA label!) or finish → dashboard */}
+          <button className="btn" onClick={() => step < SLIDES.length - 1 ? go(step + 1) : nav('/welcome')}>{slide.cta} <Ic n="next" s={15} /></button> {/* ternary: advance (per-slide CTA label!) or finish → niche setup (new accounts pick their hustle!) */}
         </div>
       </div>
     </div>

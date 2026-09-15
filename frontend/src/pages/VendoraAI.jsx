@@ -7,15 +7,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, pop, toast } from '../lib/api.js';
 import { maybeShowSponsor } from '../lib/ads.js';
+import { chipsFor, DEFAULT_CHIPS } from '../lib/niches.js'; // niche starter chips (freelancer sees gigs, baker sees orders!)
 import GlassUpsell from '../components/GlassUpsell.jsx';
 import Ic from '../components/icons.jsx';
 
-const SUGGESTIONS = [
-  'Write a sales caption for my new product',
-  'Give me 5 business name ideas',
-  'How do I price my products?',
-  'Draft a reply to a difficult customer',
-];
+const SUGGESTIONS = DEFAULT_CHIPS; // generic fallback (niche chips replace these when the shop picked a hustle!)
 
 const GROUPS = ['Fast', 'Smart', 'Reasoning', 'Premium'];
 
@@ -94,7 +90,7 @@ function ModelPicker({ models, model, onPick, onLocked }) {
               </div>
             );
           })}
-          <div className="mpick-foot">Free AIs cost you nothing. Premium AIs need Pro — tap one to see why.</div>
+          <div className="mpick-foot">Free AIs cost you nothing. Premium AIs need Pro (heavy work models need Pro Plus) — tap one to see why.</div>
         </div>
       )}
     </div>
@@ -226,7 +222,7 @@ export default function VendoraAI({ biz }) {
     <div className="vai">
       <div className="vai-modelbar">
         <ModelPicker models={models} model={model} onPick={persistPick} onLocked={() => setUpsell(true)} />
-        {current?.locked && <Link className="mini-link" to="/billing">Unlock Pro</Link>}
+        {current?.locked && <Link className="mini-link" to="/billing">{current?.minTier === 'plus' ? 'Unlock Pro Plus' : 'Unlock Pro'}</Link>} {/* lock copy matches the floor (heavy models → Plus!) */}
         <span className="mpick-hint">Switch brains anytime — the caption under each reply tells you who answered.</span>
         <GlassUpsell show={upsell} onClose={() => setUpsell(false)} />
       </div>
@@ -236,7 +232,7 @@ export default function VendoraAI({ biz }) {
           <h1>Hello, {first}.</h1>
           <p>Ask Vendora AI anything — research, writing, ideas, advice. Not just your catalog.</p>
           <div className="vai-chips">
-            {SUGGESTIONS.map((s) => (
+            {chipsFor(biz?.business_niche).map((s) => ( // niche chips (freelancer → gigs, baker → orders; generic when unset!)
               <button key={s} className="vai-chip" onClick={() => send(s)}>{s}</button>
             ))}
           </div>

@@ -15,6 +15,7 @@ import Login from './pages/Login.jsx'; // sign in / sign up / OTP / forgot (publ
 import Reset from './pages/Reset.jsx'; // forgot-password landing (?token= — public, token IS the credential!)
 import Landing from './pages/Landing.jsx'; // marketing homepage (public, at /)
 import Onboarding from './pages/Onboarding.jsx'; // welcome tour (post-signup)
+import Welcome from './pages/Welcome.jsx'; // niche + heard-from setup (tour → here → dashboard)
 import Dashboard from './pages/Dashboard.jsx'; // overview: stats + attention + checklist
 import Profile from './pages/Profile.jsx'; // business name/number/hours/tone/FAQs/currency/timezone
 import Catalog from './pages/Catalog.jsx'; // products + Pro profile-sync
@@ -66,6 +67,7 @@ export default function App() { // ROOT component (main.jsx renders this)
       <Route path="/login" element={loading ? <div className="page"><div className="card"><p className="hint">Loading…</p></div></div> : me ? <Navigate to="/dashboard" replace /> : <Login setMe={setMe} theme={theme} onToggleTheme={toggleTheme} />} /> {/* logged-in visiting /login → dashboard (no login-loop); loading → placeholder so we don't flash the form */}
       <Route path="/reset" element={<Reset />} /> {/* forgot-password landing (public — must NOT be Guarded: no session exists yet!) */}
       <Route path="/onboarding" element={<Onboarding me={me} />} /> {/* welcome tour (reachable logged-in OR fresh — by design) */}
+      <Route path="/welcome" element={loading ? <div className="page"><div className="card"><p className="hint">Loading…</p></div></div> : me ? <Welcome /> : <Navigate to="/login" replace />} /> {/* niche + heard-from (new signups land here after the tour; guests → login) */}
       <Route path="/dashboard" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Dashboard biz={me} /></Guard>} /> {/* Guard pattern: <Guard …><Page/></Guard> = page becomes `children` */}
       <Route path="/chats" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Chats /></Guard>} />
       <Route path="/catalog" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Catalog /></Guard>} />

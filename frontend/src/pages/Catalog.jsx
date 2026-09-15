@@ -122,8 +122,21 @@ export default function Catalog() { // no props needed (fetches everything itsel
         </div>
         <label>Details (optional)</label>
         <input value={f.desc} onChange={(e) => setF({ ...f, desc: e.target.value })} placeholder="Sizes M–XL, cotton…" />
-        <label>Photo link (optional, Pro)</label>
-        <input value={f.photo} onChange={(e) => setF({ ...f, photo: e.target.value })} placeholder="https://… Pro shops: the bot sends this photo on WhatsApp" inputMode="url" /> {/* Pro perk: WhatsApp/Telegram photo attach (free shops: saved, just not sent!) */}
+        <div style={{ marginTop: 12, border: '1px dashed #25D366', borderRadius: 12, padding: 12, background: 'rgba(37,211,102,0.05)' }}> {/* Pro photo box: dashed green = "premium attachment" affordance */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <label style={{ margin: 0 }}>Product photo <span className={'pill ' + (tier === 'pro' ? 'ok' : 'flag')} style={{ marginLeft: 6, fontSize: 11 }}>PRO</span></label> {/* badge mirrors tier (green unlocked / gold locked) */}
+            {f.photo.trim().startsWith('https://') && <button className="del" style={{ fontSize: 12 }} onClick={() => setF({ ...f, photo: '' })}>Clear</button>} {/* draft clear (no confirm — not saved yet!) */}
+          </div>
+          <input value={f.photo} onChange={(e) => setF({ ...f, photo: e.target.value })} placeholder="Paste a public image link: https://…" inputMode="url" spellCheck="false" style={{ marginTop: 8 }} />
+          {f.photo.trim().startsWith('https://') ? ( // live preview: only for https drafts (backend rule, mirrored here so owners learn it!)
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 10 }}>
+              <img src={f.photo.trim()} alt="" width="64" height="64" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 10, display: 'block' }} loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} />
+              <span className="hint">{tier === 'pro' ? 'Looks good — the bot will send this photo with its reply on WhatsApp + Telegram.' : 'Saved for you — the bot sends photos on Pro. Upgrade on the Billing page to switch it on.'}</span>
+            </div>
+          ) : (
+            <p className="hint" style={{ margin: '8px 0 0' }}>{tier === 'pro' ? 'Pro ON: paste any public https image link — customers see it inside the chat bubble with the reply.' : 'Pro perk: free shops save the photo, Pro shops send it. Paste the link now, upgrade later — nothing is lost.'} {tier !== 'pro' && <Link to="/billing">Upgrade to Pro</Link>}</p>
+          )}
+        </div>
         <div style={{ marginTop: 14 }}><button className="btn" onClick={add}>Add product</button></div>
       </div>
     </>

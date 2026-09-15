@@ -127,12 +127,94 @@ class _CatalogScreenState extends State<CatalogScreen> {
                             labelText: 'Note (optional)'))),
               ]),
               const SizedBox(height: 8),
-              TextField(
-                  controller: _photo,
-                  keyboardType: TextInputType.url,
-                  decoration: const InputDecoration(
-                      labelText: 'Photo link (optional, Pro)',
-                      hintText: 'https://…')),
+              // PRO photo box: paste a public https link — the bot sends it
+              // with its reply (Pro shops). Free shops: saved, not sent.
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withValues(alpha: 0.4)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      const Icon(Icons.photo_camera_outlined, size: 16),
+                      const SizedBox(width: 6),
+                      const Text('Product photo',
+                          style: TextStyle(fontWeight: FontWeight.w700)),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text('PRO',
+                            style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800)),
+                      ),
+                      const Spacer(),
+                      if (_photo.text.trim().startsWith('https://'))
+                        TextButton(
+                          onPressed: () =>
+                              setState(() => _photo.clear()),
+                          child: const Text('Clear',
+                              style: TextStyle(fontSize: 12)),
+                        ),
+                    ]),
+                    TextField(
+                        controller: _photo,
+                        keyboardType: TextInputType.url,
+                        onChanged: (_) =>
+                            setState(() {}), // refresh preview as they paste!
+                        decoration: const InputDecoration(
+                            labelText: 'Photo link (https://…)',
+                            hintText: 'https://… public image link')),
+                    if (_photo.text.trim().startsWith('https://'))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Row(children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.network(
+                              _photo.text.trim(),
+                              width: 56,
+                              height: 56,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.image_not_supported_outlined),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Pro ON: the bot sends this photo with its reply on WhatsApp + Telegram.',
+                              style: TextStyle(fontSize: 11),
+                            ),
+                          ),
+                        ]),
+                      )
+                    else
+                      const Padding(
+                        padding: EdgeInsets.only(top: 6),
+                        child: Text(
+                          'Pro perk: free shops save the photo, Pro shops send it inside the chat bubble.',
+                          style: TextStyle(fontSize: 11),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 10),
               FilledButton.icon(
                   onPressed: _add,

@@ -214,12 +214,12 @@ async function handleInbound(req, res) {
           mediaDataUrl = media.mediaDataUrl; // → DB media_url column
           body = (Body || '') + ' [the customer sent a photo]'; // tell the AI a photo came along
         }
-      } else if (String(mime).startsWith('audio/')) { // VOICE NOTES → Whisper path (Pro-only!)
+      } else if (String(mime).startsWith('audio/')) { // VOICE NOTES → Whisper path (Pro Plus-only!)
         const media = await whatsappService.fetchMedia(req.body.MediaUrl0, mime); // same downloader (returns .audio twin!)
         if (media && media.audio) { // downloaded OK?…
           if (!planService.isProPlus(business)) { // …non-Plus → polite handoff (voice transcription is a PRO PLUS selling point, not a silent drop!)
             body = (Body || '') + ' [the customer sent a voice note — voice notes are a Pro Plus feature]'; // AI sees the note → hands off gracefully (no invented transcript!)
-          } else { // …Pro → transcribe (Whisper Large v3 on Groq — sub-second, free tier!)…
+          } else { // …Plus → transcribe (Whisper Large v3 on Groq — sub-second, free tier!)…
             const said = await whatsappService.transcribeAudio(media.audio); // transcript or null (quota/down/bad audio → null!)
             body = said // transcript wins: prefix marks provenance (owner sees 🎤 in inbox, AI reads plain words!)…
               ? `🎤 Voice note: "${said}"${Body ? `\n${Body}` : ''}` // …plus any typed caption BELOW it (both signals preserved!)

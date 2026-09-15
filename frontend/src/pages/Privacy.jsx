@@ -31,10 +31,10 @@ export default function Privacy() {
 
           <h3>2. What we collect (and why each item exists)</h3>
           <ul>
-            <li><b>Business profile:</b> name, WhatsApp numbers, hours, FAQs, tone, discount guardrails. Purpose: the AI needs to sound like you. Without it there is no product.</li>
-            <li><b>Product catalog:</b> names, prices, descriptions, availability — everything you add on the dashboard or teach with LEARN: / SYNC:. Purpose: the single source of truth the AI quotes.</li>
-            <li><b>Conversations:</b> customer numbers, names (if WhatsApp provides them), message text, photos customers send, AI replies, human-handoff flags. Purpose: your inbox, chat history, owner alerts and the daily digest.</li>
-            <li><b>Account &amp; billing:</b> email, login sessions, subscription status and expiry. Card numbers never touch our servers — Paystack handles all of that. Bank-transfer references (plan + timestamp) so we can activate you.</li>
+            <li><b>Business profile:</b> name, WhatsApp numbers, hours, FAQs, tone, discount guardrails, business niche (what you sell) and where you heard about us. Purpose: the AI needs to sound like you. Without it there is no product.</li>
+            <li><b>Product catalog:</b> names, prices, descriptions, availability, product photos — everything you add on the dashboard or teach with LEARN: / SYNC:. Purpose: the single source of truth the AI quotes.</li>
+            <li><b>Conversations:</b> customer numbers, names (if WhatsApp provides them), message text, voice notes (transcribed for Pro Plus shops), photos customers send, AI replies, human-handoff flags. Purpose: your inbox, chat history, owner alerts and the daily digest.</li>
+            <li><b>Account &amp; billing:</b> email, login sessions, subscription status, expiry and purchased tier. Card numbers never touch our servers — Paystack (Naira) and Flutterwave (US Dollar) handle all of that.</li>
             <li><b>Technical crumbs:</b> basic server logs (IP, timestamps, error traces) to keep the service alive and catch abuse.</li>
           </ul>
 
@@ -48,7 +48,8 @@ export default function Privacy() {
           <ul>
             <li><b>Twilio</b> — delivers WhatsApp messages both ways.</li>
             <li><b>Google Gemini / Groq / OpenRouter / Anthropic</b> — generate AI replies.</li>
-            <li><b>Paystack</b> — processes card payments (they see the payer email and amount, never your catalog).</li>
+            <li><b>Paystack</b> — processes Naira card payments (they see the payer email and amount, never your catalog).</li>
+            <li><b>Flutterwave</b> — processes US Dollar card payments for international shops (same business: email and amount only).</li>
             <li><b>Resend</b> — sends verification and account emails.</li>
             <li><b>Supabase / Railway / Render</b> — host the database and the app.</li>
           </ul>
@@ -70,9 +71,11 @@ export default function Privacy() {
           <h3>9. Security — what we actually do</h3>
           <ul>
             <li>Passwords hashed with salted scrypt — we couldn't read them if we wanted to.</li>
-            <li>Sessions stored server-side; admin routes need your login or a separate admin key.</li>
+            <li>Sessions stored server-side; production refuses to boot without its own session secret.</li>
+            <li>Login, signup and checkout doors rate-limited against brute force and spam.</li>
+            <li>Twilio, Telegram, Paystack and Flutterwave webhooks all signature-verified — nobody can fake a message or a payment.</li>
+            <li>Security headers on every response; error messages never leak internals.</li>
             <li>HTTPS everywhere in production; database connections encrypted.</li>
-            <li>Paystack webhooks verified by HMAC signature — nobody can fake a payment.</li>
           </ul>
           <p>No method of electronic transmission or storage is entirely secure. In the event of a personal data breach that is likely to affect your rights, we will notify you and the relevant supervisory authority without undue delay, in accordance with applicable law.</p>
 

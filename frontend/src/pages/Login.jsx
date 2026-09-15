@@ -256,8 +256,8 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
           <DemoChat /> {/* the self-playing demo above! */}
         </div>
         <div className="auth-pane" key={mode}> {/* RIGHT: the form. key={mode} = React REMOUNTS on mode switch (fresh animations + no stale input focus — key change = new element!) */}
-          <div className="trial-banner"> {/* pulsing 14-days banner (CSS bannerPulse) */}
-            <span className="trial-badge">14 DAYS FREE</span>
+          <div className="trial-banner"> {/* pulsing 7-days banner (CSS bannerPulse) */}
+            <span className="trial-badge">7 DAYS FREE</span>
             <div><b>{mode === 'login' ? 'Your trial is waiting.' : 'Start selling tonight.'}</b><span>No card required · Cancel anytime</span></div> {/* headline flips with mode */}
           </div>
           {mode === 'otp' ? (<> {/* OTP screen: shown after signup (no session yet — code IS the key!) */}

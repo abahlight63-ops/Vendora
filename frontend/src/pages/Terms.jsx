@@ -34,16 +34,16 @@ export default function Terms() {
           <h3>3. Free plan, Pro trial &amp; paid plans</h3>
           <ul>
             <li><b>Free forever:</b> manual catalog (dashboard adds + LEARN: messages) with AI replies. No card, no expiry.</li>
-            <li><b>14-day Pro trial:</b> every new account gets full Pro (profile sync + verification) free for 14 days, no card required.</li>
-            <li><b>Paid plans:</b> Monthly ₦7,500 / $5 · Yearly ₦50,000 / $33 (save ~44% off monthly) · Lifetime ₦100,000 / $65 one-time. Currency is set automatically from your WhatsApp number (+234 → Naira, else US Dollar) and can be changed in Business profile. Pay by card via Paystack or direct bank transfer (transfer is Naira-only).</li>
+            <li><b>7-day Pro trial:</b> every new account gets full Pro (profile sync + verification) free for 7 days, no card required. The countdown shows in-app and your bell warns you before it ends; afterwards you drop to free automatically.</li>
+            <li><b>Paid plans:</b> Pro ₦7,499 / $5 monthly, ₦69,999 / $47 yearly (save ~22%) · Pro Plus ₦14,999 / $10 monthly, ₦120,000 / $80 yearly (save ~33%, adds voice-note transcription + heavy work models). Currency is set automatically from your WhatsApp number (+234 → Naira, else US Dollar) and can be changed in Business profile. Naira shops pay by card via Paystack, Dollar shops via Flutterwave. Pay-once plans are handled personally through sales.</li>
             <li><b>After trial / expiry / cancellation:</b> you drop to the free plan. Your catalog, chats and history stay. The bot keeps replying from your manual catalog — we never hold your data hostage.</li>
           </ul>
 
           <h3>4. Payments, renewals &amp; refunds</h3>
           <ul>
-            <li>Card payments activate instantly via Paystack webhook. Transfer payments activate within a few hours of our confirming the credit — tap "I have sent the money" so we know to look.</li>
-            <li>Subscriptions renew for the same plan length; lifetime never renews. Cancel anytime from the Billing page — you keep Pro until the paid period ends.</li>
-            <li><b>Refunds:</b> first-ever payment refundable within 7 days if the service genuinely didn't work for you (write us from Help with details). Renewals and lifetime are non-refundable after 7 days, except where the law says otherwise. Failed duplicate charges are always refunded in full.</li>
+            <li>Card payments activate instantly via provider webhook (Paystack for Naira, Flutterwave for US Dollars). Bank transfer is retired — pay by card on the Billing page.</li>
+            <li>Subscriptions renew for the same plan length. Cancel anytime from the Billing page — you keep Pro until the paid period ends.</li>
+            <li><b>Refunds:</b> first-ever payment refundable within 7 days if the service genuinely didn't work for you (write us from Help with details). Renewals are non-refundable after 7 days, except where the law says otherwise. Failed duplicate charges are always refunded in full.</li>
             <li>Prices show in your currency (NGN or USD) and may change for NEW purchases; your active paid period always keeps the price you paid.</li>
           </ul>
 
@@ -59,7 +59,7 @@ export default function Terms() {
           <p>Artificial intelligence systems may occasionally produce inaccurate, incomplete, or contextually inappropriate responses, including errors of tone, misinterpretation of colloquial language, or confidently stated inaccuracies. To mitigate this risk, the Service escalates uncertain inquiries to you for human handling rather than speculating, and issues owner alerts for flagged conversations. You agree to review flagged conversations promptly and to maintain accurate catalog and business information at all times. We shall not be liable for commercial losses arising from unanswered flagged conversations or from responses generated on the basis of inaccurate information you provided. The quality of AI responses depends directly on the accuracy of your catalog.</p>
 
           <h3>7. Dependencies beyond our control</h3>
-          <p>Vendora rides on WhatsApp/Meta, Twilio, AI providers (Gemini/Groq/OpenRouter/Anthropic), Paystack, and our hosts. If any of them has an outage, changes prices, or changes rules, parts of Vendora may degrade — and that isn't our breach. We'll always fail safe (flag to human, never invent answers) and post status in the dashboard when we can.</p>
+          <p>Vendora rides on WhatsApp/Meta, Twilio, AI providers (Gemini/Groq/OpenRouter/Anthropic/OpenAI), Paystack, Flutterwave, and our hosts. If any of them has an outage, changes prices, or changes rules, parts of Vendora may degrade — and that isn't our breach. We'll always fail safe (flag to human, never invent answers) and post status in the dashboard when we can.</p>
 
           <h3>8. Your content &amp; our license</h3>
           <p>You own your catalog, profile and chats outright. You grant us only the narrow license needed to store them and feed them to the AI to serve your customers. We claim no ownership, run no ads against your content, and never sell it. Delete your account and the license ends (subject to legal retention in the Privacy Policy).</p>

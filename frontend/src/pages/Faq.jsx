@@ -8,14 +8,14 @@ import { useEffect, useMemo, useState } from 'react'; // useMemo = cached comput
 import { Link } from 'react-router-dom'; // brand/home/signin/trial/footer links
 
 const FAQS = [ // 15 pairs — CUSTOMER voice (plain answers, zero jargon; in-app Help rephrases for owners)
-  ['Is there really a free plan?', 'Yes — the manual catalog is free forever: add products on the dashboard or teach the bot with LEARN: messages and it replies to customers at no cost. Pro (profile sync plus verification) is what you pay for, and every account starts with a 14-day Pro trial.'],
+  ['Is there really a free plan?', 'Yes — the manual catalog is free forever: add products on the dashboard or teach the bot with LEARN: messages and it replies to customers at no cost. Pro (profile sync plus verification) is what you pay for, and every account starts with a 7-day Pro trial (countdown shown, bell warns you before it ends).'],
   ['How do I connect my WhatsApp?', 'Join the Twilio sandbox with the code, point the webhook to your server URL plus /webhook/whatsapp. When ready, upgrade to a live WhatsApp sender — chats keep working the same way.'],
   ['How does LEARN work?', 'From your owner number send: LEARN: Blue gown ₦45,000. The AI extracts the name and price and updates the catalog. Sending the same name again overwrites the price. Free forever.'],
   ['What is profile sync (Pro)?', 'Paste your WhatsApp Business profile text in Catalog → Sync (or send SYNC: plus the text from your owner number). The AI scaffolds your whole catalog from it and then verifies customer questions against your synced profile.'],
   ["What if the AI doesn't know?", 'It sends a polite handoff, flags the chat gold in your inbox, and alerts your personal WhatsApp instantly. It never invents prices or delivery promises. Review flagged chats daily.'],
   ['Does it speak Pidgin?', 'Yes — it mirrors the customer. Pidgin in, Pidgin out. Formal English in, formal out. It never corrects their language.'],
   ['Can customers send photos?', 'Yes — if a customer sends a product photo, the AI matches it against your catalog and replies with the closest item, or hands off to you if nothing matches.'],
-  ['How does billing work?', 'Pricing adapts to your location automatically — Naira in Nigeria, US Dollars everywhere else — Pro from ₦7,499 or $5 per month, Pro Plus (voice notes + heavy work models) from ₦14,999 or $10 per month, with yearly savings up to 33%. Pay by card or direct bank transfer; pay-once plans go through sales. Dropping to free never deletes anything.'],
+  ['How does billing work?', 'Pricing adapts to your location automatically — Naira shops pay by card with Paystack, Dollar shops with Flutterwave — Pro from ₦7,499 or $5 per month, Pro Plus (voice notes + heavy work models) from ₦14,999 or $10 per month, with yearly savings up to 33%. Pay-once plans go through sales. Dropping to free never deletes anything.'],
   ['Does Vendora work outside Nigeria?', 'Yes — any WhatsApp number worldwide works. Prices, hours and replies all follow your location and timezone, and the AI matches your customer\u2019s language.'],
   ['Can I get a refund?', 'First-ever payment: yes, within 7 days if the service genuinely didn\u2019t work for you — write to us from Help. Duplicate or failed charges are always refunded in full.'],
   ['How do I cancel?', 'Stop paying and you simply drop to the free plan at period end. Delete your account from Settings or Help and everything is removed within 14 days.'],
@@ -79,7 +79,7 @@ export default function Faq() {
         )}
         <div className="card hover-lift faq-cta"> {/* conversion card: every marketing page ends with ONE action! */}
           <div><h2>Still stuck?</h2><p className="desc">Start a free trial and message support from the Help page with your business name.</p></div>
-          <Link className="btn" to="/login">Start free — 14 days</Link>
+          <Link className="btn" to="/login">Start free — 7 days Pro</Link>
         </div>
       </section>
       <footer className="foot-links landing-inner"> {/* legal trio (consistent everywhere) */}

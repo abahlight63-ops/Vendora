@@ -25,8 +25,20 @@ const telegramRoutes = require('./routes/telegramRoutes'); // /webhook/telegram/
 const app = express(); // create the Express application object
 app.set('trust proxy', 1); // behind Railway/Render/ngrok there is 1 proxy — trust its
 // X-Forwarded-Proto header so req.protocol is "https" (needed for secure cookies)
+app.disable('x-powered-by'); // never advertise "Express" to scanners (one less fingerprint!)
+
+const { secureHeaders } = require('./middleware/security'); // locks (headers + limiters live here, zero new deps!)
+
+// Production MUST have its own session secret — the dev fallback signs every
+// cookie with a PUBLIC string (anyone could forge sessions!). Crash loudly
+// instead of running hackable: set SESSION_SECRET on Railway/Render.
+if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+  console.error('FATAL: SESSION_SECRET is not set. Set a long random string and restart.');
+  process.exit(1); // exit 1 = refuse to boot hackable (hosts show the log line above!)
+}
 
 // Middleware — functions EVERY request passes through, in order:
+app.use(secureHeaders); // locks FIRST (every response carries them, even errors!)
 app.use(express.urlencoded({ extended: false })); // parse HTML form bodies (Twilio sends forms!)
 app.use( // parse JSON bodies…
   express.json({
@@ -78,7 +90,7 @@ app.use('/api/auth', authRoutes); // POST /api/auth/login etc.
 // Admin login/logout BEFORE ownerRoutes (whose blanket requireAuth would 401
 // guests before they ever reach these!). You can't require a session to OBTAIN
 // a session — order matters in Express (first matching middleware wins!).
-app.post('/api/admin/login', require('./controllers/adminController').adminLogin); // { password } → session.isAdmin
+app.post('/api/admin/login', require('./middleware/security').authLimiter, require('./controllers/adminController').adminLogin); // { password } → session.isAdmin (brute-force wall: the most-attacked door!)
 app.post('/api/admin/logout', require('./controllers/adminController').adminLogout); // clears the flag (owner session underneath untouched)
 // Admin console mount BEFORE ownerRoutes (whose blanket requireAuth demands a
 // userId that password-admin sessions don't have — mounting first lets
@@ -86,7 +98,8 @@ app.post('/api/admin/logout', require('./controllers/adminController').adminLogo
 app.use('/api/admin', require('./controllers/adminController').requireAdmin, require('./routes/adminRoutes'));
 app.use('/api', ownerRoutes); // /api/me, /api/me/business, etc.
 app.use('/api', billingRoutes.router); // POST /api/billing/initialize
-app.post('/webhook/paystack', billingController.handlePaystackWebhook); // ← Paystack events
+app.post('/webhook/paystack', billingController.handlePaystackWebhook); // ← Paystack events (NGN cards)
+app.post('/webhook/flutterwave', require('./middleware/security').webhookLimiter, billingController.handleFlutterwaveWebhook); // ← Flutterwave events (USD/intl cards)
 
 // Admin API — second layer of auth: either the ADMIN_API_KEY header…
 app.use('/api', (req, res, next) => {
@@ -102,10 +115,14 @@ app.use('/api', (req, res, next) => {
 // Central API error handler — catches next(e) from async controllers
 // (Express 4 does NOT catch async throws, so controllers must call next(e)).
 // Must sit AFTER API routes but BEFORE the SPA fallback so /api errors stay JSON.
+// LEAK RULE: client errors (err.status set by OUR code) keep their message;
+// 500s get a GENERIC message (DB/SQL/driver text must NEVER reach browsers!).
 app.use('/api', (err, req, res, next) => { // 4 args = Express treats this as error middleware (only runs on errors!)
-  console.error('API error:', err && err.message ? err.message : err); // log short reason (full stack in dev logs)
+  console.error('API error:', err && err.stack ? err.stack : err); // full stack in SERVER logs (debugging gold, never sent out!)
   if (res.headersSent) return next(err); // response already started → delegate (never double-send!)
-  res.status((err && err.status) || 500).json({ error: (err && err.message) || 'Something went wrong' });
+  const status = (err && err.status) || 500;
+  const safe = status < 500 && err && err.message ? err.message : 'Something went wrong — try again.'; // 4xx = our words (safe); 5xx = generic (leak-proof!)
+  res.status(status).json({ error: safe });
 });
 
 const fs = require('fs'); // Node built-in: check if files exist
@@ -125,8 +142,16 @@ const spa = (req, res) => {
 ['/', '/login', '/reset', '/onboarding', '/welcome', '/dashboard', '/profile', '/catalog', '/chats', '/billing', '/playground', '/insights', '/vendora-ai', '/settings', '/help', '/privacy', '/terms', '/faq', '/admin'].forEach((r) => app.get(r, spa)); // register each page → same handler
 
 const port = process.env.PORT || 3000; // hosts (Render) inject PORT; locally default 3000
-app.listen(port, () => { // START listening — the callback runs once the socket is open
-  console.log(`WhatsApp AI support server running on port ${port}`);
-  console.log(`Signup/login: http://localhost:${port}/login`);
-  console.log(`Dashboard:    http://localhost:${port}/dashboard`);
-});
+// Self-migrating boot: new columns apply on EVERY deploy automatically
+// (all statements are IF NOT EXISTS — safe to re-run, never destroys data).
+// Without this, production misses columns until someone runs db:init by hand!
+require('./services/configService').ensureSchema()
+  .then(() => app.listen(port, () => { // START listening — the callback runs once the socket is open
+    console.log(`WhatsApp AI support server running on port ${port}`);
+    console.log(`Signup/login: http://localhost:${port}/login`);
+    console.log(`Dashboard:    http://localhost:${port}/dashboard`);
+  }))
+  .catch((e) => { // DB unreachable or migration broken → refuse to boot half-ready (hosts show this log!)
+    console.error('FATAL: schema migration failed:', e.message);
+    process.exit(1);
+  });

@@ -1,8 +1,8 @@
 // ── lib/screens/billing_screen.dart ──────────────────────────────
-// WHAT: subscription status + tiers (GET /api/me/billing) + bank-transfer
-// details. Card checkout + transfer form stay in the BROWSER (Paystack
-// redirect + receipt flow need a full web page) — this screen deep-links
-// there with one tap. Same account, same session state server-side.
+// WHAT: subscription status + tiers (GET /api/me/billing) + trial countdown.
+// Card checkout stays in the BROWSER (Paystack NGN / Flutterwave USD redirect
+// + receipt flow need a full web page) — this screen deep-links there with
+// one tap. Same account, same session state server-side.
 // TIERS: Pro (₦7,499/mo · ₦69,999/yr ≈ 22% off) + Pro Plus (₦14,999/mo ·
 // ₦120,000/yr ≈ 33% off, + voice notes + 2 heavy work models). Pay-once
 // goes via sales email (no self-serve lifetime checkout).
@@ -121,6 +121,8 @@ class _BillingScreenState extends State<BillingScreen> {
       ]));
     }
     final cur = '${_bill!['currency'] ?? 'NGN'}';
+    final provider = cur == 'USD' ? 'Flutterwave' : 'Paystack'; // checkout brand (location-based, web parity!)
+    final trialLeft = _bill!['trial_days_left']; // whole days left (number when trialing, null otherwise!)
     final plans = (_bill!['plans'] as Map? ?? {}).cast<String, dynamic>();
     // Nested tiers (new backend) with legacy fallback (old backend / cache).
     Map<String, dynamic> tierOf(String key, String legacyKey) {
@@ -138,7 +140,6 @@ class _BillingScreenState extends State<BillingScreen> {
     final plus = tierOf('plus', 'monthly');
     final salesEmail =
         '${_bill!['sales_email'] ?? plans['sales_email'] ?? _fallbackSalesEmail}';
-    final t = (_bill!['transfer'] as Map? ?? {}).cast<String, dynamic>();
     String amt(Map<String, dynamic> tier, String p) =>
         _money((tier[p] as Map?)?['amount'] ?? 0, cur);
     return RefreshIndicator(
@@ -155,8 +156,13 @@ class _BillingScreenState extends State<BillingScreen> {
                           TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 6),
                   Text('Status: ${_bill!['status'] ?? '—'}'),
+                  Text('Checkout: $provider ${cur == 'USD' ? '(intl cards)' : '(NGN cards)'}'),
                   if (_bill!['expires'] != null)
                     Text('Pro until: ${_bill!['expires']}'),
+                  if (_bill!['status'] == 'trialing' && trialLeft is num)
+                    Text(
+                        'Pro trial: $trialLeft day${trialLeft == 1 ? '' : 's'} left ⏳',
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
                   if (_bill!['trial_ends'] != null)
                     Text('Trial ends: ${_bill!['trial_ends']}'),
                 ]),
@@ -235,28 +241,6 @@ class _BillingScreenState extends State<BillingScreen> {
                 ]),
           ),
         ),
-        if ('${t['bank'] ?? ''}'.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          GlassCard(
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Pay by bank transfer',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 6),
-                    Text('Bank: ${t['bank']}'),
-                    Text('Account: ${t['account_number']}'),
-                    Text('Name: ${t['account_name']}'),
-                    const SizedBox(height: 6),
-                    const Text(
-                        'Send the exact plan amount, then complete verification in the browser checkout.'),
-                  ]),
-            ),
-          ),
-        ],
         const SizedBox(height: 12),
         FilledButton.icon(
           onPressed: () => launchUrl(Uri.parse(_webBilling),

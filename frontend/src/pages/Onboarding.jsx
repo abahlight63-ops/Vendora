@@ -41,7 +41,7 @@ const SLIDES = [ // slide SCRIPT: data, not JSX (add a slide = add an object!). 
   },
   {
     k: 'ready', icon: 'checkCircle', img: '/welcome-6', eyebrow: "You're set", title: 'Start selling tonight.',
-    body: 'Your 14-day Pro trial is running — profile sync included. Add 3–5 products, test the bot like a customer, then connect WhatsApp. Manual catalog stays free forever.',
+    body: 'Your 7-day Pro trial is running — profile sync included. Add 3–5 products, test the bot like a customer, then connect WhatsApp. Manual catalog stays free forever.',
     checklist: true, cta: 'Open my dashboard', // checklist flag = first-action links (Catalog, Test bot)
   },
 ];

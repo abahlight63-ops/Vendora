@@ -15,12 +15,17 @@ async function getMe(req, res) {
             b.max_discount_pct, b.min_order_naira, b.currency, b.timezone,
             b.bot_enabled, b.personal_contacts, b.plan_tier,
             b.business_niche, b.heard_from,
-            b.subscription_status, b.subscription_expires, b.trial_started_at
+            b.subscription_status, b.subscription_expires, b.trial_started_at,
+            b.trial_warned, b.trial_expiry_notified
      FROM businesses b WHERE b.id = $1`, // b = alias; WHERE session id (never a client id!)
     [req.session.businessId]
   );
   if (rows.length === 0) return res.status(404).json({ error: 'Business not found' }); // session points at deleted business
   const b = rows[0]; // shorthand for the tier/ads logic below
+  await checkTrialLifecycle(req.session.businessId, b); // 7-day trial watchdog (warn → expire → bell; once each, no cron needed!)
+  if (b.trialJustEnded) { // watchdog flipped us to free THIS load (flags below already saved)…
+    b.subscription_status = 'expired'; // …mirror it in THIS response (UI honest on the very first expired load, no refresh needed!)
+  }
   // Ads: free tier only — Pro never sees ads.
   // provider: any network that gives you a script tag (Adsterra, PropellerAds,
   // Monetag...). sponsor: YOUR OWN direct deal with a local business (best rates).
@@ -89,6 +94,40 @@ async function updateBusiness(req, res) {
       : [name, owner || null, req.body.hours || '', JSON.stringify(faq || []), req.body.tone || 'friendly and helpful', currency, timezone, req.session.businessId]
   ); // JSON.stringify: faq ARRAY + personal ARRAY → JSONB columns need JSON strings
   res.json(rows[0]); // frontend Profile page uses the returned row (no refetch needed)
+}
+
+// 7-day trial watchdog — runs on every getMe (every app load polls /api/me,
+// so expiry is caught within a day with ZERO cron and ZERO extra API keys).
+// - trialing + ≤2 days left + never warned → "2 days left" bell (once!).
+// - trialing + clock over + never notified → flip status to expired (Pro
+//   features drop instantly — every gate reads status!) + "trial ended" bell.
+// Paid buyers skip everything (activateSubscription pre-sets both flags!).
+async function checkTrialLifecycle(businessId, b) {
+  try { // everything guarded: a watchdog must NEVER break getMe (availability over strictness!)
+    if (!b || b.subscription_status !== 'trialing') return; // only trials (active/expired/pending untouched!)
+    const planService = require('../services/planService');
+    const notify = require('../services/notifyService');
+    const left = planService.trialDaysLeft(b); // whole days left (≤0 = over!)
+    if (left <= 0 && !b.trial_expiry_notified) { // trial OVER → cut Pro + tell them (once!)
+      await db.query(
+        "UPDATE businesses SET subscription_status = 'expired', trial_expiry_notified = true WHERE id = $1",
+        [businessId]
+      ); // status flip = Pro gates close THIS instant (photos, sync, premium AIs — all read status!)
+      b.trialJustEnded = true; // in-memory flag (getMe mirrors it into this response!)
+      await notify.notify(businessId, { // bell: ended (fire-and-forget inside notify!)
+        title: 'Your Pro trial ended — free plan on',
+        body: 'Your 7-day Pro trial is over. Your bot keeps replying from your manual catalog, free forever. Upgrade on Billing to switch Pro back on.',
+        link: '/billing',
+      });
+    } else if (left <= 2 && left > 0 && !b.trial_warned) { // last 2 days → warn (once!)
+      await db.query('UPDATE businesses SET trial_warned = true WHERE id = $1', [businessId]);
+      await notify.notify(businessId, {
+        title: `Pro trial: ${left} day${left === 1 ? '' : 's'} left ⏳`,
+        body: 'Your Pro trial ends soon. Pick Pro or Pro Plus on Billing to keep profile sync, photos + premium AIs — or stay free, your catalog stays yours.',
+        link: '/billing',
+      });
+    }
+  } catch (e) { console.error('trial watchdog error:', e.message); } // log only (getMe continues — degraded watchdog beats dead dashboard!)
 }
 
 // Welcome setup: what the shop sells + where they found us (the /welcome
@@ -200,17 +239,19 @@ async function getBilling(req, res) {
   );
   if (rows.length === 0) return res.status(404).json({ error: 'Not found' });
   const b = rows[0];
-  const trialDays = Number(process.env.TRIAL_DAYS || 14);
+  const trialDays = Number(process.env.TRIAL_DAYS || 7);
   const trialEnd = b.trial_started_at
     ? new Date(new Date(b.trial_started_at).getTime() + trialDays * 86400000) // trial start + N days (ms math)
     : null; // no trial column (very old row) → null (frontend hides countdown)
+  const planService = require('../services/planService'); // single require (trialLeft + badges below share it!)
+  const trialLeft = b.subscription_status === 'trialing' ? planService.trialDaysLeft(b) : null; // days-left countdown (null when not trialing — frontend shows it only then!)
   const currency = b.currency === 'USD' ? 'USD' : 'NGN'; // whitelist (DB could hold anything)
   const plans = billingController.planFor(currency); // {pro:{monthly, yearly{+save}}, plus:{…}, sales_email, +legacy aliases}
-  const planService = require('../services/planService');
   res.json({
     status: b.subscription_status, // trialing | active | pending | expired
     expires: b.subscription_expires, // paid-until (null for trial/free)
     trial_ends: trialEnd, // countdown target (null when irrelevant)
+    trial_days_left: trialLeft, // whole days left (frontend countdown pill reads this!)
     pro: planService.isPro({ subscription_status: b.subscription_status, subscription_expires: b.subscription_expires, trial_started_at: b.trial_started_at }), // boolean for badges…
     tier: planService.tier({ subscription_status: b.subscription_status, subscription_expires: b.subscription_expires, trial_started_at: b.trial_started_at }), // …and 'pro'|'free' string for logic
     currency, // 'NGN' | 'USD' (frontend money() formats with this)
@@ -225,12 +266,8 @@ async function getBilling(req, res) {
       monthly: { naira: plans.monthly.amount, amount: plans.monthly.amount }, // legacy: Pro monthly (old apps read this!)
       yearly: { naira: plans.yearly.amount, amount: plans.yearly.amount, save_naira: plans.yearly.save, save: plans.yearly.save, save_pct: plans.yearly.save_pct }, // legacy: Pro yearly
     },
-    transfer: { // bank-transfer details (empty strings = hidden in UI — no dev-talk shown)
-      bank: process.env.BANK_NAME || '',
-      account_number: process.env.BANK_ACCOUNT_NUMBER || '',
-      account_name: process.env.BANK_ACCOUNT_NAME || '',
-    },
-    paystack_live: !!(process.env.PAYSTACK_SECRET_KEY && !String(process.env.PAYSTACK_SECRET_KEY).includes('xxxxx')), // !! forces boolean: real key present AND not the placeholder?
+    paystack_live: !!(process.env.PAYSTACK_SECRET_KEY && !String(process.env.PAYSTACK_SECRET_KEY).includes('xxxxx')), // !! forces boolean: real key present AND not the placeholder? (NGN cards)
+    flw_live: !!(process.env.FLW_SECRET_KEY && !String(process.env.FLW_SECRET_KEY).includes('xxxxx')), // same check for Flutterwave (USD/intl cards)
   });
 }
 

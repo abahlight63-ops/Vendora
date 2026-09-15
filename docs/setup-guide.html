@@ -112,8 +112,8 @@ footer{border-top:1px solid var(--line);margin-top:40px;padding:22px 0 40px;colo
 <details class="key" open><summary><span class="dot red"></span><code>ADMIN_PASSWORD</code> <span class="badge b-miss">❌ MISSING · 2 min · unlocks /admin</span></summary>
 <div class="body"><p>No website gives this — <b>invent a long random string yourself</b> (password manager). Puts the private admin console behind YOUR password. Set in local <code>.env</code> AND Render → Variables. Without it, <code>/admin</code> stays locked.</p></div></details>
 
-<details class="key"><summary><span class="dot red"></span><code>BANK_NAME · BANK_ACCOUNT_NUMBER · BANK_ACCOUNT_NAME</code> <span class="badge b-miss">❌ MISSING · unlocks transfer revenue</span></summary>
-<div class="body"><p>Your own bank account (the one customers pay into). Type all three yourself — all set = transfer block appears on Billing; any empty = hidden. Claims are verified against your statement in Admin → Transfers.</p></div></details>
+<details class="key"><summary><span class="dot gold"></span><code>FLW_SECRET_KEY · FLW_SECRET_HASH</code> <span class="badge b-opt">USD CHECKOUT · Naira uses Paystack</span></summary>
+<div class="body"><p>Flutterwave (USD / international cards): Dashboard → Settings → API keys → SECRET key (<code>FLWSECK_TEST…</code> to test, live for real money), then Settings → Webhooks → <code>https://YOUR-BACKEND/webhook/flutterwave</code> → copy the secret hash. Bank transfer is retired — card only.</p></div></details>
 
 <details class="key"><summary><span class="dot red"></span><code>PUBLIC_BASE_URL · FRONTEND_URL</code> <span class="badge b-miss">❌ MISSING locally = correct · REQUIRED on Render</span></summary>
 <div class="body"><p>Leave empty locally (same-origin mode). On Render set:
@@ -187,7 +187,7 @@ prices, caps, models. If a feature says “down”, re-check its key + restart (
 <section id="launch"><h2>9 · ✅ Launch checklist</h2><p class="sub">Everything above, in go-live order.</p>
 <div class="card"><div id="launchChecks">
 <label class="tick"><input type="checkbox" data-k="g1" /><span>ADMIN_PASSWORD set locally + Render</span></label>
-<label class="tick"><input type="checkbox" data-k="g2" /><span>BANK_* trio set (transfer revenue on)</span></label>
+<label class="tick"><input type="checkbox" data-k="g2" /><span>Paystack live + Flutterwave live (USD) keys set, webhooks pointed</span></label>
 <label class="tick"><input type="checkbox" data-k="g3" /><span>Render: PUBLIC_BASE_URL + FRONTEND_URL set, /health ok</span></label>
 <label class="tick"><input type="checkbox" data-k="g4" /><span>Vercel web live: signup → OTP → catalog → playground</span></label>
 <label class="tick"><input type="checkbox" data-k="g5" /><span>Twilio webhook live, test message answered from catalog</span></label>

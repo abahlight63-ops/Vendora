@@ -129,7 +129,7 @@ function WarnUser({ act }) { // ONE user, not all: a warning/notice → their �
       <label>Title</label>
       <input value={t} onChange={(e) => setT(e.target.value)} placeholder="e.g. Payment issue — action needed" maxLength={120} />
       <label>Message (1–3 lines)</label>
-      <textarea value={b} onChange={(e) => setB(e.target.value)} rows="2" placeholder="e.g. We couldn't match your transfer of ₦7,500. Reply here or resend with the correct reference…" maxLength={500} />
+      <textarea value={b} onChange={(e) => setB(e.target.value)} rows="2" placeholder="e.g. Your card payment of ₦7,499 didn't complete — tap Billing to retry, or reply here for help…" maxLength={500} />
       <button className="btn danger" style={{ marginTop: 10 }} onClick={send}><Ic n="send" s={16} />Send warning</button>
     </div>
   );

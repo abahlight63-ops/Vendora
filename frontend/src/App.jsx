@@ -20,7 +20,7 @@ import Dashboard from './pages/Dashboard.jsx'; // overview: stats + attention + 
 import Profile from './pages/Profile.jsx'; // business name/number/hours/tone/FAQs/currency/timezone
 import Catalog from './pages/Catalog.jsx'; // products + Pro profile-sync
 import Chats from './pages/Chats.jsx'; // inbox + threads
-import Billing from './pages/Billing.jsx'; // plans + transfer + status
+import Billing from './pages/Billing.jsx'; // plans + status + trial countdown
 import Playground from './pages/Playground.jsx'; // test-bot (no WhatsApp needed)
 import Insights from './pages/Insights.jsx'; // AI-handled % + flag reasons
 import Settings from './pages/Settings.jsx'; // SmartDeal discounts + handoff text

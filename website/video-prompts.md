@@ -29,7 +29,7 @@ Export spec: 9:16 → 1080×1920 · 16:9 → 1920×1080 · ≤30s · MP4 (H.264)
 - 0–2s HOOK (text on screen, loud): "Customer message you 2AM — who dey reply? 👀"
 - 2–9s Screen recording of WhatsApp: customer "Abeg blue gown still dey?" → Vendora answers price + stock in 2s → customer "Pack am!"
 - 9–13s Owner smiling at phone, morning caption: "She slept. Vendora sold."
-- 13–15s END CARD: logo + "Start free 14 days — vendorabot.vercel.app"
+- 13–15s END CARD: logo + "Start free 7 days Pro — vendorabot.vercel.app"
 
 **Generator prompt (Hailuo/Runway/Pika):**
 > Vertical 9:16 phone-screen POV, 2am bedroom glow. Chat bubbles appear with typing dots, then an instant AI reply with a price in naira. Quick cut to a Nigerian market woman smiling at her phone in morning light. Bold yellow caption top: "2AM customer? ANSWERED." Fast cuts, afrobeats-image energy, no real faces in close-up, authentic Lagos shop vibe.
@@ -55,7 +55,7 @@ Export spec: 9:16 → 1080×1920 · 16:9 → 1920×1080 · ≤30s · MP4 (H.264)
 ## 3. UGC TESTIMONIAL → repost everywhere (9:16)
 
 **Script (selfie style, market noise behind):**
-- "Before, if customer message me for night, na morning I go see am — sale don go. Now? (shows phone) Vendora don answer, don even reserve the gown. I just wake up see alert. If you dey sell for WhatsApp, try am — first 14 days free."
+- "Before, if customer message me for night, na morning I go see am — sale don go. Now? (shows phone) Vendora don answer, don even reserve the gown. I just wake up see alert. If you dey sell for WhatsApp, try am — first 7 days free."
 
 **Generator prompt (avatar tool or self-film direction):**
 > Selfie video, Nigerian boutique owner in her shop, racks of clothes behind, natural daylight. Holds phone showing WhatsApp chat to camera at 0:08. Warm, unscripted energy, slight camera shake ok. Pidgin-English mix. 25 seconds.

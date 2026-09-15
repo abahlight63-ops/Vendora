@@ -8,7 +8,14 @@
 //        premium AIs, no ads.
 
 function trialDays() {
-  return Number(process.env.TRIAL_DAYS || 14); // env override, default 14 (Number() because env vars are strings)
+  return Number(process.env.TRIAL_DAYS || 7); // env override, default 7 (Number() because env vars are strings)
+}
+
+// Whole days left on the trial (7 on signup day … 0 = last day, ≤0 = over).
+function trialDaysLeft(business) {
+  const started = new Date(business.trial_started_at || business.created_at || Date.now());
+  const msLeft = trialDays() * 86400000 - (Date.now() - started.getTime()); // 86400000 = ms per day
+  return Math.ceil(msLeft / 86400000); // ceil: signed up an hour ago still shows the full 7 (generous, never confusing!)
 }
 
 function trialActive(business) {
@@ -58,4 +65,4 @@ function resolveCurrency(...numbers) {
   return 'NGN'; // no country code at all → default home market
 }
 
-module.exports = { isPro, isProPlus, tier, effectiveTier, trialActive, subscriptionActive, trialDays, resolveCurrency }; // webhook, replyEngine, controllers all import from here
+module.exports = { isPro, isProPlus, tier, effectiveTier, trialActive, subscriptionActive, trialDays, trialDaysLeft, resolveCurrency }; // webhook, replyEngine, controllers all import from here

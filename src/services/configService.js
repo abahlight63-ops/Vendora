@@ -77,9 +77,12 @@ CREATE TABLE IF NOT EXISTS messages ( -- every single message, both directions
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at); -- INDEX = fast thread loading (without it, full table scan)
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS media_url TEXT; -- migration for older DBs
 
--- Subscription / billing (Paystack)
+-- Subscription / billing (Paystack NGN + Flutterwave USD)
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS subscription_status TEXT NOT NULL DEFAULT 'trialing'; -- trialing, active, pending, expired
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS subscription_expires TIMESTAMPTZ; -- paid-until date (NULL = check status only)
+-- 7-day trial lifecycle flags (checked lazily in getMe — no cron, no extra keys!):
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS trial_warned BOOLEAN NOT NULL DEFAULT false; -- true = "2 days left" bell already sent (once!)
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS trial_expiry_notified BOOLEAN NOT NULL DEFAULT false; -- true = "trial ended" bell sent + status flipped to expired (once!)
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS paystack_customer_code TEXT; -- Paystack customer id (or transfer:plan:timestamp for manual payments)
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS trial_started_at TIMESTAMPTZ NOT NULL DEFAULT now(); -- 14-day Pro trial clock starts at signup
 

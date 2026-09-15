@@ -190,8 +190,9 @@ async function transferApprove(req, res) {
     `UPDATE businesses
      SET subscription_status = 'active',
          subscription_expires = GREATEST(COALESCE(subscription_expires, now()), now()) + make_interval(days => $1),
-         plan_tier = $3
-     WHERE id = $2`,
+         plan_tier = $3,
+         trial_warned = true, trial_expiry_notified = true
+     WHERE id = $2`, // trial flags → true (buyers skip trial warnings — same rule as card activation!)
     [days, pay.business_id, boughtTier]
   );
   await db.query("UPDATE payments SET status = 'active' WHERE id = $1", [req.params.id]); // ledger flips pending → active (revenue counts it now!)

@@ -40,7 +40,7 @@ export default function Landing({ theme = 'light', onToggleTheme = () => {} }) {
           <h1>Your WhatsApp shop, open 24/7.</h1> {/* the ONE promise (biggest type on page) */}
           <p>Customers message you at midnight. Vendora answers in seconds — prices, stock, hours — in English or Pidgin. You only step in when a human touch truly matters.</p>
           <div style={{ display: 'flex', gap: 10, marginTop: 18, flexWrap: 'wrap' }}> {/* CTA row (wraps on phones) */}
-            <Link className="btn" to="/login">Start free — 14 days</Link>
+            <Link className="btn" to="/login">Start free — 7 days Pro</Link>
             <a className="btn ghost" href="#how">See how it works</a> {/* plain <a href="#how"> = in-page ANCHOR jump (no router involved — scrolls to id="how" below!) */}
           </div>
           <p className="hint" style={{ marginTop: 12 }}>No card required · Set up in 15 minutes · Cancel anytime</p> {/* objection-killers (middle dots ·) */}
@@ -57,7 +57,7 @@ export default function Landing({ theme = 'light', onToggleTheme = () => {} }) {
         </div>
       </section>
 
-      <p className="hint reveal" style={{ textAlign: 'center', margin: '6px 0 0' }}>Manual catalog free forever · 14-day Pro trial included · profile sync is Pro · pricing adapts to your location</p> {/* location-based pricing note (single currency shown below — never dual tags!) */}
+      <p className="hint reveal" style={{ textAlign: 'center', margin: '6px 0 0' }}>Manual catalog free forever · 7-day Pro trial included · profile sync is Pro · pricing adapts to your location</p> {/* location-based pricing note (single currency shown below — never dual tags!) */}
 
       <section className="landing-inner grid3" id="how"> {/* id="how" = the anchor target from "See how it works"! grid3 = 3 columns → stack mobile */}
         <div className="card hover-lift reveal"><div className="how-thumb"><img src="/photos/how-1.jpg" alt="Teaching the bot with a WhatsApp message" loading="lazy" decoding="async" onError={(e) => { e.target.closest('.how-thumb').style.display = 'none'; }} /></div><h2>1. Teach it once</h2><p className="desc">Send <b>LEARN: Blue gown ₦45,000</b> from your WhatsApp — or add products here. Same name always updates the price.</p></div> {/* thumbs: frontend/public/photos/how-{1,2,3}.jpg (800×600), self-hiding when missing */}
@@ -67,19 +67,19 @@ export default function Landing({ theme = 'light', onToggleTheme = () => {} }) {
 
       <section className="landing-inner grid3"> {/* pricing trio — ONE currency each, picked by visitor location (useCurrency hook below!) */}
         <div className="card hover-lift reveal">
-          <h2>Monthly — {cur === 'USD' ? '$5' : '₦7,500'}</h2> {/* ternary per card: location decides the tag (no dual display!) */}
-          <p className="desc">Pay as you grow. Every feature included, cancel anytime.</p>
+          <h2>Pro — {cur === 'USD' ? '$5' : '₦7,499'}<small>/mo</small></h2> {/* ternary per card: location decides the tag (no dual display!) */}
+          <p className="desc">Pay as you grow. The full AI salesperson, cancel anytime.</p>
           <Link className="btn ghost sm" to="/login">Start free trial</Link>
         </div>
         <div className="card hover-lift reveal" style={{ borderColor: '#25d366' }}> {/* inline borderColor = featured card pops (one-off override, no new class!) */}
-          <h2>Yearly — {cur === 'USD' ? '$33' : '₦50,000'}</h2>
-          <p className="desc"><b style={{ color: '#7ef0c0' }}>Save 44%+</b> vs paying monthly. Priority support included.</p>
+          <h2>Pro Plus — {cur === 'USD' ? '$10' : '₦14,999'}<small>/mo</small></h2>
+          <p className="desc">Voice notes + 2 heavy work models. <b style={{ color: '#7ef0c0' }}>Yearly saves 33%.</b></p>
           <Link className="btn sm" to="/login">Start free trial</Link> {/* solid (not ghost) = featured plan gets the primary button (eye-flow!) */}
         </div>
         <div className="card hover-lift reveal">
-          <h2>Lifetime — {cur === 'USD' ? '$65' : '₦100,000'}</h2>
-          <p className="desc">Pay once, sell forever. Pays for itself in ~14 months.</p>
-          <Link className="btn ghost sm" to="/login">Start free trial</Link>
+          <h2>Pay once</h2>
+          <p className="desc">One payment, lifetime access — handled personally by sales.</p>
+          <a className="btn ghost sm" href="mailto:vendorabot26@gmail.com?subject=Vendora%20pay-once%20plan">Contact sales</a>
         </div>
       </section>
 
@@ -89,7 +89,7 @@ export default function Landing({ theme = 'light', onToggleTheme = () => {} }) {
           <h2 style={{ marginTop: 10 }}>Your AI Assistant That Actually Works For You.</h2>
           <p className="desc">Answering questions was just the interview. Pro rolls up its sleeves: tell it <b>"sold 3 bags of rice"</b> and your stock updates itself — before and after confirmed, every change logged and undoable. Supplier reorder drafts and auto-invoicing are on the way, same tier. No spreadsheets. No stock-taking Sundays. No "I thought we had more."</p>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <Link className="btn sm" to="/login">Try Pro free — 14 days</Link>
+            <Link className="btn sm" to="/login">Try Pro free — 7 days</Link>
             <Link className="btn ghost sm" to="/faq">How it works</Link>
           </div>
           <p className="hint" style={{ marginTop: 10 }}>Free answers questions. Pro does the work.</p>

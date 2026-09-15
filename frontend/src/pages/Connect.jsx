@@ -1,10 +1,10 @@
 // ── frontend/src/pages/Connect.jsx ─────────────────────────────────
-// WHAT: the channel switchboard — connect the shop's WhatsApp (Meta Cloud API
-// first, own-Twilio second) + Telegram, pick the WhatsApp brain, TEST-verify
-// to LIVE. One action per screen: road picker → credentials → webhook → TEST.
-// Nothing here needs a deploy or a console maze beyond pasting 2 values.
-// DATA: GET /api/me/channels (status) + GET /api/me/ai-models (brain picker).
-import { useEffect, useState } from 'react'; // state per step; effect loads status once
+// WHAT: the channel switchboard — connect the shop's WhatsApp via Meta's
+// Embedded Signup popup (one tap, no copy-pasting IDs) + Telegram via a
+// BotFather token, pick the WhatsApp brain, TEST-verify to LIVE.
+// One action per screen: road picker → connect → webhook verify → TEST.
+// DATA: GET /api/me/channels (status + Meta App ID/Config ID) + GET /api/me/ai-models.
+import { useEffect, useRef, useState } from 'react'; // state per step; effect loads status once
 import { api, pop, toast } from '../lib/api.js'; // api() calls; pop() big outcomes; toast() small notes
 import Ic from '../components/icons.jsx'; // drawn glyphs (never emoji!)
 import GlassUpsell from '../components/GlassUpsell.jsx'; // locked-model upgrade card
@@ -23,21 +23,35 @@ function Steps({ n, of }) { // progress dots ("Step 2 of 4" — nobody gets lost
   return <p className="hint" style={{ margin: '0 0 10px' }}>Step {n} of {of}</p>;
 }
 
+// Load Meta's SDK once (Embedded Signup popup needs window.FB!).
+function loadFbSdk(appId) {
+  return new Promise((resolve) => {
+    if (window.FB) return resolve(true); // already loaded (strict-mode double effects!)
+    window.fbAsyncInit = function () {
+      try { window.FB.init({ appId, autoLogAppEvents: true, xfbml: true, version: 'v22.0' }); } catch {}
+      resolve(true);
+    };
+    const s = document.createElement('script'); // official snippet (id-guarded!)
+    s.id = 'facebook-jssdk';
+    s.src = 'https://connect.facebook.net/en_US/sdk.js';
+    s.async = true; s.defer = true;
+    s.onerror = () => resolve(false); // adblock/offline → manual fallback (never a dead button!)
+    document.body.appendChild(s);
+    setTimeout(() => resolve(!!window.FB), 8000); // never hang the button (slow networks!)
+  });
+}
+
 export default function Connect() {
   const [st, setSt] = useState(null); // channels status (null = loading → skeleton!)
   const [models, setModels] = useState([]); // brain picker options (locked flags by tier!)
-  const [road, setRoad] = useState(null); // null = road picker; 'meta' | 'twilio' | 'telegram'
+  const [road, setRoad] = useState(null); // null = road picker; 'meta' | 'telegram'
   const [step, setStep] = useState(1); // step inside the road (1-based!)
   const [busy, setBusy] = useState(false); // action lock (double-tap protection!)
-  // Meta drafts
+  // Meta drafts (manual fallback)
   const [phoneId, setPhoneId] = useState('');
   const [metaToken, setMetaToken] = useState('');
   const [metaProof, setMetaProof] = useState(null); // {phone, verifyToken} after connect
-  // Twilio drafts
-  const [sid, setSid] = useState('');
-  const [twToken, setTwToken] = useState('');
-  const [numbers, setNumbers] = useState(null); // [{sid, phone}] picker after validate
-  const [picked, setPicked] = useState('');
+  const [showManual, setShowManual] = useState(false); // manual paste = fallback only!
   // Telegram drafts
   const [tgToken, setTgToken] = useState('');
   const [tgLink, setTgLink] = useState(null);
@@ -46,6 +60,8 @@ export default function Connect() {
   const [upsell, setUpsell] = useState(false);
   // TEST-verify
   const [testing, setTesting] = useState(false);
+  // Embedded Signup listener state (popup posts these back!)
+  const signup = useRef({ code: '', wabaId: '', phoneId: '' });
 
   async function load() { // refresh status (after every connect/disconnect!)
     const { data } = await api('/api/me/channels');
@@ -60,13 +76,66 @@ export default function Connect() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Listen for the Embedded Signup popup result (Meta posts a message with
+  // the WABA id + phone number id once the user finishes the flow!).
+  useEffect(() => {
+    function onMsg(event) {
+      if (!/facebook\.com$/.test(String(event.origin || ''))) return; // Meta only (never trust random frames!)
+      let d = event.data;
+      try { if (typeof d === 'string') d = JSON.parse(d); } catch { return; }
+      if (!d || typeof d !== 'object') return;
+      const payload = d.data || d; // Meta wraps in {type, data} (versions differ!)
+      if (d.type !== 'WA_EMBEDDED_SIGNUP' && d.event !== 'WA_EMBEDDED_SIGNUP') return;
+      if (payload.waba_id) signup.current.wabaId = String(payload.waba_id);
+      if (payload.phone_number_id) signup.current.phoneId = String(payload.phone_number_id);
+      if (payload.code) signup.current.code = String(payload.code);
+      if (signup.current.code) finishEmbedded(); // have the code → exchange it server-side!
+    }
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [st]);
+
+  async function finishEmbedded() { // POST the popup result → server validates + stores (tokens never shown!)
+    const { code, wabaId, phoneId: pid } = signup.current;
+    if (!code) return;
+    signup.current.code = ''; // consume once (listener may fire twice!)
+    setBusy(true);
+    const { ok, data } = await api('/api/me/channels/meta/embedded', { method: 'POST', body: JSON.stringify({ code, waba_id: wabaId, phone_number_id: pid }) });
+    setBusy(false);
+    if (ok) { setMetaProof(data); setStep(2); load(); pop('ok', 'WhatsApp connected!', `Number ${data.phone || ''} is linked. One paste in Meta, then TEST.`); }
+    else pop('err', 'Signup did not finish', data.error || 'Try again or paste your details manually below.');
+  }
+
+  // ---- Embedded Signup launch ----
+  async function embeddedConnect() {
+    const appId = st?.metaAppId, configId = st?.metaConfigId;
+    if (!appId || !configId) { setShowManual(true); return toast('One-tap signup is not set up yet — paste your details below', 'err'); }
+    signup.current = { code: '', wabaId: '', phoneId: '' }; // fresh attempt!
+    setBusy(true);
+    const ready = await loadFbSdk(appId);
+    if (!ready || !window.FB) { setBusy(false); setShowManual(true); return toast('Popup blocked — paste your details below instead', 'err'); }
+    try {
+      window.FB.login(function (resp) { // the Meta popup (OAuth + phone picker in one!)
+        setBusy(false);
+        if (resp && resp.authResponse && resp.authResponse.code) {
+          signup.current.code = String(resp.authResponse.code); // the server exchanges this for a token!
+          // The message listener usually already captured the IDs — give it a beat, then finish anyway (server discovers the number itself!).
+          setTimeout(finishEmbedded, 1500);
+        } else {
+          toast('Signup closed before finishing — try again when ready', 'err'); // user cancelled (no error state stuck!)
+        }
+      }, { config_id: configId, response_type: 'code', override_default_response_type: true });
+    } catch (e) { setBusy(false); setShowManual(true); toast('Popup failed — paste your details below instead', 'err'); }
+  }
+
   function back() { // Back button: step back, or road picker at step 1
     if (step > 1) setStep(step - 1);
     else { setRoad(null); setStep(1); }
   }
-  function openRoad(r) { setRoad(r); setStep(1); setNumbers(null); setMetaProof(null); setTgLink(null); } // fresh drafts per road!
+  function openRoad(r) { setRoad(r); setStep(1); setMetaProof(null); setTgLink(null); setShowManual(false); } // fresh drafts per road!
 
-  // ---- Meta actions ----
+  // ---- Meta manual fallback (popup unavailable) ----
   async function metaConnect() {
     if (!phoneId.trim() || !metaToken.trim()) return toast('Paste both values first', 'err');
     setBusy(true);
@@ -75,23 +144,11 @@ export default function Connect() {
     if (ok) { setMetaProof(data); setMetaToken(''); setStep(2); load(); } // token cleared from the form (stored server-side only!)
     else pop('err', 'Meta said no', data.error || 'Check the values and try again.');
   }
-  // ---- Twilio actions ----
-  async function twilioList() {
-    if (!sid.trim() || !twToken.trim()) return toast('Paste both values first', 'err');
+  async function metaDisconnect() {
     setBusy(true);
-    const { ok, data } = await api('/api/me/channels/twilio', { method: 'POST', body: JSON.stringify({ sid: sid.trim(), token: twToken.trim() }) });
+    await api('/api/me/channels/meta/disconnect', { method: 'POST', body: '{}' });
     setBusy(false);
-    if (ok && data.numbers && data.numbers.length) { setNumbers(data.numbers); setPicked(data.numbers[0].sid); setStep(2); }
-    else if (ok) pop('err', 'No numbers found', 'Your Twilio account has no phone numbers yet — buy one in the Twilio console first.');
-    else pop('err', 'Twilio said no', data.error || 'Check the values and try again.');
-  }
-  async function twilioAdopt() {
-    if (!picked) return toast('Pick one of your numbers', 'err');
-    setBusy(true);
-    const { ok, data } = await api('/api/me/channels/twilio/select', { method: 'POST', body: JSON.stringify({ sid: sid.trim(), token: twToken.trim(), numberSid: picked }) });
-    setBusy(false);
-    if (ok) { setTwToken(''); pop('ok', 'Number connected!', `We pointed ${data.phone} at your bot. Now send the TEST below.`); setStep(3); load(); }
-    else pop('err', 'Could not connect', data.error || 'Try again.');
+    setMetaProof(null); setStep(1); load(); toast('WhatsApp disconnected.');
   }
   // ---- Telegram actions ----
   async function tgConnect() {
@@ -145,20 +202,18 @@ export default function Connect() {
             {!st ? 'Checking…' : `Telegram: ${tgOn ? 'LIVE' : 'OFF'}`}
           </span>
           {wa && wa.number && <span className="hint">Shop number: {wa.number}</span>}
+          {wa && wa.metaConnected && <span className="hint">Meta linked — no credentials needed from you.</span>}
+          {wa && wa.dailyLimit ? <span className="hint">Today: {wa.dailyUsed || 0}/{wa.dailyLimit} replies ({wa.tier || 'free'} plan)</span> : null}
+          {wa && wa.metaConnected && <button className="btn ghost sm" disabled={busy} onClick={metaDisconnect}>Disconnect</button>}
         </div>
       </div>
 
-      {!road && ( // ROAD PICKER: three doors, time + cost on each (no surprises!)
+      {!road && ( // ROAD PICKER: WhatsApp (Embedded Signup!) + Telegram
         <div className="grid2">
           <button className="card hover-lift" style={{ textAlign: 'left', cursor: 'pointer' }} onClick={() => openRoad('meta')}>
-            <h2>WhatsApp — Meta <span className="pill ok">FREE TO START</span></h2>
-            <p className="desc">Direct from Meta, no middleman. ~5 minutes, 3 values to paste. 1,000 chats/month free.</p>
-            <p className="hint">Recommended for everyone.</p>
-          </button>
-          <button className="card hover-lift" style={{ textAlign: 'left', cursor: 'pointer' }} onClick={() => openRoad('twilio')}>
-            <h2>WhatsApp — Twilio</h2>
-            <p className="desc">Already pay for Twilio? Paste your SID + token once — we point your number at the bot for you.</p>
-            <p className="hint">For existing Twilio owners.</p>
+            <h2>WhatsApp — One-tap connect <span className="pill ok">FREE TO START</span></h2>
+            <p className="desc">Tap once, log in with Facebook, pick your business number — we handle the IDs and tokens for you. No copying, no console maze. 1,000 chats/month free.</p>
+            <p className="hint">Recommended for everyone. Takes ~2 minutes.</p>
           </button>
           <button className="card hover-lift" style={{ textAlign: 'left', cursor: 'pointer', gridColumn: '1 / -1' }} onClick={() => openRoad('telegram')}>
             <h2>Telegram — BotFather <span className="pill ok">FREE · 1 MIN</span></h2>
@@ -171,16 +226,39 @@ export default function Connect() {
         <div className="card">
           <Steps n={step} of={3} />
           {step === 1 && (<>
-            <h2>Paste 2 values from Meta</h2>
-            <p className="desc">developers.facebook.com → your app → WhatsApp → API Setup. Copy both into the boxes:</p>
-            <label>Phone Number ID (all digits)</label>
-            <input value={phoneId} onChange={(e) => setPhoneId(e.target.value)} placeholder="e.g. 123456789012345" inputMode="numeric" spellCheck="false" />
-            <label>Access token (long string)</label>
-            <input value={metaToken} onChange={(e) => setMetaToken(e.target.value)} placeholder="Paste the token from API Setup" spellCheck="false" autoComplete="off" />
+            <h2>Let&apos;s connect your WhatsApp Business account</h2>
+            <p className="desc">Here&apos;s what happens next — it takes about 2 minutes:</p>
+            <ol className="desc" style={{ margin: '8px 0 8px 18px', display: 'grid', gap: 6 }}>
+              <li>You&apos;ll be asked to log in with the Facebook account linked to your WhatsApp Business.</li>
+              <li>Facebook will show you your WhatsApp Business number — confirm it&apos;s the right one.</li>
+              <li>Once confirmed, your account connects automatically — no codes or technical setup needed on your end.</li>
+            </ol>
+            <p className="hint">We never see or store your Facebook password — this login happens directly and securely through Meta.</p>
             <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
               <button className="btn ghost sm" onClick={back}>Back</button>
-              <button className="btn sm" disabled={busy} onClick={metaConnect}>{busy ? 'Checking…' : 'Check + continue'}</button>
+              <button className="btn sm" disabled={busy} onClick={embeddedConnect}>{busy ? 'Opening Meta…' : 'Continue to connect'}</button>
             </div>
+            {!st?.metaEmbeddedReady && st && (
+              <p className="hint" style={{ marginTop: 10 }}>One-tap signup is being set up on our side — use the manual paste below for now.</p>
+            )}
+            {!showManual
+              ? <p className="hint" style={{ marginTop: 10 }}>Popup blocked or prefer copy-paste? <button type="button" className="btn ghost sm" onClick={() => setShowManual(true)}>Paste details manually</button></p>
+              : (<div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+                <h2>Paste 2 values from Meta</h2>
+                <p className="desc">Get them in 2 minutes — free:</p>
+                <ol className="desc" style={{ margin: '8px 0 8px 18px', display: 'grid', gap: 4 }}>
+                  <li>Go to developers.facebook.com → Log in → Create App (type: Business).</li>
+                  <li>In the app dashboard → Add Product → WhatsApp (a free test number appears).</li>
+                  <li>Open WhatsApp → API Setup → copy <b>Phone Number ID</b> (all digits) + the <b>temporary token</b> (lasts 24h — enough to connect + TEST today).</li>
+                </ol>
+                <label>Phone Number ID (all digits)</label>
+                <input value={phoneId} onChange={(e) => setPhoneId(e.target.value)} placeholder="e.g. 123456789012345" inputMode="numeric" spellCheck="false" />
+                <label>Access token (long string)</label>
+                <input value={metaToken} onChange={(e) => setMetaToken(e.target.value)} placeholder="Paste the token from API Setup" spellCheck="false" autoComplete="off" />
+                <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                  <button className="btn sm" disabled={busy} onClick={metaConnect}>{busy ? 'Checking…' : 'Check + continue'}</button>
+                </div>
+              </div>)}
           </>)}
           {step === 2 && (<>
             <h2>Link our app to Meta — one paste</h2>
@@ -204,49 +282,28 @@ export default function Connect() {
         </div>
       )}
 
-      {road === 'twilio' && (
-        <div className="card">
-          <Steps n={step} of={3} />
-          {step === 1 && (<>
-            <h2>Paste your Twilio SID + token</h2>
-            <p className="desc">Twilio console → Account Info. We only use them to list your numbers and point one at the bot — the token never leaves our server.</p>
-            <label>Account SID (starts with AC…)</label>
-            <input value={sid} onChange={(e) => setSid(e.target.value)} placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" spellCheck="false" autoComplete="off" />
-            <label>Auth Token</label>
-            <input value={twToken} onChange={(e) => setTwToken(e.target.value)} placeholder="Your auth token" spellCheck="false" autoComplete="off" />
-            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-              <button className="btn ghost sm" onClick={back}>Back</button>
-              <button className="btn sm" disabled={busy} onClick={twilioList}>{busy ? 'Checking…' : 'Find my numbers'}</button>
-            </div>
-            <p className="hint" style={{ marginTop: 10 }}>No Twilio? Use the Meta road instead — or paste this URL into any Twilio number's SmsUrl by hand:<br /><code style={{ overflowWrap: 'anywhere' }}>{st?.webhookUrl || ''}</code></p>
-          </>)}
-          {step === 2 && (<>
-            <h2>Pick the number customers text</h2>
-            <label>Your Twilio numbers</label>
-            <select value={picked} onChange={(e) => setPicked(e.target.value)}>
-              {(numbers || []).map((n) => (<option key={n.sid} value={n.sid}>{n.phone}</option>))}
-            </select>
-            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-              <button className="btn ghost sm" onClick={back}>Back</button>
-              <button className="btn sm" disabled={busy} onClick={twilioAdopt}>{busy ? 'Pointing…' : 'Point it at my bot'}</button>
-            </div>
-          </>)}
-          {step === 3 && (<TestStep testing={testing} setTesting={setTesting} onBack={back} number={wa?.number} />)}
-        </div>
-      )}
-
       {road === 'telegram' && (
         <div className="card">
           <Steps n={step} of={2} />
           {step === 1 && (<>
-            <h2>Paste your BotFather token</h2>
-            <p className="desc">In Telegram: message @BotFather → send /newbot → name it → copy the token it gives you.</p>
+            <h2>Connect your Telegram bot</h2>
+            <p className="desc">To connect Telegram, you need a free bot token from Telegram itself — it takes under a minute.</p>
+            <ol className="desc" style={{ margin: '8px 0 8px 18px', display: 'grid', gap: 4 }}>
+              <li>Open Telegram and search for <b>@BotFather</b> (the official bot for creating bots).</li>
+              <li>Send the command <b>/newbot</b></li>
+              <li>Give your bot a name (this is what customers will see).</li>
+              <li>Give it a username — it must end in <b>bot</b> (e.g. YourShopBot).</li>
+              <li>BotFather will reply with a message containing your API token — a long string like <b>123456789:ABCdefGhIJKlmNoPQRsTuVwxyZ</b>.</li>
+              <li>Copy that token and paste it below.</li>
+            </ol>
+            <p className="hint">⚠️ Keep this token private — anyone with it can control your bot.</p>
             <label>Bot token</label>
-            <input value={tgToken} onChange={(e) => setTgToken(e.target.value)} placeholder="123456:ABC-DEF1234…" spellCheck="false" autoComplete="off" />
+            <input value={tgToken} onChange={(e) => setTgToken(e.target.value)} placeholder="123456789:ABCdefGhIJKlmNoPQRsTuVwxyZ" spellCheck="false" autoComplete="off" />
             <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
               <button className="btn ghost sm" onClick={back}>Back</button>
               <button className="btn sm" disabled={busy} onClick={tgConnect}>{busy ? 'Checking…' : 'Connect bot'}</button>
             </div>
+            <p className="hint" style={{ marginTop: 8 }}>We check the token with Telegram instantly — a wrong or expired token is rejected right here.</p>
           </>)}
           {step === 2 && (<>
             <h2>Telegram is live — link yourself (optional)</h2>
@@ -283,7 +340,7 @@ export default function Connect() {
   }
 }
 
-function TestStep({ testing, setTesting, onBack, number, onPull }) { // shared TEST-verify screen (both WhatsApp roads!)
+function TestStep({ testing, setTesting, onBack, number, onPull }) { // shared TEST-verify screen (Meta road!)
   return (<>
     <h2>Send TEST — we watch for it live</h2>
     <p className="desc">From ANY phone, send any message to <b>{number || 'your shop number'}</b>. The moment it lands here, this page flips to LIVE.</p>
@@ -295,6 +352,6 @@ function TestStep({ testing, setTesting, onBack, number, onPull }) { // shared T
       {onPull && <button className="btn ghost sm" onClick={onPull}>Pull my WhatsApp profile (auto-sync)</button>}
     </div>
     {testing && <p className="hint" style={{ marginTop: 10 }}>Watching for your message (checks every few seconds, stops after 2 minutes)…</p>}
-    <p className="hint" style={{ marginTop: 10 }}>Still waiting? The 3 usual culprits: the wrong number got the message · step 2 wasn't saved in Meta · the token expired (re-paste it). Stuck? Talk to support from Help.</p>
+    <p className="hint" style={{ marginTop: 10 }}>Still waiting? The 3 usual culprits: the wrong number got the message · step 2 wasn't saved in Meta · the token expired (reconnect). Stuck? Talk to support from Help.</p>
   </>);
 }

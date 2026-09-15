@@ -132,7 +132,7 @@ OpenRouter: <code>openrouter.ai</code> → Keys (free <code>:free</code> models)
 
 <details class="key"><summary><span class="dot green"></span>✅ Already filled (48) — verify, don't re-fetch</summary>
 <div class="body"><p><code>GEMINI_API_KEY</code> (aistudio.google.com) · <code>GROQ_API_KEY</code> (console.groq.com) ·
-<code>RESEND_API_KEY</code> (resend.com) · <code>TWILIO_ACCOUNT_SID / AUTH_TOKEN / WHATSAPP_NUMBER</code> (twilio.com) ·
+<code>RESEND_API_KEY</code> (resend.com) · <code>META_APP_ID / META_CONFIGURATION_ID / META_APP_SECRET</code> (developers.facebook.com) ·
 <code>PAYSTACK_SECRET_KEY</code> (<code>sk_test_…</code> now, <code>sk_live_…</code> after BVN+NIN+CAC) ·
 <code>GOOGLE_CLIENT_ID</code> (Cloud Console, External type!) · <code>SESSION_SECRET, ADMIN_API_KEY, DATABASE_URL</code> ·
 prices, caps, models. If a feature says “down”, re-check its key + restart (<code>Ctrl+C, npm run dev</code>; Render redeploys itself).</p></div></details>
@@ -144,17 +144,18 @@ prices, caps, models. If a feature says “down”, re-check its key + restart (
 <li><b>Render (backend):</b> Blueprint from <code>render.yaml</code> → add secrets (Section 3) → set <code>PUBLIC_BASE_URL</code> → one-off <code>node scripts/schema.js</code> → <code>/health</code> → <code>{"status":"ok"}</code>.</li>
 <li><b>Vercel (web):</b> imports repo, <code>npm run build</code> → <code>dist/</code>. Optional <code>VITE_API_URL</code> override; default proxy already targets Render. Redeploy after env changes.</li>
 <li><b>Netlify (site):</b> same repo → base <code>website</code>, publish <code>website</code>, no build command. Set <code>WEBSITE_URL</code> in <code>Landing.jsx</code> once live to show “Full website ↗”.</li>
-<li><b>Callbacks after every move:</b> Twilio webhook → <code>/webhook/whatsapp</code> · Paystack → <code>/webhook/paystack</code> · Telegram <code>setWebhook</code> · Google authorized origins.</li>
+<li><b>Callbacks after every move:</b> Meta webhook → <code>/webhook/whatsapp</code> · Paystack → <code>/webhook/paystack</code> · Telegram <code>setWebhook</code> · Google authorized origins.</li>
 </ol></div></section>
 
 <!-- 5 WHATSAPP -->
-<section id="whatsapp"><h2>5 · 💬 WhatsApp go-live</h2><p class="sub">Sandbox (free test) → live number (real money).</p>
+<section id="whatsapp"><h2>5 · 💬 WhatsApp go-live</h2><p class="sub">Embedded Signup (one tap) → TEST → LIVE.</p>
 <div class="card"><ol>
-<li>Twilio Console → copy SID + Token → <code>TWILIO_*</code> → sandbox number <code>whatsapp:+14155238886</code>.</li>
-<li>Expose server (<code>ngrok http 3000</code> locally, or Render URL) → sandbox “message comes in” → <code>https://&lt;host&gt;/webhook/whatsapp</code> (POST).</li>
-<li><code>/admin</code> → business <code>whatsapp_number</code> must match <code>To</code> EXACTLY (incl. <code>whatsapp:</code>) + 3–5 FAQs.</li>
-<li>Phone → sandbox: “What are your prices?” → AI answers from catalog (check <code>conversations</code> row).</li>
-<li>Live: buy/verify Business number → webhook → same URL → update business number. Done.</li>
+<li>developers.facebook.com → App (Business) → WhatsApp → Embedded Signup config → copy App ID + Configuration ID → <code>META_APP_ID / META_CONFIGURATION_ID</code> (+ server-only <code>META_APP_SECRET</code>).</li>
+<li>Owners tap “Connect WhatsApp” in the app (popup stores WABA credentials automatically) → paste webhook URL + verify code in Meta → TEST → LIVE.</li>
+<li>Expose server (<code>ngrok http 3000</code> locally, or Render URL) → paste <code>https://&lt;host&gt;/webhook/whatsapp</code> + verify code in Meta → Configuration → Verify.</li>
+<li><code>/admin</code> → business <code>whatsapp_number</code> must match EXACTLY (incl. <code>whatsapp:</code>) + 3–5 FAQs.</li>
+<li>Phone → shop number: “What are your prices?” → AI answers from catalog (check <code>conversations</code> row).</li>
+<li>Live: owner connects their real business number through the same popup. Done.</li>
 </ol></div></section>
 
 <!-- 6 ADS -->
@@ -190,7 +191,7 @@ prices, caps, models. If a feature says “down”, re-check its key + restart (
 <label class="tick"><input type="checkbox" data-k="g2" /><span>Paystack live + Flutterwave live (USD) keys set, webhooks pointed</span></label>
 <label class="tick"><input type="checkbox" data-k="g3" /><span>Render: PUBLIC_BASE_URL + FRONTEND_URL set, /health ok</span></label>
 <label class="tick"><input type="checkbox" data-k="g4" /><span>Vercel web live: signup → OTP → catalog → playground</span></label>
-<label class="tick"><input type="checkbox" data-k="g5" /><span>Twilio webhook live, test message answered from catalog</span></label>
+<label class="tick"><input type="checkbox" data-k="g5" /><span>Meta webhook live (Embedded Signup), test message answered from catalog</span></label>
 <label class="tick"><input type="checkbox" data-k="g6" /><span>Google login works in production (origins allowlisted)</span></label>
 <label class="tick"><input type="checkbox" data-k="g7" /><span>Netlify site published, WEBSITE_URL set in app</span></label>
 <label class="tick"><input type="checkbox" data-k="g8" /><span>First sponsor live (SPONSOR_* set)</span></label>

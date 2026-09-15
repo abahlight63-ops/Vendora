@@ -5,8 +5,9 @@
 //   npm run digest:weekly        → weekly stats report (see bottom of file)
 // HOW cron works: the HOST (Railway cron / GitHub Actions / Task Scheduler)
 // runs the command on a schedule — Node just does the job and exits.
-// MODULES: dotenv (.env), ./db (pool). Twilio via plain fetch (no SDK installed).
-require('dotenv').config(); // load .env FIRST (db + Twilio creds live there)
+// MODULES: dotenv (.env), ./db (pool). Sends go out through each shop's own
+// Meta WhatsApp Cloud API sender (no platform sender, no Twilio).
+require('dotenv').config(); // load .env FIRST (db + Meta creds live there)
 const db = require('./db'); // shared Postgres pool
 
 /**
@@ -15,10 +16,11 @@ const db = require('./db'); // shared Postgres pool
  * Run with: npm run digest:send  (schedule with cron / Railway cron)
  */
 async function sendDigest() {
-  // Step 1: every business that CAN receive WhatsApp (has an owner number).
+  // Step 1: every business that CAN receive WhatsApp (has an owner number AND Meta connected).
   const { rows: businesses } = await db.query(
-    `SELECT id, name, owner_number FROM businesses
-     WHERE owner_number IS NOT NULL AND owner_number <> ''` // IS NOT NULL + not empty
+    `SELECT id, name, owner_number, meta_token, meta_phone_number_id FROM businesses
+      WHERE owner_number IS NOT NULL AND owner_number <> ''
+        AND meta_token <> '' AND meta_phone_number_id <> ''` // Meta-connected only (no sender = no send!)
   );
 
   if (businesses.length === 0) { // nobody to notify → quit early (guard clause)
@@ -46,7 +48,7 @@ async function sendDigest() {
     ); // backticks = template literal (embed ${variables} inside strings)
     const digest =
       `📋 Daily follow-up digest for ${biz.name}:\n\n${lines.join('\n')}\n\nPlease respond to these customers.`;
-    await sendToOwner(biz.owner_number, digest); // Step 4: WhatsApp it to the owner
+    await sendToOwner(biz, digest); // Step 4: WhatsApp it to the owner (their own Meta sender!)
   }
   console.log('Daily digests sent to all business owners.');
 }
@@ -55,8 +57,9 @@ async function sendDigest() {
 async function sendWeeklyDigest() {
   // Same owner list as daily.
   const { rows: businesses } = await db.query(
-    `SELECT id, name, owner_number FROM businesses
-     WHERE owner_number IS NOT NULL AND owner_number <> ''`
+    `SELECT id, name, owner_number, meta_token, meta_phone_number_id FROM businesses
+      WHERE owner_number IS NOT NULL AND owner_number <> ''
+        AND meta_token <> '' AND meta_phone_number_id <> ''`
   );
   if (businesses.length === 0) {
     console.log('No businesses with owner numbers configured.');
@@ -108,31 +111,21 @@ async function sendWeeklyDigest() {
       `Flagged for you: ${t.flagged}\n\n` +
       (t.flagged > 0 ? 'Check flagged chats in your dashboard to close those sales!' : 'Great week — the AI handled everything confidently.'); // ternary = inline if/else
 
-    await sendToOwner(biz.owner_number, digest); // send it
+    await sendToOwner(biz, digest); // send it (shop's own Meta sender!)
   }
   console.log('Weekly digests sent to all business owners.');
 }
 
-// Shared sender: Twilio REST API via fetch (we never installed the Twilio SDK).
-async function sendToOwner(ownerNumber, text) {
-  const sid = process.env.TWILIO_ACCOUNT_SID; // from .env
-  const token = process.env.TWILIO_AUTH_TOKEN; // from .env
-  const from = process.env.TWILIO_WHATSAPP_NUMBER; // your WhatsApp sender
-  if (!sid || !token || !from) {
-    console.warn('Twilio credentials not set; message printed instead:\n\n' + text); // dev mode: print, don't crash
+// Shared sender: each shop's own Meta Cloud API credentials (stored at connect
+// time via Embedded Signup). No platform sender — unconnected shops are skipped.
+async function sendToOwner(biz, text) {
+  if (!biz || !biz.meta_token || !biz.meta_phone_number_id || !biz.owner_number) {
+    console.warn(`Meta not connected for business ${biz && biz.id}; digest printed instead:\n\n` + text); // dev mode: print, don't crash
     return;
   }
-  const params = new URLSearchParams({ From: from, To: ownerNumber, Body: text }); // form-encode the fields
-  const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
-    method: 'POST', // Twilio creates a message = POST
-    headers: {
-      Authorization: 'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64'), // HTTP Basic auth: base64(sid:token)
-      'Content-Type': 'application/x-www-form-urlencoded', // Twilio expects form data, not JSON
-    },
-    body: params, // the form fields
-  });
-  if (res.ok) console.log('Sent to', ownerNumber); // 2xx = delivered to Twilio
-  else console.error('Failed to send:', res.status, await res.text()); // log the real Twilio error
+  const meta = require('./services/channels/meta'); // lazy require (script entry style!)
+  await meta.sendText(biz.meta_token, biz.meta_phone_number_id, String(biz.owner_number).replace(/\D/g, ''), text);
+  console.log('Sent to', biz.owner_number); // queued via Graph API (failures log inside sendText!)
 }
 
 // Run-as-script support: `node src/digest.js` executes; require()ing it doesn't.

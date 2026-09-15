@@ -127,6 +127,11 @@ input:disabled { background: var(--bg-secondary); color: var(--text-3); }
 .pill.flag { background: var(--gold-bg); color: var(--gold); border: 1px solid var(--gold-line); }
 .pill.off { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-line); }
 .pill.info { background: var(--blue-bg); color: var(--blue); border: 1px solid #b2ddff; }
+.pill.new { background: #25D366; color: #04120c; border: 1px solid #1da851; animation: newPulse 1.6s ease-in-out infinite; } /* NEW tag (bell + banner — 2-min lifespan!) */
+@keyframes newPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } } /* gentle attention pulse (respects motion via short cycle!) */
+
+/* release banner (Shell: 2-min "NEW version live" notice) */
+.update-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--green-soft); border: 1px solid #bfe8cd; border-radius: 14px; padding: 10px 14px; margin-bottom: 14px; font-size: 14px; font-weight: 600; }
 
 /* tables */
 .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }

@@ -33,11 +33,9 @@ router.post('/me/telegram/token', ownerController.telegramToken);
 router.post('/me/telegram/link', ownerController.telegramLink);
 router.get('/me/channels', ownerController.channelsStatus); // Connect page: WhatsApp LIVE/OFF + channel + model (secrets never returned!)
 router.put('/me/whatsapp-model', ownerController.whatsappModel); // per-shop WhatsApp brain pick (tier-gated!)
-router.post('/me/channels/twilio', ownerController.twilioConnect); // step 1: validate SID/token → number picker
-router.post('/me/channels/twilio/select', ownerController.twilioSelect); // step 2: adopt number + auto-set webhook
-router.post('/me/channels/twilio/disconnect', ownerController.twilioDisconnect); // forget creds
-router.post('/me/channels/meta', ownerController.metaConnect); // validate ID/token → arm Meta door
-router.post('/me/channels/meta/disconnect', ownerController.metaDisconnect); // forget creds → Twilio door
+router.post('/me/channels/meta', ownerController.metaConnect); // Embedded Signup result OR manual paste → validate + arm Meta door
+router.post('/me/channels/meta/embedded', ownerController.metaEmbedded); // Embedded Signup popup callback (code → token exchange server-side!)
+router.post('/me/channels/meta/disconnect', ownerController.metaDisconnect); // forget creds → OFF until reconnected
 router.post('/me/channels/meta/pull-profile', ownerController.metaPullProfile); // one-tap auto-sync (Pro!)
 router.get('/me/complaints', ownerController.complaintMine);
 router.post('/me/complaints', ownerController.complaintCreate); // file a support ticket (shows in Admin → Complaints)

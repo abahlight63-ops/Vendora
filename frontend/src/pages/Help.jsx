@@ -8,7 +8,7 @@ import { startTour } from '../components/Tour.jsx'; // named import { } (NOT def
 import { api, fmtDate, pop, toast } from '../lib/api.js'; // api() tickets; fmtDate stamps; pop() filed-confirmation; toast() small errors
 
 const FAQS = [ // [question, answer] pairs — content lives HERE, markup below is generic (separation of content & presentation!)
-  ['How do I connect my WhatsApp?', 'Open the Connect page and pick WhatsApp — Meta (free to start, ~5 minutes, 3 values to paste) or your own Twilio number (paste SID + token once, we point it at the bot). Finish with TEST and the page flips to LIVE.'],
+  ['How do I connect my WhatsApp?', 'Open the Connect page and tap "Connect WhatsApp" — a Meta popup opens, you log in with Facebook and pick your business number. We store everything against your account automatically. Then paste our webhook URL + verify code in Meta (shown on screen) and finish with TEST — the page flips to LIVE.'],
   ['How does LEARN work?', 'From your owner number send: LEARN: Blue gown ₦45,000. The AI extracts name + price and updates the catalog. Same name overwrites.'],
   ['What if the AI doesn\'t know?', 'It sends a polite handoff, flags the chat gold in your inbox, and (if set) alerts your personal WhatsApp instantly. It never invents prices.'], // \' escapes apostrophe in single-quoted string
   ['Does it speak Pidgin?', 'Yes — it mirrors the customer. Pidgin in, Pidgin out. Formal English in, formal out.'],

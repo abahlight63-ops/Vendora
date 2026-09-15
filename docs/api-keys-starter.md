@@ -41,20 +41,33 @@ Copy `.env.example` to `.env`, then fill the rows below.
 
 ## 3. Messaging doors
 
-### Twilio — WhatsApp sending/receiving
-1. Sign up at https://twilio.com/try-twilio → get a number.
-2. Console → copy **Account SID** → `TWILIO_ACCOUNT_SID`, **Auth Token** → `TWILIO_AUTH_TOKEN`.
-3. Set `TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886` (your Twilio number).
-4. Sandbox first (free): WhatsApp Sandbox → webhook `https://YOUR-BACKEND/webhook/whatsapp`.
-5. The Auth Token doubles as the webhook signature secret — spoofed messages get 403 automatically.
+### Meta WhatsApp — one-tap Embedded Signup (recommended, free to start)
+No per-shop console maze: owners tap **Connect WhatsApp** on the Connect page,
+log in with Facebook in the popup, and pick their number — the app stores the
+WABA ID + phone number ID + access token against their account automatically.
+Server needs three keys (see `.env.example`):
+1. `META_APP_ID` — App Dashboard → App ID (public value).
+2. `META_CONFIGURATION_ID` — WhatsApp → Embedded Signup configuration (create one!).
+3. `META_APP_SECRET` — App Dashboard → App secret (SERVER ONLY — exchanges the
+   signup code for a token. If empty, owners use the manual paste below).
+4. Manual fallback (popup unavailable): developers.facebook.com → App (Business)
+   → WhatsApp → **API Setup**: copy **Phone Number ID** + token → paste on the
+   Connect page; then **Configuration**: paste our webhook URL + verify code.
+- Without it: WhatsApp stays OFF — Telegram still works.
 
 ### Telegram — second door (optional, free)
-1. Chat **@BotFather** → `/newbot` → copy the token → paste in app:
-   Connect page → Telegram road. No `.env` key needed per shop.
-2. Set ONE `TELEGRAM_WEBHOOK_SECRET` in `.env` and the same value in every
+To connect Telegram, you need a free bot token from Telegram itself — it takes under a minute.
+1. Open Telegram and search for **@BotFather** (the official bot for creating bots).
+2. Send the command `/newbot`
+3. Give your bot a name (this is what customers will see).
+4. Give it a username — it must end in "bot" (e.g. YourShopBot).
+5. BotFather will reply with a message containing your API token — a long string like `123456789:ABCdefGhIJKlmNoPQRsTuVwxyZ`.
+6. Copy that token and paste it on the Connect page → Telegram road.
+⚠️ Keep this token private — anyone with it can control your bot.
+7. Set ONE `TELEGRAM_WEBHOOK_SECRET` in `.env` and the same value in every
    BotFather `setWebhook` call — wrong secret gets 403.
 
-### Meta Cloud API — WhatsApp direct (free to start, recommended road)
+### Manual Meta paste (fallback when the popup is unavailable)
 No `.env` key needed — each shop pastes its own 2 values on the Connect page
 (never touch the server). Free test number included, 1,000 chats/month free.
 1. Go to https://developers.facebook.com → log in → **Create App**
@@ -72,7 +85,6 @@ No `.env` key needed — each shop pastes its own 2 values on the Connect page
 7. Real business number: **Phone numbers → Add number** (free; Meta lifts
    messaging limits after business verification — also free, takes days;
    the test number works meanwhile).
-- Without it: use the Twilio road on the Connect page instead.
 
 ## 4. Email (nice to have)
 
@@ -96,4 +108,4 @@ No `.env` key needed — each shop pastes its own 2 values on the Connect page
 - [ ] `PUBLIC_BASE_URL=https://your-backend-url` (payment return pages).
 - [ ] `FRONTEND_URL=https://your-frontend-url` (split deploy cookies).
 - [ ] Gemini + Groq keys in place, test message answered in Playground.
-- [ ] Twilio live WhatsApp sender (out of sandbox), webhook signature on.
+- [ ] Meta Embedded Signup live (App ID + Configuration ID set, TEST message flips Connect to LIVE).

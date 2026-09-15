@@ -49,11 +49,11 @@ services:
         sync: false
       - key: EMAIL_FROM
         value: Vendora <onboarding@resend.dev>
-      - key: TWILIO_ACCOUNT_SID
+      - key: META_APP_ID
         sync: false
-      - key: TWILIO_AUTH_TOKEN
+      - key: META_CONFIGURATION_ID
         sync: false
-      - key: TWILIO_WHATSAPP_NUMBER
+      - key: META_APP_SECRET
         sync: false
       - key: PAYSTACK_SECRET_KEY
         sync: false

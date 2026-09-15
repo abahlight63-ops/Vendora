@@ -1,11 +1,11 @@
 // ── src/utils/phone.js ───────────────────────────────────────────
-// WHAT: turns messy human-typed phone numbers into strict Twilio format.
-// Twilio only accepts `whatsapp:+2348031234567`, but owners type
+// WHAT: turns messy human-typed phone numbers into strict whatsapp:+… format.
+// Meta + the inbox only accept `whatsapp:+2348031234567`, but owners type
 // `0803 123 4567`, `8031234567`, `+234...`, with spaces/dashes.
 // No npm module here — pure JavaScript string + regex work.
 
 /**
- * Phone normalization — users type whatever feels natural, we store Twilio format.
+ * Phone normalization — users type whatever feels natural, we store whatsapp:+… format.
  * Accepts: 08031234567, 8031234567, +2348031234567, 2348031234567,
  *          with spaces/dashes, with or without the "whatsapp:" prefix.
  * Returns "whatsapp:+234..." or null if it can't be salvaged.
@@ -27,7 +27,7 @@ function normalizePhone(raw) {
     // already has country code, missing plus — handled below
   }
   if (digits.length < 7 || digits.length > 15) return null; // E.164 length sanity check
-  return 'whatsapp:+' + digits; // rebuild in exact Twilio format
+  return 'whatsapp:+' + digits; // rebuild in exact whatsapp:+… format
 }
 
 module.exports = { normalizePhone }; // used by signup, profile update, LEARN/SYNC checks

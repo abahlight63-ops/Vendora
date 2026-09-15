@@ -13,7 +13,7 @@ const productService = require('./services/productService'); // catalog helper
 
 const router = express.Router(); // the mini-app
 
-const WA_RE = /^whatsapp:\+\d{6,20}$/; // regex reused below: strict Twilio number format
+const WA_RE = /^whatsapp:\+\d{6,20}$/; // regex reused below: strict whatsapp:+… number format
 
 // ---- Signup: creates business + owner account, starts session ----
 router.post('/signup', async (req, res) => {

@@ -6,16 +6,17 @@ AI auto-replies for small businesses on WhatsApp. Built per the MVP plan in
 ## Stack
 
 - Node.js + Express
-- Twilio WhatsApp Business API (inbound webhooks + outbound sends)
+- Meta WhatsApp Cloud API via Embedded Signup (one-tap connect, inbound webhooks + outbound sends)
+- Telegram Bot API (per-shop BotFather tokens)
 - Postgres (local or Supabase)
 - Claude API (`claude-3-5-haiku` by default) for replies
 
 ## How it works
 
-1. Customer messages the business's WhatsApp number → Twilio POSTs to `/webhook/whatsapp`
+1. Customer messages the business's WhatsApp number → Meta POSTs to `/webhook/whatsapp`
 2. The webhook parses sender + text, upserts a row in `conversations`
 3. `replyEngine` sends the message + business config (name, hours, FAQs, tone) to Claude
-4. Confident answer → reply sent back to the customer via Twilio
+4. Confident answer → reply sent back to the customer via Meta Graph API
 5. Unsure → conversation flagged (`needs_human = true`), customer gets a "we'll get back to you" message
 6. `npm run digest:send` sends the owner a daily WhatsApp summary of flagged conversations
 
@@ -23,7 +24,7 @@ AI auto-replies for small businesses on WhatsApp. Built per the MVP plan in
 
 ```bash
 npm install
-cp .env.example .env    # then fill in DATABASE_URL, ANTHROPIC_API_KEY, Twilio keys
+cp .env.example .env    # then fill in DATABASE_URL, AI keys, META_APP_ID + META_CONFIGURATION_ID
 ```
 
 ### 1. Database
@@ -38,13 +39,16 @@ npm run db:init    # create tables
 npm run db:seed    # seed one test business
 ```
 
-### 2. Twilio
+### 2. WhatsApp (Meta Embedded Signup)
 
-1. Sign up at twilio.com, open **Messaging → Try it out → Send a WhatsApp message**
-2. Join the sandbox from your phone (send the shown code to the sandbox number)
-3. Set `TWILIO_WHATSAPP_NUMBER` to the sandbox number (e.g. `whatsapp:+14155238886`)
-4. For the webhook, expose your local server with ngrok: `ngrok http 3000`
-5. In the Twilio sandbox settings, set "When a message comes in" to `https://<ngrok-url>/webhook/whatsapp` (POST)
+1. At developers.facebook.com create an App (Business type) → Add Product → WhatsApp.
+2. Create an Embedded Signup configuration → copy its ID to `META_CONFIGURATION_ID`
+   (plus `META_APP_ID` and server-only `META_APP_SECRET`).
+3. Owners tap "Connect WhatsApp" in the app — the popup returns their WABA ID,
+   phone number ID and access token, stored against their account automatically.
+4. For the webhook, expose your local server with ngrok: `ngrok http 3000`,
+   then paste `https://<ngrok-url>/webhook/whatsapp` + the shown verify code in
+   Meta → WhatsApp → Configuration (POST).
 
 ### 3. Claude API
 
@@ -102,14 +106,14 @@ Two ways:
    - `GET /api/businesses` — list
 3. **Seed script**: `npm run db:seed` seeds one test business for development.
 
-`whatsapp_number` must match the Twilio `To` field exactly, including the
+`whatsapp_number` must match the Meta customer's recipient number exactly, including the
 `whatsapp:` prefix. Config is read fresh on every incoming message.
 
 ## Project structure
 
 ```
 src/server.js          Express server + webhook route
-src/webhook.js         Twilio payload parsing, message storage, reply sending
+src/controllers/webhookController.js  Meta payload parsing, message storage, reply sending
 src/replyEngine.js     Claude API call + NEED_HUMAN confidence handling
 src/configService.js   Business config lookup + schema
 src/adminRoutes.js     Admin API for business config (protected by ADMIN_API_KEY)

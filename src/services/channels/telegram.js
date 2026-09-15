@@ -14,7 +14,7 @@ const api = (token) => `https://api.telegram.org/bot${token}`; // base URL build
 // Verify the secret header BotFather attaches (set it in setWebhook!).
 function verifySecret(req) {
   const expected = process.env.TELEGRAM_WEBHOOK_SECRET; // ONE secret for all bots (set once, reuse everywhere — rotation = one env edit!)
-  if (!expected) return true; // unset = dev mode (no check — same convention as TWILIO_VALIDATE!)
+  if (!expected) return true; // unset = dev mode (no check — same convention as other webhook guards!)
   return req.get('X-Telegram-Bot-Api-Secret-Token') === expected; // exact match (timing attacks irrelevant here — low-value secret, but still exact!)
 }
 
@@ -57,7 +57,7 @@ async function sendPhoto(token, chatId, photoUrl, caption) {
 }
 
 // Download a file by file_id: getFile → file_path → download bytes.
-// Returns { mime, base64 } (same shape as Twilio fetchMedia audio/image twins!).
+// Returns { mime, base64 } (same shape as the WhatsApp media helper twins!).
 async function downloadFile(token, fileId, mime) {
   try {
     const info = await fetch(`${api(token)}/getFile?file_id=${encodeURIComponent(fileId)}`, { method: 'GET' }); // step 1: resolve file_id → server path…
@@ -67,7 +67,7 @@ async function downloadFile(token, fileId, mime) {
     const dl = await fetch(`https://api.telegram.org/file/bot${token}/${result.file_path}`, { method: 'GET' }); // step 2: download via the FILE endpoint (different host path — same token!)
     if (!dl.ok) return null;
     const buf = Buffer.from(await dl.arrayBuffer()); // bytes → Buffer…
-    if (buf.length === 0 || buf.length > 10 * 1024 * 1024) return null; // empty/huge guard (same 10MB rule as Twilio path!)
+    if (buf.length === 0 || buf.length > 10 * 1024 * 1024) return null; // empty/huge guard (same 10MB rule as the WhatsApp media path!)
     return { mime: mime || 'audio/ogg', base64: buf.toString('base64') }; // twin shape (feeds Whisper OR vision callers!)
   } catch (e) {
     console.error('Telegram download error:', e.message);

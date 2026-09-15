@@ -252,23 +252,17 @@ class ApiClient {
       (await put('/api/me/whatsapp-model', {'model': model}) as Map)
           .cast<String, dynamic>();
 
-  /// Twilio step 1: validate SID/token → number picker list.
-  Future<Map<String, dynamic>> twilioConnect(
-      String sid, String token) async =>
-      (await post('/api/me/channels/twilio', {'sid': sid, 'token': token})
-              as Map)
+  /// Meta Embedded Signup: popup result (code and/or IDs) → server validates
+  /// against the Graph API and stores WABA credentials against the account.
+  Future<Map<String, dynamic>> metaEmbedded(
+      {String? code, String? wabaId, String? phoneNumberId, String? token}) async =>
+      (await post('/api/me/channels/meta/embedded', {
+        if (code != null) 'code': code,
+        if (wabaId != null) 'waba_id': wabaId,
+        if (phoneNumberId != null) 'phone_number_id': phoneNumberId,
+        if (token != null) 'token': token,
+      }) as Map)
           .cast<String, dynamic>();
-
-  /// Twilio step 2: adopt number + auto-set webhook.
-  Future<Map<String, dynamic>> twilioSelect(
-      String sid, String token, String numberSid) async =>
-      (await post('/api/me/channels/twilio/select',
-              {'sid': sid, 'token': token, 'numberSid': numberSid}) as Map)
-          .cast<String, dynamic>();
-
-  Future<void> twilioDisconnect() async {
-    await post('/api/me/channels/twilio/disconnect');
-  }
 
   /// Meta: validate ID/token → armed channel + verify token + webhook URL.
   Future<Map<String, dynamic>> metaConnect(

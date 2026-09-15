@@ -29,7 +29,7 @@ const CREATE_TABLE = `
 CREATE TABLE IF NOT EXISTS businesses (
   id SERIAL PRIMARY KEY, -- shop id (everything links here)
   name TEXT NOT NULL, -- shop display name
-  whatsapp_number TEXT NOT NULL UNIQUE, -- Twilio number, e.g. whatsapp:+234… (UNIQUE = one shop per number)
+  whatsapp_number TEXT NOT NULL UNIQUE, -- shop WhatsApp number, e.g. whatsapp:+234… (UNIQUE = one shop per number)
   owner_number TEXT, -- owner's personal WhatsApp (LEARN:/SYNC: rights + alerts)
   hours TEXT NOT NULL DEFAULT '', -- opening hours text the AI quotes
   faq JSONB NOT NULL DEFAULT '[]', -- JSONB = Postgres-native JSON (queryable Q&A array)
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS conversations ( -- one row per customer chat
   id SERIAL PRIMARY KEY,
   business_id INTEGER NOT NULL REFERENCES businesses(id),
   customer_number TEXT NOT NULL, -- whatsapp:+234… (who)
-  customer_name TEXT, -- WhatsApp profile name if Twilio sent it
+  customer_name TEXT, -- WhatsApp profile name if Meta sent it
   last_message TEXT NOT NULL DEFAULT '', -- preview for the inbox list
   last_reply TEXT, -- preview of our last reply
   needs_human BOOLEAN NOT NULL DEFAULT false, -- gold flag in the inbox
@@ -238,20 +238,34 @@ CREATE INDEX IF NOT EXISTS idx_notifications_business ON notifications(business_
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS greeting_msg TEXT NOT NULL DEFAULT '';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS handoff_msg TEXT NOT NULL DEFAULT '';
 
--- Channel connections (Connect page): which brain answers each shop's WhatsApp.
--- whatsapp_model = per-shop AI pick for WhatsApp/Playground replies (default full).
--- wa_channel = 'twilio' (default) or 'meta' (Meta Cloud API direct, no middleman).
--- Twilio creds = the SHOP's own SID/token (never returned to browsers!).
--- Meta creds = Phone Number ID + token from developers.facebook.com.
+-- Channel connections (Connect page): Meta WhatsApp Cloud API (Embedded Signup)
+-- + Telegram. whatsapp_model = per-shop AI pick for WhatsApp/Playground replies
+-- (default full). wa_channel is always 'meta' (Meta Cloud API direct, no
+-- middleman). Meta creds = WABA ID + Phone Number ID + access token from
+-- Embedded Signup (developers.facebook.com), stored server-side only.
 -- whatsapp_last_inbound_at = LIVE pill + TEST-verify (stamped per inbound).
+-- NOTE: twilio_* columns are RETIRED (kept so old databases still boot; the
+-- app never reads or writes them — do not reintroduce Twilio anywhere).
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS whatsapp_model TEXT NOT NULL DEFAULT 'gemini-flash-full';
-ALTER TABLE businesses ADD COLUMN IF NOT EXISTS wa_channel TEXT NOT NULL DEFAULT 'twilio';
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS wa_channel TEXT NOT NULL DEFAULT 'meta';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS twilio_account_sid TEXT NOT NULL DEFAULT '';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS twilio_auth_token TEXT NOT NULL DEFAULT '';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_token TEXT NOT NULL DEFAULT '';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_phone_number_id TEXT NOT NULL DEFAULT '';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_verify_token TEXT NOT NULL DEFAULT '';
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_waba_id TEXT NOT NULL DEFAULT '';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS whatsapp_last_inbound_at TIMESTAMPTZ;
+-- Retire legacy Twilio rows: shops that already moved to Meta stop claiming 'twilio'.
+UPDATE businesses SET wa_channel = 'meta' WHERE wa_channel = 'twilio' AND meta_phone_number_id <> '';
+UPDATE businesses SET wa_channel = 'meta' WHERE wa_channel <> 'meta';
+
+-- App-level key/value (broadcast cursors, release markers — tiny global state
+-- that must survive restarts but needs no dedicated table per key).
+CREATE TABLE IF NOT EXISTS app_meta (
+  key TEXT PRIMARY KEY, -- e.g. 'last_broadcast_version'
+  value TEXT NOT NULL DEFAULT '',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 `;
 
 async function ensureSchema() {

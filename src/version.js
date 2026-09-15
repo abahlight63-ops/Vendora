@@ -5,7 +5,7 @@
 // admin broadcast button can push the same notes into every inbox.
 const APP_VERSION = '1.8.0';
 const WHATS_NEW = [
-  'New Connect page: plug in WhatsApp (Meta or your own Twilio number) + Telegram with TEST-to-LIVE verify',
+  'New Connect page: one-tap WhatsApp connect (Meta Embedded Signup) + Telegram with TEST-to-LIVE verify',
   'You pick the brain: choose which AI answers your WhatsApp customers, right on the Connect page',
   'Smarter answers: WhatsApp replies now use your picked model with fuller, better-checked responses',
   'Billing cleanup: no more payment-brand names — plus a new Enterprise card for chains and big shops',

@@ -22,7 +22,7 @@ Without a database the app throws `DATABASE_URL is not set` and the deploy shows
 In app service → Variables, add each (see `.env.example` for docs):
 `SESSION_SECRET`, `ADMIN_API_KEY`, `ADMIN_PASSWORD`, `GOOGLE_CLIENT_ID`,
 `AI_PROVIDER`, `GEMINI_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`, `OPENAI_API_KEY`,
-`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER`,
+`META_APP_ID`, `META_CONFIGURATION_ID`, `META_APP_SECRET`,
 `RESEND_API_KEY`, `EMAIL_FROM`, `PAYSTACK_SECRET_KEY`,
 `PRICE_MONTHLY_NAIRA`, `PRICE_YEARLY_NAIRA`, `PRICE_LIFETIME_NAIRA`,
 `PRICE_MONTHLY_USD`, `PRICE_YEARLY_USD`, `PRICE_LIFETIME_USD`,
@@ -36,7 +36,7 @@ Skip: `PORT` (Railway injects), `FRONTEND_URL` + `PUBLIC_BASE_URL` (step 4).
 1. Service → **Settings → Networking → Generate Domain** → copy `xxx.up.railway.app`
 2. Variables: set `PUBLIC_BASE_URL=https://xxx.up.railway.app` and
    `FRONTEND_URL=https://vendorabot.vercel.app` → auto-redeploy
-3. Twilio Console → sandbox/live sender webhook → `https://xxx.up.railway.app/webhook/whatsapp` (POST)
+3. Meta → WhatsApp → Configuration → webhook `https://xxx.up.railway.app/webhook/whatsapp` + per-shop verify code (shown on the Connect page after tapping "Connect WhatsApp")
 4. Telegram bots (if used): setWebhook to `https://xxx.up.railway.app/webhook/telegram/<bizId>` with `secret_token` = your `TELEGRAM_WEBHOOK_SECRET`
 5. Paystack dashboard → webhook URL `https://xxx.up.railway.app/webhook/paystack`
 

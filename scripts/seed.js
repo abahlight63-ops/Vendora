@@ -10,7 +10,7 @@ const productService = require('../src/services/productService'); // upsertProdu
 // Seed one test business for development.
 const TEST_BUSINESS = {
   name: 'Amaka Beauty Studio', // demo shop name
-  whatsapp_number: 'whatsapp:+14155238886', // Twilio sandbox number for dev
+  whatsapp_number: 'whatsapp:+14155238886', // placeholder shop number for local dev (replace after Meta Embedded Signup!)
   owner_number: 'whatsapp:+2348000000000', // your number: can send LEARN: messages
   hours: 'Mon-Sat, 9am-7pm WAT. Closed Sundays.', // shown to customers by the AI
   tone: 'warm, friendly, and concise', // AI personality instruction

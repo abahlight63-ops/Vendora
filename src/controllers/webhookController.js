@@ -8,7 +8,6 @@
 const configService = require('../services/configService'); // look up shop by WhatsApp number
 const productService = require('../services/productService'); // save taught/synced products
 const replyEngine = require('../services/replyEngine'); // AI: extractProducts + generateReply
-const whatsappService = require('../services/whatsappService'); // Twilio send + photo download
 const conversationService = require('../services/conversationService'); // save/log/history helpers
 const planService = require('../services/planService'); // isPro() — the paywall check
 const db = require('../db'); // shared pool (flag updates)
@@ -17,8 +16,8 @@ const LEARN_PREFIX = 'LEARN:'; // free teaching command (everyone, forever)
 const SYNC_PREFIX = 'SYNC:'; // Pro sync command (profile → catalog scaffold)
 
 async function handleInbound(req, res) {
-  try { // webhook must never crash (Twilio retries 500s aggressively)
-    const { From, To, Body, ProfileName } = req.body || {}; // Twilio form fields: sender, recipient(shop), text, sender name
+  try { // webhook must never crash (Meta retries 500s aggressively — 500s double-reply customers!)
+    const { From, To, Body, ProfileName } = req.body || {}; // controller shape: sender, recipient(shop), text, sender name (Meta route builds this!)
 
     if (!From || !To || typeof Body !== 'string') { // validate before anything else
       console.error('Malformed webhook payload:', JSON.stringify(req.body)); // log for debugging spoofed/broken posts
@@ -29,27 +28,24 @@ async function handleInbound(req, res) {
     const metaCtx = req.meta || null; // Meta door? (route pre-resolved business + sender — see routes/webhookRoutes.js!)
     const business = (tgCtx && tgCtx.business) || (metaCtx && metaCtx.business)
       ? (tgCtx && tgCtx.business) || metaCtx.business
-      : await configService.getBusinessByWhatsAppNumber(To); // classic door: identity = recipient Twilio number
+      : await configService.getBusinessByWhatsAppNumber(To); // fallback door: identity = recipient shop number
     if (!business) {
       console.error(`No business configured for number ${To}`); // onboarding gap — log it
-      return res.status(200).send(''); // 200 anyway: config issues must NOT trigger Twilio retries
+      return res.status(200).send(''); // 200 anyway: config issues must NOT trigger Meta retries
     }
     if (!tgCtx) { // WhatsApp-class doors stamp last-inbound (Connect LIVE pill + TEST-verify read this!)
       try { await db.query('UPDATE businesses SET whatsapp_last_inbound_at = now() WHERE id = $1', [business.id]); } catch (e) { console.error('inbound stamp error:', e.message); } // guarded: a stamp must never break a reply
     }
     const telegram = require('../services/channels/telegram'); // hoisted here: the photo branch below reuses sendPhoto (lazy require above stays for sendText parity!)
     const meta = require('../services/channels/meta'); // Meta Cloud API sender (shop token — never logged!)
-    const shopCreds = (business.twilio_account_sid && business.twilio_auth_token) // shop connected its OWN Twilio number?…
-      ? { sid: business.twilio_account_sid, token: business.twilio_auth_token, from: business.whatsapp_number } // …replies leave FROM their number via their credentials (customer sees THEIR shop!)
-      : null; // …else the platform default (sandbox / shared sender!)
     const reply = tgCtx // ONE sender for every reply below (Telegram bot OR WhatsApp — call sites stay identical!)…
       ? async (to, msg, mediaUrl) => { // …Telegram door: photo+caption when a catalog photo matched, plain text otherwise…
           if (mediaUrl && await telegram.sendPhoto(tgCtx.botToken, tgCtx.chatId, mediaUrl, msg)) return; // sendPhoto true = delivered (caption IS the reply — nothing more to send!)
           return telegram.sendText(tgCtx.botToken, tgCtx.chatId, msg); // false/no-photo → plain text fallback (photo must never eat the reply!)
         }
-      : (metaCtx && business.wa_channel === 'meta' && business.meta_token && business.meta_phone_number_id) // …Meta door: shop token + number id…
-        ? (to, msg, mediaUrl) => meta.sendText(business.meta_token, business.meta_phone_number_id, metaCtx.chatId, msg, mediaUrl) // …photo-by-link + caption, text-only retry inside!
-        : (to, msg, mediaUrl) => whatsappService.sendWhatsAppReply(to, msg, mediaUrl, shopCreds); // …classic door: Twilio (shop creds when connected!) + text-only retry inside
+      : (business.meta_token && business.meta_phone_number_id) // …Meta door: shop token + number id…
+        ? (to, msg, mediaUrl) => meta.sendText(business.meta_token, business.meta_phone_number_id, (metaCtx && metaCtx.chatId) || String(to || '').replace(/\D/g, ''), msg, mediaUrl) // …photo-by-link + caption, text-only retry inside!
+        : async (to, msg) => { console.error(`No WhatsApp sender for business ${business.id} — Meta not connected`); }; // …no sender (Meta never connected) → log, never crash!
 
     // ---- LEARN mode ----
     if ( // three guards: LEARN: prefix + owner number exists + sender IS the owner
@@ -204,42 +200,21 @@ async function handleInbound(req, res) {
       const list = Array.isArray(personal) ? personal : []; // …normalize to array (anything else → empty = no silencing)
       const digits = (s) => String(s || '').replace(/\D/g, ''); // digits-only compare (ignores +, spaces, whatsapp: prefix!)
       if (!isOwner && !tgCtx && list.some((p) => p && digits(p) && digits(From).endsWith(digits(p).slice(-7)))) { // !tgCtx: list holds WHATSAPP numbers — Telegram ids must never match it (different namespace, coincidence-proofing!)
-        return res.status(200).send(''); // silent 200: Twilio happy, human conversation untouched
+        return res.status(200).send(''); // silent 200: Meta happy, human conversation untouched
       }
     } catch {} // JSON.parse failed → ignore list this once (empty catch intentional: availability over strictness)
 
     // ---- Normal customer conversation ----
     let body = Body; // let: photo case appends "[the customer sent a photo]"
     let image = null; // {mime, base64} for AI vision (null = text only)
-    let mediaDataUrl = null; // data: URL for the dashboard <img> (Twilio links expire)
+    let mediaDataUrl = null; // data: URL for the dashboard <img> (Telegram files expire)
     if (tgCtx && tgCtx.media && tgCtx.media.kind === 'image') { // Telegram door: photo pre-downloaded by the route (auth + bytes already handled!)…
-      image = { mime: tgCtx.media.mime, base64: tgCtx.media.base64 }; // …straight into vision input (same shape as Twilio's!)
-      body = (Body ? Body + ' ' : '') + '[the customer sent a photo]'; // caption (if any) + photo note (same convention as Twilio path!)
+      image = { mime: tgCtx.media.mime, base64: tgCtx.media.base64 }; // …straight into vision input!
+      body = (Body ? Body + ' ' : '') + '[the customer sent a photo]'; // caption (if any) + photo note
     }
-    const numMedia = parseInt(req.body.NumMedia || '0', 10); // Twilio attachment count (string → int)
-    if (numMedia > 0 && req.body.MediaUrl0) { // MediaUrl0 = first attachment URL
-      const mime = req.body.MediaContentType0 || 'image/jpeg'; // content type, JPEG default
-      if (String(mime).startsWith('image/')) { // photos → vision path (unchanged!)
-        const media = await whatsappService.fetchMedia(req.body.MediaUrl0, mime); // download (auth + ≤1MB inline rule inside)
-        if (media) { // null = download failed → continue text-only (graceful)
-          image = media.image; // → AI vision
-          mediaDataUrl = media.mediaDataUrl; // → DB media_url column
-          body = (Body || '') + ' [the customer sent a photo]'; // tell the AI a photo came along
-        }
-      } else if (String(mime).startsWith('audio/')) { // VOICE NOTES → Whisper path (Pro Plus-only!)
-        const media = await whatsappService.fetchMedia(req.body.MediaUrl0, mime); // same downloader (returns .audio twin!)
-        if (media && media.audio) { // downloaded OK?…
-          if (!planService.isProPlus(business)) { // …non-Plus → polite handoff (voice transcription is a PRO PLUS selling point, not a silent drop!)
-            body = (Body || '') + ' [the customer sent a voice note — voice notes are a Pro Plus feature]'; // AI sees the note → hands off gracefully (no invented transcript!)
-          } else { // …Plus → transcribe (Whisper Large v3 on Groq — sub-second, free tier!)…
-            const said = await whatsappService.transcribeAudio(media.audio); // transcript or null (quota/down/bad audio → null!)
-            body = said // transcript wins: prefix marks provenance (owner sees 🎤 in inbox, AI reads plain words!)…
-              ? `🎤 Voice note: "${said}"${Body ? `\n${Body}` : ''}` // …plus any typed caption BELOW it (both signals preserved!)
-              : (Body || '') + ' [the customer sent a voice note I could not transcribe]'; // …null → handoff cue (never silence, never invention!)
-          }
-        }
-      }
-    }
+    // NOTE: Meta image/voice payloads arrive as media IDs (not text) and are
+    // skipped by parseInbound for now — text road only. Voice notes on
+    // Telegram are transcribed in routes/telegramRoutes.js (same Whisper engine!).
 
     const customerId = await conversationService.saveMessage(business.id, From, ProfileName || null, body); // find-or-create chat row → id
     await conversationService.logMessage(customerId, 'in', body, mediaDataUrl); // store inbound message (ALWAYS logged — even when silent below!)
@@ -249,7 +224,7 @@ async function handleInbound(req, res) {
     // said while away — silence is about REPLIES, never about records.
     const { rows: gate } = await db.query('SELECT bot_enabled FROM businesses WHERE id = $1', [business.id]); // fresh read (owner may have toggled seconds ago!)
     const { rows: chat } = await db.query('SELECT bot_paused FROM conversations WHERE id = $1', [customerId]);
-    if (gate[0] && gate[0].bot_enabled === false) return res.status(200).send(''); // global kill-switch engaged → silent (Twilio 200, no retry)
+    if (gate[0] && gate[0].bot_enabled === false) return res.status(200).send(''); // global kill-switch engaged → silent (Meta 200, no retry)
     if (chat[0] && chat[0].bot_paused) return res.status(200).send(''); // owner took over this chat → silent (chat freely!)
     // ---- Per-customer throttle: one chatty stranger can't eat the shop's quota ----
     // Counts TODAY's inbound messages on THIS chat (30/day default). Over the line?
@@ -260,6 +235,38 @@ async function handleInbound(req, res) {
       [customerId]
     );
     if (usage[0].c > CUSTOMER_DAILY_CAP) return res.status(200).send(''); // silent rest (no reply-bomb, no error — owner sees it all in the inbox!)
+    // ---- Per-shop tier limit: Free 50 / Pro 500 / Plus 1000 bot replies/day ----
+    // Counts TODAY's outbound bot messages for THIS shop (all chats). Over the
+    // line? One polite limit notice per chat per day, then silent (records keep
+    // flowing — replies pause till midnight). Customers never see a paywall.
+    const WA_LIMIT = planService.whatsappDailyLimit(business); // tier-gated (env-overridable!)
+    try {
+      const { rows: shopUsage } = await db.query(
+        `SELECT COUNT(*)::int AS c FROM messages m JOIN conversations c2 ON c2.id = m.conversation_id
+         WHERE c2.business_id = $1 AND m.direction = 'out' AND m.created_at >= CURRENT_DATE`,
+        [business.id]
+      );
+      if (shopUsage[0] && shopUsage[0].c >= WA_LIMIT) {
+        await db.query(
+          `UPDATE conversations SET needs_human = true, flag_reason = $1, updated_at = now() WHERE id = $2`,
+          [`Daily reply limit reached (${WA_LIMIT}/day on your plan)`, customerId]
+        );
+        const { rows: already } = await db.query(
+          `SELECT 1 FROM messages WHERE conversation_id = $1 AND direction = 'out'
+           AND created_at >= CURRENT_DATE AND body LIKE '%reply limit%' LIMIT 1`,
+          [customerId]
+        );
+        if (!already.length) { // one kind notice per chat per day (never a reply-bomb!)
+          const tierName = planService.effectiveTier(business);
+          const limitMsg = tierName === 'free'
+            ? `Sorry! ${business.name} has hit today's free reply limit (${WA_LIMIT}/day). A teammate will follow up with you shortly — or tap to upgrade for more replies!`
+            : `Sorry! We've hit today's reply limit (${WA_LIMIT}/day). A teammate will follow up with you shortly.`;
+          await reply(From, limitMsg);
+          await conversationService.logMessage(customerId, 'out', limitMsg);
+        }
+        return res.status(200).send('');
+      }
+    } catch (e) { console.error('tier-limit check error:', e.message); } // guarded: caps must never eat logging
     const history = await conversationService.getHistory(customerId); // last 10, oldest-first (pronoun context: "how much is IT?")
 
     // Free tier keeps working from the manual catalog — only Pro unlocks
@@ -324,10 +331,10 @@ async function handleInbound(req, res) {
       await alertOwner(business, From, ProfileName, Body, result.reason); // …and the owner is paged instantly
     }
 
-    res.status(200).send(''); // Twilio happy (empty 200 = "received, don't retry")
+    res.status(200).send(''); // Meta happy (empty 200 = "received, don't retry")
   } catch (err) {
     console.error('Webhook error:', err); // log the crash…
-    res.status(500).send(''); // …500 tells Twilio to retry later (message isn't lost)
+    res.status(200).send(''); // …but STILL 200 (a 500 would make Meta retry + double-reply the customer!)
   }
 }
 
@@ -356,7 +363,10 @@ async function alertOwner(business, customerNumber, customerName, message, reaso
     `Why you are needed: ${reason || 'AI could not answer'}\n\n` +
     `Reply to them directly on WhatsApp: ${customerNumber}`;
   const jobs = []; // fan-out list (both doors alerted in PARALLEL — owner gets paged wherever they live!)
-  if (business.owner_number) jobs.push(whatsappService.sendWhatsAppReply(business.owner_number, summary)); // WhatsApp door (unchanged behavior!)
+  if (business.owner_number && business.meta_token && business.meta_phone_number_id) { // WhatsApp door: owner's number via the SHOP's Meta sender…
+    const waMeta = require('../services/channels/meta'); // lazy require (consistent file style!)
+    jobs.push(waMeta.sendText(business.meta_token, business.meta_phone_number_id, String(business.owner_number).replace(/\D/g, ''), summary)); // …same summary, WhatsApp flavor!
+  }
   if (business.owner_telegram_id && business.telegram_bot_token) { // Telegram door: linked owner + connected bot…
     const tg = require('../services/channels/telegram'); // lazy require (consistent file style!)
     jobs.push(tg.sendText(business.telegram_bot_token, business.owner_telegram_id, summary)); // …same summary, Telegram flavor!

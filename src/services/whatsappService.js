@@ -1,72 +1,35 @@
 // ── src/services/whatsappService.js ─────────────────────────────────
-// WHAT: the two Twilio operations the app needs: send a WhatsApp text and
-// download a customer photo. The LIVE webhookController uses these; the LEGACY
-// src/webhook.js has its own inline copies. Twilio via plain fetch — NO twilio
-// SDK installed (one less dependency to learn/update/pay attention to).
+// WHAT: shared WhatsApp helpers that are NOT channel-specific: voice-note
+// transcription (Whisper Large v3 on Groq) + a generic media downloader for
+// public URLs. Outbound WhatsApp sends live in services/channels/meta.js
+// (Meta Cloud API, per-shop token) — there is no Twilio anywhere in this app.
+// Telegram media has its own downloader (services/channels/telegram.js).
 
-/**
- * Service for interacting with WhatsApp (via Twilio).
- * Sends a plain-text WhatsApp message. Fire-and-log: failures are logged,
- * never thrown (a failed send must not crash the webhook around it).
- */
-async function sendWhatsAppReply(toCustomer, message, mediaUrl, creds) {
-  const sid = (creds && creds.sid) || process.env.TWILIO_ACCOUNT_SID; // shop's own SID when connected, else the platform's
-  const token = (creds && creds.token) || process.env.TWILIO_AUTH_TOKEN; // same rule (shop token never leaves the server!)
-  const from = (creds && creds.from) || process.env.TWILIO_WHATSAPP_NUMBER; // shop's own number when connected (customer sees THEIR shop, not us!)
-  if (!sid || !token || !from) {
-    console.log('Twilio credentials not set; skipping outbound send. Reply was:', message); // dev mode: print instead of sending
-    return; // early return = "do nothing gracefully"
-  }
-  const send = (withMedia) => { // closure: builds + posts one message attempt (withMedia toggles the photo attach!)
-    const params = new URLSearchParams({ From: from, To: toCustomer, Body: message }); // URLSearchParams builds form bodies + encodes special chars
-    if (withMedia) params.append('MediaUrl', mediaUrl); // MediaUrl = Twilio fetches the photo server-side and delivers it as a picture bubble (MMS-style param, works on WhatsApp!)
-    return fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, { // Twilio REST: POST …/Accounts/{sid}/Messages.json creates a message (2010-04-01 = API version in the URL)
-      method: 'POST',
-      headers: {
-        Authorization: 'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64'), // HTTP Basic: base64("sid:token")
-        'Content-Type': 'application/x-www-form-urlencoded', // Twilio speaks HTML forms, not JSON
-      },
-      body: params, // fetch sends URLSearchParams with the right encoding automatically
-    });
-  };
-  const res = await send(!!mediaUrl); // first attempt: WITH photo when one was resolved (photoUrl already validated https-only at save time!)
-  if (!res.ok) {
-    console.error('Twilio send failed:', res.status, await res.text()); // log code + Twilio's reason (bad number? trial limit?)
-    if (mediaUrl) { // photo attach failed (dead URL? blocked host?) → retry TEXT-ONLY so the customer still gets the answer (photo must never eat the reply!)
-      const retry = await send(false);
-      if (!retry.ok) console.error('Twilio text retry failed:', retry.status, await retry.text());
-    }
-  }
-}
-
-// Download a customer photo from Twilio (their media URLs need OUR auth + expire
-// in hours, so we fetch immediately and keep a copy for the AI + dashboard).
+// Download a public media URL (Meta serves catalog + message media by link).
+// Returns { image: {mime, base64}, mediaDataUrl, audio: {mime, base64} } or null.
 async function fetchMedia(url, mime) {
-  const sid = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
+  if (!url || !/^https:\/\//i.test(String(url))) return null; // https-only (never fetch local/private URLs!)
   try {
-    const mRes = await fetch(url, { // GET the media file with Basic auth…
-      headers: { Authorization: 'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64') },
-    });
+    const mRes = await fetch(String(url));
     if (mRes.ok) { // …only proceed on HTTP 200
       const buf = Buffer.from(await mRes.arrayBuffer()); // arrayBuffer() = raw bytes → Buffer (Node's byte container)
       if (buf.length > 10 * 1024 * 1024) return null; // >10MB guard (voice caps below are tighter; photos keep the 1MB inline rule!)
       let mediaDataUrl = null; // data: URL for the dashboard <img> (stays null for big files)
-      // Store small images inline so the dashboard can display them without Twilio auth
-      if (buf.length <= 1024 * 1024) { // ≤1MB guard: Twilio links die, but the DB mustn't bloat
+      // Store small images inline so the dashboard can display them without re-fetching
+      if (buf.length <= 1024 * 1024) { // ≤1MB guard: the DB mustn't bloat
         mediaDataUrl = `data:${mime};base64,${buf.toString('base64')}`; // data URL = "the image IS the URL" (embeddable, permanent)
       }
       return { image: { mime, base64: buf.toString('base64') }, mediaDataUrl, audio: { mime, base64: buf.toString('base64') } }; // audio twin included (same bytes feed Whisper below — one download serves BOTH paths!)
     }
   } catch (e) {
-    console.error('Media fetch failed:', e.message); // network/auth failure → caller continues text-only
+    console.error('Media fetch failed:', e.message); // network failure → caller continues text-only
   }
   return null; // null = "no media" (caller checks `if (media)`)
 }
 
 // Transcribe voice notes with Whisper Large v3 on Groq (FREE tier: ~20 RPM).
-// Input: { mime, base64 } audio bytes (ogg/opus from WhatsApp, ogg/mp3 from
-// Telegram). Output: plain transcript string (or null = give up gracefully).
+// Input: { mime, base64 } audio bytes (ogg/opus from Telegram voice notes).
+// Output: plain transcript string (or null = give up gracefully).
 // WHY Groq + WHY Large v3: sub-second turnaround, no card, OpenAI-compatible
 // upload (multipart/form-data — Node 18+ has global FormData/Blob built in!).
 async function transcribeAudio(audio) {
@@ -76,7 +39,7 @@ async function transcribeAudio(audio) {
   try {
     const buf = Buffer.from(audio.base64, 'base64'); // base64 → raw bytes…
     if (buf.length === 0 || buf.length > 10 * 1024 * 1024) return null; // empty or >10MB (Whisper caps + cost guard — long rants get the handoff instead!)
-    const ext = /mp3|mpeg/.test(audio.mime || '') ? 'mp3' : 'ogg'; // filename extension MATTERS (Whisper sniffs format from it! ogg = WhatsApp/Telegram voice)
+    const ext = /mp3|mpeg/.test(audio.mime || '') ? 'mp3' : 'ogg'; // filename extension MATTERS (Whisper sniffs format from it! ogg = Telegram voice)
     const form = new FormData(); // global FormData (Node 18+ built-in — no `form-data` package needed!)
     form.append('file', new Blob([buf], { type: audio.mime || 'audio/ogg' }), `voice.${ext}`); // Blob wraps bytes with MIME; third arg = filename (required by the API!)
     form.append('model', process.env.WHISPER_MODEL || 'whisper-large-v3'); // env-overridable (rotation-proof, like chat models!)
@@ -101,4 +64,4 @@ async function transcribeAudio(audio) {
   }
 }
 
-module.exports = { sendWhatsAppReply, fetchMedia, transcribeAudio }; // the WhatsApp I/O + voice API
+module.exports = { fetchMedia, transcribeAudio }; // voice + generic media helpers (sends live in channels/meta.js!)

@@ -42,7 +42,7 @@ Export spec: 9:16 → 1080×1920 · 16:9 → 1920×1080 · ≤30s · MP4 (H.264)
 
 **Script:**
 - 0–3s: "Your WhatsApp is a shop. But shops close. Vendora doesn't."
-- 3–12s STEP 1 Connect: Twilio number linking, webhook flash (screen capture, blur secrets).
+- 3–12s STEP 1 Connect: one-tap WhatsApp connect popup, TEST message → LIVE (screen capture, blur secrets).
 - 12–20s STEP 2 Teach: owner texts `LEARN: Blue gown ₦45,000` → catalog updates.
 - 20–27s STEP 3 Sell: 3 customer questions fly in, instant answers, one HOT lead flagged to owner.
 - 27–30s END CARD: "Free 14 days · No card · vendorabot.vercel.app"

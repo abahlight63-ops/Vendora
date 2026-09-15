@@ -3,7 +3,8 @@
 // Scheduled script (run hourly: npm run recovery:send). Finds chats where the
 // customer showed BUYING intent, went silent 12h–7d ago, and sends ONE gentle
 // nudge. Each chat is nudged at most ONCE (recovery_sent_at column guards it).
-// MODULES: dotenv (.env), ./db (pool). Twilio via plain fetch (no SDK).
+// MODULES: dotenv (.env), ./db (pool). Sends go out through each shop's own
+// Meta WhatsApp Cloud API sender (no platform sender, no Twilio).
 require('dotenv').config(); // load .env first
 const db = require('./db'); // shared pool
 
@@ -16,15 +17,18 @@ const db = require('./db'); // shared pool
  */
 async function sendRecovery() {
   // Find candidates: never nudged + quiet 12h–7d + message smells like buying intent.
+  // Only shops with Meta connected can send (sender creds are per-shop!).
   const { rows } = await db.query(
     `SELECT c.id, c.business_id, c.customer_number, c.customer_name, c.last_message,
-            b.name AS business_name, b.owner_number, b.subscription_status
+            b.name AS business_name, b.owner_number, b.subscription_status,
+            b.meta_token, b.meta_phone_number_id
      FROM conversations c
      JOIN businesses b ON b.id = c.business_id -- need the shop name for the message
      WHERE c.recovery_sent_at IS NULL -- IS NULL = never nudged before (the once-only guard)
        AND c.updated_at < now() - interval '12 hours' -- quiet for at least 12h…
        AND c.updated_at > now() - interval '7 days' -- …but not older than 7 days (don't resurrect the dead)
        AND c.last_message ~* '(price|how much|cost|available|stock|deliver|order|buy|₦)' -- ~* = case-insensitive regex
+       AND b.meta_token <> '' AND b.meta_phone_number_id <> ''
      LIMIT 20` // safety cap: max 20 nudges per run (cost + spam control) -- this // is JS (outside the string), fine
   );
 
@@ -34,7 +38,7 @@ async function sendRecovery() {
   }
 
   let sent = 0; // counter for the summary log
-  for (const c of rows) { // one at a time (Twilio rate limits + per-chat error isolation)
+  for (const c of rows) { // one at a time (Meta rate limits + per-chat error isolation)
     const firstName = (c.customer_name || '').split(' ')[0] || 'there'; // "Adaeze Obi" → "Adaeze"; unknown → "there"
     const nudge = // the friendly follow-up text (personalized with their own words)
       `Hi ${firstName}! It's ${c.business_name}.\n\n` +
@@ -53,25 +57,16 @@ async function sendRecovery() {
   console.log(`ComeBack: sent ${sent}/${rows.length} recovery nudges.`); // run summary
 }
 
-// Low-level Twilio sender (same pattern as digest.js — fetch, Basic auth, form body).
+// Low-level sender: the shop's own Meta Cloud API credentials (stored at
+// connect time). Throws on obvious misconfig so the caller can catch+log.
 async function sendNudge(toNumber, text, businessId) {
-  const sid = process.env.TWILIO_ACCOUNT_SID; // from .env
-  const token = process.env.TWILIO_AUTH_TOKEN; // from .env
-  const from = process.env.TWILIO_WHATSAPP_NUMBER; // shop's WhatsApp sender
-  if (!sid || !token || !from) {
-    console.warn(`[dry-run] nudge for business ${businessId} to ${toNumber}:\n${text}\n`); // dev mode: print instead
-    return;
+  const { rows } = await db.query('SELECT meta_token, meta_phone_number_id FROM businesses WHERE id = $1', [businessId]);
+  const b = rows[0];
+  if (!b || !b.meta_token || !b.meta_phone_number_id) {
+    throw new Error('Meta not connected for this business');
   }
-  const params = new URLSearchParams({ From: from, To: toNumber, Body: text }); // form-encode
-  const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
-    method: 'POST', // create a message
-    headers: {
-      Authorization: 'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64'), // Basic auth
-      'Content-Type': 'application/x-www-form-urlencoded', // Twilio wants forms
-    },
-    body: params,
-  });
-  if (!res.ok) throw new Error(`Twilio ${res.status}: ${await res.text()}`); // throw so caller can catch+log
+  const meta = require('./services/channels/meta'); // lazy require (script entry style!)
+  await meta.sendText(b.meta_token, b.meta_phone_number_id, String(toNumber).replace(/\D/g, ''), text);
 }
 
 // Run-as-script: `node src/recovery.js` sends; require()ing it just imports.

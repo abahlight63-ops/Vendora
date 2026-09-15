@@ -37,7 +37,7 @@ async function checkCredentials(phoneIdRaw, tokenRaw) {
 }
 
 // Send a WhatsApp reply through Meta (text, or photo-by-public-link + caption).
-// Fire-and-log like the Twilio sender: failures log, never throw.
+// Fire-and-log sender: failures log, never throw (a failed send must not crash the webhook around it).
 async function sendText(token, phoneId, to, message, mediaUrl) {
   if (!token || !phoneId || !to || !message) return;
   const body = mediaUrl // photo variant: Meta sends images BY LINK (our /uploads/ URLs are public in prod!)
@@ -108,4 +108,47 @@ async function fetchBusinessProfile(tokenRaw, phoneIdRaw) {
   return { profileText: bits.join('\n') };
 }
 
-module.exports = { checkCredentials, sendText, parseInbound, fetchBusinessProfile, shapeOk, GRAPH };
+// Exchange an Embedded Signup authorization code for a user access token.
+// Needs META_APP_SECRET server-side (never shipped to browsers!). Returns
+// { token } or { error }.
+async function exchangeCode(codeRaw) {
+  const code = String(codeRaw || '').trim();
+  const appId = (process.env.META_APP_ID || '').trim();
+  const secret = (process.env.META_APP_SECRET || '').trim();
+  if (!code) return { error: 'Missing signup code — try connecting again.' };
+  if (!appId || !secret) return { error: 'Server is missing META_APP_ID / META_APP_SECRET — paste your token manually instead.' };
+  let res;
+  try {
+    const url = `${GRAPH}/oauth/access_token?client_id=${encodeURIComponent(appId)}`
+      + `&client_secret=${encodeURIComponent(secret)}&code=${encodeURIComponent(code)}`;
+    res = await fetch(url, { method: 'GET' });
+  } catch (e) {
+    return { error: 'Could not reach Meta — check your connection and try again.' };
+  }
+  if (!res.ok) return { error: 'Meta rejected the signup code — reconnect and try again.' };
+  const data = await res.json().catch(() => ({}));
+  if (data.error || !data.access_token) return { error: 'Meta rejected the signup code — reconnect and try again.' };
+  return { token: String(data.access_token) };
+}
+
+// List phone numbers on a WABA (used after code exchange to discover the
+// phone_number_id the user picked). Returns { numbers: [{id, display}] }.
+async function listWabaNumbers(wabaIdRaw, tokenRaw) {
+  const wabaId = String(wabaIdRaw || '').trim();
+  const token = String(tokenRaw || '').trim();
+  if (!/^\d{5,}$/.test(wabaId) || token.length < 20) return { error: 'Missing business account details — try connecting again.' };
+  let res;
+  try {
+    res = await fetch(`${GRAPH}/${wabaId}/phone_numbers?fields=id,display_phone_number`, {
+      headers: { Authorization: 'Bearer ' + token },
+    });
+  } catch (e) {
+    return { error: 'Could not reach Meta — try again.' };
+  }
+  if (!res.ok) return { error: 'Meta would not share your numbers — try again.' };
+  const data = await res.json().catch(() => ({}));
+  const numbers = ((data && data.data) || []).map((n) => ({ id: String(n.id || ''), display: n.display_phone_number || '' })).filter((n) => n.id);
+  return { numbers };
+}
+
+module.exports = { checkCredentials, sendText, parseInbound, fetchBusinessProfile, shapeOk, exchangeCode, listWabaNumbers, GRAPH };

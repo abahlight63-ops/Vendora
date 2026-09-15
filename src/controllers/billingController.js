@@ -75,7 +75,7 @@ async function initialize(req, res) {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${secret}`, // server secret as Bearer token
-        'Content-Type': 'application/json', // Paystack speaks JSON (unlike Twilio forms)
+        'Content-Type': 'application/json', // Paystack speaks JSON (form-encoded here as URLSearchParams elsewhere)
       },
       body: JSON.stringify({
         email, // shorthand: { email: email } — Paystack receipts go here

@@ -56,6 +56,16 @@ function effectiveTier(business) {
   return tier(business); // 'pro' (paid or trial) | 'free'
 }
 
+// WhatsApp bot replies allowed per shop per day (outbound 'out' messages).
+// Matches API cost reality: free-tier provider quotas cover ~50/day safely,
+// paid tiers lift the ceiling. Env-overridable without code changes.
+function whatsappDailyLimit(business) {
+  const t = effectiveTier(business); // 'plus' | 'pro' | 'free'
+  if (t === 'plus') return Number(process.env.WHATSAPP_PLUS_LIMIT || 1000);
+  if (t === 'pro') return Number(process.env.WHATSAPP_PRO_LIMIT || 500);
+  return Number(process.env.WHATSAPP_FREE_LIMIT || 50);
+}
+
 // Auto-currency: +234 numbers bill in NGN, everything else in USD.
 // ...numbers = rest parameter (collects ALL arguments into an array).
 function resolveCurrency(...numbers) {
@@ -65,4 +75,4 @@ function resolveCurrency(...numbers) {
   return 'NGN'; // no country code at all → default home market
 }
 
-module.exports = { isPro, isProPlus, tier, effectiveTier, trialActive, subscriptionActive, trialDays, trialDaysLeft, resolveCurrency }; // webhook, replyEngine, controllers all import from here
+module.exports = { isPro, isProPlus, tier, effectiveTier, whatsappDailyLimit, trialActive, subscriptionActive, trialDays, trialDaysLeft, resolveCurrency }; // webhook, replyEngine, controllers all import from here

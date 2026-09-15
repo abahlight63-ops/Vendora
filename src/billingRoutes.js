@@ -30,7 +30,7 @@ router.post('/billing/initialize', async (req, res) => { // frontend calls this 
       method: 'POST',
       headers: {
         Authorization: `Bearer ${secret}`, // Bearer token auth (the secret key)
-        'Content-Type': 'application/json', // we're sending JSON (unlike Twilio forms)
+        'Content-Type': 'application/json', // we're sending JSON (form-encoded APIs differ)
       },
       body: JSON.stringify({ // JSON.stringify turns the object into a JSON string
         email, // payer email (Paystack receipts go here)

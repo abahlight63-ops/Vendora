@@ -25,8 +25,8 @@ function cleanImageUrl(raw) {
   const s = String(raw).trim();
   if (!s) return null; // empty = clear the photo (dashboard "remove photo" path)
   if (s.length > 2000) return { error: 'Photo URL is too long (max 2000 characters).' };
-  const isHttps = /^https:\/\/\S+\.\S+/.test(s); // public links (Twilio/Telegram fetch server-side)
-  const isLocal = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(s); // our own /uploads/ URLs in local dev (Twilio can't reach these, but the dashboard preview can!)
+  const isHttps = /^https:\/\/\S+\.\S+/.test(s); // public links (Meta/Telegram fetch server-side)
+  const isLocal = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(s); // our own /uploads/ URLs in local dev (Meta can't reach these, but the dashboard preview can!)
   if (!isHttps && !isLocal) return { error: 'Photo must be a public https:// URL (paste an image link).' }; // http + data: + javascript: rejected — SSRF/XSS guard!
   return s;
 }
@@ -77,9 +77,9 @@ async function upsertProducts(businessId, products) {
   return saved; // array of saved rows (webhook formats these into the "Catalog updated" message)
 }
 
-/** Format the catalog for the AI prompt. Empty string if no products. */
+/** Format the catalog for the AI prompt. Polite-empty marker when no products. */
 function formatCatalog(products) {
-  if (!products || products.length === 0) return '(no products listed yet)'; // guard: AI must see SOMETHING (it then says it has nothing / hands off)
+  if (!products || products.length === 0) return '(catalog is currently empty — no products have been added yet)'; // guard: AI must see SOMETHING (prompt rules force a polite + handoff reply, never a blunt "no X in catalog")
   return products
     .map((p) => { // each product → multi-line block…
       const status = p.available === false ? 'OUT OF STOCK' : 'available'; // === false (not !p.available): NULL/undefined still count as available

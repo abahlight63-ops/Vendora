@@ -46,7 +46,7 @@ export default function Privacy() {
 
           <h3>5. Who else touches your data (our processors)</h3>
           <ul>
-            <li><b>Twilio</b> — delivers WhatsApp messages both ways.</li>
+            <li><b>Meta (WhatsApp Cloud API)</b> — delivers WhatsApp messages both ways.</li>
             <li><b>Google Gemini / Groq / OpenRouter / Anthropic</b> — generate AI replies.</li>
             <li><b>Paystack</b> — processes Naira card payments (they see the payer email and amount, never your catalog).</li>
             <li><b>Flutterwave</b> — processes US Dollar card payments for international shops (same business: email and amount only).</li>
@@ -73,7 +73,7 @@ export default function Privacy() {
             <li>Passwords hashed with salted scrypt — we couldn't read them if we wanted to.</li>
             <li>Sessions stored server-side; production refuses to boot without its own session secret.</li>
             <li>Login, signup and checkout doors rate-limited against brute force and spam.</li>
-            <li>Twilio, Telegram, Paystack and Flutterwave webhooks all signature-verified — nobody can fake a message or a payment.</li>
+            <li>Meta, Telegram, Paystack and Flutterwave webhooks all verified — nobody can fake a message or a payment.</li>
             <li>Security headers on every response; error messages never leak internals.</li>
             <li>HTTPS everywhere in production; database connections encrypted.</li>
           </ul>

@@ -12,9 +12,16 @@ export default function Notifications() {
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
+  const [, setTick] = useState(0); // re-render ticker: NEW pills expire live without reload!
   const wrap = useRef(null);
   const seen = useRef(null); // first-load guard: don't toast history as "new"
   const nav = useNavigate();
+
+  const NEW_MS = 2 * 60 * 1000; // NEW tag lifespan (2 minutes from created_at!)
+  function isNew(n) { // fresh enough for the NEW pill? (bad dates → false, never crash!)
+    const t = new Date(n && n.created_at).getTime();
+    return Number.isFinite(t) && (Date.now() - t) < NEW_MS;
+  }
 
   async function load(silent) {
     const { ok, data } = await api('/api/me/notifications');
@@ -34,7 +41,8 @@ export default function Notifications() {
   useEffect(() => {
     load(true);
     const t = setInterval(() => { if (!document.hidden) load(false); }, 60000);
-    return () => clearInterval(t);
+    const tick = setInterval(() => setTick((x) => x + 1), 15000); // expire NEW pills on time (cheap render, no fetch!)
+    return () => { clearInterval(t); clearInterval(tick); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -76,7 +84,7 @@ export default function Notifications() {
             <button key={n.id} className={'nbell-item' + (n.is_read ? '' : ' fresh')} onClick={() => go(n)}>
               <span className="nbell-dot" />
               <span className="nbell-main">
-                <b>{n.title}</b>
+                <b>{n.title} {isNew(n) && <span className="pill new">NEW</span>}</b>
                 {n.body && <span>{n.body}</span>}
                 <i>{new Date(n.created_at).toLocaleString()}</i>
               </span>

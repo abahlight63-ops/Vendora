@@ -227,6 +227,7 @@ async function generateReply(customerMessage, business, image, history) {
   }
   const maxDisc = business.max_discount_pct || 0;
   const minOrder = business.min_order_naira || 0;
+  const isEmptyCatalog = !products || products.length === 0; // empty shelf → special polite rules below (never blunt!)
   const customGreeting = typeof business.greeting_msg === 'string' ? business.greeting_msg.trim().slice(0, 300) : '';
   const transcript = (history || [])
     .map((m) => `${m.direction === 'in' ? 'Customer' : 'You'}: ${m.body}`)
@@ -250,6 +251,7 @@ ${(business.faq || []).map((f) => `Q: ${f.question}\nA: ${f.answer}`).join('\n')
 
 PRODUCT CATALOG (the single source of truth for products, prices, availability):
 ${catalog}
+${isEmptyCatalog ? `\nCATALOG STATUS: EMPTY — the owner has not added any products yet. When a customer asks about ANY product (e.g. "are shirts available?"): be extra warm, apologize kindly, NEVER say "No shirts in catalog" or "not listed" or any blunt stock phrase. Instead say something like "Sorry about that! We don't have shirts listed right now, but tell me what style or size you need and I'll sort it out for you." Then respond with exactly NEED_HUMAN on the next line so the owner is alerted. Example: "Sorry about that! We don't have shirts listed right now, but tell me what style you need and I'll sort it out for you. A teammate will confirm for you shortly."\n` : ''}
 ${pro && business.profile_snapshot ? `\nVERIFIED BUSINESS PROFILE (synced from the owner's WhatsApp Business profile — treat items here as confirmed available):\n${business.profile_snapshot}\n` : ''}
 ${transcript ? `\nRECENT CONVERSATION WITH THIS CUSTOMER (oldest first — use it for context, pronouns, and follow-up questions):\n${transcript}\n` : ''}
 
@@ -258,10 +260,11 @@ HOW TO SELL LIKE A HUMAN (follow every time):
 2. ALWAYS SHOW OPTIONS. After the direct answer, list up to 5 relevant in-stock alternatives from the catalog (same category or similar use first). Format: one product per line as "• Name — Price". Never list more than 5. If the catalog has fewer, show what exists. Out-of-stock items go LAST and are marked "(out of stock)".
 3. MAKE IT INVITING. Example flow when asked "do you have blue gown?": confirm the gown (price + availability), then say something like "We also have other fine clothes you may like:" followed by 3-5 options (nice tops, shorts, other gowns), then close with ONE clear next step: "Want me to reserve one for you? Just tell me the name."
 4. "WHAT DO YOU SELL?" / vague asks ("what do you have?", "show me clothes"): pick the 5 most relevant in-stock items, list them the same way, and ask what they like.
-5. OUT OF STOCK: say so honestly in one warm line ("That one just finished, sorry!"), then immediately offer 3-5 alternatives from the catalog. Never stop at "not available".
+5. OUT OF STOCK / NOT FOUND: say so honestly in one warm line ("Sorry about that! That one just finished — but tell me what you need and I'll sort it out for you!"), then immediately offer 3-5 alternatives from the catalog when any exist. NEVER use blunt phrases like "No shirts in catalog", "not listed", "not available" alone — always apologize kindly, invite them to describe what they need, and keep helping. When nothing matches at all, end with a handoff promise ("A teammate will confirm for you shortly.") and respond NEED_HUMAN so the owner is paged.
 6. LANGUAGE: Match the customer's language exactly. Pidgin in → natural Pidgin out. Mixed → mix naturally. Formal → formal. Never correct them.
-7. NEVER invent prices, products, availability, or delivery promises. Only the catalog and FAQ. If the answer is not covered (custom orders, complaints, negotiation, payment details, anything not in the catalog), respond with exactly:
+7. NEVER invent prices, products, availability, or delivery promises. Only the catalog and FAQ. Banned blunt phrases (never output these): "No X in catalog", "not in catalog", "not listed", "no products listed". If the answer is not covered (empty catalog, unknown product, custom orders, complaints, negotiation, payment details, anything not in the catalog), respond with exactly:
    NEED_HUMAN: <brief reason>
+   The handoff wrapper will deliver a polite customer message + page the owner, so NEED_HUMAN is always the kind choice over guessing.
 8. BUSINESS HOURS: Compare now against opening hours. If CLOSED, say so warmly, state when you next open, and still help with catalog questions (prices, options).
 9. PURE CHIT-CHAT (greetings alone, jokes, "lol", "thanks", memes — zero buying signal): answer warmly and briefly in one or two kind sentences, then invite them to ask about products ("Glad to hear that! Anything I can help you find in the shop today?"). NEVER pitch products uninvited, NEVER lecture, NEVER NEED_HUMAN for friendliness — only hand off if they are upset or ask for a human.
 10. LENGTH + FORMAT: WhatsApp-friendly, warm, human. Direct answers stay short; when listing options allow up to ~150 words. PLAIN TEXT ONLY — never type #, *, underscores, backticks, ~, | or [text](url), and no emojis — plain words only. Steps (if any) as plain "1. 2. 3." lines, options as "•" lines, each on its OWN line.
@@ -299,6 +302,11 @@ ${image ? '12. The customer also sent a PHOTO. Look at it, describe briefly what
     }
     if (!text) {
       return { reply: null, needsHuman: true, reason: 'Empty AI response' };
+    }
+    // Politeness safety net: if the model slipped a blunt stock phrase through,
+    // convert to a human handoff (owner paged, customer gets the kind wrapper).
+    if (/no .* in catalog|not in catalog|not listed|no products listed/i.test(text)) {
+      return { reply: null, needsHuman: true, reason: `Blunt catalog phrase intercepted: "${text.slice(0, 120)}"` };
     }
     return { reply: text, needsHuman: false, modelId: answered.modelId, paidModel: entry.tier === 'paid' };
   } catch (err) {

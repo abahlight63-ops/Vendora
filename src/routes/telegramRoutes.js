@@ -5,7 +5,7 @@
 //     once via /start link_<CODE> (CODE from Profile → owner_telegram_id).
 //   shared:   POST /webhook/telegram/shared — ONE @VendoraBot for Pro shops.
 //     Customers bind via /start <CODE>; owner commands OFF here (dashboard!).
-// Routing into the brain: normalize to Twilio-shape req.body + req.telegram
+// Routing into the brain: normalize to controller-shape req.body + req.telegram
 // context, then reuse webhookController.handleInbound (ONE brain, two doors!).
 // No npm modules — express + local services only.
 const express = require('express'); // Router class
@@ -29,12 +29,12 @@ async function shopById(bizId) {
   return b;
 }
 
-// Normalize a parsed Telegram message into Twilio-shape body + telegram ctx,
+// Normalize a parsed Telegram message into controller-shape body + telegram ctx,
 // then hand to the shared brain. Returns nothing (always 200s inside!).
 async function handleParsed(business, botToken, parsed, req, res) {
   const handleInbound = require('../controllers/webhookController').handleInbound; // lazy require (route↔controller cycle safety!)
   const fromTag = `telegram:${parsed.chatId}`; // customer identity (channel-prefixed — never collides with whatsapp:+… numbers!)
-  // Media pre-download (Telegram file API — the brain only knows Twilio URLs!):
+  // Media pre-download (Telegram file API — the brain takes pre-fetched bytes!):
   let media = null; // { kind:'image'|'audio', mime, base64 } or null
   if ((parsed.kind === 'photo' || parsed.kind === 'voice') && parsed.fileId) {
     const dl = await tg.downloadFile(botToken, parsed.fileId, parsed.mime); // bytes via getFile (≤10MB guard inside!)
@@ -53,19 +53,18 @@ async function handleParsed(business, botToken, parsed, req, res) {
       media = null; // consumed into text (don't ALSO run vision on audio bytes!)
     }
   }
-  req.body = { // Twilio-shape disguise (the brain speaks Twilio — adapter pattern!)…
+  req.body = { // controller shape (the brain's From/To/Body/ProfileName contract — adapter pattern!)…
     From: fromTag, // telegram:chatId (routing + identity in one string!)
     To: `telegram:${business.id}`, // shop identity (brain looks up business BY NUMBER normally — overridden below!)
     Body: body, // text (+ transcript/caption/notes above!)
     ProfileName: parsed.name, // Telegram first+last name (inbox display!)
-    NumMedia: media && media.kind === 'image' ? '1' : '0', // vision path trigger (voice already consumed above!)
   };
   req.telegram = { // context the brain reads (see webhookController edits!)…
     business, // looked-up shop row (skips number lookup!)
     botToken, // reply sender (routes OUT through this bot!)
     chatId: parsed.chatId, // reply recipient (Telegram chat id!)
     ownerTid: business.owner_telegram_id || null, // linked owner id (owner commands from here!)
-    media, // pre-downloaded {kind,mime,base64} (skips Twilio fetch!)
+    media, // pre-downloaded {kind,mime,base64} (vision input for photos!)
   };
   await handleInbound(req, res); // ONE brain (all LEARN/SYNC/PAUSE/AI/takeover logic reused — zero duplication!)
 }

@@ -1,32 +1,27 @@
 // ── src/routes/webhookRoutes.js ──────────────────────────────────
-// WHAT: the URL map for incoming WhatsApp messages — TWO doors, one URL.
-// Classic door: Twilio POSTs form fields (signature-verified).
-// Meta door: Meta Cloud API POSTs JSON {object:'whatsapp_business_account'…}
-// (verified per-message by phone_number_id → stored business; subscribe-time
-// handshake on GET ?hub.mode=subscribe…). Both normalize into
-// webhookController.handleInbound (ONE brain!). Meta verify tokens are
-// per-shop (Connect page generates one) — the handshake accepts ANY stored
-// token, so many shops share this one URL safely.
+// WHAT: the URL map for incoming WhatsApp messages — Meta Cloud API only.
+// Meta POSTs JSON {object:'whatsapp_business_account'…} (each message carries
+// the phone_number_id that maps to a stored business; the subscribe handshake
+// on GET ?hub.mode=subscribe… proves ownership via per-shop verify tokens).
+// Everything normalizes into webhookController.handleInbound (ONE brain!).
+// There is no Twilio door and no signature middleware — Meta identity IS the
+// stored phone_number_id match (unknown numbers get a quiet 200, never a reply).
 // MODULE: express (Router class). Local: webhookController (the logic),
-// twilioVerify (the classic-door guard), meta (inbound parser).
+// meta (inbound parser).
 const express = require('express'); // need Router from the framework
 const db = require('../db'); // pool (Meta business lookup + verify-token match)
 const webhookController = require('../controllers/webhookController'); // the handler function
-const { validateTwilioSignature } = require('../middleware/twilioVerify'); // HMAC guard
-const { webhookLimiter } = require('../middleware/security'); // flood wall (forgery stopped by signatures, floods by this!)
+const { webhookLimiter } = require('../middleware/security'); // flood wall
 
 const router = express.Router(); // create the mini-app
 
-// Classic door: Twilio POSTs here on every customer message.
-// Chain = limiter → guard → handler (floods die first, forgeries second).
-// (Meta JSON never reaches this chain — the splitter below routes it first!)
-function isMetaPost(req) {
-  const b = req.body; // express.json already parsed (server.js middleware!)
-  return b && typeof b === 'object' && b.object === 'whatsapp_business_account'; // Meta's envelope marker (Twilio posts are flat forms — never have .object!)
-}
+// Meta inbound only: reject anything that is not a WhatsApp envelope.
 router.post('/whatsapp', webhookLimiter, (req, res, next) => {
-  if (!isMetaPost(req)) return validateTwilioSignature(req, res, next); // classic door: prove you're Twilio…
-  return metaInbound(req, res); // …Meta door: skip Twilio's guard (Meta proves itself by phone_number_id below!)
+  const b = req.body; // express.json already parsed (server.js middleware!)
+  if (!b || typeof b !== 'object' || b.object !== 'whatsapp_business_account') {
+    return res.status(400).json({ error: 'Malformed payload' }); // not Meta → 400 (no retries worth doing!)
+  }
+  return metaInbound(req, res, next);
 });
 
 // Meta subscribe handshake: GET ?hub.mode=subscribe&hub.verify_token=X&hub.challenge=Y
@@ -45,7 +40,7 @@ router.get('/whatsapp', webhookLimiter, async (req, res) => {
 });
 
 // Meta inbound: loop every entry/change/message (Meta batches!), normalize each
-// text message to Twilio-shape + req.meta ctx, run the shared brain per message.
+// text message to controller shape + req.meta ctx, run the shared brain per message.
 async function metaInbound(req, res) {
   const meta = require('../services/channels/meta'); // lazy require (route↔service style!)
   try {
@@ -59,7 +54,7 @@ async function metaInbound(req, res) {
         const { rows } = await db.query('SELECT * FROM businesses WHERE meta_phone_number_id = $1 LIMIT 1', [String(phoneId)]); // phone id → shop (unmapped number = not ours!)
         const business = rows[0];
         if (!business) continue; // someone else's number hitting our URL (200, no log spam!)
-        const sub = { body: { From: 'whatsapp:+' + parsed.from.replace(/\D/g, ''), To: business.whatsapp_number, Body: parsed.body, ProfileName: parsed.name || null }, meta: { business, chatId: parsed.from.replace(/\D/g, '') } }; // Twilio-shape disguise (brain speaks Twilio!) + Meta ctx (sender picks Meta outbound!)
+        const sub = { body: { From: 'whatsapp:+' + parsed.from.replace(/\D/g, ''), To: business.whatsapp_number, Body: parsed.body, ProfileName: parsed.name || null }, meta: { business, chatId: parsed.from.replace(/\D/g, '') } }; // controller shape + Meta ctx (sender picks Meta outbound!)
         await webhookController.handleInbound(sub, { status: () => ({ send: () => {}, json: () => {} }), send: () => {} }); // sub-response swallows (one outer 200 below covers the batch!)
       }
     }

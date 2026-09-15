@@ -10,7 +10,7 @@ import Ic from '../components/icons.jsx'; // drawn close glyph for the search-cl
 
 const FAQS = [ // 15 pairs — CUSTOMER voice (plain answers, zero jargon; in-app Help rephrases for owners)
   ['Is there really a free plan?', 'Yes — the manual catalog is free forever: add products on the dashboard or teach the bot with LEARN: messages and it replies to customers at no cost. Pro (profile sync plus verification) is what you pay for, and every account starts with a 7-day Pro trial (countdown shown, bell warns you before it ends).'],
-  ['How do I connect my WhatsApp?', 'After signup, open the Connect page and pick WhatsApp — Meta (free to start, a few values to paste) or your own Twilio number. Send the TEST message and you flip to LIVE. When ready, add a live sender — chats keep working the same way.'],
+  ['How do I connect my WhatsApp?', 'After signup, open the Connect page and tap "Connect WhatsApp" — a Meta popup opens, you log in with Facebook and pick your business number. Send the TEST message and you flip to LIVE.'],
   ['How does LEARN work?', 'From your owner number send: LEARN: Blue gown ₦45,000. The AI extracts the name and price and updates the catalog. Sending the same name again overwrites the price. Free forever.'],
   ['What is profile sync (Pro)?', 'Paste your WhatsApp Business profile text in Catalog → Sync (or send SYNC: plus the text from your owner number). The AI scaffolds your whole catalog from it and then verifies customer questions against your synced profile.'],
   ["What if the AI doesn't know?", 'It sends a polite handoff, flags the chat gold in your inbox, and alerts your personal WhatsApp instantly. It never invents prices or delivery promises. Review flagged chats daily.'],
@@ -21,7 +21,7 @@ const FAQS = [ // 15 pairs — CUSTOMER voice (plain answers, zero jargon; in-ap
   ['Can I get a refund?', 'First-ever payment: yes, within 7 days if the service genuinely didn\u2019t work for you — write to us from Help. Duplicate or failed charges are always refunded in full.'],
   ['How do I cancel?', 'Stop paying and you simply drop to the free plan at period end. Delete your account from Settings or Help and everything is removed within 14 days.'],
   ['Can the AI make mistakes?', 'Rarely, but possible — AI models can misread slang or sound confident about thin facts. That is why unsure moments hand off to you instead of guessing, and why your catalog accuracy matters.'],
-  ['What if WhatsApp or Twilio goes down?', 'Vendora rides on WhatsApp, Twilio and AI providers. If they have an outage, replies may delay — the bot always fails safe by flagging a human instead of inventing answers. Your catalog and history are untouched.'],
+  ['What if WhatsApp goes down?', 'Vendora rides on Meta WhatsApp Cloud API and AI providers. If they have an outage, replies may delay — the bot always fails safe by flagging a human instead of inventing answers. Your catalog and history are untouched.'],
   ['Is my data private?', 'Your catalog and chats only reply to your customers. No data sales, no advertising profiles, no training of public models on your content. Export or delete anytime from Help. Full details in Privacy.'],
   ['How do I reach support?', 'Fastest: the Help page inside your dashboard — it arrives with your account attached. Include your business name, number, and a screenshot; that combination resolves 90% of issues in one reply.'],
 ];

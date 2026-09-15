@@ -4,7 +4,7 @@
 // WHY DUPLICATED: backend is CommonJS (require), frontend is ESM (import) —
 // one file can't serve both without a build step. Keep them in sync manually!
 // No npm modules — pure string + regex JavaScript (same lesson as backend).
-// Mirrors src/utils/phone.js — type naturally, we store Twilio format.
+// Mirrors src/utils/phone.js — type naturally, we store whatsapp:+… format.
 export function normalizePhone(raw) { // exported (import { normalizePhone } from '../lib/phone.js')
   if (raw === undefined || raw === null) return null; // nothing → invalid
   let s = String(raw).trim(); // accept numbers too; strip outer spaces
@@ -19,7 +19,7 @@ export function normalizePhone(raw) { // exported (import { normalizePhone } fro
     digits = '234' + digits; // bare 10-digit NG mobile (starts 7/8/9) → add 234
   } // international numbers (+1…, +44…) skip both branches untouched — already correct!
   if (digits.length < 7 || digits.length > 15) return null; // E.164 length sanity (too short/long = typo)
-  return 'whatsapp:+' + digits; // rebuild exact Twilio format
+  return 'whatsapp:+' + digits; // rebuild exact whatsapp:+… format (Meta + inbox identity!)
 }
 
 export function prettyPhone(wa) { // 'whatsapp:+2348031234567' → '0803 123 4567' (human display)

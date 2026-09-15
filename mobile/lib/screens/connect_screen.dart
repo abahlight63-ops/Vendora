@@ -1,7 +1,7 @@
 // ── lib/screens/connect_screen.dart ──────────────────────────────
-// WHAT: the channel switchboard (web Connect.jsx parity) — WhatsApp via Meta
-// (free to start) or own-Twilio (SID/token once, we point the number), Telegram
-// via BotFather, per-shop WhatsApp brain picker, TEST-verify to LIVE.
+// WHAT: the channel switchboard (web Connect parity) — WhatsApp via Meta
+// (Embedded Signup one-tap on web, manual paste here), Telegram via a
+// BotFather token, per-shop WhatsApp brain picker, TEST-verify to LIVE.
 // One action per screen: road chips → credentials → webhook → TEST.
 import 'dart:async';
 
@@ -28,16 +28,12 @@ class _ConnectScreenState extends State<ConnectScreen> {
   String? _err;
   bool _loading = true;
   bool _busy = false;
-  String _road = 'meta'; // 'meta' | 'twilio' | 'telegram' (chips, not pages!)
+  String _road = 'meta'; // 'meta' | 'telegram' (chips, not pages!)
   int _step = 1;
 
   final _phoneId = TextEditingController();
   final _metaToken = TextEditingController();
   String? _verifyToken;
-  final _sid = TextEditingController();
-  final _twToken = TextEditingController();
-  List<dynamic>? _numbers;
-  String? _picked;
   final _tgToken = TextEditingController();
   String? _tgCode;
   String? _brain;
@@ -54,8 +50,6 @@ class _ConnectScreenState extends State<ConnectScreen> {
   void dispose() {
     _phoneId.dispose();
     _metaToken.dispose();
-    _sid.dispose();
-    _twToken.dispose();
     _tgToken.dispose();
     _poll?.cancel();
     super.dispose();
@@ -116,37 +110,6 @@ class _ConnectScreenState extends State<ConnectScreen> {
         setState(() => _step = 2);
         _load();
         showToast(context, 'Meta checked — now link the webhook.');
-      });
-
-  Future<void> _twilioList() => _run(() async {
-        if (_sid.text.trim().isEmpty || _twToken.text.trim().isEmpty) {
-          showToast(context, 'Paste both values first', type: 'err');
-          return;
-        }
-        final r = await ApiClient.instance.twilioConnect(
-            _sid.text.trim(), _twToken.text.trim());
-        final nums = List<dynamic>.from(r['numbers'] ?? []);
-        if (nums.isEmpty) {
-          showToast(context,
-              'No numbers on that Twilio account yet.', type: 'err');
-          return;
-        }
-        setState(() {
-          _numbers = nums;
-          _picked = '${(nums[0] as Map)['sid']}';
-          _step = 2;
-        });
-      });
-
-  Future<void> _twilioAdopt() => _run(() async {
-        if (_picked == null) return;
-        final r = await ApiClient.instance.twilioSelect(
-            _sid.text.trim(), _twToken.text.trim(), _picked!);
-        _twToken.clear();
-        setState(() => _step = 3);
-        _load();
-        showToast(context,
-            'Connected ${r['phone'] ?? ''} — now send the TEST.');
       });
 
   Future<void> _tgConnect() => _run(() async {
@@ -327,15 +290,6 @@ class _ConnectScreenState extends State<ConnectScreen> {
                           });
                         }),
                     ChoiceChip(
-                        label: const Text('Twilio'),
-                        selected: _road == 'twilio',
-                        onSelected: (_) {
-                          setState(() {
-                            _road = 'twilio';
-                            _step = 1;
-                          });
-                        }),
-                    ChoiceChip(
                         label: const Text('Telegram'),
                         selected: _road == 'telegram',
                         onSelected: (_) {
@@ -347,7 +301,6 @@ class _ConnectScreenState extends State<ConnectScreen> {
                   ]),
                   const SizedBox(height: 12),
                   if (_road == 'meta') _metaFlow(webhook),
-                  if (_road == 'twilio') _twilioFlow(webhook),
                   if (_road == 'telegram') _telegramFlow(),
                 ]),
           ),
@@ -392,11 +345,11 @@ class _ConnectScreenState extends State<ConnectScreen> {
   Widget _metaFlow(String webhook) {
     if (_step == 1) {
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Step 1 of 3 — paste 2 values from Meta',
+        const Text('Step 1 of 3 — link your WhatsApp number',
             style: TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 4),
         const Text(
-            'developers.facebook.com → your app → WhatsApp → API Setup.',
+            'Fastest: open the web app → Connect → "Connect WhatsApp" (one-tap Meta popup). Or paste both values below from developers.facebook.com → your app → WhatsApp → API Setup.',
             style: TextStyle(fontSize: 12)),
         const SizedBox(height: 8),
         TextField(
@@ -436,66 +389,14 @@ class _ConnectScreenState extends State<ConnectScreen> {
     return _testStep();
   }
 
-  Widget _twilioFlow(String webhook) {
-    if (_step == 1) {
-      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Step 1 of 3 — paste SID + token',
-            style: TextStyle(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 4),
-        const Text('Twilio console → Account Info. The token never leaves our server.',
-            style: TextStyle(fontSize: 12)),
-        const SizedBox(height: 8),
-        TextField(
-            controller: _sid,
-            decoration:
-                const InputDecoration(labelText: 'Account SID (AC…)')),
-        const SizedBox(height: 8),
-        TextField(
-            controller: _twToken,
-            decoration: const InputDecoration(labelText: 'Auth Token')),
-        const SizedBox(height: 10),
-        FilledButton(
-            onPressed: _busy ? null : _twilioList,
-            child: Text(_busy ? 'Checking…' : 'Find my numbers')),
-        const SizedBox(height: 8),
-        const Text('No Twilio? Point any number at this URL by hand:',
-            style: TextStyle(fontSize: 12)),
-        _copyRow('Webhook URL', webhook),
-      ]);
-    }
-    if (_step == 2) {
-      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Step 2 of 3 — pick your number',
-            style: TextStyle(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          initialValue: _picked,
-          decoration:
-              const InputDecoration(labelText: 'Your Twilio numbers'),
-          items: [
-            for (final n in _numbers ?? [])
-              DropdownMenuItem(
-                  value: '${(n as Map)['sid']}',
-                  child: Text('${n['phone'] ?? n['sid']}')),
-          ],
-          onChanged: (v) => setState(() => _picked = v),
-        ),
-        const SizedBox(height: 10),
-        FilledButton(
-            onPressed: _busy ? null : _twilioAdopt,
-            child: Text(_busy ? 'Pointing…' : 'Point it at my bot')),
-      ]);
-    }
-    return _testStep();
-  }
-
   Widget _telegramFlow() {
     if (_step == 1) {
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Step 1 of 2 — paste your BotFather token',
+        const Text('Step 1 of 2 — get a free token from Telegram',
             style: TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 4),
-        const Text('Telegram → @BotFather → /newbot → name it → copy token.',
+        const Text(
+            'Open Telegram → search @BotFather → /newbot → name it → username ending in "bot" → copy the token (like 123456789:ABCdef…) and paste it below. Keep it private — anyone with it can control your bot.',
             style: TextStyle(fontSize: 12)),
         const SizedBox(height: 8),
         TextField(
@@ -505,6 +406,9 @@ class _ConnectScreenState extends State<ConnectScreen> {
         FilledButton(
             onPressed: _busy ? null : _tgConnect,
             child: Text(_busy ? 'Checking…' : 'Connect bot')),
+        const SizedBox(height: 4),
+        const Text('We check the token with Telegram instantly.',
+            style: TextStyle(fontSize: 12)),
       ]);
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

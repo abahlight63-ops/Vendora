@@ -186,7 +186,7 @@ async function uploadProductPhoto(req, res) {
   } catch {
     return res.status(400).json({ error: 'Could not read that image.' });
   }
-  if (buf.length === 0 || buf.length > 2.5 * 1024 * 1024) return res.status(400).json({ error: 'Image too large — max 2.5MB.' }); // cap: keeps disks + Twilio fetches cheap
+  if (buf.length === 0 || buf.length > 2.5 * 1024 * 1024) return res.status(400).json({ error: 'Image too large — max 2.5MB.' }); // cap: keeps disks + attachment sends cheap
   const kind = m[2]; // jpeg | png | webp | gif (from the whitelist above!)
   const magicOk = // magic-byte check: extension claims must match the actual bytes (renamed .exe files die here!)
     (kind === 'jpeg' && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) ||
@@ -206,7 +206,7 @@ async function uploadProductPhoto(req, res) {
   }
   const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '') // explicit public host wins (set it on Railway/Render!)…
     || `${req.protocol}://${req.get('host')}`; // …else build from this request (right in local dev!)
-  res.json({ url: `${base}/uploads/${safe}` }); // absolute URL: Twilio/Telegram fetch it server-side!
+  res.json({ url: `${base}/uploads/${safe}` }); // absolute URL: Meta/Telegram fetch it server-side!
 }
 
 async function deleteProduct(req, res) {
@@ -395,10 +395,23 @@ async function complaintMine(req, res) {
 }
 
 // Set/clear the shop's Telegram bot token (paste from BotFather; empty = off).
+// Validated live against Telegram's Bot API (getMe) — bad/expired tokens are
+// rejected with a friendly error instead of silently storing a dead token.
 async function telegramToken(req, res) {
   const { token } = req.body || {}; // BotFather token string (or '' to disconnect!)
   if (token !== undefined && token !== '' && !/^[\w:-]{20,}$/.test(String(token))) return res.status(400).json({ error: 'That does not look like a Telegram bot token (BotFather gives like 123456:ABC-DEF…).' }); // shape check (Bot tokens are long alnum+colon+dash — catches pasted usernames/links!)
-  const clean = String(token || ''); // '' = disconnect (normalized once!)
+  const clean = String(token || '').trim(); // '' = disconnect (normalized once!)
+  if (clean) { // live check: ask Telegram whose bot this is (10s cap — never hang the request!)
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 10000);
+      const r = await fetch(`https://api.telegram.org/bot${clean}/getMe`, { signal: ctrl.signal }).finally(() => clearTimeout(t));
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d || d.ok !== true) return res.status(400).json({ error: 'Telegram rejected that token — re-copy it from @BotFather and try again.' });
+    } catch (e) {
+      return res.status(400).json({ error: 'Could not reach Telegram — check your connection and try again.' });
+    }
+  }
   const { rows } = await db.query(
     'UPDATE businesses SET telegram_bot_token = $1, owner_telegram_id = CASE WHEN $1 = $2 THEN owner_telegram_id ELSE $3 END WHERE id = $4 RETURNING telegram_bot_token <> $2 AS connected',
     [clean, '', null, req.session.businessId]
@@ -429,33 +442,49 @@ async function telegramStatus(req, res) {
 function webhookUrl(req) {
   const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '')
     || `${req.protocol}://${req.get('host')}`; // explicit host wins (prod!); else this request's host (local dev!)
-  return `${base}/webhook/whatsapp`; // ONE webhook for Twilio + Meta (shape-sniffed inside!)
+  return `${base}/webhook/whatsapp`; // ONE Meta webhook (verify-token handshake inside!)
 }
 
 async function channelsStatus(req, res) {
   const { rows } = await db.query(
     `SELECT whatsapp_number, wa_channel, whatsapp_model, whatsapp_last_inbound_at,
-            twilio_account_sid, twilio_account_sid <> '' AS twilio_on, telegram_bot_token <> '' AS telegram_on,
-            meta_phone_number_id <> '' AS meta_on
+            meta_waba_id, telegram_bot_token <> '' AS telegram_on,
+            meta_phone_number_id <> '' AS meta_on,
+            subscription_status, subscription_expires, trial_started_at, plan_tier
      FROM businesses WHERE id = $1`,
     [req.session.businessId]
   );
   if (!rows.length) return res.status(404).json({ error: 'Not found' });
   const b = rows[0];
-  const twilio = require('../services/channels/twilio');
+  const planService = require('../services/planService');
+  let waUsed = 0; // today's bot replies (best-effort — never break status!)
+  try {
+    const { rows: u } = await db.query(
+      `SELECT COUNT(*)::int AS c FROM messages m JOIN conversations c2 ON c2.id = m.conversation_id
+       WHERE c2.business_id = $1 AND m.direction = 'out' AND m.created_at >= CURRENT_DATE`,
+      [req.session.businessId]
+    );
+    waUsed = (u[0] && u[0].c) || 0;
+  } catch (e) { console.error('wa usage error:', e.message); }
+  const fullBiz = { subscription_status: b.subscription_status, subscription_expires: b.subscription_expires, trial_started_at: b.trial_started_at, plan_tier: b.plan_tier };
   res.json({
     whatsapp: {
       number: b.whatsapp_number, // shop's number (locked identity!)
-      channel: b.wa_channel || 'twilio', // 'twilio' | 'meta' (which door answers!)
+      channel: 'meta', // Meta Cloud API only (Embedded Signup road!)
       model: b.whatsapp_model || 'gemini-flash-full', // per-shop brain pick!
       live: !!b.whatsapp_last_inbound_at, // inbound EVER seen (TEST-verify flips this!)
       lastInbound: b.whatsapp_last_inbound_at, // timestamp for "last seen" text
-      twilioConnected: !!b.twilio_on, // own SID/token stored (auto-configure armed!)
-      twilioSid: b.twilio_on ? twilio.maskSid(b.twilio_account_sid) : '', // masked proof ONLY (AC…1234 — the full secret never leaves!)
-      metaConnected: !!b.meta_on, // Phone Number ID + token stored!
+      metaConnected: !!b.meta_on, // WABA credentials stored!
+      wabaId: b.meta_waba_id || '', // WhatsApp Business Account id (Embedded Signup!)
+      tier: planService.effectiveTier(fullBiz), // 'free' | 'pro' | 'plus' (drives limit display!)
+      dailyLimit: planService.whatsappDailyLimit(fullBiz), // 50 / 500 / 1000 (env-overridable!)
+      dailyUsed: waUsed, // replies sent today (resets midnight!)
     },
     telegram: { connected: !!b.telegram_on }, // full Telegram detail lives on GET /api/me/telegram!
-    webhookUrl: webhookUrl(req), // exact URL to paste into Twilio/Meta consoles (copy button!)
+    webhookUrl: webhookUrl(req), // exact URL to paste into Meta (verify step copies it!)
+    metaAppId: (process.env.META_APP_ID || '').trim(), // PUBLIC (Meta design — safe for browsers!)
+    metaConfigId: (process.env.META_CONFIGURATION_ID || '').trim(), // PUBLIC (Embedded Signup flow id!)
+    metaEmbeddedReady: !!((process.env.META_APP_ID || '').trim() && (process.env.META_CONFIGURATION_ID || '').trim()),
   });
 }
 
@@ -475,63 +504,55 @@ async function whatsappModel(req, res) {
   res.json({ model: resolved.entry.id, label: resolved.entry.label }); // echo truth (UI shows what stuck!)
 }
 
-// Twilio step 1: validate pasted SID + token, list their numbers (NOT stored yet!).
-async function twilioConnect(req, res) {
-  const twilio = require('../services/channels/twilio');
-  const { sid, token } = req.body || {};
-  const { numbers, error } = await twilio.listNumbers(sid, token);
-  if (error) return res.status(400).json({ error });
-  res.json({ numbers }); // [{sid, phone, smsUrl}] — the picker (creds stay client-side until Select!)
-}
-
-// Twilio step 2: pick a number → store creds, point its webhook at us, adopt it.
-async function twilioSelect(req, res) {
-  const twilio = require('../services/channels/twilio');
-  const { normalizePhone } = require('../utils/phone');
-  const { sid, token, numberSid, phone } = req.body || {};
-  const listed = await twilio.listNumbers(sid, token); // re-validate (creds must STILL work — no blind writes!)
-  if (listed.error) return res.status(400).json({ error: listed.error });
-  const found = (listed.numbers || []).find((n) => n.sid === numberSid); // chosen number MUST be theirs (no spoofed SIDs!)
-  if (!found) return res.status(400).json({ error: 'Pick one of your Twilio numbers.' });
-  const set = await twilio.setWebhook(sid, token, numberSid, webhookUrl(req)); // the auto-connect (Twilio points at us!)
-  if (set.error) return res.status(400).json({ error: set.error });
-  const wa = normalizePhone(found.phone || phone || ''); // normalize to whatsapp:+… (fallback to pasted phone!)
-  await db.query(
-    `UPDATE businesses SET twilio_account_sid = $1, twilio_auth_token = $2,
-      whatsapp_number = COALESCE(NULLIF($3, ''), whatsapp_number), wa_channel = 'twilio'
-     WHERE id = $4`, // COALESCE+NULLIF: adopt the number only when valid (else keep signup number!)
-    [String(sid).trim(), String(token).trim(), wa || '', req.session.businessId]
-  );
-  res.json({ ok: true, phone: found.phone, maskedSid: twilio.maskSid(sid) });
-}
-
-// Twilio disconnect: forget creds (number stays — inbound keeps routing!).
-async function twilioDisconnect(req, res) {
-  await db.query("UPDATE businesses SET twilio_account_sid = '', twilio_auth_token = '' WHERE id = $1", [req.session.businessId]);
-  res.json({ ok: true });
-}
-
 // Meta step 1+2 in one: validate ID + token, store, arm the channel.
+// Accepts manual paste OR Embedded Signup results (waba_id included).
 async function metaConnect(req, res) {
   const meta = require('../services/channels/meta');
-  const { phone_number_id, token } = req.body || {};
+  const { phone_number_id, token, waba_id } = req.body || {};
   const checked = await meta.checkCredentials(phone_number_id, token); // asks Meta whose number this is (invalid → friendly error!)
   if (checked.error) return res.status(400).json({ error: checked.error });
   const crypto = require('crypto');
   const verify = 'VND' + crypto.randomBytes(8).toString('hex').toUpperCase(); // per-shop verify token (Meta echoes it on subscribe — proves ownership!)
   await db.query(
-    `UPDATE businesses SET meta_token = $1, meta_phone_number_id = $2,
-      meta_verify_token = COALESCE(NULLIF(meta_verify_token, ''), $3), wa_channel = 'meta'
-     WHERE id = $4`, // keep an existing verify token (Meta already subscribed? don't break it!)
-    [String(token).trim(), String(phone_number_id).trim(), verify, req.session.businessId]
+    `UPDATE businesses SET meta_token = $1, meta_phone_number_id = $2, meta_waba_id = $3,
+      meta_verify_token = COALESCE(NULLIF(meta_verify_token, ''), $4), wa_channel = 'meta'
+     WHERE id = $5`, // keep an existing verify token (Meta already subscribed? don't break it!)
+    [String(token).trim(), String(phone_number_id).trim(), String(waba_id || '').trim(), verify, req.session.businessId]
   );
   const { rows } = await db.query('SELECT meta_verify_token FROM businesses WHERE id = $1', [req.session.businessId]);
   res.json({ ok: true, phone: checked.phone, verifyToken: rows[0].meta_verify_token, webhookUrl: webhookUrl(req) });
 }
 
-// Meta disconnect: forget creds, fall back to Twilio door.
+// Meta Embedded Signup callback: the popup hands us a WABA id, a phone number
+// id and either an access token (direct) or an auth code (server exchanges it
+// with META_APP_SECRET). Credentials are validated against the Graph API then
+// stored against the shop — never shown back to the browser.
+async function metaEmbedded(req, res) {
+  const meta = require('../services/channels/meta');
+  let { waba_id, phone_number_id, token, code } = req.body || {};
+  waba_id = String(waba_id || '').trim();
+  phone_number_id = String(phone_number_id || '').trim();
+  token = String(token || '').trim();
+  code = String(code || '').trim();
+  if (code && !token) { // code road: exchange server-side, then discover the number on the WABA…
+    const ex = await meta.exchangeCode(code);
+    if (ex.error) return res.status(400).json({ error: ex.error });
+    token = ex.token;
+    if (waba_id && !phone_number_id) {
+      const listed = await meta.listWabaNumbers(waba_id, token);
+      if (listed.error) return res.status(400).json({ error: listed.error });
+      if (!listed.numbers.length) return res.status(400).json({ error: 'That WhatsApp Business Account has no phone numbers yet — add one in WhatsApp Manager first.' });
+      phone_number_id = listed.numbers[0].id; // first number wins (owner can swap via manual reconnect!)
+    }
+  }
+  if (!phone_number_id || !token) return res.status(400).json({ error: 'Signup did not return a number — try again or paste your details manually.' });
+  req.body = { phone_number_id, token, waba_id }; // reuse the validated manual path (one storage road!)
+  return metaConnect(req, res);
+}
+
+// Meta disconnect: forget creds (channel stays 'meta' — OFF until reconnected!).
 async function metaDisconnect(req, res) {
-  await db.query("UPDATE businesses SET meta_token = '', meta_phone_number_id = '', wa_channel = 'twilio' WHERE id = $1", [req.session.businessId]);
+  await db.query("UPDATE businesses SET meta_token = '', meta_phone_number_id = '', meta_waba_id = '', wa_channel = 'meta' WHERE id = $1", [req.session.businessId]);
   res.json({ ok: true });
 }
 
@@ -699,10 +720,8 @@ module.exports = { // every handler the routes file wires up (miss one here = ro
   telegramStatus,
   channelsStatus,
   whatsappModel,
-  twilioConnect,
-  twilioSelect,
-  twilioDisconnect,
   metaConnect,
+  metaEmbedded,
   metaDisconnect,
   metaPullProfile,
   getNotifications,

@@ -19,7 +19,7 @@ import Welcome from './pages/Welcome.jsx'; // niche + heard-from setup (tour →
 import Dashboard from './pages/Dashboard.jsx'; // overview: stats + attention + checklist
 import Profile from './pages/Profile.jsx'; // business name/number/hours/tone/FAQs/currency/timezone
 import Catalog from './pages/Catalog.jsx'; // products + Pro profile-sync
-import Connect from './pages/Connect.jsx'; // channel switchboard (WhatsApp Meta/Twilio + Telegram + brain pick)
+import Connect from './pages/Connect.jsx'; // channel switchboard (WhatsApp Embedded Signup + Telegram + brain pick)
 import Chats from './pages/Chats.jsx'; // inbox + threads
 import Billing from './pages/Billing.jsx'; // plans + status + trial countdown
 import Playground from './pages/Playground.jsx'; // test-bot (no WhatsApp needed)

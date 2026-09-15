@@ -55,7 +55,7 @@ const billingLimiter = rateLimit({ // checkout starts: stops payment-session spa
   message: 'Too many payment attempts — wait a few minutes and try again.',
 });
 
-const webhookLimiter = rateLimit({ // provider webhooks: very generous (Twilio/Telegram burst legitimately; forgery is stopped by signatures, not counts!)
+const webhookLimiter = rateLimit({ // provider webhooks: very generous (Meta/Telegram burst legitimately; forgery is stopped by verify tokens + secrets, not counts!)
   windowMs: 60 * 1000,
   max: 600,
 });

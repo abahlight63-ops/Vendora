@@ -19,7 +19,7 @@ const authRoutes = require('./routes/authRoutes'); // /api/auth/* (signup, login
 const ownerRoutes = require('./routes/ownerRoutes'); // /api/me* (owner dashboard data)
 const adminRoutes = require('./routes/adminRoutes'); // /api/businesses* (admin key)
 const billingRoutes = require('./routes/billingRoutes'); // /api/billing/* (Paystack init)
-const webhookRoutes = require('./routes/webhookRoutes'); // /webhook/whatsapp (Twilio inbound)
+const webhookRoutes = require('./routes/webhookRoutes'); // /webhook/whatsapp (Meta Cloud API inbound)
 const telegramRoutes = require('./routes/telegramRoutes'); // /webhook/telegram/* (Telegram inbound, both modes)
 
 const app = express(); // create the Express application object
@@ -39,7 +39,7 @@ if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
 
 // Middleware — functions EVERY request passes through, in order:
 app.use(secureHeaders); // locks FIRST (every response carries them, even errors!)
-app.use(express.urlencoded({ extended: false })); // parse HTML form bodies (Twilio sends forms!)
+app.use(express.urlencoded({ extended: false })); // parse HTML form bodies (Paystack/Flutterwave posts + legacy forms!)
 app.use( // parse JSON bodies…
   express.json({
     verify: (req, res, buf) => {
@@ -84,7 +84,7 @@ app.get('/api/version', (req, res) => {
 });
 
 // Routes — mount each router at a URL prefix:
-app.use('/webhook', webhookRoutes); // POST /webhook/whatsapp ← Twilio
+app.use('/webhook', webhookRoutes); // POST /webhook/whatsapp ← Meta Cloud API
 app.use('/webhook', telegramRoutes); // POST /webhook/telegram/:bizId + /shared ← Telegram (same /webhook prefix, distinct paths!)
 app.use('/api/auth', authRoutes); // POST /api/auth/login etc.
 // Admin login/logout BEFORE ownerRoutes (whose blanket requireAuth would 401
@@ -142,10 +142,38 @@ const spa = (req, res) => {
 ['/', '/login', '/reset', '/onboarding', '/welcome', '/dashboard', '/profile', '/catalog', '/connect', '/chats', '/billing', '/playground', '/insights', '/vendora-ai', '/settings', '/help', '/privacy', '/terms', '/faq', '/admin'].forEach((r) => app.get(r, spa)); // register each page → same handler
 
 const port = process.env.PORT || 3000; // hosts (Render) inject PORT; locally default 3000
+// Release broadcast: when APP_VERSION changes, push WHATS_NEW into every
+// owner's bell ONCE (dedupe key in app_meta). Fire-and-log — a broadcast must
+// never block boot (Render restarts often!).
+async function maybeBroadcastRelease() {
+  try {
+    const db = require('./db');
+    const { APP_VERSION, WHATS_NEW } = require('./version');
+    const { rows } = await db.query("SELECT value FROM app_meta WHERE key = 'last_broadcast_version' LIMIT 1");
+    if (rows[0] && rows[0].value === APP_VERSION) return; // already announced (restarts don't resend!)
+    if (!Array.isArray(WHATS_NEW) || !WHATS_NEW.length) return; // nothing to say (still record below!)
+    const { broadcast } = require('./services/notifyService');
+    for (const note of WHATS_NEW) { // one bell item per note (each links where to try it!)
+      const text = String(note && note.text ? note.text : note || '');
+      const link = String((note && note.link) || '/dashboard');
+      if (!text.trim()) continue;
+      await broadcast({ title: `New in v${APP_VERSION}: ${text.slice(0, 90)}`, body: text.slice(0, 500), link });
+    }
+    await db.query(
+      `INSERT INTO app_meta (key, value, updated_at) VALUES ('last_broadcast_version', $1, now())
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+      [APP_VERSION]
+    );
+    console.log(`Release broadcast v${APP_VERSION} sent.`);
+  } catch (e) {
+    console.error('Release broadcast skipped:', e.message); // log + boot anyway (bell is a nicety, not the app!)
+  }
+}
 // Self-migrating boot: new columns apply on EVERY deploy automatically
 // (all statements are IF NOT EXISTS — safe to re-run, never destroys data).
 // Without this, production misses columns until someone runs db:init by hand!
 require('./services/configService').ensureSchema()
+  .then(() => maybeBroadcastRelease()) // one broadcast per APP_VERSION (bell for every owner!)
   .then(() => app.listen(port, () => { // START listening — the callback runs once the socket is open
     console.log(`WhatsApp AI support server running on port ${port}`);
     console.log(`Signup/login: http://localhost:${port}/login`);

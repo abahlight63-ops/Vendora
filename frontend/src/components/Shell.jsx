@@ -39,22 +39,39 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
   const { pathname } = useLocation(); // destructure current path from router (re-renders on navigation)
   const navigate = useNavigate(); // navigate('/login') = go there in code (after logout)
   const [menuOpen, setMenuOpen] = useState(false); // mobile drawer open? (desktop sidebar always visible via CSS)
+  const [updateBanner, setUpdateBanner] = useState(null); // {version} while the 2-min NEW window is open (null = hidden!)
   useEffect(() => { document.title = 'Vendora — ' + (TITLES[pathname] || 'Overview'); }, [pathname]); // side-effect: browser tab title follows route (|| fallback)
   useEffect(() => { setMenuOpen(false); }, [pathname]); // auto-close drawer on every navigation (pick a link → drawer vanishes)
   useEffect(() => { // lock body scroll while drawer open (background mustn't scroll under the overlay)…
     document.body.style.overflow = menuOpen ? 'hidden' : ''; // '' restores default ('hidden' disables scroll)
     return () => { document.body.style.overflow = ''; }; // cleanup: always restore on unmount (stuck scroll = broken app!)
   }, [menuOpen]); // re-run when drawer toggles
-  useEffect(() => { // app-update notice: version changed since last visit → toast once…
+  useEffect(() => { // app-update notice: version changed since last visit → 2-min NEW banner + toast…
+    let timer = null;
     api('/api/version').then(({ ok, data }) => {
       if (!ok || !data?.version) return;
-      let last = null;
-      try { last = localStorage.getItem('vendora-version'); } catch {}
+      let last = null, seenAt = 0;
+      try {
+        last = localStorage.getItem('vendora-version');
+        seenAt = Number(localStorage.getItem('vendora-version-seen-at') || 0);
+      } catch {}
+      const now = Date.now();
       if (last && last !== data.version) {
-        toast('Vendora updated to v' + data.version + ' — open the notification bell to see what changed', 'ok');
+        toast('Vendora updated to v' + data.version + ' — check out what changed!', 'ok');
+        try {
+          localStorage.setItem('vendora-version', data.version);
+          localStorage.setItem('vendora-version-seen-at', String(now));
+        } catch {}
+        setUpdateBanner({ version: data.version }); // fresh update → banner for 2 minutes!
+        timer = setTimeout(() => setUpdateBanner(null), 2 * 60 * 1000);
+      } else if (last && seenAt && (now - seenAt) < 2 * 60 * 1000) {
+        setUpdateBanner({ version: data.version }); // reload inside the window → banner for the REMAINDER!
+        timer = setTimeout(() => setUpdateBanner(null), 2 * 60 * 1000 - (now - seenAt));
+      } else {
+        try { localStorage.setItem('vendora-version', data.version); } catch {}
       }
-      try { localStorage.setItem('vendora-version', data.version); } catch {}
     });
+    return () => { if (timer) clearTimeout(timer); }; // unmount → drop the timer (no leaked timeouts!)
   }, []); // mount-only (one check per page load, not per navigation)
   async function logout() {
     setMenuOpen(false); // close the drawer first (both topbar + drawer buttons use this)
@@ -99,7 +116,16 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
               <button className="btn ghost sm signout-btn" onClick={logout}>Sign out</button> {/* ghost = outline style; sm = small; .signout-btn hides on phones (drawer carries sign-out instead) */}
             </div>
           </header>
-          <main className="page">{children}</main> {/* children = THE PAGE (Dashboard/Catalog/…) rendered inside the frame */}
+          <main className="page">
+            {updateBanner && (
+              <div className="update-banner" role="status"> {/* 2-min release banner (auto-hides!) */}
+                <span className="pill new">NEW</span>
+                <span>Vendora v{updateBanner.version} is live — check it out!</span>
+                <button className="btn sm" onClick={() => { setUpdateBanner(null); navigate('/dashboard'); }}>Check it out</button>
+                <button className="btn ghost sm" onClick={() => setUpdateBanner(null)} aria-label="Dismiss">Dismiss</button>
+              </div>
+            )}
+            {children}</main> {/* children = THE PAGE (Dashboard/Catalog/…) rendered inside the frame */}
         </div>
       </div>
       <nav className="mobile-bar"> {/* bottom tab bar: mobile only (CSS), 5 key sections */}

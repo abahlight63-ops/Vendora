@@ -217,8 +217,8 @@ async function handleInbound(req, res) {
       } else if (String(mime).startsWith('audio/')) { // VOICE NOTES → Whisper path (Pro-only!)
         const media = await whatsappService.fetchMedia(req.body.MediaUrl0, mime); // same downloader (returns .audio twin!)
         if (media && media.audio) { // downloaded OK?…
-          if (!planService.isPro(business)) { // …free tier → polite handoff (voice is a PREMIUM selling point, not a silent drop!)
-            body = (Body || '') + ' [the customer sent a voice note — voice notes are a Pro feature]'; // AI sees the note → hands off gracefully (no invented transcript!)
+          if (!planService.isProPlus(business)) { // …non-Plus → polite handoff (voice transcription is a PRO PLUS selling point, not a silent drop!)
+            body = (Body || '') + ' [the customer sent a voice note — voice notes are a Pro Plus feature]'; // AI sees the note → hands off gracefully (no invented transcript!)
           } else { // …Pro → transcribe (Whisper Large v3 on Groq — sub-second, free tier!)…
             const said = await whatsappService.transcribeAudio(media.audio); // transcript or null (quota/down/bad audio → null!)
             body = said // transcript wins: prefix marks provenance (owner sees 🎤 in inbox, AI reads plain words!)…

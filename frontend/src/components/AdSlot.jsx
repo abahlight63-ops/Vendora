@@ -21,12 +21,12 @@ export default function AdSlot() {
   useEffect(() => { // mount-only: snapshot the tier-resolved ads config…
     let live = true; // guard against setState after unmount
     getAds().then((a) => { if (live) { setAds(a); setLoaded(true); } });
-    const t = setTimeout(() => { // ad-block probe: network tag should exist by now on free-live…
+    const t = setTimeout(() => { // ad-block probe: a SESSION tag should exist by now on free-live…
       if (!live) return;
       try {
-        const hasTag = !!document.querySelector('script[data-adnet]');
+        const hasTag = !!document.querySelector('script[data-adnet][data-adfreq="session"]'); // daily-capped tags (popunder) may skip legitimately — never count them as blocked
         getAds().then((a) => { // re-read (cache hit — no extra fetch)…
-          if (live && a && Array.isArray(a.networks) && a.networks.length && !hasTag) setBlocked(true);
+          if (live && a && Array.isArray(a.networks) && a.networks.some((n) => (n.freq || 'session') === 'session' && n.scriptUrl) && !hasTag) setBlocked(true);
         });
       } catch {}
     }, 6000); // 6s: slow phone networks still get room (tags self-remove after 15s if stuck)

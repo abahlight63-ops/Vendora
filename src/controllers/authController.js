@@ -6,7 +6,15 @@
 // MODULES: ../db (pool), ../services/authService (users), ../utils/phone.
 const db = require('../db'); // shared pool
 const authService = require('../services/authService'); // findUserByEmail, createUser, verifyPassword…
+const mail = require('../services/emailTemplates'); // welcome email after verification (fire-and-forget!)
 const { normalizePhone } = require('../utils/phone'); // destructure the phone helper
+
+// Welcome email after a FRESH verification (link, OTP or Google — never on
+// repeat visits). Fire-and-forget: a mail hiccup must never break the moment.
+function welcomeNewUser(email, businessName) {
+  if (!process.env.RESEND_API_KEY || !email) return; // no key → no mail possible (dev auto-verify path!)
+  mail.sendWelcomeEmail(email, businessName).catch(() => {}); // .catch swallows (unhandled rejections crash Node!)
+}
 
 // Force-write the session to the store NOW. Without this, express-session only
 // saves at response end and a DB blip yields a fake 200 whose cookie dies on
@@ -69,6 +77,7 @@ async function signup(req, res) {
 async function verify(req, res) {
   const user = await authService.verifyByToken(req.query.token || ''); // req.query = ?token=… from the email link; || '' guards missing
   if (user) {
+    authService.findUserByEmail(user.email).then((full) => welcomeNewUser(user.email, full && full.business_name)).catch(() => {}); // welcome mail (name looked up for the greeting — async, never blocks the page!)
     res.send(`<body style="font-family:Segoe UI,sans-serif;background:#050807;color:#ecfff6;display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center"><img src="/logo.png" alt="" style="width:60px;border-radius:14px;background:#fff;padding:4px"/><h1 style="color:#7ef0c0;">✓ Email verified!</h1><p style="color:#8fb8ac;">Your AI sales assistant is activated. You can sign in now.</p><a href="/login" style="display:inline-block;margin-top:14px;background:#25D366;color:#04120c;padding:13px 28px;border-radius:12px;text-decoration:none;font-weight:700;">Go to sign in</a></div></body>`); // inline success page (emails link here; styles inline because it's a standalone page)
   } else {
     res.status(400).send(`<body style="font-family:Segoe UI,sans-serif;background:#050807;color:#ecfff6;display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center"><h1 style="color:#ff9d8a;">Link invalid or expired</h1><p style="color:#8fb8ac;">Request a new verification email from the sign-in page.</p><a href="/login" style="color:#25D366;">Back to sign in</a></div></body>`); // bad/used/expired token
@@ -183,6 +192,7 @@ async function googleSignup(req, res) {
       [business.id, email, '']
     );
     const user = uRows[0]; // verified=true immediately (Google proved the inbox — no OTP dance needed!)
+    welcomeNewUser(email, business.name); // Google signup → welcome mail straight away (inbox already proven!)
     req.session.userId = user.id; // log straight in (same stamp!)
     req.session.businessId = business.id;
     if (!(await saveSession(req, res))) return; // persist NOW (else /api/me bounces!)
@@ -213,6 +223,7 @@ async function verifyOtp(req, res) {
     return res.status(400).json({ error: 'Wrong code — try again.' });
   }
   const user = result.user; // verified user object (returned by the service — no second lookup!)
+  authService.findUserByEmail(user.email).then((full) => welcomeNewUser(user.email, full && full.business_name)).catch(() => {}); // fresh OTP verification → welcome mail (the `already` branch above returns early, so this only fires once!)
   req.session.userId = user.id; // LOGIN on successful verification (same session stamp as login/signup!)…
   req.session.businessId = user.business_id;
   if (!(await saveSession(req, res))) return; // persist NOW (this was the signup-OTP bounce: 200 without a saved row → /api/me 401 → back to login!)

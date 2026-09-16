@@ -39,6 +39,7 @@ router.post('/me/channels/meta/disconnect', ownerController.metaDisconnect); // 
 router.post('/me/channels/meta/pull-profile', ownerController.metaPullProfile); // one-tap auto-sync (Pro!)
 router.get('/me/complaints', ownerController.complaintMine);
 router.post('/me/complaints', ownerController.complaintCreate); // file a support ticket (shows in Admin → Complaints)
+router.post('/me/feedback', ownerController.feedbackCreate); // categorized feedback + StaticForms email copy (same ticket history!)
 router.get('/me/notifications', ownerController.getNotifications); // bell inbox (newest first + unread count)
 router.post('/me/notifications/read', ownerController.readNotifications); // mark all read on open
 

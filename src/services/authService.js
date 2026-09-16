@@ -6,34 +6,12 @@
 // Fetch (Node 18+ built-in) calls the Resend email API — no SDK installed.
 const crypto = require('crypto'); // Node built-in: hashing, random bytes
 const db = require('../db'); // shared Postgres pool
+const mail = require('./emailTemplates'); // branded Resend templates (logo + contact in every mail)
 
 /** Send the verification email via Resend (free tier). Returns true if sent. */
 async function sendVerificationEmail(email, token) {
-  const key = process.env.RESEND_API_KEY; // from .env (get free one at resend.com)
-  if (!key) return false; // dev mode: auto-verify — return false MEANS "not sent"
-  const base = process.env.PUBLIC_BASE_URL || 'http://localhost:3000'; // links must point at the PUBLIC url, not localhost
-  const link = `${base}/api/auth/verify?token=${token}`; // the click-target: our own /verify route
-  const from = process.env.EMAIL_FROM || 'Vendora <onboarding@resend.dev>'; // sender identity (Resend's free sandbox domain default)
-  const html = ` // backticks = multi-line template string; ${link} interpolates the URL twice
-    <div style="font-family:Segoe UI,sans-serif;max-width:520px;margin:auto;padding:24px;background:#f6faf8;border-radius:14px;">
-      <h2 style="color:#075E54;">Confirm your email — Vendora</h2>
-      <p style="color:#333;line-height:1.6;">Welcome aboard! Click the button below to verify your email and activate your AI sales assistant.</p>
-      <p style="text-align:center;margin:26px 0;">
-        <a href="${link}" style="background:#25D366;color:#04120c;padding:13px 28px;border-radius:10px;text-decoration:none;font-weight:700;">Verify my email</a>
-      </p>
-      <p style="color:#777;font-size:.85rem;">Or paste this link into your browser:<br>${link}</p>
-      <p style="color:#999;font-size:.8rem;">Didn't sign up? Ignore this email.</p>
-    </div>`; // inline styles because email clients strip <style> tags (email HTML 101)
-  const res = await fetch('https://api.resend.com/emails', { // POST to Resend's send endpoint
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, // Bearer = "here's my API key"
-    body: JSON.stringify({ from, to: [email], subject: 'Confirm your email — Vendora', html }), // to: is an ARRAY in Resend's API
-  });
-  if (!res.ok) {
-    console.error('Resend send failed:', res.status, await res.text()); // log Resend's reason (bad key? bad domain?)
-    return false; // caller treats false as "auto-verify instead"
-  }
-  return true; // sent — user must click before login works
+  if (!process.env.RESEND_API_KEY) return false; // dev mode: auto-verify — return false MEANS "not sent"
+  return mail.sendVerificationEmail(email, token); // branded template (logo header, support footer)
 }
 
 /**
@@ -112,26 +90,8 @@ function makeOTP() {
 }
 
 async function sendOTPEmail(email, code) { // pretty code email via Resend (same provider — no new dependency!)…
-  const key = process.env.RESEND_API_KEY;
-  if (!key) return false; // dev mode: caller auto-verifies (same convention as links!)
-  const from = process.env.EMAIL_FROM || 'Vendora <onboarding@resend.dev>';
-  const html = ` // big digits, plain words (grandma-proof email!)…
-    <div style="font-family:Segoe UI,sans-serif;max-width:520px;margin:auto;padding:24px;background:#f6faf8;border-radius:14px;text-align:center;">
-      <h2 style="color:#075E54;">Your Vendora code</h2>
-      <p style="color:#333;">Enter this code to verify your email:</p>
-      <div style="font-size:42px;font-weight:800;letter-spacing:12px;color:#0d1f16;margin:18px 0;">${code}</div>
-      <p style="color:#777;font-size:.85rem;">Expires in 10 minutes. Didn't ask for this? Ignore it.</p>
-    </div>`;
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to: [email], subject: `${code} — your Vendora code`, html }), // code in SUBJECT = visible without opening (phone notifications show it!)
-  });
-  if (!res.ok) {
-    console.error('Resend OTP failed:', res.status, await res.text());
-    return false;
-  }
-  return true;
+  if (!process.env.RESEND_API_KEY) return false; // dev mode: caller auto-verifies (same convention as links!)
+  return mail.sendOTPEmail(email, code); // branded template (big digits + logo header)
 }
 
 async function issueOTP(email) { // create + send a fresh code (invalidates any previous one!)…
@@ -171,18 +131,14 @@ async function issueReset(email) { // create a reset token (always "succeeds" pu
   if (!user) return { sent: true }; // unknown email: PRETEND success (don't reveal who has accounts — enumeration defense!)
   const token = crypto.randomBytes(32).toString('hex'); // 256-bit unguessable token (same strength as verify links!)
   await db.query('UPDATE users SET reset_token = $1, reset_expires = now() + make_interval(hours => 1) WHERE id = $2', [token, user.id]); // 1-hour window (short-lived secrets!)
-  const key = process.env.RESEND_API_KEY;
-  if (!key) return { sent: true, devToken: token }; // dev mode: RETURN the token (frontend can display it — local testing without email!)
-  const base = process.env.PUBLIC_BASE_URL || 'http://localhost:3000'; // links must be PUBLIC (localhost links die in real inboxes!)
-  const link = `${base}/reset?token=${token}`; // the reset page route (frontend Reset.jsx reads ?token=)
-  const from = process.env.EMAIL_FROM || 'Vendora <onboarding@resend.dev>';
-  const html = `<div style="font-family:Segoe UI,sans-serif;max-width:520px;margin:auto;padding:24px;background:#f6faf8;border-radius:14px;"><h2 style="color:#075E54;">Reset your password</h2><p style="color:#333;">Click below (expires in 1 hour):</p><p style="text-align:center;margin:26px 0;"><a href="${link}" style="background:#25D366;color:#04120c;padding:13px 28px;border-radius:10px;text-decoration:none;font-weight:700;">Set a new password</a></p><p style="color:#999;font-size:.8rem;">Didn't ask? Ignore it — your password stays.</p></div>`;
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to: [email], subject: 'Reset your Vendora password', html }),
-  });
-  if (!res.ok) console.error('Resend reset failed:', res.status, await res.text()); // log only (public response stays "sent" — enumeration defense even on failure!)
+  if (!process.env.RESEND_API_KEY) {
+    // Dev mode: hand the token back ONLY outside production (local testing
+    // without email). In production a missing key must NEVER leak tokens —
+    // users just see "sent" and the admin must set RESEND_API_KEY.
+    return process.env.NODE_ENV === 'production' ? { sent: true } : { sent: true, devToken: token };
+  }
+  const sent = await mail.sendResetEmail(email, token); // branded template (logo header, support footer)
+  if (!sent) console.error('Resend reset failed (see log above)'); // log only (public response stays "sent" — enumeration defense even on failure!)
   return { sent: true };
 }
 

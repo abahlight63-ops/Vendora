@@ -39,24 +39,37 @@ export async function getAds() {
 }
 
 // Per-VIEW: inject each network tag once per session (15s stuck-tag guard — slow phone networks need room).
-function injectTag(provider, url) { // NOT exported: internal helper (only loadNetworkAds uses it)
+// freq 'daily' (popunder) is capped to one injection per browser per day via
+// localStorage — aggressive formats must never overshow. 'session' tags rely
+// on once-per-login injection + the network's own impression throttling.
+function dayKey(provider) { // daily-cap storage key, e.g. 'adfreq:adsterra-popunder:2026-09-16'
+  return `adfreq:${provider}:` + new Date().toISOString().slice(0, 10); // UTC date (same convention as the sponsor cap)
+}
+function injectTag(provider, url, freq) { // NOT exported: internal helper (only loadNetworkAds uses it)
   if (!url || document.querySelector(`script[data-adnet="${provider}"]`)) return; // no URL, or tag already present → skip (idempotent = safe to call repeatedly)
+  if (freq === 'daily') { // popunder-style: one showing per browser per day…
+    try { if (localStorage.getItem(dayKey(provider))) return; } catch { return; } // already shown today (or storage broken → fail CLOSED: fewer ads, never errors)
+  }
   const s = document.createElement('script'); // create <script> element programmatically…
   s.async = true; // async = never blocks page rendering (ads must never slow the app)
   s.dataset.adnet = provider; // data-adnet="monetag" → the dedupe hook above finds it next time
+  s.dataset.adfreq = freq || 'session'; // data-adfreq lets the AdSlot ad-block probe ignore daily-capped tags
   s.src = url; // setting .src STARTS the download (browser fetches the ad network's code)
   const kill = setTimeout(() => s.remove(), 15000); // SAFETY: yank the tag if it hangs >15s (dead server can't freeze us; 15s — not 5 — so slow phone networks still load fine)
   s.onload = () => clearTimeout(kill); // loaded fine → cancel the yank timer…
   s.onerror = () => s.remove(); // …failed → remove immediately (broken tag leaves no trace)
   document.head.appendChild(s); // mount into <head> → browser executes it
+  if (freq === 'daily') { // mark SHOWN only after mounting (a skipped inject never consumes the day's cap)…
+    try { localStorage.setItem(dayKey(provider), '1'); } catch {} // …silently ignore storage failures
+  }
 }
 export async function loadNetworkAds() { // called ONCE by App.jsx after login (exported for that single use)
   const ads = await getAds(); // tier-resolved config (null for Pro/logged-out)
   if (!ads) return; // nothing to load → done (Pro sees zero ads, zero requests)
   const nets = Array.isArray(ads.networks) && ads.networks.length // prefer the networks ARRAY (multi-network)…
     ? ads.networks
-    : (ads.scriptUrl ? [{ provider: ads.provider, scriptUrl: ads.scriptUrl }] : []); // …fall back to legacy single-tag shape (backward-compat with older backend)
-  nets.forEach((n) => injectTag(n.provider || 'custom', n.scriptUrl)); // forEach (not await): tags load INDEPENDENTLY, in parallel
+    : (ads.scriptUrl ? [{ provider: ads.provider, scriptUrl: ads.scriptUrl, freq: 'session' }] : []); // …fall back to legacy single-tag shape (backward-compat with older backend)
+  nets.forEach((n) => injectTag(n.provider || 'custom', n.scriptUrl, n.freq || 'session')); // forEach (not await): tags load INDEPENDENTLY, in parallel
 }
 
 function seenToday() { // has the sponsor interstitial shown today? (daily cap lives HERE, client-side)

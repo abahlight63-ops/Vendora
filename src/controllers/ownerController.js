@@ -41,9 +41,14 @@ async function getMe(req, res) {
       : null; // no sponsor configured → null (frontend shows its house notice)
     // One entry per network (Monetag primary, Adsterra Social Bar secondary…).
     // Different formats per network — never two popunder codes at once.
+    // freq: 'session' = inject once per login (banners, social bar — the
+    // network itself throttles impressions); 'daily' = max once per browser
+    // per day (popunder — aggressive format, strictly capped so it never
+    // annoys). The frontend enforces freq; the backend just labels it.
     const networks = [
-      { provider: process.env.ADS_PROVIDER || 'custom', scriptUrl: process.env.ADS_SCRIPT_URL || null },
-      { provider: process.env.ADS_PROVIDER_2 || 'custom', scriptUrl: process.env.ADS_SCRIPT_URL_2 || null },
+      { provider: process.env.ADS_PROVIDER || 'custom', scriptUrl: process.env.ADS_SCRIPT_URL || null, freq: 'session' },
+      { provider: process.env.ADS_PROVIDER_2 || 'custom', scriptUrl: process.env.ADS_SCRIPT_URL_2 || null, freq: 'session' },
+      { provider: process.env.ADS_POPUNDER_PROVIDER || 'custom', scriptUrl: process.env.ADS_POPUNDER_URL || null, freq: 'daily' },
     ].filter((n) => n.scriptUrl); // .filter keeps only configured networks (unconfigured = no tag = no crash)
     ads = { networks, sponsor, scriptUrl: networks[0]?.scriptUrl || null, provider: networks[0]?.provider || 'custom' }; // scriptUrl/provider kept for backward-compat with older frontend
   }
@@ -370,6 +375,52 @@ async function chatTakeover(req, res) {
   if (owned.rows.length === 0) return res.status(404).json({ error: 'Not found' }); // 404 hides existence (same pattern as getMessages)
   await db.query('UPDATE conversations SET bot_paused = $1, updated_at = now() WHERE id = $2', [paused, req.params.id]); // updated_at bump re-sorts inbox (taken-over chat rises to top = visible!)
   res.json({ bot_paused: paused });
+}
+
+// File feedback (Help form → admin queue + StaticForms email copy).
+// Categories keep the inbox triageable: feedback | complaint | feature | bug.
+// The ticket is ALWAYS stored locally (admin console + user history work with
+// or without StaticForms). When STATICFORMS_KEY is set, the same message is
+// ALSO forwarded to StaticForms (staticforms.xyz → forwards to your inbox),
+// so nothing is missed even if the console isn't checked daily. The key stays
+// server-side — the browser never sees it.
+const FEEDBACK_CATEGORIES = ['feedback', 'complaint', 'feature', 'bug']; // whitelist (anything else → 'feedback')
+async function feedbackCreate(req, res) {
+  const { category: catRaw, subject, body } = req.body || {};
+  if (!body || typeof body !== 'string' || !body.trim()) return res.status(400).json({ error: 'Write your message first.' });
+  if (body.trim().length > 2000) return res.status(400).json({ error: 'Keep it under 2000 characters.' });
+  const category = FEEDBACK_CATEGORIES.includes(String(catRaw || '').toLowerCase()) ? String(catRaw).toLowerCase() : 'feedback';
+  const label = { feedback: 'Feedback', complaint: 'Complaint', feature: 'Feature request', bug: 'Bug report' }[category];
+  const { rows } = await db.query( // store FIRST (local record never depends on the email service!)
+    `INSERT INTO complaints (business_id, subject, body) VALUES ($1, $2, $3)
+     RETURNING id, subject, body, status, reply, created_at`,
+    [req.session.businessId, `[${label}] ${String(subject || 'Message from owner').slice(0, 100)}`, body.trim().slice(0, 2000)]
+  );
+  const ticket = rows[0];
+  const key = (process.env.STATICFORMS_KEY || '').trim(); // staticforms.xyz → Forms → API key (server-side only!)
+  if (key) { // forward a copy to your inbox (fire-and-log: a mail hiccup must never fail the ticket!)
+    try {
+      let email = null, bizName = '';
+      try {
+        const u = await db.query('SELECT email FROM users WHERE business_id = $1 ORDER BY id ASC LIMIT 1', [req.session.businessId]);
+        email = u.rows[0]?.email || null;
+        const b = await db.query('SELECT name FROM businesses WHERE id = $1', [req.session.businessId]);
+        bizName = b.rows[0]?.name || '';
+      } catch {}
+      await fetch('https://api.staticforms.xyz/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accessKey: key,
+          subject: `[Vendora ${label}] ${bizName}`,
+          name: bizName || 'Vendora owner',
+          email: email || 'noreply@vendora',
+          message: `Business: ${bizName} (id ${req.session.businessId})\nCategory: ${label}\nSubject: ${String(subject || '').slice(0, 120)}\n\n${body.trim().slice(0, 2000)}`,
+        }),
+      });
+    } catch (e) { console.error('staticforms forward error:', e.message); }
+  }
+  res.status(201).json(ticket); // 201 + ticket (history updates without reload!)
 }
 
 // File a support complaint (Help form → admin queue). Owners see history below.
@@ -718,6 +769,7 @@ module.exports = { // every handler the routes file wires up (miss one here = ro
   chatTakeover,
   complaintCreate,
   complaintMine,
+  feedbackCreate,
   telegramToken,
   telegramLink,
   telegramStatus,

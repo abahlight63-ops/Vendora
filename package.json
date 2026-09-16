@@ -13,7 +13,8 @@
     "db:seed": "node scripts/seed.js",
     "digest:send": "node src/digest.js",
     "digest:weekly": "node src/digest.js --weekly",
-    "recovery:send": "node src/recovery.js"
+    "recovery:send": "node src/recovery.js",
+    "winback": "node src/winback.js"
   },
   "engines": {
     "node": ">=20.19.0"

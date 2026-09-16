@@ -44,6 +44,7 @@ export default function Help() {
 }
 
 function SupportBox() { // support ticket form + history (Help tab's "Still stuck?" grown up: files structured tickets!)
+  const [cat, setCat] = useState('feedback'); // feedback | complaint | feature | bug (chips below — triages the admin inbox!)
   const [subject, setSubject] = useState(''); // controlled subject draft
   const [body, setBody] = useState(''); // controlled message draft
   const [busy, setBusy] = useState(false); // submit lock (double-submit protection — tickets must not duplicate!)
@@ -54,17 +55,22 @@ function SupportBox() { // support ticket form + history (Help tab's "Still stuc
     if (!body.trim()) return toast('Describe the problem first', 'err'); // guard: blank body
     if (body.trim().length > 2000) return toast('Keep it under 2000 characters', 'err'); // client mirror of server cap (fail fast!)
     setBusy(true); // lock…
-    const { ok, data } = await api('/api/me/complaints', { method: 'POST', body: JSON.stringify({ subject: subject.trim(), body: body.trim() }) });
+    const { ok, data } = await api('/api/me/feedback', { method: 'POST', body: JSON.stringify({ category: cat, subject: subject.trim(), body: body.trim() }) });
     setBusy(false); // …unlock either way (always!)
     if (ok) { // filed → success popup + clear + reload (ticket appears in history below with status "open"!)
-      pop('ok', 'Message sent!', 'Support will reply here and by email. Most issues resolve within a day.');
+      pop('ok', 'Message sent!', 'Thanks — we read every note. Support replies here and by email, most within a day.');
       setSubject(''); setBody(''); load();
     } else pop('err', 'Could not send', data.error || 'Please try again.'); // backend reason shown (validation/caps!)
   }
   return (
     <div className="card">
       <h2>Message support</h2> {/* form first (action!), history second */}
-      <p className="desc">Stuck, confused, or something broken? Write us — include what you tried. Screenshots of the inbox + catalog fix 90% of issues in one reply.</p>
+      <p className="desc">Stuck, confused, or something broken? Pick a topic and write us — include what you tried. Screenshots of the inbox + catalog fix 90% of issues in one reply.</p>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '10px 0 4px' }}>
+        {[['feedback', 'Feedback'], ['complaint', 'Complaint'], ['feature', 'Feature idea'], ['bug', 'Bug report']].map(([v, l]) => ( // category chips (single-select — one topic per message!)
+          <button key={v} className={'btn sm' + (cat === v ? '' : ' ghost')} onClick={() => setCat(v)}>{l}</button>
+        ))}
+      </div>
       <label>Subject</label>
       <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. Bot replies with old prices" maxLength={120} /> {/* maxLength mirrors server slice (defense in depth!) */}
       <label>What happened?</label>

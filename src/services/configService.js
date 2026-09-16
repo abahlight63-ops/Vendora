@@ -85,6 +85,7 @@ ALTER TABLE businesses ADD COLUMN IF NOT EXISTS trial_warned BOOLEAN NOT NULL DE
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS trial_expiry_notified BOOLEAN NOT NULL DEFAULT false; -- true = "trial ended" bell sent + status flipped to expired (once!)
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS paystack_customer_code TEXT; -- Paystack customer id (or transfer:plan:timestamp for manual payments)
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS trial_started_at TIMESTAMPTZ NOT NULL DEFAULT now(); -- 7-day Pro trial clock starts at signup
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS winback_sent_at TIMESTAMPTZ; -- last inactivity-nudge email (winback script caps to one per 30 days)
 
 -- Email verification (Resend)
 ${USERS_TABLE} -- interpolation: paste the users-table string defined above into this one

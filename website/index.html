@@ -4,180 +4,433 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Vendora — Your WhatsApp Shop, Open 24/7</title>
-<meta name="description" content="Vendora turns your WhatsApp number into a 24/7 AI sales rep — instant answers in English or Pidgin, straight from your catalog. Free 7-day trial." />
-<meta name="theme-color" content="#0d1f16" />
+<meta name="description" content="Vendora turns your WhatsApp number into a 24/7 AI sales rep — instant answers in English or Pidgin, straight from your catalog. Free 7-day Pro trial. Android + iOS apps coming soon." />
+<meta name="theme-color" content="#04120c" />
 <link rel="icon" type="image/png" href="./assets/logo.png" />
 <meta property="og:title" content="Vendora — Your WhatsApp shop, open 24/7" />
-<meta property="og:description" content="AI sales assistant for WhatsApp. Instant answers in English or Pidgin, straight from your catalog." />
+<meta property="og:description" content="AI sales assistant for WhatsApp. Instant answers in English or Pidgin, straight from your catalog. Free forever plan + 7-day Pro trial." />
 <meta property="og:type" content="website" />
 <meta property="og:image" content="./assets/logo.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-<div class="bg-glow" aria-hidden="true"></div>
+<!-- ══ SVG SPRITE: every icon on this page (stroke style, no emoji) ══ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="playGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#00A0FF"/><stop offset=".5" stop-color="#00F076"/>
+      <stop offset=".75" stop-color="#FFCE00"/><stop offset="1" stop-color="#FF3A44"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffe9a8"/><stop offset="1" stop-color="#f5b041"/>
+    </linearGradient>
+  </defs>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.4 8.6 8.6 0 0 1-3.9-.9L3 21l2-5.3a8.3 8.3 0 0 1-.9-3.7A8.4 8.4 0 0 1 12.5 3a8.4 8.4 0 0 1 9 8.5z"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/></symbol>
+  <symbol id="i-sync" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10z"/><path d="M9 11.5l2 2 4-4.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5.5"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5z"/></symbol>
+  <symbol id="i-card" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/></symbol>
+  <symbol id="i-mega" viewBox="0 0 24 24"><path d="M3 11l18-7v16L3 13v-2z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-hand" viewBox="0 0 24 24"><path d="M18 9a6 6 0 1 0-12 0c0 6-2.5 7-2.5 7h17S18 15 18 9M10 20a2.2 2.2 0 0 0 4 0"/></symbol>
+  <!-- Google Play triangle (official 4-color gradient shape) -->
+  <symbol id="i-gplay" viewBox="0 0 24 24"><path fill="url(#playGrad)" d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z"/></symbol>
+  <!-- Apple logo -->
+  <symbol id="i-apple" viewBox="0 0 384 512"><path fill="currentColor" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></symbol>
+</svg>
 
-<header class="nav">
+<div class="bg-stage" aria-hidden="true">
+  <span class="orb orb-a"></span><span class="orb orb-b"></span><span class="orb orb-c"></span>
+  <span class="grain"></span>
+</div>
+<div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+
+<!-- Preloader -->
+<div class="loader" id="loader" aria-hidden="true">
+  <div class="loader-inner">
+    <img src="./assets/logo.png" alt="" />
+    <b>VENDORA</b>
+    <span class="loader-bar"><i></i></span>
+  </div>
+</div>
+
+<header class="nav glass">
   <div class="wrap nav-row">
     <a class="brand" href="#top"><img src="./assets/logo.png" alt="Vendora logo" />VENDORA</a>
     <nav class="nav-links">
       <a href="#demo">Live demo</a>
-      <a href="#videos">Ads</a>
-      <a href="#how">How it works</a>
+      <a href="#learn">Learn</a>
+      <a href="#features">Features</a>
+      <a href="#tour">Tour</a>
       <a href="#pricing">Pricing</a>
       <a href="#faq">FAQ</a>
+      <a href="#getapp">Get app</a>
     </nav>
     <span class="nav-cta">
       <a class="btn ghost sm" href="https://vendorabot.vercel.app/login">Sign in</a>
-      <a class="btn sm" href="https://vendorabot.vercel.app/login">Start free</a>
+      <a class="btn sm btn-shine" href="https://vendorabot.vercel.app/login">Start free</a>
     </span>
   </div>
 </header>
 
 <main id="top">
-  <!-- HERO -->
+  <!-- ══ HERO ══ -->
   <section class="wrap hero">
     <div class="hero-copy">
-      <span class="pill ok pulse-dot">● LIVE — AI selling right now</span>
-      <h1>Your WhatsApp shop, <em>open 24/7.</em></h1>
-      <p class="lede">Customers message you at midnight. Vendora answers in seconds — prices, stock, delivery — in English or Pidgin. You only step in when a human touch truly matters.</p>
+      <span class="pill ok pulse-dot"><span class="dot"></span>LIVE — AI SELLING RIGHT NOW</span>
+      <h1>Your WhatsApp shop, <em class="gold-text">open 24/7.</em></h1>
+      <p class="lede">Customers message you at midnight. Vendora answers in seconds — prices, stock, delivery, hours — in English or Pidgin, straight from <b>your</b> catalog. You only step in when a human touch truly matters.</p>
       <div class="cta-row">
-        <a class="btn lg" href="https://vendorabot.vercel.app/login">Start free — 14 days</a>
-        <a class="btn ghost lg" href="#demo">Watch it sell ↓</a>
+        <a class="btn lg btn-shine" href="https://vendorabot.vercel.app/login">Start free — 7 days Pro</a>
+        <a class="btn ghost lg glass" href="#demo"><svg class="ic"><use href="#i-play"/></svg>Watch it sell</a>
       </div>
-      <p class="hint">No card required · Set up in 15 minutes · Cancel anytime</p>
-      <div class="stats">
+      <p class="hint">No card required · Set up in 15 minutes · Manual catalog free forever</p>
+      <div class="stats glass">
         <div class="stat reveal"><b><span data-count="247">0</span>/7</b><span>always answering</span></div>
         <div class="stat reveal"><b>&lt;<span data-count="10">0</span>s</b><span>median reply time</span></div>
         <div class="stat reveal"><b><span data-count="2">0</span> langs</b><span>English + Pidgin</span></div>
+        <div class="stat reveal"><b><span data-count="1000">0</span></b><span>replies/day on Plus</span></div>
       </div>
     </div>
-    <div class="hero-phone">
-      <div class="phone float">
-        <div class="phone-head"><i></i><span>Amaka Beauty Studio<br /><small>online · AI on duty</small></span><b class="live-tag">LIVE DEMO</b></div>
-        <div class="chat" id="liveChat" aria-live="polite"></div>
-        <div class="phone-foot">
-          <button type="button" data-scenario="0" class="chip on">Price ask</button>
-          <button type="button" data-scenario="1" class="chip">LEARN stock</button>
-          <button type="button" data-scenario="2" class="chip">Hot handoff</button>
+    <div class="hero-stage">
+      <div class="float-chip chip-a glass"><svg class="ic"><use href="#i-bolt"/></svg>instant reply · 4s</div>
+      <div class="float-chip chip-b glass"><svg class="ic"><use href="#i-shield"/></svg>never invents prices</div>
+      <div class="phone-tilt" id="phoneTilt">
+        <div class="phone glass-strong">
+          <div class="phone-shine" aria-hidden="true"></div>
+          <div class="phone-head"><i></i><span>Amaka Beauty Studio<br /><small>online · AI on duty</small></span><b class="live-tag">LIVE DEMO</b></div>
+          <div class="chat" id="liveChat" aria-live="polite"></div>
+          <div class="phone-foot">
+            <button type="button" data-scenario="0" class="chip on">Price ask</button>
+            <button type="button" data-scenario="1" class="chip">LEARN stock</button>
+            <button type="button" data-scenario="2" class="chip">Hot handoff</button>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- NICHE MARQUEE -->
-  <div class="marquee" aria-hidden="true"><div class="marquee-track" id="marqueeTrack">
+  <!-- ══ MARQUEE ══ -->
+  <div class="marquee glass" aria-hidden="true"><div class="marquee-track" id="marqueeTrack">
     <span>Boutiques</span><span>Salons</span><span>Thrift vendors</span><span>Food spots</span><span>Phone sellers</span><span>Cosmetics</span><span>Bakeries</span><span>Tailors</span><span>Pharmacies</span><span>Instagram shops</span>
   </div></div>
 
-  <!-- LIVE CHAT SECTION -->
+  <!-- ══ LEARN / ENLIGHTEN ══ -->
+  <section class="wrap section" id="learn">
+    <p class="eyebrow reveal">KNOW MORE · GET ENLIGHTENED</p>
+    <h2 class="reveal">Don't just buy it — <em class="gold-text">understand it.</em></h2>
+    <p class="desc reveal">Four ideas run your whole shop on Vendora. Tap each one, try the live playground, and walk in already knowing more than most owners.</p>
+    <div class="tabs glass reveal" role="tablist" aria-label="Learn Vendora">
+      <button class="tab on" data-tab="t-learn" role="tab">LEARN mode</button>
+      <button class="tab" data-tab="t-sync" role="tab">Profile SYNC · Pro</button>
+      <button class="tab" data-tab="t-pidgin" role="tab">Pidgin mirror</button>
+      <button class="tab" data-tab="t-hand" role="tab">Handoff + ComeBack</button>
+    </div>
+
+    <div class="tabpanes">
+      <div class="tabpane on glass" id="t-learn">
+        <div class="split">
+          <div>
+            <h3><svg class="ic gold"><use href="#i-box"/></svg>Teach it by chatting</h3>
+            <p class="desc">From your owner number, send <code>LEARN: Blue gown ₦45,000</code>. The AI extracts the name + price and updates your catalog. Send the same name again and the price overwrites. Free forever — try it:</p>
+            <div class="playground">
+              <div class="row-input">
+                <input id="learnInput" placeholder="LEARN: Bone straight 20&quot; ₦95,000" aria-label="Try a LEARN message" maxlength="120" />
+                <button class="btn sm btn-shine" id="learnBtn"><svg class="ic"><use href="#i-send"/></svg>Teach</button>
+              </div>
+              <div class="play-out" id="learnOut" aria-live="polite"><span class="hint">Your AI reply preview appears here…</span></div>
+            </div>
+          </div>
+          <div class="mini-list">
+            <div><svg class="ic"><use href="#i-check"/></svg><span><b>Same name = price update.</b> No duplicates, ever.</span></div>
+            <div><svg class="ic"><use href="#i-check"/></svg><span><b>Works for stock too:</b> "sold 3 bags of rice" adjusts inventory (Pro).</span></div>
+            <div><svg class="ic"><use href="#i-check"/></svg><span><b>Every change logged + undoable.</b> No silent edits.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabpane glass" id="t-sync">
+        <div class="split">
+          <div>
+            <h3><svg class="ic gold"><use href="#i-sync"/></svg>Profile SYNC — Pro's superpower</h3>
+            <p class="desc">Paste your WhatsApp Business profile text in <b>Catalog → Sync</b> (or send <code>SYNC:</code> + the text from your owner number). Vendora scaffolds your whole catalog from it — then <b>verifies</b> customer questions against your synced profile.</p>
+            <ol class="steps">
+              <li>Copy your Business profile text.</li>
+              <li>Paste in Catalog → Sync (or SYNC: from WhatsApp).</li>
+              <li>AI builds + verifies products. Photos ride along in replies.</li>
+            </ol>
+          </div>
+          <div class="mini-list">
+            <div><svg class="ic"><use href="#i-check"/></svg><span><b>Free answers questions.</b> Pro does the work.</span></div>
+            <div><svg class="ic"><use href="#i-check"/></svg><span><b>Suggestive selling:</b> up to 5 options per answer.</span></div>
+            <div><svg class="ic"><use href="#i-check"/></svg><span><b>Product photos</b> inside WhatsApp + Telegram replies.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabpane glass" id="t-pidgin">
+        <div class="split">
+          <div>
+            <h3><svg class="ic gold"><use href="#i-chat"/></svg>It mirrors your customer</h3>
+            <p class="desc">Pidgin in → Pidgin out. Formal English in → formal out. It never corrects their language. Toggle to feel it:</p>
+            <div class="tabs small" role="tablist" aria-label="Language demo">
+              <button class="tab on" data-lang="pidgin">Pidgin</button>
+              <button class="tab" data-lang="english">English</button>
+            </div>
+            <div class="chat-demo" id="langDemo" aria-live="polite"></div>
+          </div>
+          <div class="mini-list">
+            <div><svg class="ic"><use href="#i-check"/></svg><span><b>Voice notes transcribed</b> with Whisper AI (Pro Plus).</span></div>
+            <div><svg class="ic"><use href="#i-check"/></svg><span><b>Customer photos matched</b> against your catalog.</span></div>
+            <div><svg class="ic"><use href="#i-check"/></svg><span><b>Any WhatsApp number worldwide</b> works.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabpane glass" id="t-hand">
+        <div class="split">
+          <div>
+            <h3><svg class="ic gold"><use href="#i-hand"/></svg>Unsure? It calls YOU, never guesses</h3>
+            <p class="desc">Low-confidence moments get a polite handoff, a gold flag in your inbox, and an instant alert on your personal WhatsApp — with the customer's exact words attached.</p>
+            <div class="flow">
+              <span class="flow-node">Customer asks</span><i>→</i>
+              <span class="flow-node">AI unsure</span><i>→</i>
+              <span class="flow-node hot">YOU close it</span>
+            </div>
+            <p class="desc" style="margin-top:12px"><b>ComeBack follow-ups:</b> abandoned buyers get a gentle nudge while intent is warm. <b>Owner digest:</b> daily chats, flags + sales signals in one read.</p>
+          </div>
+          <div class="mini-list">
+            <div><svg class="ic"><use href="#i-bell"/></svg><span><b>Instant owner alerts</b> for hot orders.</span></div>
+            <div><svg class="ic"><use href="#i-chart"/></svg><span><b>Insights:</b> handled %, flag reasons, peak hours.</span></div>
+            <div><svg class="ic"><use href="#i-clock"/></svg><span><b>Full inbox + chat history</b> on every plan.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ LIVE DEMO SECTION ══ -->
   <section class="wrap section" id="demo">
+    <p class="eyebrow reveal">LIVE SIMULATION</p>
     <h2 class="reveal">Watch a real conversation happen.</h2>
-    <p class="desc reveal">This is a live simulation of the Vendora reply engine — same brain that answers your customers. Tap a scenario above, or try it yourself inside the app playground.</p>
+    <p class="desc reveal">Same brain that answers your customers. Tap a scenario on the phone above — or open the playground inside the app.</p>
     <div class="demo-row">
-      <div class="card reveal">
+      <div class="card glass tilt reveal">
+        <svg class="ic big gold"><use href="#i-bolt"/></svg>
         <h3>Why owners switch</h3>
         <ul class="ticks">
           <li><b>Midnight sales:</b> 2am questions get 2am answers — no missed buyers.</li>
           <li><b>Zero invented prices:</b> every answer comes from YOUR catalog.</li>
-          <li><b>Hot-lead flags:</b> unsure moments land in your inbox with the customer's exact words.</li>
+          <li><b>Hot-lead flags:</b> unsure moments land in your inbox with exact words.</li>
         </ul>
-        <a class="btn" href="https://vendorabot.vercel.app/login">Try it on your own shop</a>
+        <a class="btn btn-shine" href="https://vendorabot.vercel.app/login">Try it on your own shop</a>
       </div>
-      <div class="card reveal">
+      <div class="card glass tilt reveal">
+        <svg class="ic big gold"><use href="#i-send"/></svg>
         <h3>From your WhatsApp in 3 steps</h3>
         <ol class="steps">
-          <li>Connect your business number in one tap (Meta Embedded Signup — free to start).</li>
-          <li>Teach it once — send <code>LEARN: Blue gown ₦45,000</code> or add products in Catalog.</li>
+          <li>Connect your business number (Meta Embedded Signup — free to start).</li>
+          <li>Teach it once — <code>LEARN: Blue gown ₦45,000</code> or Catalog page.</li>
           <li>It sells while you sleep; you close the flagged hot ones.</li>
         </ol>
-        <a class="btn ghost" href="https://vendorabot.vercel.app/faq">Read the FAQ</a>
+        <a class="btn ghost glass" href="https://vendorabot.vercel.app/faq">Read the full FAQ</a>
       </div>
     </div>
   </section>
 
-  <!-- VIDEO SLOTS -->
-  <section class="wrap section" id="videos">
-    <h2 class="reveal">See it move. Hear it sell.</h2>
-    <p class="desc reveal">AI-generated video ads drop straight into these slots — no code changes when yours are ready. Full scripts + prompts: <code>video-prompts.md</code>.</p>
-    <div class="video-grid">
-      <figure class="video-slot tall reveal">
-        <video controls preload="metadata" poster="./assets/poster-hero.svg" data-slot="hero-916">
-          <source src="" type="video/mp4" />
-        </video>
-        <figcaption><b>15s hero ad · 9:16</b><span>Slot: <code>hero-916</code> — TikTok / Reels / Shorts cut. Paste your MP4 URL into the <code>&lt;source&gt;</code> above.</span></figcaption>
-      </figure>
-      <figure class="video-slot wide reveal">
-        <video controls preload="metadata" poster="./assets/poster-how.svg" data-slot="how-169">
-          <source src="" type="video/mp4" />
-        </video>
-        <figcaption><b>30s how-it-works · 16:9</b><span>Slot: <code>how-169</code> — YouTube + hero embed. Same deal: drop in the MP4.</span></figcaption>
-      </figure>
+  <!-- ══ FEATURES BENTO ══ -->
+  <section class="wrap section" id="features">
+    <p class="eyebrow reveal">EVERYTHING A ONE-PERSON SHOP NEEDS</p>
+    <h2 class="reveal">Small team of one. <em class="gold-text">Staff of ten.</em></h2>
+    <div class="bento">
+      <div class="card glass tilt span2 reveal"><svg class="ic big gold"><use href="#i-bolt"/></svg><h3>Instant replies, 24/7</h3><p class="desc">Hours, prices, stock, delivery — answered in seconds, day or night. 50/day free, 500 Pro, 1,000 Pro Plus.</p></div>
+      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-chat"/></svg><h3>Pidgin + English</h3><p class="desc">"Abeg, e still dey?" gets a straight answer.</p></div>
+      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-box"/></svg><h3>LEARN mode</h3><p class="desc">Text your ad copy to your own number; catalog updates itself.</p></div>
+      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-sync"/></svg><h3>Profile SYNC · Pro</h3><p class="desc">Scaffold + verify your catalog from your Business profile.</p></div>
+      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-camera"/></svg><h3>Photos in replies · Pro</h3><p class="desc">Product photos ride inside WhatsApp + Telegram answers.</p></div>
+      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-mic"/></svg><h3>Voice notes · Plus</h3><p class="desc">Whisper AI transcription + 2 heavy work models.</p></div>
+      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-bell"/></svg><h3>Hot-lead flags</h3><p class="desc">Low-confidence moments route to you instantly.</p></div>
+      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-mega"/></svg><h3>ComeBack nudges</h3><p class="desc">Abandoned buyers re-engaged while intent is warm.</p></div>
+      <div class="card glass tilt span2 reveal"><svg class="ic big gold"><use href="#i-spark"/></svg><h3>Vendora AI — your second brain</h3><p class="desc">General AI chat inside the dashboard with switchable brains (lite → Kimi K2 + GPT-4o mini on Plus). Draft captions, price lists, replies — 50 free/day.</p><a class="btn ghost glass sm" href="https://vendorabot.vercel.app/login">Open Vendora AI</a></div>
+      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-chart"/></svg><h3>Insights</h3><p class="desc">AI-handled %, flag reasons, peak hours.</p></div>
     </div>
   </section>
 
-  <!-- HOW -->
+  <!-- ══ APP TOUR ══ -->
+  <section class="wrap section" id="tour">
+    <p class="eyebrow reveal">INSIDE THE APP</p>
+    <h2 class="reveal">One login. <em class="gold-text">Every tool.</em></h2>
+    <p class="desc reveal">What waits after you hit Start free — the exact pages of the web app.</p>
+    <div class="tour-grid">
+      <div class="tour-card glass tilt reveal"><b>Overview</b><span>Greeting hero, trial countdown, 15-min checklist, flagged chats.</span><div class="tour-bars"><i style="width:82%"></i><i style="width:64%"></i><i style="width:91%"></i></div></div>
+      <div class="tour-card glass tilt reveal"><b>Inbox</b><span>Every chat, gold flags, full history, instant alerts.</span><div class="tour-chat"><i class="l"></i><i class="r"></i><i class="l s"></i></div></div>
+      <div class="tour-card glass tilt reveal"><b>Catalog</b><span>Products, photos, LEARN + Pro SYNC verification.</span><div class="tour-bars"><i style="width:70%"></i><i style="width:88%"></i><i style="width:55%"></i></div></div>
+      <div class="tour-card glass tilt reveal"><b>Connect</b><span>WhatsApp Embedded Signup + Telegram. TEST → LIVE.</span><div class="tour-live"><i></i>LIVE</div></div>
+      <div class="tour-card glass tilt reveal"><b>Vendora AI</b><span>Chat assistant with switchable brains + daily quota.</span><div class="tour-chat"><i class="r"></i><i class="l"></i></div></div>
+      <div class="tour-card glass tilt reveal"><b>Billing</b><span>Free / Pro / Pro Plus, monthly–yearly, instant activation.</span><div class="tour-bars"><i style="width:95%" class="gold"></i></div></div>
+    </div>
+  </section>
+
+  <!-- ══ VIDEOS + SHOOT GUIDE ══ -->
+  <section class="wrap section" id="videos">
+    <p class="eyebrow reveal">SEE IT MOVE</p>
+    <h2 class="reveal">See it move. Hear it sell.</h2>
+ 
+    <div class="video-grid">
+      <figure class="video-slot tall glass reveal">
+        <video controls preload="metadata" poster="./assets/poster-hero.svg" playsinline><source src="" type="video/mp4" /></video>
+        <figcaption><b> </b><span>  <code></code>.</span></figcaption>
+      </figure>
+      <figure class="video-slot wide glass reveal">
+        <video controls preload="metadata" poster="./assets/poster-how.svg" playsinline><source src="" type="video/mp4" /></video>
+        <figcaption><b> </b><span></span></figcaption>
+      </figure>
+    </div>
+   
+
+  <!-- ══ HOW ══ -->
   <section class="wrap section" id="how">
+    <p class="eyebrow reveal">GO LIVE TODAY</p>
     <h2 class="reveal">Live in an afternoon.</h2>
     <div class="grid3">
-      <div class="card hover-lift reveal"><div class="step-n">1</div><h3>Connect WhatsApp</h3><p class="desc">Join the sandbox free, or attach your Business number. One webhook, guided setup.</p></div>
-      <div class="card hover-lift reveal"><div class="step-n">2</div><h3>Stock the catalog</h3><p class="desc">Add products here or text LEARN: from your own phone. Prices update by name.</p></div>
-      <div class="card hover-lift reveal"><div class="step-n">3</div><h3>Let it sell</h3><p class="desc">Instant answers 24/7, ComeBack follow-ups for abandoned buyers, digest of what needs you.</p></div>
+      <div class="card glass tilt hover-lift reveal"><div class="step-n">1</div><h3>Connect WhatsApp</h3><p class="desc">Join the sandbox free, or attach your Business number via Meta Embedded Signup. One webhook, guided setup.</p></div>
+      <div class="card glass tilt hover-lift reveal"><div class="step-n">2</div><h3>Stock the catalog</h3><p class="desc">Add products here or text LEARN: from your own phone. Same name always updates the price.</p></div>
+      <div class="card glass tilt hover-lift reveal"><div class="step-n">3</div><h3>Let it sell</h3><p class="desc">Instant answers 24/7, ComeBack follow-ups, hot-lead flags + a daily digest of what needs you.</p></div>
     </div>
   </section>
 
-  <!-- FEATURES -->
-  <section class="wrap section" id="features">
-    <h2 class="reveal">Everything a one-person shop needs.</h2>
-    <div class="grid3">
-      <div class="card reveal"><h3>⚡ Instant replies</h3><p class="desc">Hours, prices, stock, delivery — answered in seconds, day or night.</p></div>
-      <div class="card reveal"><h3>🗣️ Pidgin + English</h3><p class="desc">Customers ask anyhow — "Abeg, e still dey?" — and get a straight answer.</p></div>
-      <div class="card reveal"><h3>📦 LEARN mode</h3><p class="desc">Text your ad copy to your own number; the catalog updates itself.</p></div>
-      <div class="card reveal"><h3>🔥 Hot-lead flags</h3><p class="desc">Low-confidence moments route to you instantly — never a wrong guess.</p></div>
-      <div class="card reveal"><h3>💬 ComeBack follow-ups</h3><p class="desc">Abandoned buyers get a gentle nudge while the intent is still warm.</p></div>
-      <div class="card reveal"><h3>📊 Owner digest</h3><p class="desc">Daily summary of chats, flags and sales signals. Inbox zero, zero effort.</p></div>
-    </div>
-  </section>
-
-  <!-- PRICING -->
+  <!-- ══ PRICING ══ -->
   <section class="wrap section" id="pricing">
-    <h2 class="reveal">Two tiers. Zero guesswork.</h2>
-    <p class="desc reveal">Free 7-day Pro trial · Manual catalog free forever · Cancel anytime.</p>
+    <p class="eyebrow reveal">TWO TIERS · ZERO GUESSWORK</p>
+    <h2 class="reveal">Free forever. Pro when you're ready.</h2>
+    <p class="desc reveal">7-day Pro trial on every account · Manual catalog free forever · Cancel anytime — nothing is ever deleted by downgrading.</p>
+    <div class="price-toggles glass reveal">
+      <div class="seg" role="group" aria-label="Currency">
+        <button class="seg-btn on" data-cur="NGN">₦ NGN</button>
+        <button class="seg-btn" data-cur="USD">$ USD</button>
+      </div>
+      <div class="seg" role="group" aria-label="Billing period">
+        <button class="seg-btn" data-per="monthly">Monthly</button>
+        <button class="seg-btn on" data-per="yearly">Yearly</button>
+      </div>
+    </div>
     <div class="grid3">
-      <div class="card hover-lift reveal"><h3>Pro</h3><div class="price">₦7,499<small>/month</small></div><p class="desc">The full AI salesperson. Yearly ₦69,999 — <b class="save">save 22%</b>.</p><a class="btn ghost sm" href="https://vendorabot.vercel.app/billing">Choose Pro</a></div>
-      <div class="card hover-lift reveal hot"><span class="badge">MOST POWER</span><h3>Pro Plus</h3><div class="price">₦14,999<small>/month</small></div><p class="desc">Voice notes + 2 heavy work models. Yearly ₦120,000 — <b class="save">save 33%</b>.</p><a class="btn sm" href="https://vendorabot.vercel.app/billing">Choose Pro Plus</a></div>
-      <div class="card hover-lift reveal"><h3>Pay once</h3><div class="price">Contact sales</div><p class="desc">One payment, lifetime access — handled personally.</p><a class="btn ghost sm" href="mailto:vendorabot26@gmail.com?subject=Vendora%20pay-once%20plan">Contact sales</a></div>
+      <div class="card glass tilt hover-lift reveal">
+        <span class="badge ghost">FREE FOREVER</span><h3>Free</h3>
+        <div class="price" id="priceFree">₦0<small>/forever</small></div>
+        <p class="desc">The honest starter — bot never stops replying.</p>
+        <ul class="feats">
+          <li><svg class="ic"><use href="#i-check"/></svg>AI replies from your manual catalog</li>
+          <li><svg class="ic"><use href="#i-check"/></svg>LEARN: teaching from WhatsApp</li>
+          <li><svg class="ic"><use href="#i-check"/></svg>Full inbox + chat history</li>
+          <li><svg class="ic"><use href="#i-check"/></svg>Hot-order owner alerts</li>
+          <li><svg class="ic"><use href="#i-check"/></svg>50 bot replies / day</li>
+        </ul>
+        <a class="btn ghost glass sm" href="https://vendorabot.vercel.app/login">Start free</a>
+      </div>
+      <div class="card glass tilt hover-lift reveal">
+        <span class="badge">PRO</span><h3>Pro</h3>
+        <div class="price" id="pricePro">₦69,999<small>/year</small></div>
+        <p class="desc" id="priceProSave">Save ₦19,989 — 22% off monthly</p>
+        <ul class="feats">
+          <li><svg class="ic"><use href="#i-check"/></svg>5,000 replies/day, Pidgin + English</li>
+          <li><svg class="ic"><use href="#i-check"/></svg>Profile SYNC + verified products</li>
+          <li><svg class="ic"><use href="#i-check"/></svg>Product photos in replies</li>
+          <li><svg class="ic"><use href="#i-check"/></svg>Suggestive selling (5 options)</li>
+          <li><svg class="ic"><use href="#i-check"/></svg>ComeBack follow-ups + Insights</li>
+        </ul>
+        <a class="btn ghost glass sm" href="https://vendorabot.vercel.app/billing">Choose Pro</a>
+      </div>
+      <div class="card glass tilt hover-lift hot reveal">
+        <span class="badge gold">MOST POWER</span><h3>Pro Plus</h3>
+        <div class="price" id="pricePlus">₦120,000<small>/year</small></div>
+        <p class="desc" id="pricePlusSave">Save ₦59,988 — 33% off monthly</p>
+        <ul class="feats">
+          <li><svg class="ic"><use href="#i-check"/></svg>Everything in Pro</li>
+          <li><svg class="ic"><use href="#i-check"/></svg>Unlimited Replies</li>
+          <li><svg class="ic"><use href="#i-check"/></svg>Voice-note transcription (Whisper)</li>
+          <li><svg class="ic"><use href="#i-check"/></svg>More Heavy work models Like Kimi K2 + GPT-4o mini</li>
+          <li><svg class="ic"><use href="#i-check"/></svg>Priority support — jump the queue</li>
+        </ul>
+        <a class="btn sm btn-shine" href="https://vendorabot.vercel.app/billing">Choose Pro Plus</a>
+      </div>
+    </div>
+    <div class="card glass reveal compare">
+      <h3>Compare at a glance</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>What you get</th><th>Free</th><th>Pro</th><th>Pro Plus</th></tr></thead>
+        <tbody id="compareBody"></tbody>
+      </table></div>
+      <p class="hint">Enterprise (chains, franchises): multi-branch dashboard + onboarding call — <a href="mailto:vendorabot26@gmail.com?subject=Vendora%20Enterprise">contact sales</a>.</p>
     </div>
   </section>
 
-  <!-- FAQ -->
+  <!-- ══ FAQ ══ -->
   <section class="wrap section" id="faq">
-    <h2 class="reveal">Quick answers.</h2>
-    <div class="faq">
-      <details class="reveal"><summary>Do I need a new WhatsApp number?</summary><p>No. Start on the free sandbox for testing, attach your real Business number when you're ready to sell.</p></details>
-      <details class="reveal"><summary>Will it invent prices?</summary><p>Never. It answers strictly from your catalog and hands off to you when unsure.</p></details>
-      <details class="reveal"><summary>What if I can't pay yet?</summary><p>Manual catalog + bot replies stay free forever. The 7-day Pro trial unlocks everything to start.</p></details>
-      <details class="reveal"><summary>How do I pay?</summary><p>Card via Paystack (Naira) or Flutterwave (Dollars) in the app's Billing page. Activation is instant.</p></details>
-      <details class="reveal"><summary>Is there an app for my phone?</summary><p>Yes — Vendora installs straight from your browser and is heading to the Play Store. Same account everywhere.</p></details>
+    <p class="eyebrow reveal">QUICK ANSWERS</p>
+    <h2 class="reveal">Questions? Answered clearly.</h2>
+    <div class="faq-search glass reveal">
+      <svg class="ic"><use href="#i-search"/></svg>
+      <input id="faqSearch" placeholder="Search questions… e.g. refund, Pidgin, price" aria-label="Search questions" />
+      <button id="faqClear" aria-label="Clear search" hidden><svg class="ic"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="faq" id="faqList"></div>
+    <p class="hint reveal">Still stuck? <a href="https://vendorabot.vercel.app/faq">Full FAQ in the app</a></p>
+  </section>
+
+  <!-- ══ GET APP / COMING SOON ══ -->
+  <section class="wrap section" id="getapp">
+    <div class="getapp glass-strong reveal">
+      <div class="getapp-shine" aria-hidden="true"></div>
+      <p class="eyebrow">VENDORA ON YOUR PHONE</p>
+      <h2>Android + iOS apps <em class="gold-text">coming soon.</em></h2>
+      <p class="desc">Same account everywhere — catalog, inbox, flags and Vendora AI in your pocket. The web app works today; native apps are boarding. Drop your email and be first in.</p>
+      <div class="store-row">
+        <span class="store-badge" aria-label="Google Play — coming soon" title="Coming soon">
+          <svg class="store-ic" aria-hidden="true"><use href="#i-gplay"/></svg>
+          <span class="store-txt"><small>GET IT ON</small><b>Google Play</b></span>
+          <span class="soon">SOON</span>
+        </span>
+        <span class="store-badge" aria-label="App Store — coming soon" title="Coming soon">
+          <svg class="store-ic apple" aria-hidden="true"><use href="#i-apple"/></svg>
+          <span class="store-txt"><small>Download on the</small><b>App Store</b></span>
+          <span class="soon">SOON</span>
+        </span>
+      </div>
+      <form class="notify" name="launch-notify" method="POST" data-netlify="true" netlify-honeypot="bot-field">
+        <input type="hidden" name="form-name" value="launch-notify" />
+        <p class="hidden"><label>Don't fill this: <input name="bot-field" /></label></p>
+        <input type="email" name="email" placeholder="Email for launch + Pro tips" required aria-label="Email" />
+        <button class="btn sm btn-shine" type="submit">Notify me</button>
+      </form>
+      <p class="hint">Android first, iOS right after · Free plan + trial carry over · No spam, ever.</p>
     </div>
   </section>
 
-  <!-- FINAL CTA -->
+  <!-- ══ FINAL CTA ══ -->
   <section class="wrap section final reveal">
     <h2>Midnight customers are waiting.</h2>
     <p class="desc">Open your shop around the clock — free for 7 days.</p>
     <div class="cta-row center">
-      <a class="btn lg" href="https://vendorabot.vercel.app/login">Start selling tonight</a>
-      <a class="btn ghost lg" href="https://vendorabot.vercel.app/faq">Full FAQ in the app</a>
+      <a class="btn lg btn-shine" href="https://vendorabot.vercel.app/login">Start selling tonight</a>
+      <a class="btn ghost lg glass" href="https://vendorabot.vercel.app/faq">Full FAQ in the app</a>
     </div>
-    <form class="notify" name="launch-notify" method="POST" data-netlify="true" netlify-honeypot="bot-field">
-      <input type="hidden" name="form-name" value="launch-notify" />
-      <p class="hidden"><label>Don't fill this: <input name="bot-field" /></label></p>
-      <input type="email" name="email" placeholder="Email for launch + Pro tips" required aria-label="Email" />
-      <button class="btn sm" type="submit">Notify me</button>
-    </form>
   </section>
 </main>
 

@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { api, fmtDate, pop, toast } from '../lib/api.js';
 import { money } from '../lib/money.js';
 import Ic from '../components/icons.jsx';
+import { adsStatus, clearSponsorSeen, maybeShowSponsor } from '../lib/ads.js'; // sponsor preview (this browser's tier/tags, daily cap bypassed)
 
 const TABS = [['stats', 'Overview', 'chart'], ['users', 'Users', 'profile'], ['revenue', 'Revenue', 'card'], ['transfers', 'Transfers', 'send'], ['complaints', 'Complaints', 'help']]; // [key, label, icon] triples (icons at fixed 16px per the icon system!)
 
@@ -140,11 +141,25 @@ function AdsStatus() { // AD KEYS LIVE? booleans only — key VALUES never leave
   useEffect(() => { api('/api/admin/ads/status').then(({ ok, data }) => { if (ok) setS(data); }); }, []); // mount-only probe (admin session already open — 401 impossible here!)
   if (!s) return <div className="card"><div className="skel" /></div>;
   const dot = (on) => (<span className={'pill ' + (on ? 'ok' : 'flag')} style={{ fontSize: 11 }}>{on ? 'Yes' : 'No'}</span>); // boolean → at-a-glance pill (no key values shown, ever!)
+  const [previewMsg, setPreviewMsg] = useState(''); // preview outcome line (tells the truth when nothing shows)
+  async function preview() { // Preview button: bypass today's cap, then run the REAL interstitial path…
+    setPreviewMsg('Checking…');
+    clearSponsorSeen(); // bypass the once/day cap (preview-only; owners still capped)
+    const st = await adsStatus(); // this browser's actual tier/tags (Pro session? empty config?)
+    if (st.state === 'pro') { setPreviewMsg('No preview: THIS browser session is Pro/trial — ads serve to free-tier owners only. Log in as a free shop to preview.'); return; }
+    if (!st.sponsor) { setPreviewMsg('No preview: sponsor not configured — set SPONSOR_TITLE + SPONSOR_LINK in .env and restart the server. Network tags (Monetag) still load for free users.'); return; }
+    const shown = await maybeShowSponsor(); // real interstitial (same card owners see)
+    setPreviewMsg(shown ? '' : 'Not shown: already previewed today or sponsor missing.');
+  }
   return (
     <div className="card">
       <h2><Ic n="cash" s={18} /> Ad keys live?</h2>
       <p className="desc">Network 1 ({s.provider1}): {dot(s.network1)} · Network 2 ({s.provider2}): {dot(s.network2)} · Sponsor “{(s.sponsorTitle || '—')}”: {dot(s.sponsor)}{s.sponsor ? <> · Video: {dot(s.sponsorVideo)}</> : null} · Sponsor rate: ₦{s.rateNaira}/click</p>
       <p className="hint">{s.note}</p>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
+        <button className="btn ghost sm" onClick={preview}>Preview sponsor card</button>
+        {previewMsg ? <span className="hint">{previewMsg}</span> : null}
+      </div>
     </div>
   );
 }

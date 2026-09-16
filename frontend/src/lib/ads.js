@@ -9,11 +9,28 @@
 import { api } from './api.js'; // shared fetch helper (session cookie included)
 
 let cached = null; // module-level cache: ONE /api/me call per page-load (null = not fetched yet; note: null also means "logged out" after a failed fetch)
+let seeded = false; // true once App.jsx seeds the cache from its own /api/me (avoids a duplicate fetch + race)
+
+// Seed the cache from App.jsx's /api/me response (same shape: data.ads).
+// Call on login-load; call resetAdsCache() on logout so the next user refetches.
+export function setAdsCache(ads) { cached = ads || null; seeded = true; }
+export function resetAdsCache() { cached = null; seeded = false; }
+export function adsSeeded() { return seeded; }
 
 // Fetch (once) what ads this user should see. Backend decides by tier:
 // free → { networks: [{provider, scriptUrl}…], sponsor: {…} | null } | null.
+export async function adsStatus() {
+  // Debug snapshot for Admin preview + AdSlot: { state: 'pro'|'free-empty'|'free-live'|'guest', networks, sponsor }
+  const ads = await getAds();
+  if (cached === null && !seeded) return { state: 'guest', networks: [], sponsor: null };
+  if (!ads) return { state: 'pro', networks: [], sponsor: null };
+  const nets = Array.isArray(ads.networks) ? ads.networks : [];
+  if (!nets.length && !ads.sponsor) return { state: 'free-empty', networks: nets, sponsor: null };
+  return { state: 'free-live', networks: nets, sponsor: ads.sponsor || null };
+}
+
 export async function getAds() {
-  if (cached !== null) return cached; // cache hit → no second HTTP call (fast + fewer logs)
+  if (cached !== null || seeded) return cached; // cache hit → no second HTTP call (fast + fewer logs)
   try {
     const { ok, data } = await api('/api/me'); // getMe response carries .ads alongside .business
     cached = ok ? data.ads || null : null; // ok? use it (|| null if backend sent nothing) : logged-out → null
@@ -50,9 +67,12 @@ function markSeen() { // record today's showing…
   try { localStorage.setItem('sponsor_seen', new Date().toISOString().slice(0, 10)); } catch {} // …silently ignore storage failures
 }
 
+// Clears today's sponsor cap (Admin "Preview" button uses this, then calls maybeShowSponsor).
+export function clearSponsorSeen() { try { localStorage.removeItem('sponsor_seen'); } catch {} }
+
 // Per-CLICK: sponsored interstitial, max once/day, clearly labeled, one-tap close.
 // Call after high-attention free-tier moments (product add, AI limit hit).
-export async function maybeShowSponsor() { // called by Catalog + VendoraAI (exported for those two)
+export async function maybeShowSponsor() { // called by Catalog + VendoraAI + Dashboard (exported for those)
   const ads = await getAds(); // tier-resolved config…
   const sp = ads?.sponsor; // ?. = null-safe (ads null → sp undefined, no crash)
   if (!sp || seenToday()) return false; // no sponsor configured OR already shown today → skip (return value tells caller)

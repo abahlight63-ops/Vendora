@@ -9,6 +9,8 @@ import { useEffect, useState } from 'react'; // useState = s/bill/guideOff; useE
 import { Link } from 'react-router-dom'; // Link = client-side nav (no page reload, unlike <a>)
 import { api, fmtTime } from '../lib/api.js'; // api() fetches; fmtTime formats inbox timestamps
 import Ic from '../components/icons.jsx'; // <Ic n="chat"/> icon set
+import AdSlot from '../components/AdSlot.jsx'; // visible free-tier ad slot (Pro renders null)
+import { maybeShowSponsor } from '../lib/ads.js'; // daily sponsor interstitial (free tier, silent for Pro)
 
 function greeting() { // NOT a component (lowercase, returns a string): time-based hello.
   const h = new Date().getHours(); // getHours() = 0–23 local time…
@@ -36,6 +38,8 @@ export default function Dashboard({ biz }) { // biz = business object from App (
       });
       setBill(b || null); // billing (|| null normalizes undefined)
     })(); // ← invoke the IIFE immediately
+    const t = setTimeout(() => { maybeShowSponsor(); }, 8000); // free-tier sponsor interstitial, 8s after Overview lands (daily cap inside; Pro = silent no-op)
+    return () => clearTimeout(t); // cleanup on unmount (no stray popup after navigation)
   }, []); // [] deps = mount-only (fetch once; live updates would need polling/websocket — out of scope)
   const first = (biz?.name || 'there').split(' ')[0]; // "Amaka Beauty Studio" → "Amaka" (?. guards slow-loading biz; || 'there' fallback)
   const trialLeft = bill && bill.status === 'trialing' && bill.trial_ends // trial countdown in DAYS: only when status IS trialing AND an end date exists…
@@ -72,6 +76,8 @@ export default function Dashboard({ biz }) { // biz = business object from App (
       {trialLeft !== null && ( // && conditional render: trial strip ONLY during trial (null → renders nothing)
         <div className="trial-strip"><Ic n="clock" s={16} /><span><b>{trialLeft} day{trialLeft === 1 ? '' : 's'} of Pro trial left.</b> Keep Pro sync, or stay free forever with manual catalog.</span><Link to="/billing">Billing<Ic n="next" s={14} /></Link></div>
       )}
+
+      <AdSlot /> {/* free-tier visible ads (Pro/null = renders nothing — zero layout shift for paid) */}
 
       {showGuide && ( // checklist card (see showGuide logic above)…
         <div className="card guide-card">

@@ -9,7 +9,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'; // Routes = switch; 
 import Shell from './components/Shell.jsx'; // app frame (sidebar+topbar) wrapping guarded pages
 import Splash from './components/Splash.jsx'; // 1.5s brand intro (shown first)
 import { api } from './lib/api.js'; // backend fetch helper (session cookie included)
-import { loadNetworkAds } from './lib/ads.js'; // free-tier ad tags (single loader — Pro gets nothing)
+import { loadNetworkAds, setAdsCache, resetAdsCache } from './lib/ads.js'; // free-tier ad tags (single loader — Pro gets nothing)
 import { useTheme } from './lib/theme.js'; // [theme, toggleTheme] (dark/light, persisted)
 import Login from './pages/Login.jsx'; // sign in / sign up / OTP / forgot (public)
 import Reset from './pages/Reset.jsx'; // forgot-password landing (?token= — public, token IS the credential!)
@@ -40,8 +40,9 @@ function useMe() { // CUSTOM HOOK: "who's logged in?" — returns {me, loading, 
     api('/api/me').then(({ ok, data }) => { // destructure the {ok, data} shape api() returns
       setMe(ok ? data.business : null); // ok → store business (includes tier!); else guest (bad session/expired)
       // Per-VIEW ads live ONLY in lib/ads.js (single source of truth).
-      // Backend sends tags for free tier only; Pro gets nothing. Pro = no ads.
-      if (ok) loadNetworkAds(); // fire-and-forget (async fn, no await — ads must never block rendering)
+      // Backend sends tags to free tier only; Pro gets null → zero ads.
+      // Seed the ads cache from THIS response so lib/ads.js never double-fetches.
+      if (ok) { setAdsCache(data.ads); loadNetworkAds(); } else { resetAdsCache(); } // fire-and-forget (async fn, no await — ads must never block rendering)
       setLoading(false); // done either way (finally-style: success AND failure clear loading)
     }).catch(() => setLoading(false)); // network DOWN → guest mode, still clear loading (app must render something!)
   }, []); // [] = run once (no deps = never re-run)
@@ -59,6 +60,7 @@ export default function App() { // ROOT component (main.jsx renders this)
   const [theme, toggleTheme] = useTheme(); // dark/light (persisted, applied to <html>)
   const [splash, setSplash] = useState(true); // brand intro visible?
   const hideSplash = useCallback(() => setSplash(false), []); // useCallback = stable function identity (Splash's effect dep won't loop)
+  const handleLogout = useCallback(() => { setMe(null); resetAdsCache(); }, []); // logout clears login state AND ads cache (next login refetches fresh tier/tags)
   if (splash) return <Splash done={hideSplash} />; // EARLY RETURN: splash covers everything until done() fires (1.5s)
   return ( // after splash: the route table (order matters — first match wins!)
     <Routes>
@@ -70,18 +72,18 @@ export default function App() { // ROOT component (main.jsx renders this)
       <Route path="/reset" element={<Reset />} /> {/* forgot-password landing (public — must NOT be Guarded: no session exists yet!) */}
       <Route path="/onboarding" element={<Onboarding me={me} />} /> {/* welcome tour (reachable logged-in OR fresh — by design) */}
       <Route path="/welcome" element={loading ? <div className="page"><div className="card"><p className="hint">Loading…</p></div></div> : me ? <Welcome /> : <Navigate to="/login" replace />} /> {/* niche + heard-from (new signups land here after the tour; guests → login) */}
-      <Route path="/dashboard" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Dashboard biz={me} /></Guard>} /> {/* Guard pattern: <Guard …><Page/></Guard> = page becomes `children` */}
-      <Route path="/chats" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Chats /></Guard>} />
-      <Route path="/catalog" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Catalog /></Guard>} />
-      <Route path="/connect" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Connect /></Guard>} />
-      <Route path="/playground" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Playground /></Guard>} />
-      <Route path="/insights" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Insights /></Guard>} />
-      <Route path="/billing" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Billing /></Guard>} />
-      <Route path="/contact-sales" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><ContactSales /></Guard>} /> {/* enterprise form (Billing opens it in a new tab!) */}
-      <Route path="/profile" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Profile biz={me} /></Guard>} />
-      <Route path="/settings" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Settings biz={me} /></Guard>} />
-      <Route path="/help" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><Help /></Guard>} />
-      <Route path="/vendora-ai" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={() => setMe(null)}><VendoraAI biz={me} /></Guard>} />
+      <Route path="/dashboard" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Dashboard biz={me} /></Guard>} /> {/* Guard pattern: <Guard …><Page/></Guard> = page becomes `children` */}
+      <Route path="/chats" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Chats /></Guard>} />
+      <Route path="/catalog" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Catalog /></Guard>} />
+      <Route path="/connect" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Connect /></Guard>} />
+      <Route path="/playground" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Playground /></Guard>} />
+      <Route path="/insights" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Insights /></Guard>} />
+      <Route path="/billing" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Billing /></Guard>} />
+      <Route path="/contact-sales" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><ContactSales /></Guard>} /> {/* enterprise form (Billing opens it in a new tab!) */}
+      <Route path="/profile" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Profile biz={me} /></Guard>} />
+      <Route path="/settings" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Settings biz={me} /></Guard>} />
+      <Route path="/help" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Help /></Guard>} />
+      <Route path="/vendora-ai" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><VendoraAI biz={me} /></Guard>} />
       <Route path="/" element={loading ? <div className="page"><div className="card"><p className="hint">Loading…</p></div></div> : me ? <Navigate to="/dashboard" replace /> : <Landing theme={theme} onToggleTheme={toggleTheme} />} /> {/* / = smart root: loading→placeholder, logged-in→dashboard, guest→marketing landing (ternary chain) */}
       <Route path="*" element={<div className="page"><div className="card"><h2>Page not found</h2><p className="hint">That link doesn't exist.</p><p style={{ marginTop: 12 }}><a href="/dashboard">Back to overview</a></p></div></div>} /> {/* path="*" = catch-all 404 (MUST be last — Routes picks first match!) */}
     </Routes>

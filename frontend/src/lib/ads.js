@@ -18,7 +18,7 @@ export function resetAdsCache() { cached = null; seeded = false; }
 export function adsSeeded() { return seeded; }
 
 // Fetch (once) what ads this user should see. Backend decides by tier:
-// free → { networks: [{provider, scriptUrl}…], sponsor: {…} | null } | null.
+// free → { networks, sponsor } (always an object — possibly empty); Pro → null.
 export async function adsStatus() {
   // Debug snapshot for Admin preview + AdSlot: { state: 'pro'|'free-empty'|'free-live'|'guest', networks, sponsor }
   const ads = await getAds();

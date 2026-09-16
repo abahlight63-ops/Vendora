@@ -4,8 +4,9 @@
 // testable. No npm modules — just Date math.
 // RULES:
 //   FREE (forever): manual catalog (dashboard + LEARN:), bot always replies.
-//   PRO: paid subscription OR inside the 14-day trial → + profile sync,
+//   PRO: paid subscription OR inside the 7-day trial → + profile sync,
 //        premium AIs, no ads.
+//   PLUS: Pro Plus purchase → everything in Pro with no daily reply cap.
 
 function trialDays() {
   return Number(process.env.TRIAL_DAYS || 7); // env override, default 7 (Number() because env vars are strings)
@@ -32,7 +33,7 @@ function subscriptionActive(business) {
 function isPro(business) {
   if (!business) return false; // null-safety: unknown business is never Pro
   if (subscriptionActive(business)) return true; // paid up → Pro, trial irrelevant
-  // The 14-day trial IS the Pro trial.
+  // The 7-day trial IS the Pro trial.
   if (business.subscription_status === 'trialing' && trialActive(business)) return true; // BOTH conditions (status + clock)
   return false; // expired trial, pending transfer, or anything else → free
 }
@@ -57,11 +58,13 @@ function effectiveTier(business) {
 }
 
 // WhatsApp bot replies allowed per shop per day (outbound 'out' messages).
-// Matches API cost reality: free-tier provider quotas cover ~50/day safely,
-// paid tiers lift the ceiling. Env-overridable without code changes.
+// Free 50 and Pro 500 match API cost reality; Pro Plus is uncapped.
+// Returns Infinity for Plus — callers must handle it (skip the cap check,
+// display "Unlimited"). Infinity never survives JSON, so API responses map
+// it to { dailyLimit: null, dailyUnlimited: true }.
 function whatsappDailyLimit(business) {
   const t = effectiveTier(business); // 'plus' | 'pro' | 'free'
-  if (t === 'plus') return Number(process.env.WHATSAPP_PLUS_LIMIT || 1000);
+  if (t === 'plus') return Infinity;
   if (t === 'pro') return Number(process.env.WHATSAPP_PRO_LIMIT || 500);
   return Number(process.env.WHATSAPP_FREE_LIMIT || 50);
 }

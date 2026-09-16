@@ -9,7 +9,6 @@ import { useEffect, useState } from 'react'; // useState = s/bill/guideOff; useE
 import { Link } from 'react-router-dom'; // Link = client-side nav (no page reload, unlike <a>)
 import { api, fmtTime } from '../lib/api.js'; // api() fetches; fmtTime formats inbox timestamps
 import Ic from '../components/icons.jsx'; // <Ic n="chat"/> icon set
-import AdSlot from '../components/AdSlot.jsx'; // visible free-tier ad slot (Pro renders null)
 import { maybeShowSponsor } from '../lib/ads.js'; // daily sponsor interstitial (free tier, silent for Pro)
 
 function greeting() { // NOT a component (lowercase, returns a string): time-based hello.
@@ -77,7 +76,7 @@ export default function Dashboard({ biz }) { // biz = business object from App (
         <div className="trial-strip"><Ic n="clock" s={16} /><span><b>{trialLeft} day{trialLeft === 1 ? '' : 's'} of Pro trial left.</b> Keep Pro sync, or stay free forever with manual catalog.</span><Link to="/billing">Billing<Ic n="next" s={14} /></Link></div>
       )}
 
-      <AdSlot /> {/* free-tier visible ads (Pro/null = renders nothing — zero layout shift for paid) */}
+      {/* visible free-tier ads live in Shell (every page) — no duplicate slot here */}
 
       {showGuide && ( // checklist card (see showGuide logic above)…
         <div className="card guide-card">

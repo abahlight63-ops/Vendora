@@ -235,11 +235,13 @@ async function handleInbound(req, res) {
       [customerId]
     );
     if (usage[0].c > CUSTOMER_DAILY_CAP) return res.status(200).send(''); // silent rest (no reply-bomb, no error — owner sees it all in the inbox!)
-    // ---- Per-shop tier limit: Free 50 / Pro 500 / Plus 1000 bot replies/day ----
+    // ---- Per-shop tier limit: Free 50 / Pro 500 / Plus unlimited ----
     // Counts TODAY's outbound bot messages for THIS shop (all chats). Over the
     // line? One polite limit notice per chat per day, then silent (records keep
     // flowing — replies pause till midnight). Customers never see a paywall.
+    // Plus returns Infinity (uncapped) → skip the check entirely.
     const WA_LIMIT = planService.whatsappDailyLimit(business); // tier-gated (env-overridable!)
+    if (Number.isFinite(WA_LIMIT)) {
     try {
       const { rows: shopUsage } = await db.query(
         `SELECT COUNT(*)::int AS c FROM messages m JOIN conversations c2 ON c2.id = m.conversation_id
@@ -267,6 +269,7 @@ async function handleInbound(req, res) {
         return res.status(200).send('');
       }
     } catch (e) { console.error('tier-limit check error:', e.message); } // guarded: caps must never eat logging
+    } // end finite-limit check (Plus unlimited skips everything above)
     const history = await conversationService.getHistory(customerId); // last 10, oldest-first (pronoun context: "how much is IT?")
 
     // Free tier keeps working from the manual catalog — only Pro unlocks

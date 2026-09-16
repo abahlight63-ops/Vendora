@@ -203,7 +203,7 @@ export default function Connect() {
           </span>
           {wa && wa.number && <span className="hint">Shop number: {wa.number}</span>}
           {wa && wa.metaConnected && <span className="hint">Meta linked — no credentials needed from you.</span>}
-          {wa && wa.dailyLimit ? <span className="hint">Today: {wa.dailyUsed || 0}/{wa.dailyLimit} replies ({wa.tier || 'free'} plan)</span> : null}
+          {wa && (wa.dailyUnlimited || wa.dailyLimit) ? <span className="hint">Today: {wa.dailyUsed || 0}/{wa.dailyUnlimited ? 'Unlimited' : wa.dailyLimit} replies ({wa.tier || 'free'} plan)</span> : null}
           {wa && wa.metaConnected && <button className="btn ghost sm" disabled={busy} onClick={metaDisconnect}>Disconnect</button>}
         </div>
       </div>

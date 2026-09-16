@@ -67,7 +67,7 @@ async function signup(req, res) {
 }
 
 async function verify(req, res) {
-  const user = await auth.verifyByToken(req.query.token || ''); // req.query = ?token=… from the email link; || '' guards missing
+  const user = await authService.verifyByToken(req.query.token || ''); // req.query = ?token=… from the email link; || '' guards missing
   if (user) {
     res.send(`<body style="font-family:Segoe UI,sans-serif;background:#050807;color:#ecfff6;display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center"><img src="/logo.png" alt="" style="width:60px;border-radius:14px;background:#fff;padding:4px"/><h1 style="color:#7ef0c0;">✓ Email verified!</h1><p style="color:#8fb8ac;">Your AI sales assistant is activated. You can sign in now.</p><a href="/login" style="display:inline-block;margin-top:14px;background:#25D366;color:#04120c;padding:13px 28px;border-radius:12px;text-decoration:none;font-weight:700;">Go to sign in</a></div></body>`); // inline success page (emails link here; styles inline because it's a standalone page)
   } else {

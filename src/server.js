@@ -10,7 +10,6 @@ const path = require('path'); // Node BUILT-IN: joins file paths safely across O
 require('dotenv').config(); // MODULE `dotenv` (npm i dotenv): reads .env into process.env
 
 // Local modules we built (require order matters only for readability here):
-const authMiddleware = require('./middleware/auth'); // (legacy import — requireAuth lives here too)
 const PgSessionStore = require('./db/sessionStore'); // our Postgres session store class
 const billingController = require('./controllers/billingController'); // Paystack webhook handler
 
@@ -98,7 +97,7 @@ app.post('/api/admin/logout', require('./controllers/adminController').adminLogo
 app.use('/api/admin', require('./controllers/adminController').requireAdmin, require('./routes/adminRoutes'));
 app.use('/api', ownerRoutes); // /api/me, /api/me/business, etc.
 app.use('/api', billingRoutes.router); // POST /api/billing/initialize
-app.post('/webhook/paystack', billingController.handlePaystackWebhook); // ← Paystack events (NGN cards)
+app.post('/webhook/paystack', require('./middleware/security').webhookLimiter, billingController.handlePaystackWebhook); // ← Paystack events (NGN cards)
 app.post('/webhook/flutterwave', require('./middleware/security').webhookLimiter, billingController.handleFlutterwaveWebhook); // ← Flutterwave events (USD/intl cards)
 
 // Admin API — second layer of auth: either the ADMIN_API_KEY header…

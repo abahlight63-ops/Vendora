@@ -44,7 +44,7 @@ function planFor(currency) {
 }
 async function initialize(req, res) {
   const secret = process.env.PAYSTACK_SECRET_KEY; // server-only secret (never reaches the browser)
-  if (!secret || secret.includes('xxxxx')) return res.status(503).json({ error: "Card payment isn't available right now — please pay by bank transfer below." }); // 503 = payments not switched on (customer-friendly, zero dev-talk)
+  if (!secret || secret.includes('xxxxx')) return res.status(503).json({ error: "Card payment isn't available right now — please try again later." }); // 503 = payments not switched on (customer-friendly, zero dev-talk)
 
   const planKey = String(req.body?.plan || 'pro_monthly').toLowerCase(); // ?. guards missing body; default Pro monthly
   if (planKey === 'lifetime') return res.status(400).json({ error: `Pay-once plans are now handled personally — contact sales at ${SALES_EMAIL} and we will set you up.` }); // lifetime retired from self-serve (grandfathered buyers keep it!)

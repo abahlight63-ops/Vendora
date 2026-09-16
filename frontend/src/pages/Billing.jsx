@@ -47,7 +47,7 @@ const COMPARE_ROWS = [
   ['Teach with LEARN: messages', true, true, true],
   ['Full inbox + chat history', true, true, true],
   ['Hot-order owner alerts', true, true, true],
-  ['Bot replies per day', '50', '500', '1,000'],
+  ['Bot replies per day', '50', '500', 'Unlimited'],
   ['Profile sync + verified products', false, true, true],
   ['Product photos inside replies', false, true, true],
   ['Suggestive selling (up to 5 options)', false, true, true],

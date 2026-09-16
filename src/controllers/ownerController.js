@@ -29,23 +29,23 @@ async function getMe(req, res) {
   // Ads: free tier only — Pro never sees ads.
   // provider: any network that gives you a script tag (Adsterra, PropellerAds,
   // Monetag...). sponsor: YOUR OWN direct deal with a local business (best rates).
+  // Free tier ALWAYS gets an object (even when nothing is configured) so the
+  // app can show its own house notice — Pro gets null (zero ad pixels).
   const tier = planService.tier(b); // 'pro' | 'free' from subscription + trial clock
-  let ads = null; // default: no ads (Pro, or nothing configured)
+  let ads = null; // default: no ads (Pro, or logged-out edge)
   if (tier !== 'pro') { // free users only past this point…
     const sponsor = process.env.SPONSOR_TITLE && process.env.SPONSOR_LINK
       ? { title: process.env.SPONSOR_TITLE, text: process.env.SPONSOR_TEXT || '', // && = both must exist; || '' = optional fields default empty
           link: process.env.SPONSOR_LINK, image: process.env.SPONSOR_IMAGE || '',
           video: (process.env.SPONSOR_VIDEO_URL || '').trim() || null } // optional mp4: plays inside the interstitial (video ads without any network!)
-      : null; // no sponsor configured → null (frontend hides the interstitial logic)
+      : null; // no sponsor configured → null (frontend shows its house notice)
     // One entry per network (Monetag primary, Adsterra Social Bar secondary…).
     // Different formats per network — never two popunder codes at once.
     const networks = [
       { provider: process.env.ADS_PROVIDER || 'custom', scriptUrl: process.env.ADS_SCRIPT_URL || null },
       { provider: process.env.ADS_PROVIDER_2 || 'custom', scriptUrl: process.env.ADS_SCRIPT_URL_2 || null },
     ].filter((n) => n.scriptUrl); // .filter keeps only configured networks (unconfigured = no tag = no crash)
-    if (networks.length || sponsor) { // something to show? then build the ads object…
-      ads = { networks, sponsor, scriptUrl: networks[0]?.scriptUrl || null, provider: networks[0]?.provider || 'custom' }; // scriptUrl/provider kept for backward-compat with older frontend
-    }
+    ads = { networks, sponsor, scriptUrl: networks[0]?.scriptUrl || null, provider: networks[0]?.provider || 'custom' }; // scriptUrl/provider kept for backward-compat with older frontend
   }
   res.json({ business: { ...b, tier }, ads }); // spread ...b copies all columns + adds tier; ads rides along so App.jsx knows whether to load tags
 }
@@ -467,6 +467,8 @@ async function channelsStatus(req, res) {
     waUsed = (u[0] && u[0].c) || 0;
   } catch (e) { console.error('wa usage error:', e.message); }
   const fullBiz = { subscription_status: b.subscription_status, subscription_expires: b.subscription_expires, trial_started_at: b.trial_started_at, plan_tier: b.plan_tier };
+  const waLimit = planService.whatsappDailyLimit(fullBiz); // 50 / 500 / Infinity (Plus uncapped — Infinity can't cross JSON!)
+  const waUnlimited = !Number.isFinite(waLimit);
   res.json({
     whatsapp: {
       number: b.whatsapp_number, // shop's number (locked identity!)
@@ -477,7 +479,8 @@ async function channelsStatus(req, res) {
       metaConnected: !!b.meta_on, // WABA credentials stored!
       wabaId: b.meta_waba_id || '', // WhatsApp Business Account id (Embedded Signup!)
       tier: planService.effectiveTier(fullBiz), // 'free' | 'pro' | 'plus' (drives limit display!)
-      dailyLimit: planService.whatsappDailyLimit(fullBiz), // 50 / 500 / 1000 (env-overridable!)
+      dailyLimit: waUnlimited ? null : waLimit, // null = uncapped (frontend shows "Unlimited")
+      dailyUnlimited: waUnlimited, // explicit flag (null dailyLimit alone is ambiguous!)
       dailyUsed: waUsed, // replies sent today (resets midnight!)
     },
     telegram: { connected: !!b.telegram_on }, // full Telegram detail lives on GET /api/me/telegram!

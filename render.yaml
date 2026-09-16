@@ -31,6 +31,8 @@ services:
         sync: false
       - key: AI_PROVIDER
         value: gemini
+      - key: ANTHROPIC_API_KEY
+        sync: false
       - key: GEMINI_API_KEY
         sync: false
       - key: GROQ_API_KEY
@@ -49,6 +51,10 @@ services:
         sync: false
       - key: EMAIL_FROM
         value: Vendora <onboarding@resend.dev>
+      - key: SUPPORT_EMAIL
+        sync: false
+      - key: STATICFORMS_KEY
+        sync: false
       - key: META_APP_ID
         sync: false
       - key: META_CONFIGURATION_ID
@@ -57,12 +63,30 @@ services:
         sync: false
       - key: PAYSTACK_SECRET_KEY
         sync: false
+      - key: FLW_SECRET_KEY
+        sync: false
+      - key: FLW_SECRET_HASH
+        sync: false
       - key: PRICE_MONTHLY_NAIRA
-        value: 7500
+        value: 7499
       - key: PRICE_YEARLY_NAIRA
-        value: 50000
-      - key: PRICE_LIFETIME_NAIRA
-        value: 100000
+        value: 69999
+      - key: PRICE_PLUS_MONTHLY_NAIRA
+        value: 14999
+      - key: PRICE_PLUS_YEARLY_NAIRA
+        value: 120000
+      - key: PRICE_MONTHLY_USD
+        value: 5
+      - key: PRICE_YEARLY_USD
+        value: 47
+      - key: PRICE_PLUS_MONTHLY_USD
+        value: 10
+      - key: PRICE_PLUS_YEARLY_USD
+        value: 80
+      - key: TRIAL_DAYS
+        value: 7
+      - key: SUBSCRIPTION_DAYS
+        value: 30
       - key: BANK_NAME
         sync: false
       - key: BANK_ACCOUNT_NUMBER
@@ -70,6 +94,8 @@ services:
       - key: BANK_ACCOUNT_NAME
         sync: false
       - key: PUBLIC_BASE_URL
+        sync: false
+      - key: FRONTEND_URL
         sync: false
       - key: OWNER_WHATSAPP
         sync: false

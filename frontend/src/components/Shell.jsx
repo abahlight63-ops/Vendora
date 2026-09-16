@@ -82,7 +82,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
   } // logout() = server destroy + local clear + go to login (all three, every time)
   const safeName = biz?.name || 'Your business'; // ?. + || : biz may load late — never render "undefined"
   const initial = (safeName.trim()[0] || 'V').toUpperCase(); // avatar letter: first char uppercased ([0] = first character)
-  const mobile = ALL.filter(([k]) => ['overview', 'chats', 'catalog', 'playground', 'billing'].includes(k)); // bottom-bar subset: destructure [k] (first array item) + .includes whitelist
+  const mobile = ALL.filter(([k]) => ['overview', 'chats', 'catalog', 'billing', 'help'].includes(k)); // bottom-bar subset: destructure [k] (first array item) + .includes whitelist (Help included so support is one tap away on phones!)
   return (
     <> {/* fragment: multiple roots without wrapper div */}
       <div className="shell"> {/* flex row: sidebar + main column (CSS) */}

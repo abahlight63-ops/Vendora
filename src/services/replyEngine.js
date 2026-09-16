@@ -59,8 +59,10 @@ async function callChoice(entry, model, system, user, image, opts) {
   const has = client.configuredProviders();
   // 1. The chosen model — exact catalog entry, exact model id (Gemini pinned,
   //    no chain, no affinity — the dropdown pick always takes effect).
+  // Text-only providers (no vision): skip when a photo is attached — Gemini/Claude handle images.
+  const NO_VISION = (p) => p === 'groq' || p === 'openrouter' || p === 'cerebras' || p === 'sambanova' || p === 'pollinations';
   if (has[entry.provider]) {
-    if (!(image && (entry.provider === 'groq' || entry.provider === 'openrouter'))) {
+    if (!(image && NO_VISION(entry.provider))) {
       const started = Date.now();
       try {
         const text = await client.callModel(entry, system, user, image, opts);
@@ -80,7 +82,7 @@ async function callChoice(entry, model, system, user, image, opts) {
     (m) => m.tier === 'free' && m.id !== entry.id
   )) {
     if (!has[fb.provider]) continue;
-    if (image && (fb.provider === 'groq' || fb.provider === 'openrouter')) continue;
+    if (image && NO_VISION(fb.provider)) continue;
     const started = Date.now();
     try {
       const text = await client.callModel(fb, system, user, image, opts);

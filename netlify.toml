@@ -1,0 +1,28 @@
+# Netlify deploy — Vendora marketing site (repo ROOT config).
+# WHY HERE (not just website/): Netlify always reads the ROOT config, so this
+# file works no matter what the dashboard "Base directory" field says.
+# Dashboard settings that match: Base directory = (EMPTY!), Build command =
+# (empty), Publish directory = website. Production branch = main.
+# Static site = nothing to build (pure HTML/CSS/JS), deploy is instant.
+
+[build]
+  publish = "website"
+  command = ""
+
+# Single page + anchors: any deep link serves index.html (harmless for static).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

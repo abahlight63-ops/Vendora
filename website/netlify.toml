@@ -1,19 +1,19 @@
-# Netlify deploy — Vendora marketing site (standalone, same repo)
-# Dashboard: Add new site → Import from GitHub → SAME repo (abahlight63-ops/Vendora)
-# → Base directory: website → Build command: (empty) → Publish directory: website
-# (netlify.toml below repeats it so the dashboard pre-fills correctly.)
+# Netlify deploy — Vendora marketing site (FALLBACK config).
+# The ROOT /netlify.toml is the one Netlify actually reads — keep this file
+# only for direct "website folder as site root" deploys (e.g. drag-and-drop).
+# NOTE: publish is relative to base, so it must be "." here (NOT "website/" —
+# that wrongly resolved to website/website and broke builds!).
 
 [build]
   base = "website/"
-  publish = "website/"
+  publish = "."
   command = ""
 
-# SPA not needed (pure static), but keep deep links safe if anchors grow.
+# Single page + anchors: any deep link serves index.html.
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-  conditions = { Role = ["visitor"] }
 
 [[headers]]
   for = "/*"

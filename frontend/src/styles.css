@@ -218,6 +218,8 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .trial-banner b { display: block; font-size: 13.5px; }
 .trial-banner span span, .trial-banner div span { display: block; font-size: 12px; color: var(--muted); font-weight: 500; }
 .login-cta { width: 100%; margin-top: 18px; font-size: 15px; padding: 13px 18px; }
+.captcha-box { margin: 14px 0 2px; display: flex; justify-content: center; } /* reCAPTCHA mount (empty = zero height when the check is off!) */
+.captcha-box:empty { margin: 0; }
 .spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .auth-toggle { color: var(--muted); font-size: 13.5px; text-align: center; margin-top: 16px; }
@@ -912,6 +914,16 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 }
 
 @media (prefers-reduced-motion: reduce) { .page { animation: none; } .slide.fwd, .slide.back { animation: none; } .splash-bar i, .splash-logo, .landing-phone { animation: none; } .reveal { opacity: 1; transform: none; transition: none; } }
+
+/* Quiz progress + step transitions + cheers (Welcome.jsx 5-step setup). */
+.quiz-prog { height: 8px; border-radius: 99px; background: var(--line-soft, #e3e8e6); overflow: hidden; margin: 10px 0 2px; }
+.quiz-prog i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #25D366, #7ef0c0); transition: width 0.45s cubic-bezier(0.2, 0.9, 0.25, 1.2); }
+.quiz-step { animation: quizIn 0.4s cubic-bezier(0.2, 0.9, 0.25, 1.1) both; } /* remounts per step (key={step}) — entrance replays! */
+@keyframes quizIn { from { opacity: 0; transform: translateX(26px) scale(0.98); } }
+.quiz-pop { animation: quizPop 0.35s ease both; } /* staggered via inline animationDelay (set in JSX!) */
+@keyframes quizPop { from { opacity: 0; transform: translateY(10px) scale(0.96); } }
+.quiz-cheer { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding: 11px 14px; border-radius: 12px; background: rgba(37, 211, 102, 0.1); border: 1px solid rgba(37, 211, 102, 0.45); color: var(--ink); font-size: 13.5px; font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .quiz-step, .quiz-pop { animation: none; } .quiz-prog i { transition: none; } }
 
 /* Welcome niche picker (Welcome.jsx): 2-col grid desktop, 1-col phones. */
 .niche-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }

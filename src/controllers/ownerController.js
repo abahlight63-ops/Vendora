@@ -14,7 +14,8 @@ async function getMe(req, res) {
     `SELECT b.id, b.name, b.whatsapp_number, b.owner_number, b.hours, b.faq, b.tone,
             b.max_discount_pct, b.min_order_naira, b.currency, b.timezone,
             b.bot_enabled, b.personal_contacts, b.plan_tier,
-            b.business_niche, b.heard_from, b.greeting_msg, b.handoff_msg,
+            b.business_niche, b.heard_from, b.catalog_size, b.channels, b.daily_volume,
+            b.greeting_msg, b.handoff_msg,
             b.subscription_status, b.subscription_expires, b.trial_started_at,
             b.trial_warned, b.trial_expiry_notified
      FROM businesses b WHERE b.id = $1`, // b = alias; WHERE session id (never a client id!)
@@ -142,19 +143,27 @@ async function checkTrialLifecycle(businessId, b) {
   } catch (e) { console.error('trial watchdog error:', e.message); } // log only (getMe continues — degraded watchdog beats dead dashboard!)
 }
 
-// Welcome setup: what the shop sells + where they found us (the /welcome
-// niche picker + heard-from page, and the mobile setup screen, all call this).
-// Niche drives Vendora AI suggestions + WhatsApp reply context. Free text
-// (≤80 chars) so new niches never need a deploy — the picker just suggests.
+// Welcome setup: the 5-question quiz (/welcome web + mobile setup screen).
+// Q1 niche (required — drives catalog shelves + AI suggestions), Q2 catalog
+// size, Q3 channels, Q4 chat volume (all optional — skippable!), Q5 heard-from.
+// Answers personalize the dashboard checklist + Connect/Billing hints.
+const QUIZ_SIZES = ['starting', 'under-20', '20-100', '100-plus']; // Q2 whitelist (unknown strings → stored as '' = skipped!)
+const QUIZ_CHANNELS = ['whatsapp', 'telegram', 'instagram', 'walkin']; // Q3 whitelist (multi-pick → comma list!)
+const QUIZ_VOLUMES = ['few', '10-50', '50-plus']; // Q4 whitelist
 async function saveSetup(req, res) {
-  const { business_niche: nicheRaw, heard_from: heardRaw } = req.body || {};
+  const { business_niche: nicheRaw, heard_from: heardRaw, catalog_size: sizeRaw, channels: channelsRaw, daily_volume: volumeRaw } = req.body || {};
   const niche = typeof nicheRaw === 'string' ? nicheRaw.trim().slice(0, 80) : '';
   const heard = typeof heardRaw === 'string' ? heardRaw.trim().slice(0, 40) : '';
-  if (!niche) return res.status(400).json({ error: 'Pick what your business sells first.' }); // niche is the hard requirement (heard-from optional — skippable!)
-  const { rows } = await db.query( // session-scoped write (owners set ONLY their own niche!)
-    `UPDATE businesses SET business_niche = $1, heard_from = $2 WHERE id = $3
-     RETURNING business_niche, heard_from`, // RETURNING echoes truth (UI shows what stuck, no refetch!)
-    [niche, heard, req.session.businessId]
+  const size = QUIZ_SIZES.includes(sizeRaw) ? sizeRaw : ''; // whitelist-or-blank (never trust the client!)
+  const channels = Array.isArray(channelsRaw) // array from the app → comma list of KNOWN channels only…
+    ? channelsRaw.filter((c) => QUIZ_CHANNELS.includes(c)).slice(0, 4).join(',')
+    : (typeof channelsRaw === 'string' ? channelsRaw.split(',').map((c) => c.trim()).filter((c) => QUIZ_CHANNELS.includes(c)).slice(0, 4).join(',') : ''); // …or comma string (same rule — mobile sends either!)
+  const volume = QUIZ_VOLUMES.includes(volumeRaw) ? volumeRaw : ''; // whitelist-or-blank
+  if (!niche) return res.status(400).json({ error: 'Pick what your business sells first.' }); // niche is the hard requirement (everything else skippable!)
+  const { rows } = await db.query( // session-scoped write (owners set ONLY their own answers!)
+    `UPDATE businesses SET business_niche = $1, heard_from = $2, catalog_size = $3, channels = $4, daily_volume = $5 WHERE id = $6
+     RETURNING business_niche, heard_from, catalog_size, channels, daily_volume`, // RETURNING echoes truth (UI shows what stuck, no refetch!)
+    [niche, heard, size || null, channels || null, volume || null, req.session.businessId]
   );
   res.json(rows[0]);
 }

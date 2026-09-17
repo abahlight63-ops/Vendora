@@ -86,12 +86,33 @@ No `.env` key needed — each shop pastes its own 2 values on the Connect page
    messaging limits after business verification — also free, takes days;
    the test number works meanwhile).
 
-## 4. Email (nice to have)
+## 4. Email (do this before launch — no domain needed!)
 
-### Resend — verification + OTP emails (free: 100/day)
+### Gmail SMTP — verification + OTP emails (free: ~500/day, NO domain)
+1. Google Account → **Security** → 2-Step Verification **ON** → **App passwords**
+   → Generate (name it "Vendora") → copy the 16-character code.
+2. Paste as `EMAIL_SMTP_USER=you@gmail.com` + `EMAIL_SMTP_PASS=xxxx xxxx xxxx xxxx`
+   (spaces don't matter) + `EMAIL_SMTP_HOST=smtp.gmail.com`.
+3. Signup → real 6-digit codes land in REAL inboxes today. No domain, no card.
+- Without ANY mail path: accounts auto-verify in dev (fine for testing, NEVER production!).
+
+### Resend — verification + OTP emails (free: 100/day, needs YOUR domain later)
 1. Sign up at https://resend.com → **API Keys** → Create → `RESEND_API_KEY`.
-2. `EMAIL_FROM=Vendora <onboarding@resend.dev>` works for testing.
-- Without it: accounts auto-verify in dev (fine for testing, set it before launch).
+2. `EMAIL_FROM=Vendora <onboarding@resend.dev>` works for testing **only to your own inbox**
+   (sandbox rule!) — verify your own domain at resend.com → Domains for real users.
+3. SMTP wins when both are set. Either set = codes deliver.
+
+## 4b. Bot wall (set before launch!)
+
+### Google reCAPTCHA v2 — checkbox on signup/login/OTP/forgot (FREE)
+1. Go to https://www.google.com/recaptcha/admin → **v2 "I'm not a robot"** →
+   register **BOTH** hosts (Render backend URL + Vercel frontend URL — no custom domain needed!).
+2. Paste the **SECRET** key as `RECAPTCHA_SECRET_KEY` (Render — server only!)
+   and the **SITE** key into Vercel as `VITE_RECAPTCHA_SITE_KEY` (public widget key).
+3. Phone app: set the SAME `MOBILE_APP_KEY` on Render AND in the app build
+   (`flutter ... --dart-define MOBILE_APP_KEY=...`) — native apps can't tick a
+   checkbox, so the header stands in (rate limits still apply!).
+- Unset = check off (old behavior). Login rate limits (30/15min) still apply regardless.
 
 ## 5. Things that need NO key
 

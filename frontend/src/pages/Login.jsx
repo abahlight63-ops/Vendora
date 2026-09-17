@@ -4,9 +4,11 @@
 // FLOW: login → /api/auth/login → setMe(business) → /dashboard. signup →
 // /api/auth/signup → /onboarding. afterAuth() refetches /api/me (single truth!).
 // React patterns: controlled form object, mode toggle, busy lock, live demo loop.
-import { useEffect, useState } from 'react'; // useState ×8 slices; useEffect = title + demo timers
+import { useEffect, useRef, useState } from 'react'; // useState ×8 slices; useEffect = title + demo timers; useRef = captcha widget id (no re-render!)
 import { useNavigate } from 'react-router-dom'; // useNavigate = go somewhere in code (after auth)
 import { api } from '../lib/api.js'; // api() auth calls
+import CaptchaBox from '../components/CaptchaBox.jsx'; // bot checkbox mount (renders nothing when the check is off!)
+import { captchaRequired, captchaReset, captchaToken } from '../lib/captcha.js'; // token read/reset helpers (lazy script inside!)
 import { normalizePhone, prettyPhone } from '../lib/phone.js'; // WhatsApp input help (validate + pretty-print on blur)
 import Ic from '../components/icons.jsx'; // bolt/spark/hand/check/mail/eye icons
 
@@ -116,13 +118,16 @@ function GoogleButton({ busy, setBusy, fail, afterAuth, setMe }) { // "Continue 
   );
 }
 
-async function fetchGoogleClientId() { // module-level fetch (called once below): backend exposes ONLY the public client id (never secrets!)…
+async function fetchAuthConfig() { // module-level fetch (called once below): backend exposes ONLY public knobs (never secrets!)…
   try {
     const { ok, data } = await api('/api/auth/config');
-    if (ok && data.googleClientId) window.__GOOGLE_CLIENT_ID__ = data.googleClientId; // stash on window (GoogleButton reads it at click time!)
-  } catch {} // backend down/unconfigured → button shows "not switched on" (graceful!)
+    if (ok && data) {
+      if (data.googleClientId) window.__GOOGLE_CLIENT_ID__ = data.googleClientId; // stash on window (GoogleButton reads it at click time!)
+      if (data.recaptchaSiteKey) window.__RECAPTCHA_KEY__ = data.recaptchaSiteKey; // stash too (CaptchaBox renders the checkbox when present!)
+    }
+  } catch {} // backend down/unconfigured → Google button shows "not switched on", captcha renders nothing (graceful!)
 }
-fetchGoogleClientId(); // fire on module load (once per page-load — cached on window!)
+fetchAuthConfig(); // fire on module load (once per page-load — cached on window!)
 
 export default function Login({ setMe }) { // setMe prop = App's state setter (login updates GLOBAL login state directly — no reload!)
   useEffect(() => { document.title = 'Vendora — Sign in'; }, []); // tab title (mount-only side-effect)
@@ -134,7 +139,19 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
   const [showPw, setShowPw] = useState(false); // password visible? (eye toggle)
   const [needsVerify, setNeedsVerify] = useState(false); // backend said "verify first" → show resend button
   const [f, setF] = useState({ email: '', password: '', name: '', wa: '', hours: '' }); // ONE form object (5 controlled fields)
+  const boxRef = useRef(null); // captcha widget id (CaptchaBox writes it; submits read it — ref = no re-render!)
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value }); // curried setter (same factory as Profile!): set('email') → onChange writing f.email
+  function botToken() { // fresh captcha token or null (null = checkbox unsolved!)
+    if (!captchaRequired()) return undefined; // check off → send nothing (backend skips too!)
+    const token = captchaToken(boxRef);
+    return token || null;
+  }
+  function needHuman() { // gate submits on the checkbox (when the check is on!)
+    if (!captchaRequired()) return false; // off → no gate
+    if (captchaToken(boxRef)) return false; // solved → go
+    fail("Tick the 'I'm not a robot' box first (disable adblock if you can't see it)."); // unsolved → coach, don't burn a request!
+    return true;
+  }
   const pwScore = f.password.length >= 12 ? 3 : f.password.length >= 8 ? 2 : f.password.length >= 4 ? 1 : 0; // chained ternary: length → 0-3 bars (derived during render — NOT state, since it's computable!)
 
   function fail(m) { setMsg(m); setMsgErr(true); } // helper: red status line (two setStates = one re-render, batched!)
@@ -156,33 +173,40 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
   }
   async function login() { // SIGN IN flow…
     if (busy) return; setBusy(true); setMsg(''); setMsgErr(false); setNeedsVerify(false); // lock + reset ALL status (clean slate per attempt!)
+    const human = botToken(); // captcha token (undefined = check off; null = unsolved!)
+    if (human === null) { setBusy(false); return needHuman(); } // unsolved → coach (no wasted request, no lockup!)
     try { // try/catch: if the SERVER can't be reached at all, fetch THROWS (no response to read!)…
-      const { ok, data } = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: f.email.trim(), password: f.password }) }); // trim email (trailing spaces break login!); password NOT trimmed (spaces can be intentional!)
-      setBusy(false); // unlock (ALWAYS — both paths!)
+      const { ok, data } = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: f.email.trim(), password: f.password, ...(human ? { recaptchaToken: human } : {}) }) }); // trim email (trailing spaces break login!); password NOT trimmed (spaces can be intentional!)
+      setBusy(false); captchaReset(boxRef); // unlock (ALWAYS — both paths!) + fresh checkbox (tokens are single-use!)
       if (ok && data.user) { setMsg('Welcome back…'); setMsgErr(false); afterAuth('/dashboard'); return; } // success = ok AND a user object (guards empty-200 responses from misconfigured hosting!)
       if (data.needsVerification) setNeedsVerify(true); // backend flag → reveal resend button below
       fail(data.error || (data.errors || []).join('; ') || 'Sign in failed — check your details and try again.'); // server answered with an error (validation/credentials) → show its message, never a bare fallback
     } catch { // …network/server unreachable (backend down, offline, wrong URL) lands HERE with a human message, never silence!
-      setBusy(false);
+      setBusy(false); captchaReset(boxRef);
       fail("Can't reach the Vendora server. Check your internet connection and try again.");
     }
   }
   async function signup() { // SIGN UP flow (same shape, more fields)…
     if (busy) return; setBusy(true); setMsg(''); setMsgErr(false);
+    const human = botToken(); // captcha token first (bots never reach validation!)
+    if (human === null) { setBusy(false); return needHuman(); } // unsolved → coach (button unlocked!)
     try { // try/catch: unreachable server throws — must show why, never hang on "Please wait…"!
-      const { ok, data } = await api('/api/auth/signup', { method: 'POST', body: JSON.stringify({ name: f.name.trim(), whatsapp_number: f.wa.trim(), owner_number: f.wa.trim(), hours: f.hours.trim(), email: f.email.trim(), password: f.password }) }); // owner_number = same as business number initially (editable later in Profile!); password raw
-      setBusy(false);
+      const { ok, data } = await api('/api/auth/signup', { method: 'POST', body: JSON.stringify({ name: f.name.trim(), whatsapp_number: f.wa.trim(), owner_number: f.wa.trim(), hours: f.hours.trim(), email: f.email.trim(), password: f.password, ...(human ? { recaptchaToken: human } : {}) }) }); // owner_number = same as business number initially (editable later in Profile!); password raw
+      setBusy(false); captchaReset(boxRef);
       if (ok && data.user) { setMsg('Account created — setting up your assistant…'); setMsgErr(false); afterAuth('/onboarding'); return; } // dev auto-login path (no Resend key): user object present → straight in!
       if (ok && data.needsOTP) { setOtpEmail(data.email || f.email.trim()); setOtp(''); setMsg(''); setMsgErr(false); switchMode('otp'); return; } // OTP path: stash the email, clear code draft, flip to the code screen (NO session yet — unverified gets nothing!)
       fail((data.errors || [data.error || 'Signup failed — check your details and try again.']).join('; ')); // backend sends errors ARRAY (validation!) or single error — handle both, join with '; '
     } catch { // server unreachable (no backend deployed, offline…) → plain-language message, button unlocked!
-      setBusy(false);
+      setBusy(false); captchaReset(boxRef);
       fail("Can't reach the Vendora server. Check your internet connection and try again.");
     }
   }
   async function resend() { // "didn't get the email" button…
+    if (needHuman()) return; // checkbox gate (no token burn for bots!)
+    const human = botToken();
     try { // same unreachable-server guard as login/signup (consistency: every auth call explains failures!)
-      const { ok, data } = await api('/api/auth/resend', { method: 'POST', body: JSON.stringify({ email: f.email.trim() }) });
+      const { ok, data } = await api('/api/auth/resend', { method: 'POST', body: JSON.stringify({ email: f.email.trim(), ...(human ? { recaptchaToken: human } : {}) }) });
+      captchaReset(boxRef);
       setMsg(data.message || data.error || (ok ? 'Check your inbox.' : 'Could not resend — try again.')); // backend message wins (it knows Resend state!); || chain of fallbacks
       setMsgErr(!ok); // red iff failed (!ok flips boolean)
     } catch { // server unreachable → plain message, red (never silent!)
@@ -190,7 +214,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
       setMsgErr(true);
     }
   }
-  function switchMode(m) { setMode(m); setMsg(''); setMsgErr(false); setNeedsVerify(false); setShowPw(false); } // mode switch RESETS all transient state (no leaking signup errors into login view!)
+  function switchMode(m) { setMode(m); setMsg(''); setMsgErr(false); setNeedsVerify(false); setShowPw(false); boxRef.current = null; } // mode switch RESETS all transient state (no leaking signup errors into login view!) + drops the old widget id (fresh box mounts per mode!)
   const [otpEmail, setOtpEmail] = useState(''); // address the code went to (stashed at signup — OTP screen posts with it!)
   const [otp, setOtp] = useState(''); // 6-digit draft (controlled; digits enforced below, not just trusted!)
   const [cool, setCool] = useState(0); // resend cooldown seconds (anti-spam + anti-cost: every resend = a Resend email!)
@@ -203,41 +227,49 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
     const code = otp.replace(/\D/g, '').slice(0, 6); // strip non-digits (paste "12 34 56" still works!) + cap 6
     if (code.length !== 6) return fail('Enter the 6-digit code from your email.'); // client guard (fail() paints red — no wasted request!)
     if (busy) return; setBusy(true); setMsg(''); setMsgErr(false);
+    const human = botToken(); // OTP screen has its own checkbox (bots must not brute-force codes!)
+    if (human === null) { setBusy(false); return needHuman(); }
     try {
-      const { ok, data } = await api('/api/auth/verify-otp', { method: 'POST', body: JSON.stringify({ email: otpEmail, code }) });
-      setBusy(false);
+      const { ok, data } = await api('/api/auth/verify-otp', { method: 'POST', body: JSON.stringify({ email: otpEmail, code, ...(human ? { recaptchaToken: human } : {}) }) });
+      setBusy(false); captchaReset(boxRef);
       if (ok) { setMsg('Verified — setting up your assistant…'); setMsgErr(false); await afterAuth('/onboarding'); return; } // verified = logged in (session stamped!) → tour! (await: afterAuth overwrites msg on failure so the user sees WHY, never a silent bounce)
       fail(data.error || 'Wrong code — try again.'); // expired/locked/left-count messages arrive HERE (backend crafts each one!)
-    } catch { setBusy(false); fail("Can't reach the Vendora server. Check your internet connection and try again."); } // unreachable → plain message (same guard as login/signup!)
+    } catch { setBusy(false); captchaReset(boxRef); fail("Can't reach the Vendora server. Check your internet connection and try again."); } // unreachable → plain message (same guard as login/signup!)
   }
   async function resendCode() { // fresh code (burns the old one server-side!)…
     if (busy || cool > 0) return; // locked while busy OR cooling down (double-tap protection + cost control!)
     setBusy(true); setMsg(''); setMsgErr(false);
+    const human = botToken(); // resends cost emails — checkbox first!
+    if (human === null) { setBusy(false); return needHuman(); }
     try {
-      const { ok, data } = await api('/api/auth/otp-resend', { method: 'POST', body: JSON.stringify({ email: otpEmail }) });
-      setBusy(false);
+      const { ok, data } = await api('/api/auth/otp-resend', { method: 'POST', body: JSON.stringify({ email: otpEmail, ...(human ? { recaptchaToken: human } : {}) }) });
+      setBusy(false); captchaReset(boxRef);
       if (ok && data.auto) { setMsg('Email service is off (dev) — verified! Please sign in.'); setMsgErr(false); return; } // dev auto-path (no Resend key → nothing to type!)
       if (ok) { setMsg(data.message || 'New code sent — check your inbox.'); setMsgErr(false); setCool(60); setOtp(''); return; } // success → 60s cooldown + clear draft (old code is DEAD server-side!)
       fail(data.error || 'Could not resend — try again.');
-    } catch { setBusy(false); fail("Can't reach the Vendora server. Check your internet connection and try again."); }
+    } catch { setBusy(false); captchaReset(boxRef); fail("Can't reach the Vendora server. Check your internet connection and try again."); }
   }
   async function sendLink() { // FALLBACK: "email didn't arrive? send a LINK instead" (token flow — works even when OTP emails land in spam!)…
     if (busy) return; setBusy(true); setMsg(''); setMsgErr(false);
+    const human = botToken(); // links cost emails too — checkbox first!
+    if (human === null) { setBusy(false); return needHuman(); }
     try {
-      const { ok, data } = await api('/api/auth/otp-link', { method: 'POST', body: JSON.stringify({ email: otpEmail }) });
-      setBusy(false);
+      const { ok, data } = await api('/api/auth/otp-link', { method: 'POST', body: JSON.stringify({ email: otpEmail, ...(human ? { recaptchaToken: human } : {}) }) });
+      setBusy(false); captchaReset(boxRef);
       setMsg(data.message || data.error || (ok ? 'Link sent — check your inbox.' : 'Could not send — try again.')); // backend message wins (knows Resend state!)
       setMsgErr(!ok);
-    } catch { setBusy(false); fail("Can't reach the Vendora server. Check your internet connection and try again."); }
+    } catch { setBusy(false); captchaReset(boxRef); fail("Can't reach the Vendora server. Check your internet connection and try again."); }
   }
   async function forgotSend() { // FORGOT path: email → reset link (always "sent" — enumeration-safe by design!)…
     if (busy) return; setBusy(true); setMsg(''); setMsgErr(false);
+    const human = botToken(); // password-reset emails are bot candy — checkbox first!
+    if (human === null) { setBusy(false); return needHuman(); }
     try {
-      const { data } = await api('/api/auth/forgot', { method: 'POST', body: JSON.stringify({ email: f.email.trim() }) }); // uses the LOGIN email field (no extra input needed!)
-      setBusy(false);
+      const { data } = await api('/api/auth/forgot', { method: 'POST', body: JSON.stringify({ email: f.email.trim(), ...(human ? { recaptchaToken: human } : {}) }) }); // uses the LOGIN email field (no extra input needed!)
+      setBusy(false); captchaReset(boxRef);
       setMsg((data && data.devToken ? `Dev mode — your reset token: ${data.devToken}. ` : '') + 'Reset link sent — check your inbox (and spam folder). It expires in 1 hour.'); // backend always answers "sent" (never reveals who has an account), so we can promise the link confidently
       setMsgErr(false);
-    } catch { setBusy(false); fail("Can't reach the Vendora server. Check your internet connection and try again."); }
+    } catch { setBusy(false); captchaReset(boxRef); fail("Can't reach the Vendora server. Check your internet connection and try again."); }
   }
 
   return (
@@ -269,6 +301,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
             </div>
             <label>6-digit code</label>
             <input className="otp-input" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="••••••" inputMode="numeric" autoComplete="one-time-code" maxLength={6} onKeyDown={(e) => { if (e.key === 'Enter') verifyOtp(); }} /> {/* replace(/\D/g) strips non-digits AS YOU TYPE (paste-friendly!); autoComplete="one-time-code" = phones offer SMS-style autofill! */}
+            <CaptchaBox boxRef={boxRef} /> {/* bot checkbox (nothing renders when the check is off!) */}
             <button className="btn login-cta" disabled={busy} onClick={verifyOtp}>{busy ? <span className="spinner" /> : null}{busy ? 'Checking…' : 'Verify →'}</button>
             <div className="otp-fallback">
               <button type="button" className="btn ghost" disabled={busy || cool > 0} onClick={resendCode}>{cool > 0 ? `Resend code in ${cool}s` : 'Resend code'}</button>
@@ -281,6 +314,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
             <p className="switch-note">Enter your account email — if it exists, a 1-hour reset link is on its way.</p>
             <label>Email</label>
             <input value={f.email} onChange={set('email')} type="email" placeholder="you@business.com" autoComplete="email" onKeyDown={(e) => { if (e.key === 'Enter') forgotSend(); }} />
+            <CaptchaBox boxRef={boxRef} /> {/* bot checkbox (nothing renders when the check is off!) */}
             <button className="btn login-cta" disabled={busy} onClick={forgotSend}>{busy ? <span className="spinner" /> : null}{busy ? 'Sending…' : 'Send reset link'}</button>
             <p className="auth-toggle"><a onClick={() => switchMode('login')}>Back to sign in</a></p>
           </>) : (<> {/* login/signup form (existing — wrapped so otp/forgot replace it!) */}
@@ -301,6 +335,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
           {mode === 'signup' && f.password.length > 0 && ( // strength meter: signup + non-empty only…
             <div className="pw-meter"><i className={pwScore >= 1 ? 'on' : ''} /><i className={pwScore >= 2 ? 'on' : ''} /><i className={pwScore >= 3 ? 'on' : ''} /><span>{pwScore >= 2 ? 'Strong enough' : 'Keep typing…'}</span></div>
           )}
+          <CaptchaBox boxRef={boxRef} /> {/* bot checkbox (nothing renders when the check is off!) */}
           <button className="btn login-cta" disabled={busy} onClick={mode === 'login' ? login : signup}>{busy ? <span className="spinner" /> : null}{busy ? 'Please wait…' : mode === 'login' ? 'Sign in →' : 'Start my free trial →'}</button> {/* disabled while busy (double-submit lock); spinner span OR null; label ternary ×2 (busy? then mode?) */}
           {(mode === 'login' || mode === 'signup') && <GoogleButton busy={busy} setBusy={setBusy} fail={fail} afterAuth={afterAuth} setMe={setMe} />} {/* social login under BOTH forms (one component, both modes!) */}
           {needsVerify && (

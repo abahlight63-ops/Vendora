@@ -12,7 +12,7 @@ const { normalizePhone } = require('../utils/phone'); // destructure the phone h
 // Welcome email after a FRESH verification (link, OTP or Google — never on
 // repeat visits). Fire-and-forget: a mail hiccup must never break the moment.
 function welcomeNewUser(email, businessName) {
-  if (!process.env.RESEND_API_KEY || !email) return; // no key → no mail possible (dev auto-verify path!)
+  if (!email || !mail.isMailConfigured()) return; // no mail path → no mail possible (dev auto-verify path!)
   mail.sendWelcomeEmail(email, businessName).catch(() => {}); // .catch swallows (unhandled rejections crash Node!)
 }
 
@@ -117,7 +117,10 @@ function logout(req, res) {
 // GET /api/auth/config — PUBLIC knobs the login page needs (client id ONLY —
 // never secrets! Secrets stay server-side; the client id is public by design).
 function authConfig(req, res) {
-  res.json({ googleClientId: process.env.GOOGLE_CLIENT_ID || null }); // null → Google button explains "not switched on" (no dead button!)
+  res.json({
+    googleClientId: process.env.GOOGLE_CLIENT_ID || null, // null → Google button explains "not switched on" (no dead button!)
+    recaptchaSiteKey: (process.env.VITE_RECAPTCHA_SITE_KEY || process.env.RECAPTCHA_SITE_KEY || '').trim() || null, // public widget key (Vercel var mirrored backend-side so ONE fetch configures auth forms!)
+  });
 }
 
 // POST /api/auth/google { credential } — Sign in with Google (FREE forever).

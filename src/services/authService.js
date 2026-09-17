@@ -8,9 +8,9 @@ const crypto = require('crypto'); // Node built-in: hashing, random bytes
 const db = require('../db'); // shared Postgres pool
 const mail = require('./emailTemplates'); // branded Resend templates (logo + contact in every mail)
 
-/** Send the verification email via Resend (free tier). Returns true if sent. */
+/** Send the verification email (SMTP first, Resend second). Returns true if sent. */
 async function sendVerificationEmail(email, token) {
-  if (!process.env.RESEND_API_KEY) return false; // dev mode: auto-verify — return false MEANS "not sent"
+  if (!mail.isMailConfigured()) return false; // dev mode: auto-verify — return false MEANS "not sent"
   return mail.sendVerificationEmail(email, token); // branded template (logo header, support footer)
 }
 
@@ -47,10 +47,10 @@ async function findUserByEmail(email) {
 async function createUser(businessId, email, password) {
   const verifyToken = crypto.randomBytes(32).toString('hex'); // 32 random bytes → unguessable 64-char token
   const emailSent = await sendVerificationEmail(email, verifyToken); // try the email (false in dev mode)
-  // SECURITY RULE: auto-verify ONLY when no key is configured (local dev).
-  // Key present but send FAILED → stay UNVERIFIED (else a Resend outage lets
+  // SECURITY RULE: auto-verify ONLY when NO mail path is configured (local dev).
+  // Mail configured but send FAILED → stay UNVERIFIED (else an outage lets
   // anyone register without email access — fail CLOSED in production!).
-  const verified = emailSent ? false : !process.env.RESEND_API_KEY; // sent → must click (false); no key → auto true; failed send → false!
+  const verified = emailSent ? false : !mail.isMailConfigured(); // sent → must click (false); no mail → auto true; failed send → false!
   const { rows } = await db.query(
     `INSERT INTO users (business_id, email, password_hash, verified, verify_token)
      VALUES ($1, $2, $3, $4, $5)
@@ -89,8 +89,8 @@ function makeOTP() {
   return code;
 }
 
-async function sendOTPEmail(email, code) { // pretty code email via Resend (same provider — no new dependency!)…
-  if (!process.env.RESEND_API_KEY) return false; // dev mode: caller auto-verifies (same convention as links!)
+async function sendOTPEmail(email, code) { // pretty code email (SMTP/Resend — same providers, no new dependency!)…
+  if (!mail.isMailConfigured()) return false; // dev mode: caller auto-verifies (same convention as links!)
   return mail.sendOTPEmail(email, code); // branded template (big digits + logo header)
 }
 
@@ -104,7 +104,7 @@ async function issueOTP(email) { // create + send a fresh code (invalidates any 
     'UPDATE users SET otp_hash = $1, otp_expires = now() + make_interval(mins => 10), otp_attempts = 0 WHERE id = $2', // make_interval(mins => 10) = now+10min; attempts reset (fresh code, fresh chances!)
     [hashPassword(code), user.id] // hashPassword REUSED (salt:hash — same machinery as passwords, zero new crypto!)
   );
-  const auto = sent ? false : !process.env.RESEND_API_KEY; // SECURITY: auto-verify only with NO key (dev); key-present failure → must use link fallback, NOT free pass!
+  const auto = sent ? false : !mail.isMailConfigured(); // SECURITY: auto-verify only with NO mail path (dev); configured-but-failed → must use link fallback, NOT free pass!
   return { sent, auto };
 }
 
@@ -131,10 +131,10 @@ async function issueReset(email) { // create a reset token (always "succeeds" pu
   if (!user) return { sent: true }; // unknown email: PRETEND success (don't reveal who has accounts — enumeration defense!)
   const token = crypto.randomBytes(32).toString('hex'); // 256-bit unguessable token (same strength as verify links!)
   await db.query('UPDATE users SET reset_token = $1, reset_expires = now() + make_interval(hours => 1) WHERE id = $2', [token, user.id]); // 1-hour window (short-lived secrets!)
-  if (!process.env.RESEND_API_KEY) {
+  if (!mail.isMailConfigured()) {
     // Dev mode: hand the token back ONLY outside production (local testing
-    // without email). In production a missing key must NEVER leak tokens —
-    // users just see "sent" and the admin must set RESEND_API_KEY.
+    // without email). In production missing mail must NEVER leak tokens —
+    // users just see "sent" and the admin must configure SMTP or Resend.
     return process.env.NODE_ENV === 'production' ? { sent: true } : { sent: true, devToken: token };
   }
   const sent = await mail.sendResetEmail(email, token); // branded template (logo header, support footer)

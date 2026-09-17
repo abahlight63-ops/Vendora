@@ -165,6 +165,13 @@ CREATE TABLE IF NOT EXISTS inventory_logs (
 );
 CREATE INDEX IF NOT EXISTS idx_inventory_business ON inventory_logs(business_id, created_at DESC); -- fast per-shop history (latest-first!)
 
+-- Setup quiz answers (Welcome 5-step + mobile setup): what the shop sells is
+-- business_niche (older migration); these three personalize the dashboard
+-- checklist, Connect hints + plan guidance. Nullable = skipped questions!
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS catalog_size TEXT; -- starting | under-20 | 20-100 | 100-plus
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS channels TEXT; -- comma list: whatsapp,telegram,instagram,walkin
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS daily_volume TEXT; -- few | 10-50 | 50-plus
+
 -- Paid-tier tracking: which tier the shop BOUGHT (pro | plus). Trials count as
 -- Pro without touching this (planService.effectiveTier handles trial → pro).
 -- Old single-plan buyers default to pro (same features they paid for).

@@ -48,9 +48,18 @@ export default function Dashboard({ biz }) { // biz = business object from App (
   function hideGuide() { setGuideOff(true); try { localStorage.setItem('vendora-guide', 'off'); } catch {} } // dismiss: state + persist (try/catch = private-mode safe)
   let tested = false; // plain variable (not state — read fresh each render; Playground writes the flag)
   try { tested = localStorage.getItem('vendora-tested') === '1'; } catch {} // Playground sets '1' on first test send
+  const quizSize = biz?.catalog_size || ''; // quiz Q2 ('' = skipped → generic wording!)
+  const quizChannels = String(biz?.channels || '').split(',').filter(Boolean); // quiz Q3 (['whatsapp','telegram'] — [] = skipped!)
+  const quizVolume = biz?.daily_volume || ''; // quiz Q4 ('' = skipped!)
+  const firstHint = quizSize === 'starting' ? 'Start with 5 — 10 minutes, then test like a customer'
+    : quizSize === '100-plus' || quizSize === '20-100' ? 'Big shelves? Catalog page + Pro SYNC do bulk fast'
+    : 'The AI only quotes your catalog'; // checklist speaks THEIR shelf size (quiz payoff!)
+  const connectHint = quizChannels.includes('telegram') && !quizChannels.includes('whatsapp') ? 'Telegram first? Connect page links it in a minute'
+    : quizChannels.includes('instagram') ? 'Post on Instagram, sell on WhatsApp — connect both'
+    : 'WhatsApp + Telegram — TEST to LIVE in minutes'; // checklist speaks THEIR channels (quiz payoff!)
   const steps = [ // checklist DATA (not JSX): done flags computed from REAL data (self-ticking!)…
-    { done: (s?.products || 0) > 0, label: 'Add your first product', hint: 'The AI only quotes your catalog', to: '/catalog' }, // to = where the step links
-    { done: live, label: 'Connect your channels', hint: 'WhatsApp + Telegram — TEST to LIVE in minutes', to: '/connect' }, // live = TEST passed or Telegram on (Connect page owns it!)
+    { done: (s?.products || 0) > 0, label: quizSize === 'starting' ? 'Add your first 5 products' : 'Add your first product', hint: firstHint, to: '/catalog' }, // to = where the step links
+    { done: live, label: 'Connect your channels', hint: connectHint, to: '/connect' }, // live = TEST passed or Telegram on (Connect page owns it!)
     { done: tested || (s?.convos || 0) > 0, label: 'Test like a customer', hint: 'Ask prices, then something you don\'t sell', to: '/playground' }, // \' escapes apostrophe in single-quoted string
     { done: !!(biz?.hours && biz?.owner_number), label: 'Set hours + owner number', hint: 'So closed-hours replies feel human', to: '/profile' }, // !! forces boolean (&& returns the last value, not true/false!)
     { done: (s?.convos || 0) > 0, label: 'Get your first real chat', hint: 'Share your WhatsApp number with customers', to: '/chats' },
@@ -74,6 +83,9 @@ export default function Dashboard({ biz }) { // biz = business object from App (
 
       {trialLeft !== null && ( // && conditional render: trial strip ONLY during trial (null → renders nothing)
         <div className="trial-strip"><Ic n="clock" s={16} /><span><b>{trialLeft} day{trialLeft === 1 ? '' : 's'} of Pro trial left.</b> Keep Pro sync, or stay free forever with manual catalog.</span><Link to="/billing">Billing<Ic n="next" s={14} /></Link></div>
+      )}
+      {quizVolume === '50-plus' && bill && bill.status !== 'active' && bill.status !== 'trialing' && ( // high-volume shops past trial, unpaid: honest plan nudge (quiz payoff — no surprise caps! trial strip covers trialing users above!)
+        <div className="trial-strip"><Ic n="bolt" s={16} /><span><b>50+ chats a day? You'll outgrow Free fast.</b> Pro keeps every reply instant at volume.</span><Link to="/billing">See plans<Ic n="next" s={14} /></Link></div>
       )}
 
       {/* visible free-tier ads live in Shell (every page) — no duplicate slot here */}

@@ -5,7 +5,7 @@
 // WHO: verified owners whose shop saw no chat activity for INACTIVITY_DAYS
 // (default 14) and got no nudge in the last 30 days. Paying (active) shops
 // are skipped — they get attention through support, not nudges.
-// SAFETY: RESEND_API_KEY missing → dry-run (lists who WOULD be emailed).
+// SAFETY: no mail path (SMTP or Resend) → dry-run (lists who WOULD be emailed).
 // Run: npm run winback
 require('dotenv').config(); // dotenv FIRST (all env below comes from .env!)
 const db = require('./db'); // shared pool
@@ -24,8 +24,8 @@ async function main() {
      LIMIT 200`, // cap per run (Resend free tier = 100/day — never blow the quota in one go!)
     [days]
   );
-  if (!process.env.RESEND_API_KEY) { // no key → dry-run (safe to schedule before email is set up!)
-    console.log(`[winback dry-run] ${rows.length} quiet shop(s) (no RESEND_API_KEY, nothing sent):`);
+  if (!mail.isMailConfigured()) { // no mail path → dry-run (safe to schedule before email is set up!)
+    console.log(`[winback dry-run] ${rows.length} quiet shop(s) (no SMTP or Resend key, nothing sent):`);
     rows.forEach((r) => console.log(` - ${r.name} <${r.email || 'no verified email'}>`));
     process.exit(0);
   }

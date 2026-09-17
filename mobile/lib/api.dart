@@ -34,6 +34,14 @@ class ApiClient {
   String? _cookie; // raw "connect.sid=..." pair (attributes stripped)
   bool _loaded = false;
 
+  // Bot-wall pass: header X-Mobile-Key proves "official app" (set BOTH the
+  // Render env MOBILE_APP_KEY and this dart-define, same value!). It's
+  // obfuscation, not proof — rate limits + OTP burn still guard everything.
+  static const String mobileKey = String.fromEnvironment(
+    'MOBILE_APP_KEY',
+    defaultValue: '',
+  );
+
   Future<void> _ensureLoaded() async {
     if (_loaded) return;
     final prefs = await SharedPreferences.getInstance();
@@ -61,6 +69,7 @@ class ApiClient {
 
   Map<String, String> _headers({bool json = true}) => {
         if (json) 'Content-Type': 'application/json',
+        if (mobileKey.isNotEmpty) 'X-Mobile-Key': mobileKey,
         ...?_cookieHeader,
       };
 
@@ -307,13 +316,22 @@ class ApiClient {
     return (b as Map).cast<String, dynamic>();
   }
 
-  /// Welcome setup: niche + heard-from (no name required — the setup
-  /// screen and only the setup screen calls this).
+  /// Welcome setup: 5-question quiz (niche required, rest skippable).
+  /// Only the setup screen calls this. Empty strings = skipped (backend
+  /// stores NULL — same rule as the web quiz!).
   Future<Map<String, dynamic>> saveSetup(
-      String niche, String heardFrom) async {
+    String niche,
+    String heardFrom, {
+    String size = '',
+    List<String> channels = const [],
+    String volume = '',
+  }) async {
     final b = await post('/api/me/setup', {
       'business_niche': niche,
       'heard_from': heardFrom,
+      if (size.isNotEmpty) 'catalog_size': size,
+      if (channels.isNotEmpty) 'channels': channels,
+      if (volume.isNotEmpty) 'daily_volume': volume,
     });
     return (b as Map).cast<String, dynamic>();
   }

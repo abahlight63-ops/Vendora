@@ -2,10 +2,11 @@
 // WHAT: every email Vendora sends, in ONE branded place. All templates share
 // the same header (logo + name), button style and footer (support contact +
 // app link), so the inbox always looks professional — no plain-text surprises.
-// SENDING: Resend API via built-in fetch (no SDK). Every sender checks
-// RESEND_API_KEY first: no key → returns false (callers auto-verify in dev).
-// LINKS: built from PUBLIC_BASE_URL (set it to the live URL on Render —
-// localhost links die in real inboxes!). Logo served from /logo.png.
+// SENDING: Gmail SMTP first (no domain needed!), Resend second (needs a
+// verified domain for real users). No mail configured → returns false
+// (callers auto-verify in dev). LINKS: built from PUBLIC_BASE_URL (set it to
+// the live URL on Render — localhost links die in real inboxes!).
+// Logo served from /logo.png.
 function baseUrl() {
   return (process.env.PUBLIC_BASE_URL || 'http://localhost:3000').replace(/\/$/, ''); // strip trailing slash (double slashes break some clients!)
 }
@@ -44,9 +45,23 @@ function layout({ title, intro, body, ctaLabel, ctaLink, foot }) {
     </div>`;
 }
 
-async function sendEmail({ to, subject, html }) { // single Resend caller (all templates flow through here)…
+// Any mail path alive? (SMTP app-password OR Resend key — callers use this,
+// never raw env checks, so adding a third provider later touches ONE line!)
+function isMailConfigured() {
+  try {
+    if (require('./smtpMailer').isSmtpConfigured()) return true; // Gmail SMTP (no domain!)
+  } catch {}
+  return !!process.env.RESEND_API_KEY; // Resend (verified domain for real users!)
+}
+
+async function sendEmail({ to, subject, html }) { // single mail caller (all templates flow through here)…
+  try { // SMTP first (works with zero domains!), Resend second…
+    if (require('./smtpMailer').isSmtpConfigured()) {
+      return await require('./smtpMailer').sendSMTP({ to, subject, html });
+    }
+  } catch (e) { console.error('SMTP path error:', e.message); } // SMTP blew up → fall THROUGH to Resend (never fail when a backup exists!)
   const key = process.env.RESEND_API_KEY;
-  if (!key) return false; // no key → "not sent" (callers decide: dev auto-verify, prod stays pending!)
+  if (!key) return false; // nothing configured → "not sent" (callers decide: dev auto-verify, prod stays pending!)
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -143,17 +158,20 @@ async function sendInactiveEmail(email, name) {
 }
 
 // 6) Support reply notice (admin answers a ticket → owner gets email + in-app reply).
+function esc(s) { // email HTML escape (admin typing <script> can't break the email!)
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 async function sendTicketReplyEmail(email, subject, reply) {
   return sendEmail({
     to: email,
     subject: `Support replied: ${String(subject || 'your message').slice(0, 60)}`,
     html: layout({
       title: 'Support replied',
-      intro: `On “${String(subject || 'your message').slice(0, 80)}”:`,
-      body: `<div style="background:#fff;border-left:4px solid #25D366;padding:12px 14px;color:#333;line-height:1.6;border-radius:0 8px 8px 0;">${String(reply || '').slice(0, 1000)}</div>`,
+      intro: `On “${esc(String(subject || 'your message').slice(0, 80))}”:`,
+      body: `<div style="background:#fff;border-left:4px solid #25D366;padding:12px 14px;color:#333;line-height:1.6;border-radius:0 8px 8px 0;">${esc(String(reply || '').slice(0, 1000))}</div>`,
       ctaLabel: 'View in Help', ctaLink: `${baseUrl()}/help`,
     }),
   });
 }
 
-module.exports = { baseUrl, supportEmail, sendEmail, sendVerificationEmail, sendOTPEmail, sendResetEmail, sendWelcomeEmail, sendInactiveEmail, sendTicketReplyEmail };
+module.exports = { baseUrl, supportEmail, sendEmail, isMailConfigured, sendVerificationEmail, sendOTPEmail, sendResetEmail, sendWelcomeEmail, sendInactiveEmail, sendTicketReplyEmail };

@@ -253,14 +253,9 @@ async function complaintReply(req, res) {
   await db.query("UPDATE complaints SET reply = $1, status = 'answered', updated_at = now() WHERE id = $2", [reply.trim(), req.params.id]); // store reply + flip status + bump timestamp (owner sees it in Help history!)
   try { // email the owner (best-effort: ticket is STORED regardless — email failing must not lose the reply!)…
     const u = await db.query('SELECT email FROM users WHERE business_id = $1 ORDER BY id ASC LIMIT 1', [ticket.business_id]); // oldest account = owner email…
-    const key = process.env.RESEND_API_KEY; // …via Resend (same provider as verification — no new dependency!)…
-    if (key && u.rows[0]?.email) { // …only if configured AND address known…
-      const from = process.env.EMAIL_FROM || 'Vendora <onboarding@resend.dev>';
-      await fetch('https://api.resend.com/emails', { // POST email (same shape as authService — consistency!)
-        method: 'POST',
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from, to: [u.rows[0].email], subject: `Re: ${ticket.subject || 'your support request'} — Vendora`, html: `<div style="font-family:Segoe UI,sans-serif;max-width:520px;margin:auto;padding:24px;"><p style="color:#333;">${reply.trim().replace(/</g, '&lt;')}</p></div>` }), // .replace(/</g) escapes HTML (admin typing <script> can't break the email!)
-      });
+    if (u.rows[0]?.email) { // …address known? send via the shared mailer (SMTP first, Resend second — same path as verification!)
+      const mail = require('../services/emailTemplates');
+      await mail.sendTicketReplyEmail(u.rows[0].email, ticket.subject, reply.trim());
     }
   } catch (e) { console.error('complaint email error:', e.message); } // email failed → log only (reply already saved = support continuity preserved!)
   require('../services/notifyService').notify(ticket.business_id, { // bell: support answered (owner sees it in the bell + Help history within ~60s!)

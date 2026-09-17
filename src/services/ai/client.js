@@ -416,6 +416,31 @@ async function callAI(system, user, image) {
   );
 }
 
+// Ping every configured provider with a ~5-token "OK" (parallel, each guarded).
+// Returns [{provider, ok, ms, error?}] — never key values, only short errors.
+// Used by the owner "Test my AIs" button AND the Admin AI-health card.
+async function pingAll() {
+  const has = configuredProviders();
+  const tiny = { temperature: 0, maxTokens: 5 }; // cheapest possible ping
+  const jobs = [];
+  if (has.gemini) jobs.push(['Gemini', () => callGemini('Health check.', 'Reply with the word OK.', null, { ...tiny, model: (process.env.GEMINI_LITE_MODEL || 'gemini-2.5-flash-lite').trim() })]);
+  if (has.groq) jobs.push(['Groq (GPT-OSS)', () => callGroq('Health check.', 'Reply with the word OK.', process.env.GROQ_OSS_MODEL || 'openai/gpt-oss-20b', tiny)]);
+  if (has.tokenrouter) jobs.push(['TokenRouter', () => callTokenRouter('Health check.', 'Reply with the word OK.', (process.env.TOKENROUTER_MODEL || 'deepseek-v4-flash').trim(), tiny)]);
+  if (has.sambanova) jobs.push(['SambaNova', () => callSambaNova('Health check.', 'Reply with the word OK.', (process.env.SAMBANOVA_MODEL || 'Meta-Llama-3.3-70B-Instruct').trim(), tiny)]);
+  if (has.claude) jobs.push(['Claude', () => callClaude('Health check.', 'Reply with the word OK.', null, process.env.CLAUDE_MODEL || undefined, tiny)]);
+  if (has.openai) jobs.push(['OpenAI', () => callOpenAI('Health check.', 'Reply with the word OK.', process.env.OPENAI_MODEL || undefined, tiny)]);
+  jobs.push(['Backup AI', () => callPollinations('Health check.', 'Reply with the word OK.', null, tiny)]); // keyless — always tested
+  return Promise.all(jobs.map(async ([label, run]) => {
+    const started = Date.now();
+    try {
+      await run();
+      return { provider: label, ok: true, ms: Date.now() - started };
+    } catch (e) {
+      return { provider: label, ok: false, ms: Date.now() - started, error: String((e && e.message) || 'failed').slice(0, 160) };
+    }
+  }));
+}
+
 module.exports = {
   AI_TIMEOUT_MS,
   GEMINI_CHAIN,
@@ -434,4 +459,5 @@ module.exports = {
   callPollinations,
   callModel,
   callAI,
+  pingAll,
 };

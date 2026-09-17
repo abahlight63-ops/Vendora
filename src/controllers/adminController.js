@@ -362,6 +362,13 @@ async function adsStatus(req, res) {
   });
 }
 
+// ---- AI health: same ping-all as the owner diagnosis, but behind the admin
+// gate (booleans + short errors only — key VALUES never leave the server!) ----
+async function aiStatus(req, res) {
+  const client = require('../services/ai/client');
+  res.json({ status: await client.pingAll() });
+}
+
 module.exports = {
   listBusinesses,
   getBusiness,
@@ -371,6 +378,7 @@ module.exports = {
   deleteBusiness,
   adStats,
   adsStatus,
+  aiStatus,
   adminLogin,
   adminLogout,
   requireAdmin,

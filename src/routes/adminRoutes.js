@@ -15,6 +15,7 @@ router.get('/businesses/:id/products', adminController.listBusinessProducts); //
 router.delete('/businesses/:id', adminController.deleteBusiness); // remove a business
 router.get('/ads/stats', adminController.adStats); // per-click earnings totals (your revenue!)
 router.get('/ads/status', adminController.requireAdmin, adminController.adsStatus); // env-key diagnostics (booleans only — key VALUES never leave the server!)
+router.get('/ai-status', adminController.requireAdmin, adminController.aiStatus); // AI health ping per provider (admin diagnosis!)
 // Admin console (session-password OR x-admin-key — requireAdmin decides per route)
 router.get('/stats', adminController.requireAdmin, adminController.adminStats); // overview cards (users, tiers, money, chats, complaints)
 router.get('/users', adminController.requireAdmin, adminController.adminUsers); // every account + shop (newest first)

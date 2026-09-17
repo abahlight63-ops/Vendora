@@ -85,6 +85,7 @@ export default function Admin() {
         : <Complaints rows={d} act={act} />}
       <Broadcast act={act} /> {/* always mounted: announce updates to every bell */}
       <WarnUser act={act} /> {/* always mounted: warn ONE user straight to their bell */}
+      <AiHealth /> {/* always mounted: ping every AI key (booleans + short errors only) */}
       <AdsStatus /> {/* always mounted: are the Render ad keys live? (booleans only) */}
     </>
   );
@@ -136,12 +137,41 @@ function WarnUser({ act }) { // ONE user, not all: a warning/notice → their be
   );
 }
 
+function AiHealth() { // AI KEYS LIVE? one-tap ping per provider (booleans + short errors — key VALUES never leave the server!)…
+  const [h, setH] = useState(null); // null = not tested yet; 'checking' = in flight; array = results
+  async function test() {
+    if (h === 'checking') return; // double-tap guard (pings cost quota!)
+    setH('checking');
+    const { ok, data } = await api('/api/admin/ai-status');
+    if (ok && Array.isArray(data.status)) setH(data.status);
+    else { setH(null); toast('Could not test AIs — try again', 'err'); }
+  }
+  return (
+    <div className="card">
+      <h2><Ic n="spark" s={18} /> AI health</h2>
+      <p className="desc">Pings every AI key with a 5-token hello. Green = working. Red names the exact problem (bad key? retired model? spent quota?) — fix that key on Render, then redeploy.</p>
+      <button className="btn sm" disabled={h === 'checking'} onClick={test}>{h === 'checking' ? 'Testing…' : 'Test all AIs'}</button>
+      {Array.isArray(h) && (
+        <div style={{ marginTop: 10 }}>
+          {h.map((r) => (
+            <div key={r.provider} style={{ display: 'flex', gap: 8, alignItems: 'baseline', padding: '3px 0', fontSize: 13 }}>
+              <span>{r.ok ? '🟢' : '🔴'}</span>
+              <b>{r.provider}</b>
+              <span className="hint">{r.ok ? `${r.ms}ms` : (r.error || 'failed')}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdsStatus() { // AD KEYS LIVE? booleans only — key VALUES never leave the server…
   const [s, setS] = useState(null); // null = loading (skeleton first — same habit as tabs!)
+  const [previewMsg, setPreviewMsg] = useState(''); // preview outcome line (tells the truth when nothing shows) — hooks BEFORE any early return (React rule: same hook order every render!)
   useEffect(() => { api('/api/admin/ads/status').then(({ ok, data }) => { if (ok) setS(data); }); }, []); // mount-only probe (admin session already open — 401 impossible here!)
   if (!s) return <div className="card"><div className="skel" /></div>;
   const dot = (on) => (<span className={'pill ' + (on ? 'ok' : 'flag')} style={{ fontSize: 11 }}>{on ? 'Yes' : 'No'}</span>); // boolean → at-a-glance pill (no key values shown, ever!)
-  const [previewMsg, setPreviewMsg] = useState(''); // preview outcome line (tells the truth when nothing shows)
   async function preview() { // Preview button: bypass today's cap, then run the REAL interstitial path…
     setPreviewMsg('Checking…');
     clearSponsorSeen(); // bypass the once/day cap (preview-only; owners still capped)

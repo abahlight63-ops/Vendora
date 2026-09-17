@@ -687,26 +687,7 @@ async function aiModels(req, res) {
 // values — only ok/ms/short-error per provider. Each ping is ~5 tokens.
 async function aiStatus(req, res) {
   const client = require('../services/ai/client');
-  const has = client.configuredProviders();
-  const tiny = { temperature: 0, maxTokens: 5 }; // cheapest possible ping
-  const jobs = [];
-  if (has.gemini) jobs.push(['Gemini', () => client.callGemini('Health check.', 'Reply with the word OK.', null, { ...tiny, model: (process.env.GEMINI_LITE_MODEL || 'gemini-2.5-flash-lite').trim() })]);
-  if (has.groq) jobs.push(['Groq (GPT-OSS)', () => client.callGroq('Health check.', 'Reply with the word OK.', process.env.GROQ_OSS_MODEL || 'openai/gpt-oss-20b', tiny)]);
-  if (has.tokenrouter) jobs.push(['TokenRouter', () => client.callTokenRouter('Health check.', 'Reply with the word OK.', (process.env.TOKENROUTER_MODEL || 'deepseek-v4-flash').trim(), tiny)]);
-  if (has.sambanova) jobs.push(['SambaNova', () => client.callSambaNova('Health check.', 'Reply with the word OK.', (process.env.SAMBANOVA_MODEL || 'Meta-Llama-3.3-70B-Instruct').trim(), tiny)]);
-  if (has.claude) jobs.push(['Claude', () => client.callClaude('Health check.', 'Reply with the word OK.', null, process.env.CLAUDE_MODEL || undefined, tiny)]);
-  if (has.openai) jobs.push(['OpenAI', () => client.callOpenAI('Health check.', 'Reply with the word OK.', process.env.OPENAI_MODEL || undefined, tiny)]);
-  jobs.push(['Backup AI', () => client.callPollinations('Health check.', 'Reply with the word OK.', null, tiny)]); // keyless — always tested
-  const status = await Promise.all(jobs.map(async ([label, run]) => {
-    const started = Date.now();
-    try {
-      await run();
-      return { provider: label, ok: true, ms: Date.now() - started };
-    } catch (e) {
-      return { provider: label, ok: false, ms: Date.now() - started, error: String((e && e.message) || 'failed').slice(0, 160) };
-    }
-  }));
-  res.json({ status });
+  res.json({ status: await client.pingAll() });
 }
 
 const FREE_AI_PER_DAY = Number(process.env.FREE_AI_PER_DAY || 50); // free-tier Vendora AI chats/day, 50 for everything (env-tunable)

@@ -96,17 +96,30 @@ async function adminLogin(req, res) {
     return res.status(401).json({ error: 'Wrong password.' }); // 401 (generic message — don't hint at config state!)
   }
   req.session.isAdmin = true; // stamp the SESSION (PgSessionStore persists it — survives restarts, works multi-server!)
+  req.session.adminAt = Date.now(); // last-activity stamp (sliding 30-min window enforced below!)
   res.json({ ok: true }); // frontend hides the gate, shows the dashboard
 }
 
 function adminLogout(req, res) {
   req.session.isAdmin = false; // flip the flag (keep the session itself — owner login underneath is untouched!)
+  req.session.adminAt = null; // burn the activity stamp too (re-login starts a fresh window!)
   res.json({ ok: true });
 }
 
-// Middleware: pass if admin session flag OR legacy x-admin-key header.
+const ADMIN_IDLE_MS = 30 * 60 * 1000; // 30 minutes without an admin request = logged out (tight: stolen cookies die fast!)
+
+// Middleware: pass if admin session flag (fresh!) OR legacy x-admin-key header.
 function requireAdmin(req, res, next) {
-  if (req.session && req.session.isAdmin) return next(); // UI path (password login)…
+  if (req.session && req.session.isAdmin) { // UI path (password login)…
+    const last = Number(req.session.adminAt) || 0; // missing stamp (pre-update sessions) = expired
+    if (Date.now() - last > ADMIN_IDLE_MS) { // idle too long?…
+      req.session.isAdmin = false; // …burn it (next request re-asks the password!)
+      req.session.adminAt = null;
+      return res.status(401).json({ error: 'Admin session expired — sign in again.' });
+    }
+    req.session.adminAt = Date.now(); // active use slides the window (working admins stay in!)
+    return next();
+  }
   const expected = process.env.ADMIN_API_KEY; // …or API path (scripts/integrations)…
   if (expected && req.get('x-admin-key') === expected) return next();
   return res.status(401).json({ error: 'Admin only.' }); // everyone else (including logged-in OWNERS) → 401
@@ -250,13 +263,23 @@ async function complaintReply(req, res) {
       });
     }
   } catch (e) { console.error('complaint email error:', e.message); } // email failed → log only (reply already saved = support continuity preserved!)
+  require('../services/notifyService').notify(ticket.business_id, { // bell: support answered (owner sees it in the bell + Help history within ~60s!)
+    title: 'Support replied to your message',
+    body: `${reply.trim().slice(0, 300)}`,
+    link: '/help',
+  });
   res.json({ ok: true });
 }
 
 // ---- Resolve a complaint (no reply needed / done) ----
 async function complaintResolve(req, res) {
-  const { rowCount } = await db.query("UPDATE complaints SET status = 'resolved', updated_at = now() WHERE id = $1", [req.params.id]);
-  if (rowCount === 0) return res.status(404).json({ error: 'Not found' });
+  const { rows } = await db.query("UPDATE complaints SET status = 'resolved', updated_at = now() WHERE id = $1 RETURNING business_id, subject", [req.params.id]);
+  if (rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  require('../services/notifyService').notify(rows[0].business_id, { // bell: closed loop (owner stops wondering!)
+    title: 'Your support request was resolved',
+    body: `${rows[0].subject || 'Your message'} — marked resolved. Reply from Help any time if it comes back.`,
+    link: '/help',
+  });
   res.json({ ok: true });
 }
 

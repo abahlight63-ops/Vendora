@@ -21,12 +21,12 @@ export default function Admin() {
   const [blastSeed, setBlastSeed] = useState(null); // template → broadcast prefill ({t,b,link,image,video,n})
   const [warnSeed, setWarnSeed] = useState(null); // template → warn-one prefill (same shape, who stays empty)
 
-  async function check() { // probe: are we already admin? (reload-safe: session persists!)
-    const { ok } = await api('/api/admin/stats'); // stats = cheapest authed probe (any 401 → locked!)
-    setGate(ok ? 'open' : 'locked'); // ok → straight in (no password re-entry after reload!)
-    if (ok) load('stats'); // auto-load first tab (gate open + empty = fetch now!)
+  async function check() { // lockdown: EVERY visit starts locked (tab closed + reopened = password again, always!)
+    setGate('checking');
+    await api('/api/admin/logout', { method: 'POST' }).catch(() => {}); // burn any surviving admin session first (server expiry is the backstop!)
+    setGate('locked'); // password gate, every time (working admins re-enter — 10 seconds for real security!)
   }
-  useEffect(() => { check(); }, []); // [] = mount-only probe
+  useEffect(() => { check(); }, []); // [] = mount-only lockdown
 
   async function login() { // password submit…
     if (!pw) return toast('Enter the admin password', 'err'); // guard: blank submit
@@ -39,9 +39,10 @@ export default function Admin() {
   async function load(t) { // tab loader: one endpoint per tab (switch re-fetches = always fresh!)…
     setTab(t); setD(null); // set tab + null data (null renders skeletons — consistent loading UX!)
     const urls = { stats: '/api/admin/stats', users: '/api/admin/users', revenue: '/api/admin/stats', transfers: '/api/admin/transfers', complaints: '/api/admin/complaints' }; // tab → endpoint map (revenue reuses stats + payments list below? stats covers totals; transfers tab shows the money ACTIONS)
-    const { ok, data } = await api(urls[t]); // fetch…
+    const { ok, status, data } = await api(urls[t]); // fetch…
     if (ok) setD(data); // …store (array or object — panels branch on tab, not shape!)
-    else toast(data.error || 'Load failed', 'err'); // session expired mid-use → toast (re-login via reload → gate re-checks!)
+    else if (status === 401) { setGate('locked'); toast('Admin session expired — sign in again', 'err'); } // idle 30 min → password again (tight by design!)
+    else toast(data.error || 'Load failed', 'err'); // other failures → toast (gate stays — retry the tab!)
   }
 
   async function act(url, body, msg) { // generic ACTION helper: POST → pop → reload tab (approve/reject/verify/resolve all flow through here!)

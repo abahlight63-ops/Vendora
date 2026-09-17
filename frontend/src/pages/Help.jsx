@@ -50,7 +50,11 @@ function SupportBox() { // support ticket form + history (Help tab's "Still stuc
   const [busy, setBusy] = useState(false); // submit lock (double-submit protection — tickets must not duplicate!)
   const [tickets, setTickets] = useState(null); // null = loading; [] = none yet (history below the form!)
   async function load() { const { ok, data } = await api('/api/me/complaints'); if (ok) setTickets(data || []); } // reusable reload (mount + after filing — list updates instantly!)
-  useEffect(() => { load(); }, []); // [] = mount-only
+  useEffect(() => { // mount + 60s poll (support replies land here live — same rhythm as the bell!)
+    load();
+    const t = setInterval(() => { if (!document.hidden) load(); }, 60000);
+    return () => clearInterval(t);
+  }, []); // [] = mount-only setup
   async function send() { // file the ticket…
     if (!body.trim()) return toast('Describe the problem first', 'err'); // guard: blank body
     if (body.trim().length > 2000) return toast('Keep it under 2000 characters', 'err'); // client mirror of server cap (fail fast!)

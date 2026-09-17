@@ -717,7 +717,7 @@ async function ask(req, res) {
       await db.query('UPDATE model_usage SET count = count + 1 WHERE business_id = $1 AND day = CURRENT_DATE AND model_id = $2', [req.session.businessId, resolved.entry.id]); // model counter (plain values — no dynamic SQL needed here!)
       return res.json({ reply: result.reply, via: result.via, model: resolved.entry.id, fallback: !!result.fallback, requested: result.requested || null }); // via = ACTUAL answerer; model = chosen id; fallback tells UI "your pick was down, X answered instead"
     }
-    return res.status(502).json({ error: 'Vendora AI is resting — try again in a moment.' }); // 502 = our upstream (the AI) failed
+    return res.status(502).json({ error: result.reason || 'Vendora AI is resting — try again in a moment.' }); // 502 = our upstream failed — reason names the cause (key missing? quota? all down?) so the owner can act instead of guessing
   } catch (e) {
     console.error('ask error:', e.message);
     res.status(500).json({ error: 'Something went wrong — try again.' });

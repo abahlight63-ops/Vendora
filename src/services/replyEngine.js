@@ -205,7 +205,10 @@ VENDORA FACTS: Vendora is a WhatsApp AI sales assistant for small businesses (an
     return { reply: clean, via, modelId, fallback, requested };
   } catch (err) {
     console.error('askGeneral error:', err.message);
-    return { reply: null, reason: 'AI service unavailable' };
+    // Pass the REAL cause through (e.g. "GEMINI_API_KEY is not set",
+    // "All configured AIs failed") — our transport errors never contain key
+    // values, only key NAMES, so this is safe to show the owner.
+    return { reply: null, reason: err.message || 'AI service unavailable' };
   }
 }
 

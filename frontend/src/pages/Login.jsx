@@ -121,11 +121,16 @@ function GoogleButton({ busy, setBusy, fail, afterAuth, setMe }) { // "Continue 
 async function fetchAuthConfig() { // module-level fetch (called once below): backend exposes ONLY public knobs (never secrets!)…
   try {
     const { ok, data } = await api('/api/auth/config');
-    if (ok && data) {
-      if (data.googleClientId) window.__GOOGLE_CLIENT_ID__ = data.googleClientId; // stash on window (GoogleButton reads it at click time!)
-      if (data.recaptchaSiteKey) window.__RECAPTCHA_KEY__ = data.recaptchaSiteKey; // stash too (CaptchaBox renders the checkbox when present!)
-    }
-  } catch {} // backend down/unconfigured → Google button shows "not switched on", captcha renders nothing (graceful!)
+    // Site key from EITHER place (whichever you set!): backend env (served here)
+    // OR the Vercel build-time var (baked into the bundle). Backend missing it
+    // while SECRET is set = invisible checkbox + blocked submits — this fallback kills that trap!
+    const key = (ok && data && data.recaptchaSiteKey) || import.meta.env.VITE_RECAPTCHA_SITE_KEY || null;
+    if (key) window.__RECAPTCHA_KEY__ = key; // stash on window (CaptchaBox renders the checkbox when present!)
+    if (ok && data && data.googleClientId) window.__GOOGLE_CLIENT_ID__ = data.googleClientId; // stash on window (GoogleButton reads it at click time!)
+  } catch {
+    const fallback = import.meta.env.VITE_RECAPTCHA_SITE_KEY || null; // backend down? build-time key still draws the box (submit will say if the server disagrees!)
+    if (fallback) window.__RECAPTCHA_KEY__ = fallback;
+  } // backend down/unconfigured → Google button shows "not switched on", captcha renders nothing (graceful!)
 }
 fetchAuthConfig(); // fire on module load (once per page-load — cached on window!)
 
@@ -155,6 +160,12 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
   const pwScore = f.password.length >= 12 ? 3 : f.password.length >= 8 ? 2 : f.password.length >= 4 ? 1 : 0; // chained ternary: length → 0-3 bars (derived during render — NOT state, since it's computable!)
 
   function fail(m) { setMsg(m); setMsgErr(true); } // helper: red status line (two setStates = one re-render, batched!)
+  function robotErr(data, fallback) { // backend robot-reject? translate it (missing widget = setup problem, NOT a bot verdict!)
+    const raw = (data && data.error) || fallback;
+    if (!/not a robot/i.test(raw)) return raw; // ordinary error → pass through untouched
+    if (!window.__RECAPTCHA_KEY__) return 'Bot check is ON but the checkbox never loaded — set VITE_RECAPTCHA_SITE_KEY on Vercel (or RECAPTCHA_SITE_KEY on Render) and redeploy.'; // no key anywhere = nothing could render!
+    return raw + " (Can't see the checkbox? Disable adblock for google.com, then reload.)"; // key exists but widget blocked/expired
+  }
   async function afterAuth(path) { // shared post-auth: refresh login state THEN navigate (order matters: Guard reads `me`!)
     try {
       const me = await api('/api/me'); // refetch (single source of truth — never trust the login response alone!)
@@ -180,7 +191,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
       setBusy(false); captchaReset(boxRef); // unlock (ALWAYS — both paths!) + fresh checkbox (tokens are single-use!)
       if (ok && data.user) { setMsg('Welcome back…'); setMsgErr(false); afterAuth('/dashboard'); return; } // success = ok AND a user object (guards empty-200 responses from misconfigured hosting!)
       if (data.needsVerification) setNeedsVerify(true); // backend flag → reveal resend button below
-      fail(data.error || (data.errors || []).join('; ') || 'Sign in failed — check your details and try again.'); // server answered with an error (validation/credentials) → show its message, never a bare fallback
+      fail(robotErr(data, (data.errors || []).join('; ') || 'Sign in failed — check your details and try again.')); // server answered with an error (validation/credentials/robot) → translated message, never a bare fallback
     } catch { // …network/server unreachable (backend down, offline, wrong URL) lands HERE with a human message, never silence!
       setBusy(false); captchaReset(boxRef);
       fail("Can't reach the Vendora server. Check your internet connection and try again.");
@@ -195,7 +206,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
       setBusy(false); captchaReset(boxRef);
       if (ok && data.user) { setMsg('Account created — setting up your assistant…'); setMsgErr(false); afterAuth('/onboarding'); return; } // dev auto-login path (no Resend key): user object present → straight in!
       if (ok && data.needsOTP) { setOtpEmail(data.email || f.email.trim()); setOtp(''); setMsg(''); setMsgErr(false); switchMode('otp'); return; } // OTP path: stash the email, clear code draft, flip to the code screen (NO session yet — unverified gets nothing!)
-      fail((data.errors || [data.error || 'Signup failed — check your details and try again.']).join('; ')); // backend sends errors ARRAY (validation!) or single error — handle both, join with '; '
+      fail(robotErr(data, (data.errors || [data.error || 'Signup failed — check your details and try again.']).join('; '))); // backend sends errors ARRAY (validation!) or single error — handle both, join with '; '
     } catch { // server unreachable (no backend deployed, offline…) → plain-language message, button unlocked!
       setBusy(false); captchaReset(boxRef);
       fail("Can't reach the Vendora server. Check your internet connection and try again.");

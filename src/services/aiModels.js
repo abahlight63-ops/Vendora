@@ -19,29 +19,29 @@
  * Model IDs stay env-overridable so a retired model name never needs a code change.
  */
 const CATALOG = [
-  { id: 'gemini-flash', label: 'Gemini Flash Lite', provider: 'gemini', tier: 'free', badge: 'Fast', desc: 'Google · fastest + cheapest, brief answers', // speed pick (id used when frontend sends nothing)
+  { id: 'gemini-flash', label: 'Gemini Lite', provider: 'gemini', tier: 'free', badge: 'Fast', desc: 'Google · fastest, brief answers', // speed pick (id used when frontend sends nothing)
     model: () => (process.env.GEMINI_LITE_MODEL || 'gemini-2.5-flash-lite').trim() }, // pinned lite; set GEMINI_LITE_MODEL=gemini-3.5-flash-lite once Google ships that name — no deploy needed
-  { id: 'gemini-flash-full', label: 'Gemini Flash (full)', provider: 'gemini', tier: 'free', badge: 'Smart', desc: 'Google · fuller answers (default), still free',
+  { id: 'gemini-flash-full', label: 'Gemini Flash', provider: 'gemini', tier: 'free', badge: 'Smart', desc: 'Google · fuller answers, still free',
     model: () => (process.env.GEMINI_FULL_MODEL || 'gemini-2.5-flash').trim() },
-  { id: 'gpt-oss-20b', label: 'GPT-OSS 20B', provider: 'groq', tier: 'free', badge: 'Fast', desc: 'OpenAI open-weight via Groq · best free pick', // Groq model 1 of 2 (one GROQ_API_KEY, two models max)
+  { id: 'gpt-oss-20b', label: 'GPT-OSS 20B', provider: 'groq', tier: 'free', badge: 'Fast', desc: 'GPT · 20B brain · best free pick', // Groq model 1 of 2 (one GROQ_API_KEY, two models max)
     model: () => process.env.GROQ_OSS_MODEL || 'openai/gpt-oss-20b' },
-  { id: 'llama-70b', label: 'Llama 3.3 70B', provider: 'groq', tier: 'free', badge: 'Smart', desc: 'Meta via Groq · best free quality', // Groq model 2 of 2
+  { id: 'llama-70b', label: 'Meta 70B', provider: 'groq', tier: 'free', badge: 'Smart', desc: 'Meta · 70B brain · top free quality', // Groq model 2 of 2
     model: () => process.env.GROQ_LLAMA_MODEL || 'llama-3.3-70b-versatile' },
-  { id: 'tokenrouter-free', label: 'Token Router Free', provider: 'tokenrouter', tier: 'free', badge: 'Smart', desc: 'Gateway · free key, many models', // TokenRouter model 1 of 2 (ONE free key, TWO models)
+  { id: 'tokenrouter-free', label: 'Vendora Fast', provider: 'tokenrouter', tier: 'free', badge: 'Fast', desc: 'Built-in speed · quick answers', // TokenRouter model 1 of 2 (ONE free key, TWO models)
     model: () => (process.env.TOKENROUTER_MODEL || 'kimi-k2p6').trim() },
-  { id: 'tokenrouter-free-2', label: 'Token Router Free 2', provider: 'tokenrouter', tier: 'free', badge: 'Smart', desc: 'Gateway · second free model', // TokenRouter model 2 of 2 (set names from your dashboard model list)
+  { id: 'tokenrouter-free-2', label: 'Vendora Smart', provider: 'tokenrouter', tier: 'free', badge: 'Smart', desc: 'Built-in brains · deeper answers', // TokenRouter model 2 of 2 (set names from your dashboard model list)
     model: () => (process.env.TOKENROUTER_MODEL_2 || 'kimi-k2p6').trim() },
-  { id: 'sambanova-70b', label: 'SambaNova 70B', provider: 'sambanova', tier: 'free', badge: 'Smart', desc: 'SambaNova free · best quality', // SambaNova model 1 of 2 (ONE free key, TWO models)
+  { id: 'sambanova-70b', label: 'Meta 70B XL', provider: 'sambanova', tier: 'free', badge: 'Smart', desc: 'Meta · largest brain · deep answers', // SambaNova model 1 of 2 (ONE free key, TWO models)
     model: () => (process.env.SAMBANOVA_MODEL || 'Meta-Llama-3.3-70B-Instruct').trim() },
-  { id: 'sambanova-8b', label: 'SambaNova 8B', provider: 'sambanova', tier: 'free', badge: 'Fast', desc: 'SambaNova free · fast model', // SambaNova model 2 of 2
+  { id: 'sambanova-8b', label: 'Meta 8B', provider: 'sambanova', tier: 'free', badge: 'Fast', desc: 'Meta · small brain · instant answers', // SambaNova model 2 of 2
     model: () => (process.env.SAMBANOVA_FAST_MODEL || 'Meta-Llama-3.1-8B-Instruct').trim() },
-  { id: 'pollinations', label: 'Pollinations', provider: 'pollinations', tier: 'free', badge: 'Smart', desc: 'No key needed · emergency backup', // keyless last-resort, always tried last
+  { id: 'pollinations', label: 'Backup AI', provider: 'pollinations', tier: 'free', badge: 'Smart', desc: 'Always on · slower but never busy', // keyless last-resort, always tried last
     model: () => (process.env.POLLINATIONS_MODEL || 'openai').trim() },
-  { id: 'kimi-k2', label: 'Kimi K2', provider: 'groq', tier: 'paid', minTier: 'plus', badge: 'Premium', desc: 'Moonshot · agentic tasks · Pro Plus', // Plus-only, rarely used — rides the same GROQ_API_KEY without hammering free quota
+  { id: 'kimi-k2', label: 'Kimi K2', provider: 'groq', tier: 'paid', minTier: 'plus', badge: 'Premium', desc: 'Extra-smart assistant · Pro Plus', // Plus-only, rarely used — rides the same GROQ_API_KEY without hammering free quota
     model: () => process.env.GROQ_KIMI_MODEL || 'moonshotai/kimi-k2-instruct' },
-  { id: 'claude-haiku', label: 'Claude Haiku', provider: 'claude', tier: 'paid', badge: 'Premium', desc: 'Anthropic · cheapest & careful', // Anthropic cheap model 1 of 2 (~$0.25/1M tokens)
+  { id: 'claude-haiku', label: 'Claude 3.5 Haiku', provider: 'claude', tier: 'paid', badge: 'Premium', desc: 'Anthropic · cheapest & careful', // Anthropic cheap model 1 of 2 (~$0.25/1M tokens)
     model: () => process.env.CLAUDE_MODEL || 'claude-3-5-haiku-20241022' },
-  { id: 'claude-haiku-2', label: 'Claude Haiku 3', provider: 'claude', tier: 'paid', badge: 'Premium', desc: 'Anthropic · cheap classic Haiku', // Anthropic cheap model 2 of 2
+  { id: 'claude-haiku-2', label: 'Claude 3 Haiku', provider: 'claude', tier: 'paid', badge: 'Premium', desc: 'Anthropic · cheap classic', // Anthropic cheap model 2 of 2
     model: () => process.env.CLAUDE_MODEL_2 || 'claude-3-haiku-20240307' },
   { id: 'gpt-mini', label: 'GPT-4o mini', provider: 'openai', tier: 'paid', minTier: 'plus', badge: 'Premium', desc: 'OpenAI · cheapest GPT · Pro Plus', // OpenAI cheap model 1 of 2 — Plus-only heavy work model
     model: () => process.env.OPENAI_MODEL || 'gpt-4o-mini' },

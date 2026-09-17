@@ -14,7 +14,7 @@ const FAQS = [ // [question, answer] pairs — content lives HERE, markup below 
   ['Does it speak Pidgin?', 'Yes — it mirrors the customer. Pidgin in, Pidgin out. Formal English in, formal out.'],
   ['How do I test without WhatsApp?', 'Open Test bot, type like a customer: prices, stock, hours, then something you don\'t sell.'],
   ['How does billing work?', 'Manual catalog is free forever. The 7-day trial unlocks the full Pro plan (countdown shown, bell warns before it ends); after that, pricing follows your location automatically on a secure card checkout. Never paused — free keeps replying from your manual catalog.'],
-  ['Which AI answers my customers?', 'Whichever brain you pick on the Connect page — Gemini Flash (full) by default, with automatic free backups if one is slow or down. You never have to touch anything after picking.'],
+  ['Which AI answers my customers?', 'Whichever brain you pick on the Connect page — Gemini Flash by default, with automatic free backups if one is slow or down. You never have to touch anything after picking.'],
   ['What does profile sync do?', 'Pro only: paste your WhatsApp Business profile text (or send SYNC: + the text from your owner number) and the AI builds your catalog from it, then verifies customer questions against it.'],
   ['Can I get a refund?', "First payment within 7 days if the service genuinely failed you — message us here with details. Duplicate charges are always refunded in full."], // double quotes dodge the apostrophe problem (pick quote style per string!)
   ['How do I cancel?', "Just stop paying — you drop to free at period end, nothing deleted. To erase everything, ask us here and it's gone within 14 days."],
@@ -22,7 +22,7 @@ const FAQS = [ // [question, answer] pairs — content lives HERE, markup below 
   ['Why do I see sponsored messages?', 'The free plan is supported by clearly-labeled sponsor cards (max one a day) plus quiet network ads. Pro removes all of them — see Billing.'],
   ['How do I connect Telegram?', 'Open the Connect page and pick Telegram: message @BotFather → /newbot → name it → paste the token here. Then get your link code so owner commands work from your phone. Free, about a minute.'],
   ['Do voice notes work?', 'Yes — on Pro. Customers send voice notes on WhatsApp or Telegram, the bot transcribes them with Whisper and answers like normal text. Free tier gets a polite handoff instead.'],
-  ['Which AI should I pick?', 'Fast (GPT-OSS 20B, Gemini Lite) for speed, Smart (Llama 70B, Gemini Full, Token Router, SambaNova) for quality. Pollinations is the keyless backup that always works. Premium (Kimi K2, Claude, GPT) is Pro-only — tap one to see what you get.'],
+  ['Which AI should I pick?', 'Fast (GPT-OSS 20B, Gemini Lite, Meta 8B) for speed, Smart (Meta 70B, Gemini Flash, Vendora Smart) for quality. Backup AI always works when others are busy. Premium (Kimi K2, Claude, GPT) is Pro-only — tap one to see what you get.'],
 ];
 
 export default function Help() {

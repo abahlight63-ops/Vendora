@@ -25,7 +25,7 @@ function badgeClass(badge) {
 function ModelPicker({ models, model, onPick, onLocked }) {
   const [open, setOpen] = useState(false);
   const wrap = useRef(null);
-  const current = models.find((m) => m.id === model) || { id: model, label: 'Gemini Flash (full)', badge: 'Smart', desc: 'Google · fuller answers, still free', tier: 'free' };
+  const current = models.find((m) => m.id === model) || { id: model, label: 'Gemini Flash', badge: 'Smart', desc: 'Google · fuller answers, still free', tier: 'free' };
 
   useEffect(() => {
     if (!open) return;

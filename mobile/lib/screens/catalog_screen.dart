@@ -26,6 +26,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
   final _price = TextEditingController();
   final _desc = TextEditingController();
   final _photo = TextEditingController(); // optional photo link (upgraded shops: bot sends it!)
+  final _qty = TextEditingController(); // number in stock (whole units!)
+  String? _cat; // picked shelf (null = no category)
+  List<String> _shelves = const ['New Arrivals', 'Best Sellers', 'General', 'Other']; // niche shelves (replaced by catalog-meta!)
+  String _detailHint = 'Note (optional)'; // details hint in the lane's words
 
   @override
   void initState() {
@@ -39,6 +43,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
     _price.dispose();
     _desc.dispose();
     _photo.dispose();
+    _qty.dispose();
     super.dispose();
   }
 
@@ -49,6 +54,17 @@ class _CatalogScreenState extends State<CatalogScreen> {
     });
     try {
       _items = await ApiClient.instance.products();
+      try {
+        final meta = await ApiClient.instance.catalogMeta(); // niche shelves (same as web!)
+        final cats = meta['categories'];
+        if (cats is List && cats.isNotEmpty) {
+          _shelves =
+              cats.map((c) => '$c').toList(); // '$c' stringifies each entry
+          if (_cat != null && !_shelves.contains(_cat)) _cat = null; // stale pick (niche changed) → reset
+        }
+        final hint = meta['detailHint'];
+        if (hint is String && hint.isNotEmpty) _detailHint = hint;
+      } catch (_) {} // meta optional: shelves stay default (offline-safe!)
     } on ApiException catch (e) {
       _err = e.message;
     } catch (_) {
@@ -64,12 +80,14 @@ class _CatalogScreenState extends State<CatalogScreen> {
       return;
     }
     try {
-      await ApiClient.instance
-          .addProduct(_name.text.trim(), _price.text, _desc.text, _photo.text);
+      await ApiClient.instance.addProduct(_name.text.trim(), _price.text,
+          _desc.text, _photo.text, _qty.text, _cat);
       _name.clear();
       _price.clear();
       _desc.clear();
       _photo.clear();
+      _qty.clear();
+      setState(() => _cat = null);
       if (mounted) FocusScope.of(context).unfocus();
       _load();
       if (mounted) unawaited(maybeShowSponsor(context)); // web parity: sponsor moment after adds (free tier, max once/day)
@@ -161,9 +179,30 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                     child: TextField(
-                        controller: _desc,
+                        controller: _qty,
+                        keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
-                            labelText: 'Note (optional)'))),
+                            labelText: 'In stock (qty)'))),
+              ]),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(
+                    child: TextField(
+                        controller: _desc,
+                        decoration: InputDecoration(
+                            labelText: _detailHint))),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: DropdownButtonFormField<String>(
+                        value: _cat,
+                        isExpanded: true, // long shelf names (Laptops & Computers) wrap instead of overflowing!
+                        hint: const Text('Category'),
+                        items: _shelves
+                            .map((s) => DropdownMenuItem(
+                                value: s, child: Text(s)))
+                            .toList(),
+                        onChanged: (v) => setState(() => _cat = v),
+                      )),
               ]),
               const SizedBox(height: 8),
               // Photo box: Upload-media on web, https link here — the bot sends it
@@ -300,9 +339,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                           ),
                                         )
                                       : null, // no photo → no leading (dead links fall back to an icon, never a red box!)
-                                  title: Text('${p['name']}'),
+                                  title: Text(
+                                      '${p['name']}${p['category'] is String && (p['category'] as String).isNotEmpty ? ' · ${p['category']}' : ''}'),
                                   subtitle: Text(
-                                      '${p['price'] ?? ''} ${p['description'] ?? ''}'
+                                      '${p['price'] ?? ''}${p['quantity'] != null ? ' · ×${p['quantity']}' : ''} ${p['description'] ?? ''}'
                                           .trim()),
                                   trailing: Row(
                                     mainAxisSize: MainAxisSize.min,

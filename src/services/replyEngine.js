@@ -109,6 +109,16 @@ const NICHE_SEEDS = {
   'Real Estate Agent or Property Broker': 'listing captions, qualifying buyers, and follow-up scripts',
   'Sneakers & Footwear Reseller': 'pricing pairs, drop captions, and spotting fakes questions',
   'Electronics, Gadgets & Phone Accessories': 'pricing gadgets, warranty answers, and spec comparisons',
+  'Handmade Crafts & Artisanal Goods': 'pricing handmade pieces, custom-order captions, and made-to-order timelines',
+  'Grocery, Fruits & Fresh Produce': 'pricing per bag/basket, freshness answers, and delivery-day questions',
+  'Home Decor, Furniture & Kitchenware': 'pricing furniture sets, styling captions, and delivery/fitting questions',
+  'Dropshipping & General Retail Store': 'pricing for ads plus profit, winning-product captions, and delivery-time questions',
+  'Thrift, Vintage & Pre-loved Items': 'pricing thrift finds, bale-drop captions, and grading/defect questions',
+  'Event Planning, Cakes & Decor': 'pricing event packages, setup captions, and date/guest-count questions',
+  'Photography & Videography Services': 'pricing sessions, shoot captions, and booking questions',
+  'Fitness Coaching & Health Supplements': 'pricing coaching plans, supplement answers, and sign-up questions',
+  'Logistics, Delivery & Errand Services': 'pricing routes, pickup-time answers, and tracking questions',
+  'Wholesale Supply & B2B Distribution': 'pricing per carton and per bag, minimum-order answers, and distributor questions',
 };
 
 /**

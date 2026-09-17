@@ -162,17 +162,26 @@ class ApiClient {
   Future<List<dynamic>> products() async =>
       List<dynamic>.from(await get('/api/me/products'));
 
+  Future<Map<String, dynamic>> catalogMeta() async =>
+      (await get('/api/me/catalog-meta') as Map).cast<String, dynamic>();
+
   Future<Map<String, dynamic>> addProduct(
     String name,
     String price,
     String description, [
     String? imageUrl,
+    String? quantity,
+    String? category,
   ]) async =>
       (await post('/api/me/products', {
         'name': name,
         if (price.trim().isNotEmpty) 'price': price.trim(),
         if (description.trim().isNotEmpty)
           'description': description.trim(),
+        if (quantity != null && quantity.trim().isNotEmpty)
+          'quantity': quantity.trim(), // omitted when blank = keep existing on same-name updates (web parity!)
+        if (category != null && category.trim().isNotEmpty)
+          'category': category.trim(), // omitted when blank = preserved!
         if (imageUrl != null && imageUrl.trim().isNotEmpty)
           'image_url': imageUrl.trim(), // omitted when blank = preserve existing on same-name updates (web parity!)
       }) as Map)

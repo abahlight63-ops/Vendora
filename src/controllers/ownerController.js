@@ -79,6 +79,12 @@ async function updateBusiness(req, res) {
       }
     }
   }
+  const { business_niche: nicheRaw } = req.body || {}; // lane switch (Profile page — catalog shelves + AI suggestions follow it!)
+  let niche = null; // null = "don't touch" (absent key → keep stored lane!)
+  if (nicheRaw !== undefined) { // provided? validate strictly…
+    if (typeof nicheRaw !== 'string' || !nicheRaw.trim()) errors.push('Pick what you sell');
+    else niche = nicheRaw.trim().slice(0, 80); // free text ≤80 (custom lanes never need a deploy!)
+  }
   if (errors.length) return res.status(400).json({ errors });
 
   const { rows: cur } = await db.query('SELECT whatsapp_number, owner_number, currency, timezone FROM businesses WHERE id = $1', [req.session.businessId]); // read CURRENT values first (needed for smart defaults below)
@@ -98,7 +104,8 @@ async function updateBusiness(req, res) {
       ? [name, owner || null, req.body.hours || '', JSON.stringify(faq || []), req.body.tone || 'friendly and helpful', currency, timezone, req.session.businessId, JSON.stringify(personal)]
       : [name, owner || null, req.body.hours || '', JSON.stringify(faq || []), req.body.tone || 'friendly and helpful', currency, timezone, req.session.businessId]
   ); // JSON.stringify: faq ARRAY + personal ARRAY → JSONB columns need JSON strings
-  res.json(rows[0]); // frontend Profile page uses the returned row (no refetch needed)
+  if (niche !== null) await db.query('UPDATE businesses SET business_niche = $1 WHERE id = $2', [niche, req.session.businessId]); // lane switch (separate write — keeps the placeholder juggling above untouched!)
+  res.json({ ...rows[0], ...(niche !== null ? { business_niche: niche } : {}) }); // frontend Profile page uses the returned row (no refetch needed)
 }
 
 // 7-day trial watchdog — runs on every getMe (every app load polls /api/me,
@@ -157,10 +164,26 @@ async function getProducts(req, res) {
   res.json(products); // array (frontend Catalog renders it)
 }
 
+// Catalog meta: the shop's lane + its shelves + lane-language hints. The phone
+// app reads this so mobile + web show the SAME niche categories (one source!).
+async function catalogMeta(req, res) {
+  const nicheMeta = require('../services/nicheMeta');
+  const { rows } = await db.query('SELECT business_niche FROM businesses WHERE id = $1', [req.session.businessId]);
+  const niche = (rows[0] && rows[0].business_niche) || '';
+  res.json({
+    niche, // exact welcome-picker label ('' = not picked yet → defaults below!)
+    categories: nicheMeta.categoriesFor(niche), // THIS hustle's shelves (electronics → Phones…)
+    detailHint: nicheMeta.detailHintFor(niche), // details-field placeholder in the lane's words
+    learnExample: nicheMeta.learnExampleFor(niche), // LEARN: tip example for the lane
+  });
+}
+
 async function upsertProduct(req, res, next) {
-  const { name, price, description, available } = req.body || {}; // single-product add/edit from the dashboard form
+  const { name, price, description, available, quantity, category } = req.body || {}; // single-product add/edit from the dashboard form (+ stock count + shelf category)
   if (!name || typeof name !== 'string') return res.status(400).json({ error: 'Product name required' }); // the one hard requirement
   const draft = { name, price: price || null, description: description || null, available: available ?? true }; // ?? keeps explicit false (|| would turn false→true!)
+  if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'quantity')) draft.quantity = quantity; // stock key PRESENT → validate/write inside the service; ABSENT → preserve (toggles never zero stock!)
+  if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'category')) draft.category = category; // same absent-rule (LEARN:/toggles omit it → preserved!)
   if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'image_url')) draft.image_url = req.body.image_url; // photo key PRESENT → validate/set/clear inside the service; ABSENT → preserve existing (stock toggles omit it!)
   try {
     const saved = await productService.upsertProducts(req.session.businessId, [draft]); // wrap single object in [array] — service takes arrays
@@ -780,6 +803,7 @@ module.exports = { // every handler the routes file wires up (miss one here = ro
   updateBusiness,
   saveSetup,
   getProducts,
+  catalogMeta,
   upsertProduct,
   uploadProductPhoto,
   deleteProduct,

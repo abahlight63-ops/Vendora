@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from 'react'; // useState ×6 slices of UI state; useEffect = triple-fetch on mount
 import { Link } from 'react-router-dom'; // Link for the inline billing links (client-side nav)
 import { api, pop, toast } from '../lib/api.js'; // api() calls; pop() big animated results; toast() small notes
+import { categoriesFor, detailHintFor, learnExampleFor } from '../lib/niches.js'; // niche shelves + hints (electronics sees Phones, fashion sees Gowns!)
 import { maybeShowSponsor } from '../lib/ads.js'; // sponsor interstitial after adds (free tier, max once/day)
 import Ic from '../components/icons.jsx'; // trash + close glyphs
 import LockButton from '../components/LockButton.jsx'; // padlock → upgrade card (the ONLY paywall affordance!)
@@ -27,7 +28,9 @@ const PHOTO_LINES = [ // upgrade-card bullets for product photos
 
 export default function Catalog() { // no props needed (fetches everything itself)
   const [products, setProducts] = useState(null); // null = loading (skeleton rows); [] = loaded-but-empty (empty state!)
-  const [f, setF] = useState({ name: '', price: '', desc: '', photo: '' }); // CONTROLLED FORM: inputs mirror this object (value={f.name} + onChange writes back)
+  const [f, setF] = useState({ name: '', price: '', desc: '', photo: '', qty: '', cat: '' }); // CONTROLLED FORM: inputs mirror this object (value={f.name} + onChange writes back)
+  const [niche, setNiche] = useState(''); // shop lane (drives category shelves + hint language!)
+  const shelves = categoriesFor(niche); // dropdown options for THIS hustle (electronics → Phones…, fashion → Gowns…)
   const [tier, setTier] = useState('free'); // 'free' default → upgrade card flashes first if billing is slow (safe default: never show Pro tools to free users!)
   const [syncText, setSyncText] = useState(''); // pasted profile text (controlled textarea)
   const [syncInfo, setSyncInfo] = useState(null); // {synced, synced_at} from GET /api/me/profile-sync ("Last synced" label)
@@ -35,10 +38,11 @@ export default function Catalog() { // no props needed (fetches everything itsel
   const [uploading, setUploading] = useState(false); // photo upload in flight (button shows "Uploading…")
   const fileRef = useRef(null); // hidden <input type="file"> — the Upload-media button clicks it open
   async function load() { const { data } = await api('/api/me/products'); setProducts(data || []); } // reusable reload (called after every mutation — simplest correct refresh strategy)
-  useEffect(() => { // mount: three independent fetches (no await between = parallel-ish; .then chains don't block each other)
+  useEffect(() => { // mount: independent fetches (no await between = parallel-ish; .then chains don't block each other)
     load(); // products list
     api('/api/me/billing').then(({ data }) => { if (data?.tier) setTier(data.tier); }); // ?. guards failed responses (tier stays 'free' default)
     api('/api/me/profile-sync').then(({ data }) => { if (data) setSyncInfo(data); }); // if (data) guards null (logged-out edge)
+    api('/api/me').then(({ data }) => { if (data?.business?.business_niche) setNiche(data.business.business_niche); }); // shop lane → niche shelves + hints
   }, []); // [] = mount-only
   async function sync() { // Pro profile-sync: paste text → AI scaffolds catalog
     if (!syncText.trim()) return toast('Paste your business profile text first', 'err'); // guard: blank submit → error toast (return stops here)
@@ -57,10 +61,12 @@ export default function Catalog() { // no props needed (fetches everything itsel
   async function add() { // manual add (free forever)
     if (!f.name.trim()) return toast('Product name is required', 'err'); // only hard rule (price optional — "call for price" shops exist!)
     const body = { name: f.name.trim(), price: f.price.trim() || null, description: f.desc.trim() || null, available: true }; // trim + empty→null (DB stores NULL, not "")
+    if (f.qty.trim() !== '') body.quantity = f.qty.trim(); // stock count ONLY when typed (omitted = keep existing on same-name updates — re-pricing never zeroes stock!)
+    if (f.cat) body.category = f.cat; // shelf ONLY when picked (omitted = preserved!)
     if (f.photo.trim()) body.image_url = f.photo.trim(); // photo key ONLY when pasted (omitted = preserve existing on same-name updates — re-adding a price never wipes the photo!)
     const { ok, data } = await api('/api/me/products', { method: 'POST', body: JSON.stringify(body) });
-    if (ok) { pop('ok', 'Product added!', 'The AI can sell it from now on.'); setF({ name: '', price: '', desc: '', photo: '' }); load(); maybeShowSponsor(); } // success popup + clear form + reload + sponsor hook (fire-and-forget: no await — sponsor must never block!)
-    else pop('err', 'Could not add product', data.error || 'Please try again.'); // failure popup (data.error from backend validation — includes bad-photo-URL messages!)
+    if (ok) { pop('ok', 'Product added!', 'The AI can sell it from now on.'); setF({ name: '', price: '', desc: '', photo: '', qty: '', cat: '' }); load(); maybeShowSponsor(); } // success popup + clear form + reload + sponsor hook (fire-and-forget: no await — sponsor must never block!)
+    else pop('err', 'Could not add product', data.error || 'Please try again.'); // failure popup (data.error from backend validation — includes bad-photo-URL + bad-stock messages!)
   }
   async function uploadMedia(file) { // Upload media: pick from YOUR files → hosted → URL fills the photo field
     if (!file) return; // dialog cancelled → nothing to do
@@ -116,7 +122,7 @@ export default function Catalog() { // no props needed (fetches everything itsel
               : products.length === 0 ? <tr><td colSpan="6"><div className="empty"><b>No products yet</b>Add your first one below — it takes 10 seconds.</div></td></tr>
               : products.map((p) => (<tr key={p.id}> {/* key={p.id} = stable DB id (rows never shuffle wrongly!) */}
                 <td>{p.image_url ? <img src={p.image_url} alt="" width="40" height="40" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8, display: 'block' }} loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} /> : <span className="hint">—</span>}</td> {/* thumb (onError hides dead links — dashboard never shows broken-image icons!) */}
-                <td><b>{p.name}</b><br /><span className="hint">{p.description || ''}</span></td> {/* <br/> stacks description under name */}
+                <td><b>{p.name}</b>{p.category ? <span className="pill" style={{ marginLeft: 6, fontSize: 11 }}>{p.category}</span> : null}<br /><span className="hint">{p.description || ''}</span></td> {/* category pill beside the name (<br/> stacks description under name) */}
                 <td>{p.price || '—'}</td> {/* || '—' : null prices show dash, never "null" */}
                 <td><b>{p.quantity ?? 0}</b></td> {/* live stock count (?? 0: legacy rows show 0, never blank — WhatsApp updates land here instantly!) */}
                 <td><button className={'pill ' + (p.available ? 'ok' : 'flag')} style={{ cursor: 'pointer', border: '1px solid' }} onClick={() => toggle(p)} title="Click to toggle stock">{p.available ? 'in stock' : 'out of stock'}</button></td> {/* pill AS button: color shows state, click flips it (title = hover tooltip teaching the trick) */}
@@ -146,15 +152,19 @@ export default function Catalog() { // no props needed (fetches everything itsel
           </div>
         )}
       </div>
-      <div className="card"> {/* manual add form (free forever) */}
+        <div className="card"> {/* manual add form (free forever) */}
         <h2>Add a product</h2>
-        <p className="desc">Free forever — or send <b>LEARN: Blue gown ₦45,000</b> from your WhatsApp.</p>
+        <p className="desc">Free forever — or send <b>{learnExampleFor(niche)}</b> from your WhatsApp.</p>
         <div className="grid2"> {/* two-column grid (stacks on mobile via CSS) */}
           <div><label>Product name</label><input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="Blue gown" /></div> {/* {...f, name: …} = spread-copy + overwrite ONE field (immutable update = React re-renders!) */}
           <div><label>Price</label><input value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} placeholder="₦45,000" /></div>
         </div>
-        <label>Details (optional)</label>
-        <input value={f.desc} onChange={(e) => setF({ ...f, desc: e.target.value })} placeholder="Sizes M–XL, cotton…" />
+        <div className="grid2" style={{ marginTop: 10 }}> {/* stock + shelf side by side (stacks on mobile via CSS) */}
+          <div><label>Number in stock</label><input type="number" min="0" step="1" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} placeholder="e.g. 20" inputMode="numeric" /></div> {/* whole units only (backend floors + rejects negatives!) */}
+          <div><label>Category</label><select value={f.cat} onChange={(e) => setF({ ...f, cat: e.target.value })}><option value="">No category</option>{shelves.map((s) => (<option key={s} value={s}>{s}</option>))}</select></div> {/* niche shelves: THIS hustle's sections only! */}
+        </div>
+        <label style={{ marginTop: 10 }}>Details (optional)</label>
+        <input value={f.desc} onChange={(e) => setF({ ...f, desc: e.target.value })} placeholder={detailHintFor(niche)} />
         <div style={{ marginTop: 12, border: '1px dashed #25D366', borderRadius: 12, padding: 12, background: 'rgba(37,211,102,0.05)' }}> {/* photo box: dashed green = "attachment" affordance */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <label style={{ margin: 0 }}>Product photo {tier !== 'pro' && <LockButton title="Unlock product photos" lines={PHOTO_LINES} />}</label> {/* locked = padlock beside the label (no PRO text!); tap → upgrade card */}

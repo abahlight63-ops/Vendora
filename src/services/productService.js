@@ -12,11 +12,26 @@ const db = require('../db'); // shared pool (../ = up one folder from services/ 
 
 async function getProducts(businessId) {
   const { rows } = await db.query( // simple filtered list, oldest first (stable order for the AI prompt)
-    `SELECT id, name, price, description, available, quantity, image_url
-     FROM products WHERE business_id = $1 ORDER BY id`, // quantity included (AI answers "how many left?" + parser grounds names!); image_url drives Pro photo sends
+    `SELECT id, name, price, description, available, quantity, category, image_url
+     FROM products WHERE business_id = $1 ORDER BY id`, // quantity included (AI answers "how many left?" + parser grounds names!); category drives niche shelves; image_url drives Pro photo sends
     [businessId] // $1 = safe parameter (SQL injection impossible)
   );
   return rows; // array (possibly empty) — caller decides what "empty" means
+}
+
+/** Whole-units stock count from any input. Returns int, or null = "not provided" (preserve existing). */
+function cleanQuantity(raw) {
+  if (raw === undefined || raw === null || raw === '') return null; // absent → preserve (toggles/LEARN/photo ops never wipe stock!)
+  const n = Math.floor(Number(raw)); // floats floor down (2.7 → 2 — stock is whole units!)
+  if (!Number.isFinite(n) || n < 0 || n > 1000000) return { error: 'Stock must be a whole number from 0 to 1,000,000.' };
+  return n;
+}
+
+/** Shelf category from any input. Returns trimmed string, null = clear/absent. Never throws. */
+function cleanCategory(raw) {
+  if (raw === undefined || raw === null) return null; // absent → caller preserves existing (same rule as photos!)
+  const s = String(raw).trim().slice(0, 60); // 60 chars max (dropdown values are short; free text tolerated for custom niches!)
+  return s || null; // empty → clear the category
 }
 
 /** Validate a product photo URL. Returns clean https URL, null (clear/leave), or { error }. */
@@ -38,6 +53,11 @@ async function upsertProducts(businessId, products) {
   // never wipe it!); key PRESENT (url / null / '') → validate then set/clear.
   const saved = []; // collect results to return
   for (const p of products) { // for...of + await = sequential (safe: later writes see earlier ones)
+    const qty = cleanQuantity(p.quantity); // int | null (preserve) | { error }
+    if (qty && typeof qty === 'object') throw Object.assign(new Error(qty.error), { status: 400 }); // bad stock number → 400 (same pattern as bad photo URLs!)
+    const qtyTouched = qty !== null; // explicit number → write it; absent → leave the count alone (toggles must never zero stock!)
+    const catTouched = p && Object.prototype.hasOwnProperty.call(p, 'category'); // same absent-vs-null rule as photos (toggle omits it → preserved!)
+    const cat = catTouched ? cleanCategory(p.category) : undefined; // clean string or null (clear)
     let photo = undefined; // undefined = preserve (default when caller omits the key)
     const photoTouched = p && Object.prototype.hasOwnProperty.call(p, 'image_url'); // 'in'-check: explicit null/'' MUST clear, missing MUST preserve (cleanImageUrl alone can't tell them apart!)
     if (photoTouched) {
@@ -51,25 +71,24 @@ async function upsertProducts(businessId, products) {
       [businessId, p.name]
     );
     if (existing.rows.length > 0) { // FOUND → UPDATE in place (keeps the same id/history)
+      const sets = ['price = $1', 'description = $2', 'available = COALESCE($3, true)']; // base columns (always written)
+      const vals = [p.price || null, p.description || null, p.available ?? true]; // ?? = nullish: undefined/null → true, but false STAYS false (|| would break that!)
+      if (photoTouched) { sets.push(`image_url = $${sets.length + 1}`); vals.push(photo); } // explicit set/clear only (absent = preserved!)
+      if (qtyTouched) { sets.push(`quantity = $${sets.length + 1}`); vals.push(qty); } // explicit stock number only (toggles/LEARN never touch it!)
+      if (catTouched) { sets.push(`category = $${sets.length + 1}`); vals.push(cat); } // explicit category only (absent = preserved!)
+      vals.push(existing.rows[0].id); // id always last ($N)
       const { rows } = await db.query(
-        photoTouched
-          ? `UPDATE products
-             SET price = $1, description = $2, available = COALESCE($3, true), image_url = $4, updated_at = now()
-             WHERE id = $5 RETURNING id, name, price, description, available, quantity, image_url` // photo path: explicit set/clear (4 params before id!)
-          : `UPDATE products
-             SET price = $1, description = $2, available = COALESCE($3, true), updated_at = now()
-             WHERE id = $4 RETURNING id, name, price, description, available, quantity, image_url`, // preserve path: image_url untouched (LEARN:/toggle safe!)
-        photoTouched
-          ? [p.price || null, p.description || null, p.available ?? true, photo, existing.rows[0].id] // ?? = nullish: undefined/null → true, but false STAYS false (|| would break that!)
-          : [p.price || null, p.description || null, p.available ?? true, existing.rows[0].id]
+        `UPDATE products SET ${sets.join(', ')}, updated_at = now()
+         WHERE id = $${vals.length} RETURNING id, name, price, description, available, quantity, category, image_url`,
+        vals
       );
       saved.push(rows[0]); // push the updated row
     } else { // NOT FOUND → INSERT fresh
       const { rows } = await db.query(
-        `INSERT INTO products (business_id, name, price, description, available, image_url)
-         VALUES ($1, $2, $3, $4, COALESCE($5, true), $6)
-         RETURNING id, name, price, description, available, quantity, image_url`,
-        [businessId, p.name, p.price || null, p.description || null, p.available ?? true, photoTouched ? photo : null] // new row + no photo key → NULL (text-only until owner adds one)
+        `INSERT INTO products (business_id, name, price, description, available, quantity, category, image_url)
+         VALUES ($1, $2, $3, $4, COALESCE($5, true), COALESCE($6, 0), $7, $8)
+         RETURNING id, name, price, description, available, quantity, category, image_url`,
+        [businessId, p.name, p.price || null, p.description || null, p.available ?? true, qtyTouched ? qty : 0, catTouched ? cat : null, photoTouched ? photo : null] // new row: stock 0 unless given; no photo key → NULL (text-only until owner adds one)
       );
       saved.push(rows[0]); // push the new row
     }
@@ -84,6 +103,7 @@ function formatCatalog(products) {
     .map((p) => { // each product → multi-line block…
       const status = p.available === false ? 'OUT OF STOCK' : 'available'; // === false (not !p.available): NULL/undefined still count as available
       const bits = [`- ${p.name} [${status}]`]; // "- Blue gown [available]" (backticks interpolate)
+      if (p.category) bits.push(`  Category: ${p.category}`); // shelf section (AI recommends within the asked lane first!)
       if (p.price) bits.push(`  Price: ${p.price}`);
       if (p.description) bits.push(`  Details: ${p.description}`);
       if (p.quantity !== undefined && p.quantity !== null) bits.push(`  In stock: ${p.quantity}`); // quantity line (AI answers "how many left?" truthfully; absent on legacy rows → no line, no crash!)
@@ -92,4 +112,4 @@ function formatCatalog(products) {
     .join('\n'); // blocks → whole catalog text for the system prompt
 }
 
-module.exports = { getProducts, upsertProducts, formatCatalog, cleanImageUrl }; // the catalog API (+ photo validator for controllers)
+module.exports = { getProducts, upsertProducts, formatCatalog, cleanImageUrl, cleanQuantity, cleanCategory }; // the catalog API (+ validators for controllers)

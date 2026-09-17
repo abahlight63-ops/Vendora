@@ -275,9 +275,10 @@ async function adStats(req, res) {
 }
 
 // ---- Broadcast an app update to EVERY owner's bell (new features, fixes).
-// Body doubles as the "what changed" note — keep it to 1-2 lines. ----
+// Long bodies welcome (up to 4000 chars) + optional photo/video. {name} in
+// title/body becomes each shop's first name at send time. ----
 async function broadcast(req, res) {
-  const { title, body, link } = req.body || {};
+  const { title, body, link, image_url, video_url } = req.body || {};
   if (!title || typeof title !== 'string' || !title.trim()) {
     return res.status(400).json({ error: 'Title required.' });
   }
@@ -287,6 +288,8 @@ async function broadcast(req, res) {
       title: title.trim(),
       body: (body || '').trim(),
       link: (link || '/dashboard').trim(),
+      image_url: (image_url || '').trim() || null,
+      video_url: (video_url || '').trim() || null,
     });
     res.json({ ok: true, sent: n });
   } catch (e) {
@@ -295,12 +298,125 @@ async function broadcast(req, res) {
   }
 }
 
+// ---- Notice templates: 12 long built-ins (code) + your customs (DB).
+// GET lists both (customs first, flagged builtin:false). ----
+async function templateList(req, res) {
+  const { BUILT_INS } = require('../services/notificationTemplates');
+  const { rows } = await db.query(
+    'SELECT id, title, body, link, image_url, video_url, created_at, updated_at FROM notification_templates ORDER BY id DESC'
+  );
+  const customs = rows.map((r) => ({ ...r, builtin: false }));
+  const builtins = BUILT_INS.map((b) => ({ ...b, image_url: null, video_url: null, builtin: true }));
+  res.json({ templates: [...customs, ...builtins] });
+}
+
+// ---- Save your own template (builder form). Title required, rest optional. ----
+async function templateCreate(req, res) {
+  const { title, body, link, image_url, video_url } = req.body || {};
+  if (!title || typeof title !== 'string' || !title.trim()) {
+    return res.status(400).json({ error: 'Title required.' });
+  }
+  const { rows } = await db.query(
+    `INSERT INTO notification_templates (title, body, link, image_url, video_url)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING id, title, body, link, image_url, video_url, created_at, updated_at`,
+    [
+      title.trim().slice(0, 120),
+      String(body || '').slice(0, 4000),
+      String(link || '').slice(0, 200) || '/dashboard',
+      (image_url || '').trim().slice(0, 2000) || null,
+      (video_url || '').trim().slice(0, 2000) || null,
+    ]
+  );
+  res.status(201).json({ ...rows[0], builtin: false });
+}
+
+// ---- Edit your template (built-ins are read-only — copy one into the builder instead). ----
+async function templateUpdate(req, res) {
+  const { title, body, link, image_url, video_url } = req.body || {};
+  if (!title || typeof title !== 'string' || !title.trim()) {
+    return res.status(400).json({ error: 'Title required.' });
+  }
+  const { rows } = await db.query(
+    `UPDATE notification_templates SET title = $1, body = $2, link = $3, image_url = $4, video_url = $5, updated_at = now()
+     WHERE id = $6
+     RETURNING id, title, body, link, image_url, video_url, created_at, updated_at`,
+    [
+      title.trim().slice(0, 120),
+      String(body || '').slice(0, 4000),
+      String(link || '').slice(0, 200) || '/dashboard',
+      (image_url || '').trim().slice(0, 2000) || null,
+      (video_url || '').trim().slice(0, 2000) || null,
+      Number(req.params.id),
+    ]
+  );
+  if (!rows.length) return res.status(404).json({ error: 'Template not found.' });
+  res.json({ ...rows[0], builtin: false });
+}
+
+// ---- Delete your template (built-ins can't be deleted). ----
+async function templateDelete(req, res) {
+  const { rowCount } = await db.query('DELETE FROM notification_templates WHERE id = $1', [Number(req.params.id)]);
+  if (!rowCount) return res.status(404).json({ error: 'Template not found.' });
+  res.json({ ok: true });
+}
+
+// ---- Host a notice photo/video for broadcasts. Body: { filename, dataUrl }.
+// Images: jpg/png/webp/gif ≤2.5MB. Video: mp4 ≤10MB. Files land in
+// public/uploads/ (served statically) — same pattern as product photos. ----
+async function uploadMedia(req, res) {
+  const fs = require('fs');
+  const path = require('path');
+  const { dataUrl } = req.body || {};
+  if (typeof dataUrl !== 'string') return res.status(400).json({ error: 'Send an image or video file.' });
+  const img = dataUrl.match(/^data:(image\/(jpeg|png|webp|gif));base64,([A-Za-z0-9+/=\s]+)$/);
+  const vid = !img && dataUrl.match(/^data:(video\/mp4);base64,([A-Za-z0-9+/=\s]+)$/);
+  const m = img || vid;
+  if (!m) return res.status(400).json({ error: 'Send an image (jpg, png, webp, gif) or mp4 video.' });
+  let buf;
+  try {
+    buf = Buffer.from(m[img ? 3 : 2].replace(/\s/g, ''), 'base64');
+  } catch {
+    return res.status(400).json({ error: 'Could not read that file.' });
+  }
+  const cap = img ? 2.5 * 1024 * 1024 : 10 * 1024 * 1024; // photos 2.5MB, video 10MB (disk guard!)
+  if (buf.length === 0 || buf.length > cap) {
+    return res.status(400).json({ error: img ? 'Image too large — max 2.5MB.' : 'Video too large — max 10MB.' });
+  }
+  let ext;
+  if (img) {
+    const kind = m[2];
+    const magicOk =
+      (kind === 'jpeg' && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) ||
+      (kind === 'png' && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) ||
+      (kind === 'gif' && buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) ||
+      (kind === 'webp' && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP');
+    if (!magicOk) return res.status(400).json({ error: 'That file is not a real image.' });
+    ext = kind === 'jpeg' ? 'jpg' : kind;
+  } else {
+    if (buf.toString('ascii', 4, 8) !== 'ftyp') return res.status(400).json({ error: 'That file is not a real mp4.' }); // mp4 magic: "ftyp" at byte 4
+    ext = 'mp4';
+  }
+  const dir = path.join(__dirname, '..', '..', 'public', 'uploads');
+  fs.mkdirSync(dir, { recursive: true });
+  const safe = `notice-${Date.now()}.${ext}`; // server-built name (user filenames NEVER touch disk!)
+  try {
+    fs.writeFileSync(path.join(dir, safe), buf);
+  } catch (e) {
+    console.error('notice media write error:', e.message);
+    return res.status(500).json({ error: 'Could not save that file.' });
+  }
+  const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/+$/, ''); // absolute URL (Meta + apps fetch server-side!)
+  const host = base || `${req.protocol}://${req.get('host')}`;
+  res.json({ url: `${host}/uploads/${safe}` });
+}
+
 // ---- Warn ONE user: drop a notification into a single owner's bell.
 // Find the shop three ways (whatever the admin has at hand): business_id,
 // account email, or WhatsApp number. Same inbox the bell + mobile app poll,
 // so the warning lands within ~60s on web AND phone. ----
 async function notifyUser(req, res) {
-  const { business_id, email, whatsapp_number, title, body, link } = req.body || {};
+  const { business_id, email, whatsapp_number, title, body, link, image_url, video_url } = req.body || {};
   if (!title || typeof title !== 'string' || !title.trim()) {
     return res.status(400).json({ error: 'Title required.' });
   }
@@ -335,6 +451,8 @@ async function notifyUser(req, res) {
       title: title.trim(),
       body: (body || '').trim(),
       link: (link || '/dashboard').trim(),
+      image_url: (image_url || '').trim() || null,
+      video_url: (video_url || '').trim() || null,
     });
     res.json({ ok: true, business_id: biz.id, business_name: biz.name });
   } catch (e) {
@@ -393,4 +511,9 @@ module.exports = {
   complaintList,
   complaintReply,
   complaintResolve,
-}; // routes/adminRoutes.js wires all seven (behind x-admin-key in server.js)
+  templateList,
+  templateCreate,
+  templateUpdate,
+  templateDelete,
+  uploadMedia,
+}; // routes/adminRoutes.js wires these (behind x-admin-key in server.js)

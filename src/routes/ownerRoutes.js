@@ -44,5 +44,6 @@ router.post('/me/complaints', ownerController.complaintCreate); // file a suppor
 router.post('/me/feedback', ownerController.feedbackCreate); // categorized feedback + StaticForms email copy (same ticket history!)
 router.get('/me/notifications', ownerController.getNotifications); // bell inbox (newest first + unread count)
 router.post('/me/notifications/read', ownerController.readNotifications); // mark all read on open
+router.post('/me/notifications/:id/read', ownerController.readNotification); // open ONE fully (detail page)
 
 module.exports = router; // server.js does app.use('/api', ownerRoutes)

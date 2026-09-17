@@ -7,6 +7,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'api.dart';
 import 'glass.dart';
@@ -210,19 +211,36 @@ class _HomeShellState extends State<HomeShell> {
                   itemBuilder: (c, i) {
                     final m =
                         (items[i] as Map).cast<String, dynamic>();
+                    final body = '${m['body'] ?? ''}';
                     return GlassCard(
                       radius: 14,
                       margin: const EdgeInsets.symmetric(vertical: 5),
                       child: ListTile(
                         contentPadding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 2),
+                        leading: (m['image_url'] is String &&
+                                (m['image_url'] as String)
+                                    .startsWith('https://'))
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  m['image_url'] as String,
+                                  width: 44,
+                                  height: 44,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => const Icon(
+                                      Icons.image_not_supported_outlined),
+                                ),
+                              )
+                            : null, // no photo → no leading (dead links fall back to an icon!)
                         title: Text('${m['title'] ?? 'Update'}',
                             style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14)),
                         subtitle: Text(
-                            '${m['body'] ?? ''}\n${fmtTime(m['created_at'])}',
+                            '${body.length > 140 ? '${body.substring(0, 140)}… tap to read all' : body}\n${fmtTime(m['created_at'])}',
                             style: const TextStyle(fontSize: 12)),
+                        onTap: () => _openNotice(m), // full page (photo/video + long body!)
                       ),
                     );
                   },
@@ -235,6 +253,66 @@ class _HomeShellState extends State<HomeShell> {
       await ApiClient.instance.readNotifications();
     } catch (_) {}
     _refreshBell();
+  }
+
+  /// Full notice page (web /notifications/:id parity): photo, video button,
+  /// long body. Marks THIS one read (scoped server-side — another shop's id 404s!).
+  Future<void> _openNotice(Map<String, dynamic> m) async {
+    Map<String, dynamic> full = m;
+    try {
+      full = await ApiClient.instance.readNotification(m['id']);
+    } catch (_) {} // offline: show the preview copy we already have!
+    if (!mounted) return;
+    final body = '${full['body'] ?? ''}';
+    final video = '${full['video_url'] ?? ''}';
+    await glassSheet(
+      context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('${full['title'] ?? 'Update'}',
+              style:
+                  const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text(fmtTime(full['created_at']),
+              style: const TextStyle(fontSize: 11)),
+          if (full['image_url'] is String &&
+              (full['image_url'] as String).startsWith('https://'))
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  full['image_url'] as String,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      const Icon(Icons.image_not_supported_outlined),
+                ),
+              ),
+            ),
+          if (video.startsWith('https://'))
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => launchUrl(Uri.parse(video),
+                      mode: LaunchMode.externalApplication), // video plays in their player (no heavy player dep!)
+                  icon: const Icon(Icons.play_circle_outline),
+                  label: const Text('Watch video'),
+                ),
+              ),
+            ),
+          if (body.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(body, style: const TextStyle(fontSize: 13, height: 1.6)),
+            ),
+        ],
+      ),
+    );
+    _refreshBell(); // this one is read now (badge drops!)
   }
 
   @override

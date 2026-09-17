@@ -28,5 +28,10 @@ router.post('/complaints/:id/reply', adminController.requireAdmin, adminControll
 router.post('/complaints/:id/resolve', adminController.requireAdmin, adminController.complaintResolve); // close without reply
 router.post('/broadcast', adminController.requireAdmin, adminController.broadcast); // app-update notice → every owner's bell
 router.post('/notify', adminController.requireAdmin, adminController.notifyUser); // warning/notice → ONE owner's bell (business id, email, or WhatsApp number)
+router.get('/templates', adminController.requireAdmin, adminController.templateList); // 12 built-ins + your customs
+router.post('/templates', adminController.requireAdmin, adminController.templateCreate); // save your own template
+router.put('/templates/:id', adminController.requireAdmin, adminController.templateUpdate); // edit your template
+router.delete('/templates/:id', adminController.requireAdmin, adminController.templateDelete); // delete your template
+router.post('/media', adminController.requireAdmin, adminController.uploadMedia); // host a notice photo/mp4
 
 module.exports = router;

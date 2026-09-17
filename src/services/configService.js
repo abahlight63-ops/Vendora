@@ -234,6 +234,21 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_notifications_business ON notifications(business_id, created_at DESC);
+-- Long-form notices with media: image/video attachments on broadcasts.
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS image_url TEXT; -- optional photo (bell shows thumb, detail page shows full)
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS video_url TEXT; -- optional mp4 (detail page plays it)
+-- Admin notice templates: reusable long-form broadcasts (built-ins ship in
+-- code, customs live here). Edited/deleted only by you — owners just receive.
+CREATE TABLE IF NOT EXISTS notification_templates (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL DEFAULT '',
+  body TEXT NOT NULL DEFAULT '',
+  link TEXT NOT NULL DEFAULT '',
+  image_url TEXT,
+  video_url TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
 -- AI voice controls: the owner's own words for greetings + human handoff.
 -- Empty = built-in polite defaults (replyEngine + webhookController fall back).

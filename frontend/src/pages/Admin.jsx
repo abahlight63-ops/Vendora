@@ -5,7 +5,7 @@
 // Complaints (reply/resolve). All session-authed (server checks isAdmin).
 // React patterns: gate state, tab state, per-tab loaders, confirm() on
 // destructive actions, pop() confirmations, fmt helpers for money/dates.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api, fmtDate, pop, toast } from '../lib/api.js';
 import { money } from '../lib/money.js';
 import Ic from '../components/icons.jsx';
@@ -18,6 +18,8 @@ export default function Admin() {
   const [pw, setPw] = useState(''); // password draft (controlled input, never stored beyond this submit!)
   const [tab, setTab] = useState('stats'); // active tab key
   const [d, setD] = useState(null); // tab data (shape depends on tab — single state, reused!)
+  const [blastSeed, setBlastSeed] = useState(null); // template → broadcast prefill ({t,b,link,image,video,n})
+  const [warnSeed, setWarnSeed] = useState(null); // template → warn-one prefill (same shape, who stays empty)
 
   async function check() { // probe: are we already admin? (reload-safe: session persists!)
     const { ok } = await api('/api/admin/stats'); // stats = cheapest authed probe (any 401 → locked!)
@@ -83,56 +85,214 @@ export default function Admin() {
         : tab === 'revenue' ? <Revenue d={d} />
         : tab === 'transfers' ? <Transfers rows={d} act={act} />
         : <Complaints rows={d} act={act} />}
-      <Broadcast act={act} /> {/* always mounted: announce updates to every bell */}
-      <WarnUser act={act} /> {/* always mounted: warn ONE user straight to their bell */}
+      <Templates onBroadcast={(t) => setBlastSeed({ ...t, n: Date.now() })} onWarn={(t) => setWarnSeed({ ...t, n: Date.now() })} /> {/* gallery + builder (Use-buttons prefill the forms below!) */}
+      <Broadcast act={act} seed={blastSeed} /> {/* always mounted: announce updates to every bell */}
+      <WarnUser act={act} seed={warnSeed} /> {/* always mounted: warn ONE user straight to their bell */}
       <AiHealth /> {/* always mounted: ping every AI key (booleans + short errors only) */}
       <AdsStatus /> {/* always mounted: are the Render ad keys live? (booleans only) */}
     </>
   );
 }
 
-function Broadcast({ act }) { // APP UPDATES: one broadcast → every owner's bell…
-  const [t, setT] = useState('');
-  const [b, setB] = useState('');
-  async function send() {
-    if (!t.trim()) return toast('Give the update a title', 'err');
-    await act('/api/admin/broadcast', { title: t.trim(), body: b.trim(), link: '/dashboard' }, 'Update sent to every inbox.');
-    setT(''); setB('');
+async function uploadNoticeMedia(file) { // notice photo/mp4 → hosted URL (throws the human message on failure!)
+  const isImg = String(file.type || '').startsWith('image/');
+  const isMp4 = file.type === 'video/mp4';
+  if (!isImg && !isMp4) throw new Error('Choose an image or an mp4 video.');
+  const cap = isImg ? 2.5 * 1024 * 1024 : 10 * 1024 * 1024; // photos 2.5MB, video 10MB
+  if (file.size > cap) throw new Error(isImg ? 'Image too large — max 2.5MB.' : 'Video too large — max 10MB.');
+  const dataUrl = await new Promise((res, rej) => { // FileReader is callback-based → Promise-wrap to await it
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = () => rej(new Error('Could not read that file.'));
+    r.readAsDataURL(file);
+  });
+  const { ok, data } = await api('/api/admin/media', { method: 'POST', body: JSON.stringify({ dataUrl }) });
+  if (!ok || !data.url) throw new Error((data && data.error) || 'Upload failed.');
+  return data.url;
+}
+
+function MediaField({ label, value, onChange, accept, hint }) { // upload-or-paste URL field with preview (shared by broadcast, warn + builder!)
+  const fileRef = useRef(null); // hidden picker (button opens it)
+  const [busy, setBusy] = useState(false); // upload in flight (button locks!)
+  const isVideo = accept.includes('video');
+  async function pick(file) {
+    if (!file) return; // dialog cancelled
+    setBusy(true);
+    try {
+      onChange(await uploadNoticeMedia(file)); // URL lands in the draft (preview appears below!)
+      toast('Media uploaded.');
+    } catch (e) { toast(e.message || 'Upload failed', 'err'); }
+    setBusy(false);
   }
   return (
-    <div className="card" style={{ borderColor: 'var(--gold-line)' }}>
-      <h2><Ic n="mega" s={18} /> Broadcast app update</h2>
-      <p className="desc">Title + 1–2 lines → lands in every owner's notification bell instantly. Use after each release.</p>
-      <label>Title</label>
-      <input value={t} onChange={(e) => setT(e.target.value)} placeholder="e.g. Smarter Vendora AI is live" maxLength={120} />
-      <label>What changed (1–2 lines)</label>
-      <textarea value={b} onChange={(e) => setB(e.target.value)} rows="2" placeholder="e.g. Fuller answers, Lite default, no more scroll jump…" maxLength={500} />
-      <button className="btn" style={{ marginTop: 10 }} onClick={send}><Ic n="send" s={16} />Send to all bells</button>
+    <div>
+      <label>{label}</label>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <button type="button" className="btn ghost sm" disabled={busy} onClick={() => fileRef.current && fileRef.current.click()}><Ic n="camera" s={14} />{busy ? 'Uploading…' : 'Upload ' + (isVideo ? 'video' : 'image')}</button>
+        {value ? <button type="button" className="del" style={{ fontSize: 12 }} onClick={() => onChange('')}>Remove</button> : null}
+      </div>
+      <input ref={fileRef} type="file" accept={accept} style={{ display: 'none' }} onChange={(e) => { pick(e.target.files && e.target.files[0]); e.target.value = ''; }} /> {/* value reset: same file re-pickable! */}
+      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={hint || '…or paste a public https:// link'} inputMode="url" spellCheck="false" style={{ marginTop: 8 }} />
+      {value ? (isVideo
+        ? <video src={value} controls preload="metadata" style={{ marginTop: 8, maxWidth: '100%', maxHeight: 220, borderRadius: 12, display: 'block' }} />
+        : <img src={value} alt="" loading="lazy" style={{ marginTop: 8, maxWidth: '100%', maxHeight: 220, borderRadius: 12, display: 'block' }} onError={(e) => { e.target.style.display = 'none'; }} />) : null}
     </div>
   );
 }
 
-function WarnUser({ act }) { // ONE user, not all: a warning/notice → their bell only…
+function Broadcast({ act, seed }) { // APP UPDATES: one broadcast → every owner's bell…
+  const [t, setT] = useState('');
+  const [b, setB] = useState('');
+  const [link, setLink] = useState('/dashboard');
+  const [image, setImage] = useState('');
+  const [video, setVideo] = useState('');
+  useEffect(() => { // template "Use" → prefill this form (seed.n bumps to retrigger!)
+    if (!seed) return;
+    setT(seed.t || ''); setB(seed.b || ''); setLink(seed.link || '/dashboard');
+    setImage(seed.image || ''); setVideo(seed.video || '');
+    toast('Template loaded — review, then send.');
+  }, [seed]); // seed object identity changes per click (parent stamps n: Date.now())
+  async function send() {
+    if (!t.trim()) return toast('Give the update a title', 'err');
+    const { ok, data } = await api('/api/admin/broadcast', { method: 'POST', body: JSON.stringify({ title: t.trim(), body: b.trim(), link: link.trim() || '/dashboard', image_url: image.trim() || null, video_url: video.trim() || null }) });
+    if (ok) { pop('ok', 'Broadcast sent!', `Landed in ${data.sent} inbox${data.sent === 1 ? '' : 'es'}.`); setT(''); setB(''); setLink('/dashboard'); setImage(''); setVideo(''); }
+    else pop('err', 'Failed', (data && data.error) || 'Try again.');
+  }
+  return (
+    <div className="card" style={{ borderColor: 'var(--gold-line)' }}>
+      <h2><Ic n="mega" s={18} /> Broadcast app update</h2>
+      <p className="desc">Long message + optional photo/video → lands in every owner's bell instantly. {'{name}'} becomes each shop's name. Pick a template above or write freehand.</p>
+      <label>Title</label>
+      <input value={t} onChange={(e) => setT(e.target.value)} placeholder="e.g. Smarter Vendora AI is live" maxLength={120} />
+      <label>Message (long is fine — the bell previews, the page shows all)</label>
+      <textarea value={b} onChange={(e) => setB(e.target.value)} rows="6" placeholder="Write the full story here…" maxLength={4000} />
+      <p className="hint">{b.length}/4000</p>
+      <div className="grid2">
+        <div><label>Opens (app page)</label><input value={link} onChange={(e) => setLink(e.target.value)} placeholder="/dashboard" spellCheck="false" /></div>
+        <div><label>&nbsp;</label><p className="hint" style={{ margin: 0 }}>e.g. /billing, /catalog, /connect, /vendora-ai</p></div>
+      </div>
+      <div className="grid2" style={{ marginTop: 10 }}>
+        <MediaField label="Photo (optional)" value={image} onChange={setImage} accept="image/*" />
+        <MediaField label="Video mp4 (optional)" value={video} onChange={setVideo} accept="video/mp4" />
+      </div>
+      <button className="btn" style={{ marginTop: 12 }} onClick={send}><Ic n="send" s={16} />Send to all bells</button>
+    </div>
+  );
+}
+
+function WarnUser({ act, seed }) { // ONE user, not all: a warning/notice → their bell only…
   const [who, setWho] = useState(''); // business ID, account email, or WhatsApp number (server resolves all three)
   const [t, setT] = useState('');
   const [b, setB] = useState('');
+  const [image, setImage] = useState('');
+  const [video, setVideo] = useState('');
+  useEffect(() => { // template "Use for warning" → prefill (who stays empty — you pick the user!)
+    if (!seed) return;
+    setT(seed.t || ''); setB(seed.b || ''); setImage(seed.image || ''); setVideo(seed.video || '');
+    toast('Template loaded — pick who, then send.');
+  }, [seed]);
   async function send() {
     if (!who.trim()) return toast('Say who — email, business ID, or WhatsApp number', 'err');
     if (!t.trim()) return toast('Give the warning a title', 'err');
-    await act('/api/admin/notify', { business_id: /^\d+$/.test(who.trim()) ? Number(who.trim()) : undefined, email: who.includes('@') ? who.trim() : undefined, whatsapp_number: !/^\d+$/.test(who.trim()) && !who.includes('@') ? who.trim() : undefined, title: t.trim(), body: b.trim(), link: '/dashboard' }, 'Warning sent to their bell.');
-    setWho(''); setT(''); setB('');
+    await act('/api/admin/notify', { business_id: /^\d+$/.test(who.trim()) ? Number(who.trim()) : undefined, email: who.includes('@') ? who.trim() : undefined, whatsapp_number: !/^\d+$/.test(who.trim()) && !who.includes('@') ? who.trim() : undefined, title: t.trim(), body: b.trim(), link: '/dashboard', image_url: image.trim() || null, video_url: video.trim() || null }, 'Warning sent to their bell.');
+    setWho(''); setT(''); setB(''); setImage(''); setVideo('');
   }
   return (
     <div className="card" style={{ borderColor: 'var(--red-line)' }}>
       <h2><Ic n="warn" s={18} /> Warn one user</h2>
-      <p className="desc">Lands in that owner's notification bell only (web + phone app, within a minute). Use for payment issues, abuse, or personal notices.</p>
+      <p className="desc">Lands in that owner's bell only (web + phone app, within a minute). Use for payment issues, abuse, or personal notices.</p>
       <label>Who (email, business ID, or WhatsApp number)</label>
       <input value={who} onChange={(e) => setWho(e.target.value)} placeholder="e.g. amaka@shop.com · 12 · 0803 123 4567" />
       <label>Title</label>
       <input value={t} onChange={(e) => setT(e.target.value)} placeholder="e.g. Payment issue — action needed" maxLength={120} />
-      <label>Message (1–3 lines)</label>
-      <textarea value={b} onChange={(e) => setB(e.target.value)} rows="2" placeholder="e.g. Your card payment of ₦7,499 didn't complete — tap Billing to retry, or reply here for help…" maxLength={500} />
-      <button className="btn danger" style={{ marginTop: 10 }} onClick={send}><Ic n="send" s={16} />Send warning</button>
+      <label>Message (long is fine)</label>
+      <textarea value={b} onChange={(e) => setB(e.target.value)} rows="5" placeholder="e.g. Your card payment of ₦7,499 didn't complete — tap Billing to retry, or reply here for help…" maxLength={4000} />
+      <div className="grid2" style={{ marginTop: 10 }}>
+        <MediaField label="Photo (optional)" value={image} onChange={setImage} accept="image/*" />
+        <MediaField label="Video mp4 (optional)" value={video} onChange={setVideo} accept="video/mp4" />
+      </div>
+      <button className="btn danger" style={{ marginTop: 12 }} onClick={send}><Ic n="send" s={16} />Send warning</button>
+    </div>
+  );
+}
+
+function Templates({ onBroadcast, onWarn }) { // GALLERY + BUILDER: 12 built-ins + your customs…
+  const [list, setList] = useState(null); // null = loading (skeleton first!)
+  const [et, setEt] = useState(''); // builder: title
+  const [eb, setEb] = useState(''); // builder: body
+  const [el, setEl] = useState('/dashboard'); // builder: link
+  const [ei, setEi] = useState(''); // builder: image
+  const [ev, setEv] = useState(''); // builder: video
+  const [editing, setEditing] = useState(null); // custom id being edited (null = creating!)
+  async function load() {
+    const { ok, data } = await api('/api/admin/templates');
+    if (ok && Array.isArray(data.templates)) setList(data.templates);
+    else toast((data && data.error) || 'Could not load templates', 'err');
+  }
+  useEffect(() => { load(); }, []); // mount-only
+  function clear() { setEt(''); setEb(''); setEl('/dashboard'); setEi(''); setEv(''); setEditing(null); } // fresh builder (after save + cancel!)
+  async function save() {
+    if (!et.trim()) return toast('Give the template a title', 'err');
+    const body = JSON.stringify({ title: et.trim(), body: eb.trim(), link: el.trim() || '/dashboard', image_url: ei.trim() || null, video_url: ev.trim() || null });
+    const { ok, data } = editing
+      ? await api('/api/admin/templates/' + editing, { method: 'PUT', body })
+      : await api('/api/admin/templates', { method: 'POST', body });
+    if (ok) { toast(editing ? 'Template updated.' : 'Template saved.'); clear(); load(); }
+    else toast((data && data.error) || 'Could not save template', 'err');
+  }
+  async function remove(id) {
+    if (!confirm('Delete this template? Built-ins cannot be deleted — only your own.')) return;
+    const { ok, data } = await api('/api/admin/templates/' + id, { method: 'DELETE' });
+    if (ok) { toast('Template deleted.'); load(); }
+    else toast((data && data.error) || 'Could not delete', 'err');
+  }
+  function startEdit(tpl) { // customs editable (built-ins: copy the text into a fresh builder row instead!)
+    setEt(tpl.title || ''); setEb(tpl.body || ''); setEl(tpl.link || '/dashboard');
+    setEi(tpl.image_url || ''); setEv(tpl.video_url || ''); setEditing(tpl.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // builder lives at the card top (take them there!)
+  }
+  function use(tpl, fn) { // "Use" → prefill broadcast/warn forms below (media rides along!)
+    fn({ t: tpl.title || '', b: tpl.body || '', link: tpl.link || '/dashboard', image: tpl.image_url || '', video: tpl.video_url || '' });
+  }
+  return (
+    <div className="card" style={{ borderColor: 'var(--gold-line)' }}>
+      <h2><Ic n="mega" s={18} /> Notice templates</h2>
+      <p className="desc">12 ready-made long messages + your own. “Use” loads one into Broadcast (or Warn one user) below — review, attach media, send.</p>
+      <label>{editing ? 'Editing your template' : 'Create your own template'}</label>
+      <input value={et} onChange={(e) => setEt(e.target.value)} placeholder="Template title" maxLength={120} />
+      <textarea value={eb} onChange={(e) => setEb(e.target.value)} rows="6" placeholder="Write the full long message here… {'{name}'} becomes each shop's name at send time." maxLength={4000} style={{ marginTop: 8 }} />
+      <p className="hint">{eb.length}/4000</p>
+      <div className="grid2">
+        <div><label>Opens (app page)</label><input value={el} onChange={(e) => setEl(e.target.value)} placeholder="/dashboard" spellCheck="false" /></div>
+        <div><label>&nbsp;</label><p className="hint" style={{ margin: 0 }}>Built-ins are read-only — copy one's text above to make your own version.</p></div>
+      </div>
+      <div className="grid2" style={{ marginTop: 10 }}>
+        <MediaField label="Photo (optional)" value={ei} onChange={setEi} accept="image/*" />
+        <MediaField label="Video mp4 (optional)" value={ev} onChange={setEv} accept="video/mp4" />
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+        <button className="btn sm" onClick={save}>{editing ? 'Save changes' : 'Save template'}</button>
+        {editing ? <button className="btn ghost sm" onClick={clear}>Cancel</button> : null}
+      </div>
+      <div style={{ marginTop: 16, display: 'grid', gap: 10 }}>
+        {list === null && <div className="skel" />}
+        {(list || []).map((tpl) => (
+          <div key={(tpl.builtin ? 'b-' : 'c-') + tpl.id} style={{ border: '1px solid var(--line-soft)', borderRadius: 12, padding: 10 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <b>{tpl.title}</b>
+              <span className={'pill ' + (tpl.builtin ? 'info' : 'ok')} style={{ fontSize: 11 }}>{tpl.builtin ? 'Built-in' : 'Yours'}</span>
+              {(tpl.image_url || tpl.video_url) ? <span className="pill" style={{ fontSize: 11 }}>Has media</span> : null}
+            </div>
+            <p className="hint" style={{ margin: '6px 0', whiteSpace: 'pre-wrap' }}>{String(tpl.body || '').slice(0, 220)}{String(tpl.body || '').length > 220 ? '…' : ''}</p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button className="btn ghost sm" onClick={() => use(tpl, onBroadcast)}>Use for broadcast</button>
+              <button className="btn ghost sm" onClick={() => use(tpl, onWarn)}>Use for warning</button>
+              {!tpl.builtin && <button className="btn ghost sm" onClick={() => startEdit(tpl)}>Edit</button>}
+              {!tpl.builtin && <button className="del" onClick={() => remove(tpl.id)}>Delete</button>}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

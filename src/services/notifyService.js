@@ -19,19 +19,27 @@ async function prune(businessId) {
   );
 }
 
+// Fill {name} with the shop's name (broadcast templates greet each owner
+// personally — "{name}" anywhere in title/body becomes e.g. "Amaka").
+function personalize(text, name) {
+  return String(text || '').split('{name}').join(name || 'there');
+}
+
 // One owner. Fire-and-forget safe: failures only log (a notification must
 // never break the payment flow that triggered it).
-async function notify(businessId, { title, body, link }) {
+async function notify(businessId, { title, body, link, image_url, video_url }) {
   if (!businessId) return null;
   try {
     const { rows } = await db.query(
-      `INSERT INTO notifications (business_id, title, body, link)
-       VALUES ($1, $2, $3, $4) RETURNING id, title, body, link, is_read, created_at`,
+      `INSERT INTO notifications (business_id, title, body, link, image_url, video_url)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, title, body, link, image_url, video_url, is_read, created_at`,
       [
         Number(businessId),
         String(title || '').slice(0, 120),
-        String(body || '').slice(0, 500),
+        String(body || '').slice(0, 4000), // long-form bodies (templates run 400–600 chars!)
         String(link || '').slice(0, 200),
+        image_url ? String(image_url).slice(0, 2000) : null,
+        video_url ? String(video_url).slice(0, 2000) : null,
       ]
     );
     prune(Number(businessId)).catch(() => {});
@@ -43,11 +51,18 @@ async function notify(businessId, { title, body, link }) {
 }
 
 // Every business gets a copy. Returns how many inboxes were filled.
-async function broadcast({ title, body, link }) {
-  const { rows: biz } = await db.query('SELECT id FROM businesses');
+async function broadcast({ title, body, link, image_url, video_url }) {
+  const { rows: biz } = await db.query('SELECT id, name FROM businesses');
   let n = 0;
   for (const b of biz) {
-    const r = await notify(b.id, { title, body, link });
+    const first = String(b.name || '').split(' ')[0] || 'there'; // first name only ("Amaka Beauty" → "Amaka")
+    const r = await notify(b.id, {
+      title: personalize(title, first),
+      body: personalize(body, first),
+      link,
+      image_url,
+      video_url,
+    });
     if (r) n++;
   }
   return n;
@@ -55,7 +70,7 @@ async function broadcast({ title, body, link }) {
 
 async function list(businessId) {
   const { rows } = await db.query(
-    `SELECT id, title, body, link, is_read, created_at FROM notifications
+    `SELECT id, title, body, link, image_url, video_url, is_read, created_at FROM notifications
      WHERE business_id = $1 ORDER BY created_at DESC LIMIT 20`,
     [businessId]
   );
@@ -74,4 +89,15 @@ async function markAllRead(businessId) {
   return true;
 }
 
-module.exports = { notify, broadcast, list, markAllRead };
+// Mark ONE notification read (detail page open). Returns the row (scoped to
+// the owner's inbox — owners can never read another shop's mail!).
+async function markOneRead(businessId, id) {
+  const { rows } = await db.query(
+    `UPDATE notifications SET is_read = true WHERE business_id = $1 AND id = $2
+     RETURNING id, title, body, link, image_url, video_url, is_read, created_at`,
+    [businessId, Number(id)]
+  );
+  return rows[0] || null;
+}
+
+module.exports = { notify, broadcast, list, markAllRead, markOneRead };

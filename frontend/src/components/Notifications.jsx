@@ -67,7 +67,7 @@ export default function Notifications() {
 
   function go(n) {
     setOpen(false);
-    if (n.link) nav(n.link);
+    nav(`/notifications/${n.id}`); // full page (photo/video + long body + Open button!) — never a bare link jump
   }
 
   return (
@@ -83,13 +83,16 @@ export default function Notifications() {
           {items.map((n) => (
             <button key={n.id} className={'nbell-item' + (n.is_read ? '' : ' fresh')} onClick={() => go(n)}>
               <span className="nbell-dot" />
+              {n.image_url ? <img src={n.image_url} alt="" loading="lazy" width="44" height="44" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 10, flex: '0 0 auto' }} onError={(e) => { e.target.style.display = 'none'; }} /> : null}
               <span className="nbell-main">
                 <b>{n.title} {isNew(n) && <span className="pill new">NEW</span>}</b>
-                {n.body && <span>{n.body}</span>}
+                {n.video_url && !n.image_url ? <span className="pill" style={{ fontSize: 11 }}>Has video</span> : null}
+                {n.body ? <span>{String(n.body).slice(0, 140)}{String(n.body).length > 140 ? '… tap to read all' : ''}</span> : null}
                 <i>{new Date(n.created_at).toLocaleString()}</i>
               </span>
             </button>
           ))}
+          {items.length > 0 && <button className="mini-link" style={{ margin: '4px auto 6px', display: 'block' }} onClick={() => { setOpen(false); nav('/notifications'); }}>See all notifications</button>}
         </div>
       )}
     </div>

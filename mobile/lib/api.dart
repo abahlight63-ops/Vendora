@@ -324,7 +324,7 @@ class ApiClient {
     await post('/api/me/ads/click', {'slot': slot, 'target_url': url});
   }
 
-  // ── Bell inbox: { items: [{id,title,body,link,is_read,created_at}…],
+  // ── Bell inbox: { items: [{id,title,body,link,image_url,video_url,is_read,created_at}…],
   // unread: n }. Newest first, max 20.
   Future<Map<String, dynamic>> notifications() async =>
       (await get('/api/me/notifications') as Map).cast<String, dynamic>();
@@ -332,6 +332,12 @@ class ApiClient {
   Future<void> readNotifications() async {
     await post('/api/me/notifications/read');
   }
+
+  /// Open ONE notification fully (detail view). Returns the row (scoped to
+  /// the owner's own inbox — another shop's id 404s, same as web!).
+  Future<Map<String, dynamic>> readNotification(dynamic id) async =>
+      (await post('/api/me/notifications/$id/read') as Map)
+          .cast<String, dynamic>();
 
   // ── App version (Shell update toast): { version, whatsNew }.
   Future<Map<String, dynamic>> version() async =>

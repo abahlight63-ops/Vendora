@@ -779,6 +779,20 @@ async function readNotifications(req, res) {
   }
 }
 
+// One notification, fully read (detail page open). Scoped to the owner's own
+// inbox — returns 404 for anyone else's id (never leak across shops!).
+async function readNotification(req, res) {
+  try {
+    const notify = require('../services/notifyService');
+    const row = await notify.markOneRead(req.session.businessId, req.params.id);
+    if (!row) return res.status(404).json({ error: 'Notification not found.' });
+    res.json(row);
+  } catch (e) {
+    console.error('notification read error:', e.message);
+    res.status(500).json({ error: 'Could not open notification' });
+  }
+}
+
 module.exports = { // every handler the routes file wires up (miss one here = route crashes on boot!)
   getMe,
   updateBusiness,
@@ -815,4 +829,5 @@ module.exports = { // every handler the routes file wires up (miss one here = ro
   metaPullProfile,
   getNotifications,
   readNotifications,
+  readNotification,
 };

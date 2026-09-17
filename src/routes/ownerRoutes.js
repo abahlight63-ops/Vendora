@@ -25,6 +25,7 @@ router.get('/me/profile-sync', ownerController.getProfileSync); // has the owner
 router.post('/me/profile-sync', ownerController.profileSync); // Pro: scaffold catalog from profile text
 router.post('/me/ask', ownerController.ask); // Vendora AI chat (tier + caps enforced)
 router.get('/me/ai-models', ownerController.aiModels); // dropdown list with locked flags
+router.get('/me/ai-status', ownerController.aiStatus); // one-tap health ping per provider (owner diagnosis)
 router.post('/me/ads/click', ownerController.adClick);
 router.post('/me/bot', ownerController.botToggle);
 router.post('/me/conversations/:id/takeover', ownerController.chatTakeover);

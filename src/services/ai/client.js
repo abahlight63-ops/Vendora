@@ -271,7 +271,7 @@ async function callTokenRouter(system, user, modelOverride, opts) {
   const key = process.env.TOKENROUTER_API_KEY;
   if (!validKey(key)) throw new Error('TOKENROUTER_API_KEY is not set');
   const base = (process.env.TOKENROUTER_BASE_URL || 'https://tokenrouter.me/v1').replace(/\/+$/, '');
-  const model = modelOverride || process.env.TOKENROUTER_MODEL || 'kimi-k2p6';
+  const model = modelOverride || process.env.TOKENROUTER_MODEL || 'deepseek-v4-flash'; // real IDs: deepseek-v4-flash, deepseek-v4-pro, kimi-k2p6, kimi-k2p5, qwen3p7-plus, qwen3p6-plus, glm-5p1, gpt-oss-120b, minimax-m3, minimax-m2p7 (GET {base}/v1/models lists yours)
   return callOpenAICompat(
     'TokenRouter',
     `${base}/chat/completions`,

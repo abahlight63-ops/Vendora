@@ -129,7 +129,16 @@ export default function VendoraAI({ biz }) {
     }, 24);
   }
   const [upsell, setUpsell] = useState(false);
+  const [health, setHealth] = useState(null); // null | 'checking' | [{provider, ok, ms, error?}]
   const first = (biz?.name || 'there').split(' ')[0];
+
+  async function checkHealth() { // one-tap ping per provider (tiny quota use) — shows exactly which key is broken
+    if (health === 'checking') return;
+    setHealth('checking');
+    const { ok, data } = await api('/api/me/ai-status');
+    if (ok && Array.isArray(data.status)) setHealth(data.status);
+    else { setHealth(null); toast('Could not test AIs — try again', 'err'); }
+  }
 
   function onThreadScroll(e) { // track whether the user is at the bottom…
     const el = e.currentTarget; // …so reading old messages never yanks them away
@@ -224,8 +233,21 @@ export default function VendoraAI({ biz }) {
         <ModelPicker models={models} model={model} onPick={persistPick} onLocked={() => setUpsell(true)} />
         {current?.locked && <Link className="mini-link" to="/billing">See upgrade options</Link>} {/* locked pick → billing (modal already explains why!) */}
         <span className="mpick-hint">Switch brains anytime — the caption under each reply tells you who answered.</span>
+        <button type="button" className="mini-link" onClick={checkHealth} disabled={health === 'checking'} style={{ marginLeft: 8 }}>{health === 'checking' ? 'Testing…' : 'Test my AIs'}</button>
         <GlassUpsell show={upsell} onClose={() => setUpsell(false)} />
       </div>
+      {Array.isArray(health) && (
+        <div className="card" style={{ margin: '0 0 10px', padding: '10px 12px' }}>
+          {health.map((h) => (
+            <div key={h.provider} style={{ display: 'flex', gap: 8, alignItems: 'baseline', padding: '3px 0', fontSize: 13 }}>
+              <span>{h.ok ? '🟢' : '🔴'}</span>
+              <b>{h.provider}</b>
+              <span className="hint">{h.ok ? `${h.ms}ms` : (h.error || 'failed')}</span>
+            </div>
+          ))}
+          <p className="hint" style={{ margin: '6px 0 0' }}>Red = that key/model is broken — check the key on your host dashboard (and redeploy after changing keys).</p>
+        </div>
+      )}
       {msgs.length === 0 ? (
         <div className="vai-hero">
           <img src="/logo.png" alt="Vendora AI" className="vai-logo" />

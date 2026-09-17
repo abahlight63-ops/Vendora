@@ -22,7 +22,7 @@ const FAQS = [ // [question, answer] pairs — content lives HERE, markup below 
   ['Why do I see sponsored messages?', 'The free plan is supported by clearly-labeled sponsor cards (max one a day) plus quiet network ads. Pro removes all of them — see Billing.'],
   ['How do I connect Telegram?', 'Open the Connect page and pick Telegram: message @BotFather → /newbot → name it → paste the token here. Then get your link code so owner commands work from your phone. Free, about a minute.'],
   ['Do voice notes work?', 'Yes — on Pro. Customers send voice notes on WhatsApp or Telegram, the bot transcribes them with Whisper and answers like normal text. Free tier gets a polite handoff instead.'],
-  ['Which AI should I pick?', 'Fast (GPT-OSS 20B, Gemini Lite, Meta 8B) for speed, Smart (Meta 70B, Gemini Flash, Vendora Smart) for quality. Backup AI always works when others are busy. Premium (Kimi K2, Claude, GPT) is Pro-only — tap one to see what you get.'],
+  ['Which AI should I pick?', 'Fast (GPT-OSS 20B, Gemini Lite, Vendora Fast) for speed, Smart (Meta 70B, Gemini Flash, Vendora Smart) for quality. Backup AI always works when others are busy. Premium (Kimi K2, Claude, GPT) is Pro-only — tap one to see what you get.'],
 ];
 
 export default function Help() {

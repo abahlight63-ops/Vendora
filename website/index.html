@@ -13,7 +13,8 @@
 <meta property="og:image" content="./assets/logo.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" /></noscript>
 <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -64,7 +65,7 @@
 <!-- Preloader -->
 <div class="loader" id="loader" aria-hidden="true">
   <div class="loader-inner">
-    <img src="./assets/logo.png" alt="" />
+    <img src="./assets/logo.png" alt="" width="56" height="56" />
     <b>VENDORA</b>
     <span class="loader-bar"><i></i></span>
   </div>
@@ -72,9 +73,10 @@
 
 <header class="nav glass">
   <div class="wrap nav-row">
-    <a class="brand" href="#top"><img src="./assets/logo.png" alt="Vendora logo" />VENDORA</a>
-    <nav class="nav-links">
+    <a class="brand" href="#top"><img src="./assets/logo.png" alt="Vendora logo" width="34" height="34" />VENDORA</a>
+    <nav class="nav-links" id="navLinks" aria-label="Sections">
       <a href="#demo">Live demo</a>
+      <a href="#engine">AI engine</a>
       <a href="#learn">Learn</a>
       <a href="#features">Features</a>
       <a href="#tour">Tour</a>
@@ -85,6 +87,7 @@
     <span class="nav-cta">
       <a class="btn ghost sm" href="https://vendorabot.vercel.app/login">Sign in</a>
       <a class="btn sm btn-shine" href="https://vendorabot.vercel.app/login">Start free</a>
+      <button class="nav-toggle" id="navToggle" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks"><span></span><span></span><span></span></button>
     </span>
   </div>
 </header>
@@ -103,9 +106,9 @@
       <p class="hint">No card required · Set up in 15 minutes · Manual catalog free forever</p>
       <div class="stats glass">
         <div class="stat reveal"><b><span data-count="247">0</span>/7</b><span>always answering</span></div>
-        <div class="stat reveal"><b>&lt;<span data-count="10">0</span>s</b><span>median reply time</span></div>
+        <div class="stat reveal"><b><span data-count="14">0</span>+</b><span>AI brains running</span></div>
+        <div class="stat reveal"><b>&lt;<span data-count="4">0</span>s</b><span>median reply time</span></div>
         <div class="stat reveal"><b><span data-count="2">0</span> langs</b><span>English + Pidgin</span></div>
-        <div class="stat reveal"><b><span data-count="1000">0</span></b><span>replies/day on Plus</span></div>
       </div>
     </div>
     <div class="hero-stage">
@@ -130,6 +133,22 @@
   <div class="marquee glass" aria-hidden="true"><div class="marquee-track" id="marqueeTrack">
     <span>Boutiques</span><span>Salons</span><span>Thrift vendors</span><span>Food spots</span><span>Phone sellers</span><span>Cosmetics</span><span>Bakeries</span><span>Tailors</span><span>Pharmacies</span><span>Instagram shops</span>
   </div></div>
+
+  <!-- ══ AI ENGINE: running AI, counting brains, raw speed ══ -->
+  <section class="wrap section" id="engine">
+    <p class="eyebrow reveal">RUNNING AI · NONSTOP</p>
+    <h2 class="reveal"><span data-count="14">0</span>+ AI brains. <em class="gold-text">One tireless shop.</em></h2>
+    <p class="desc reveal">One brain naps, thirteen carry the sale — automatic fallback in milliseconds. Your customers never see an error, only answers.</p>
+    <div class="engine-status glass reveal"><span class="pulse-dot dot-live"><span class="dot"></span></span><b>ALL SYSTEMS SELLING</b><span class="hint">median reply &lt;4s · light enough for any phone</span></div>
+    <div class="marquee models glass" aria-hidden="true"><div class="marquee-track" id="modelTrack">
+      <span>Gemini Flash</span><span>GPT-OSS 20B</span><span>Meta 70B</span><span>DeepSeek</span><span>Kimi K2</span><span>Claude Haiku</span><span>GPT-4o mini</span><span>Backup AI</span>
+    </div></div>
+    <div class="grid3">
+      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-bolt"/></svg><h3>&lt;4s median reply</h3><p class="desc">Price, stock, delivery — answered before the customer can tab away. Watch the live phone above count it down.</p></div>
+      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-sync"/></svg><h3>Zero-miss fallback</h3><p class="desc">Every pick has hot backups. If one brain is busy, the next answers mid-sentence — the caption always says who replied.</p></div>
+      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-gplay"/></svg><h3>Flies on small phones</h3><p class="desc">No heavy downloads, sips data and battery. Web app today, Android + iOS next — same account everywhere.</p></div>
+    </div>
+  </section>
 
   <!-- ══ LEARN / ENLIGHTEN ══ -->
   <section class="wrap section" id="learn">
@@ -259,7 +278,7 @@
     <p class="eyebrow reveal">EVERYTHING A ONE-PERSON SHOP NEEDS</p>
     <h2 class="reveal">Small team of one. <em class="gold-text">Staff of ten.</em></h2>
     <div class="bento">
-      <div class="card glass tilt span2 reveal"><svg class="ic big gold"><use href="#i-bolt"/></svg><h3>Instant replies, 24/7</h3><p class="desc">Hours, prices, stock, delivery — answered in seconds, day or night. 50/day free, 500 Pro, 1,000 Pro Plus.</p></div>
+      <div class="card glass tilt span2 reveal"><svg class="ic big gold"><use href="#i-bolt"/></svg><h3>Instant replies, 24/7</h3><p class="desc">Hours, prices, stock, delivery — answered in seconds, day or night. 50/day free, 500 Pro, unlimited Plus.</p></div>
       <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-chat"/></svg><h3>Pidgin + English</h3><p class="desc">"Abeg, e still dey?" gets a straight answer.</p></div>
       <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-box"/></svg><h3>LEARN mode</h3><p class="desc">Text your ad copy to your own number; catalog updates itself.</p></div>
       <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-sync"/></svg><h3>Profile SYNC · Pro</h3><p class="desc">Scaffold + verify your catalog from your Business profile.</p></div>
@@ -294,12 +313,12 @@
  
     <div class="video-grid">
       <figure class="video-slot tall glass reveal">
-        <video controls preload="metadata" poster="./assets/poster-hero.svg" playsinline><source src="" type="video/mp4" /></video>
-        <figcaption><b> </b><span>  <code></code>.</span></figcaption>
+        <video controls preload="none" poster="./assets/poster-hero.svg" playsinline><source src="" type="video/mp4" /></video>
+        <figcaption><b>Watch a price question get answered</b><span>Real demo dropping soon — the live phone above already simulates it.</span></figcaption>
       </figure>
       <figure class="video-slot wide glass reveal">
-        <video controls preload="metadata" poster="./assets/poster-how.svg" playsinline><source src="" type="video/mp4" /></video>
-        <figcaption><b> </b><span></span></figcaption>
+        <video controls preload="none" poster="./assets/poster-how.svg" playsinline><source src="" type="video/mp4" /></video>
+        <figcaption><b>Teach stock with LEARN in seconds</b><span>Full walkthrough dropping soon — try the LEARN playground above.</span></figcaption>
       </figure>
     </div>
    
@@ -436,7 +455,7 @@
 
 <footer>
   <div class="wrap foot-row">
-    <span class="brand"><img src="./assets/logo.png" alt="Vendora logo" />VENDORA</span>
+    <span class="brand"><img src="./assets/logo.png" alt="Vendora logo" width="34" height="34" />VENDORA</span>
     <nav>
       <a href="https://vendorabot.vercel.app/login">Open the app</a>
       <a href="https://vendorabot.vercel.app/billing">Billing</a>
@@ -444,7 +463,7 @@
       <a href="https://vendorabot.vercel.app/privacy">Privacy</a>
       <a href="https://vendorabot.vercel.app/terms">Terms</a>
     </nav>
-    <span class="hint">© <span id="year"></span> Vendora · Made for shops that never sleep</span>
+    <span class="hint">© <span id="year"></span> Vendora · Made for shops that never sleep · Running AI 24/7</span>
   </div>
 </footer>
 

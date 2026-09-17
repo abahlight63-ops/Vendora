@@ -332,6 +332,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                             p['image_url'] as String,
                                             width: 44,
                                             height: 44,
+                                            cacheWidth:
+                                                88, // 44pt × 2x screen (tiny RAM, sharp on retina!)
                                             fit: BoxFit.cover,
                                             errorBuilder: (_, __, ___) =>
                                                 const Icon(Icons

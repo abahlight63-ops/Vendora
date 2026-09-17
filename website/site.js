@@ -2,9 +2,11 @@
 // LEARN playground, pricing toggles, FAQ search, reveals, counters.
 const APP_URL = 'https://vendorabot.vercel.app';
 
-/* ── preloader + progress + year ── */
-window.addEventListener('load', () => document.getElementById('loader').classList.add('done'));
-setTimeout(() => document.getElementById('loader').classList.add('done'), 2500); // failsafe
+/* ── preloader + progress + year (fast dismiss: never block first paint!) ── */
+const killLoader = () => document.getElementById('loader').classList.add('done');
+document.addEventListener('DOMContentLoaded', () => setTimeout(killLoader, 500)); // content ready → out in half a second
+window.addEventListener('load', killLoader);
+setTimeout(killLoader, 2500); // failsafe
 document.getElementById('year').textContent = new Date().getFullYear();
 const prog = document.getElementById('scrollProgress');
 addEventListener('scroll', () => {
@@ -12,9 +14,26 @@ addEventListener('scroll', () => {
   prog.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
 }, { passive: true });
 
-/* ── marquee: duplicate for seamless loop ── */
-const mt = document.getElementById('marqueeTrack');
-mt.innerHTML += mt.innerHTML;
+/* ── marquees: duplicate for seamless loop ── */
+['marqueeTrack', 'modelTrack'].forEach((id) => {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML += el.innerHTML;
+});
+
+/* ── mobile nav: burger toggles the link panel ── */
+const navToggle = document.getElementById('navToggle');
+const navLinks = document.getElementById('navLinks');
+if (navToggle && navLinks) {
+  navToggle.addEventListener('click', () => {
+    const open = navLinks.classList.toggle('open');
+    navToggle.classList.toggle('open', open);
+    navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    navToggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+  });
+  navLinks.addEventListener('click', (e) => {
+    if (e.target.closest('a')) { navLinks.classList.remove('open'); navToggle.classList.remove('open'); navToggle.setAttribute('aria-expanded', 'false'); }
+  });
+}
 
 /* ── 3D tilt (mouse only, skipped on touch / reduced motion) ── */
 const fine = matchMedia('(pointer:fine)').matches && !matchMedia('(prefers-reduced-motion:reduce)').matches;
@@ -72,7 +91,7 @@ async function playScenario(idx) {
     chat.appendChild(bubble(who, text));
   }
   await wait(4200);
-  if (!cancelled) playScenario((idx + 1) % SCENARIOS.length);
+  if (!cancelled && !matchMedia('(prefers-reduced-motion:reduce)').matches) playScenario((idx + 1) % SCENARIOS.length);
 }
 chips.forEach((c) => c.addEventListener('click', () => playScenario(Number(c.dataset.scenario))));
 
@@ -156,7 +175,7 @@ const ROWS = [
   ['Teach with LEARN: messages', 1, 1, 1],
   ['Full inbox + chat history', 1, 1, 1],
   ['Hot-order owner alerts', 1, 1, 1],
-  ['Bot replies per day', '50', '500', '1,000'],
+  ['Bot replies per day', '50', '500', 'Unlimited'],
   ['Profile SYNC + verified products', 0, 1, 1],
   ['Product photos inside replies', 0, 1, 1],
   ['Suggestive selling (up to 5 options)', 0, 1, 1],

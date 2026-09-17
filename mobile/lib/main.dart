@@ -156,15 +156,20 @@ class _HomeShellState extends State<HomeShell> {
 
   /// Shell parity: bell unread count + "Vendora updated" toast when the
   /// backend version changed since last visit (Shell.jsx does both).
+  /// Both calls fly in PARALLEL (one wait, not two — faster cold start!).
   Future<void> _bootExtras() async {
+    final results = await Future.wait<dynamic>([
+      ApiClient.instance.notifications().then((n) => n, onError: (_) => null),
+      ApiClient.instance.version().then((v) => v, onError: (_) => null),
+    ]);
+    if (!mounted) return;
+    final n = results[0] as Map<String, dynamic>?;
+    if (n != null) {
+      setState(() => _unread = (n['unread'] as num? ?? 0).toInt());
+    }
+    final v = results[1] as Map<String, dynamic>?;
+    if (v == null) return;
     try {
-      final n = await ApiClient.instance.notifications();
-      if (mounted) {
-        setState(() => _unread = (n['unread'] as num? ?? 0).toInt());
-      }
-    } catch (_) {}
-    try {
-      final v = await ApiClient.instance.version();
       final cur = '${v['version'] ?? ''}';
       if (cur.isEmpty) return;
       final prefs = await SharedPreferences.getInstance();
@@ -227,6 +232,8 @@ class _HomeShellState extends State<HomeShell> {
                                   m['image_url'] as String,
                                   width: 44,
                                   height: 44,
+                                  cacheWidth:
+                                      88, // 44pt thumb at 2x (cheap RAM, crisp look!)
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) => const Icon(
                                       Icons.image_not_supported_outlined),

@@ -66,15 +66,24 @@ function validKey(v) {
   );
 }
 
+// Trimmed, validated key or null. WHY: dashboard copy-paste often smuggles a
+// trailing space/newline — validKey() forgave it for the CHECK but the raw
+// value went into the Authorization header → 401 on every call → "busy".
+// Every caller below must use cleanKey(), never process.env.X raw.
+function cleanKey(v) {
+  if (!validKey(v)) return null;
+  return String(v).trim();
+}
+
 function configuredProviders() {
   return {
-    gemini: validKey(process.env.GEMINI_API_KEY),
-    claude: validKey(process.env.ANTHROPIC_API_KEY),
-    groq: validKey(process.env.GROQ_API_KEY),
-    tokenrouter: validKey(process.env.TOKENROUTER_API_KEY),
-    sambanova: validKey(process.env.SAMBANOVA_API_KEY),
+    gemini: !!cleanKey(process.env.GEMINI_API_KEY),
+    claude: !!cleanKey(process.env.ANTHROPIC_API_KEY),
+    groq: !!cleanKey(process.env.GROQ_API_KEY),
+    tokenrouter: !!cleanKey(process.env.TOKENROUTER_API_KEY),
+    sambanova: !!cleanKey(process.env.SAMBANOVA_API_KEY),
     pollinations: true, // keyless emergency fallback — always "configured"
-    openai: validKey(process.env.OPENAI_API_KEY),
+    openai: !!cleanKey(process.env.OPENAI_API_KEY),
   };
 }
 
@@ -91,8 +100,8 @@ function optsOf(opts, fallbackTemp, fallbackMax) {
 // ── Gemini. opts.model PINS one model (dropdown path); without it the chain
 // + affinity run (generic bot path). Pinned calls never touch fastModel. ──
 async function callGemini(system, user, image, opts) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!validKey(key)) throw new Error('GEMINI_API_KEY is not set');
+  const key = cleanKey(process.env.GEMINI_API_KEY);
+  if (!key) throw new Error('GEMINI_API_KEY is not set');
   const pinned = opts && opts.model ? String(opts.model) : null;
   const parts = [{ text: user }];
   if (image) {
@@ -147,8 +156,8 @@ async function callGemini(system, user, image, opts) {
 }
 
 async function callClaude(system, user, image, modelOverride, opts) {
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!validKey(key)) throw new Error('ANTHROPIC_API_KEY is not set');
+  const key = cleanKey(process.env.ANTHROPIC_API_KEY);
+  if (!key) throw new Error('ANTHROPIC_API_KEY is not set');
   const content = [{ type: 'text', text: user }];
   if (image) {
     content.push({
@@ -232,8 +241,8 @@ async function callOpenAICompat(
 }
 
 async function callGroq(system, user, modelOverride, opts) {
-  const key = process.env.GROQ_API_KEY;
-  if (!validKey(key)) throw new Error('GROQ_API_KEY is not set');
+  const key = cleanKey(process.env.GROQ_API_KEY);
+  if (!key) throw new Error('GROQ_API_KEY is not set');
   if (!(await groqSlot())) throw new Error('Groq shared quota busy — falling back');
   const model =
     modelOverride || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
@@ -250,8 +259,8 @@ async function callGroq(system, user, modelOverride, opts) {
 }
 
 async function callOpenAI(system, user, modelOverride, opts) {
-  const key = process.env.OPENAI_API_KEY;
-  if (!validKey(key)) throw new Error('OPENAI_API_KEY is not set');
+  const key = cleanKey(process.env.OPENAI_API_KEY);
+  if (!key) throw new Error('OPENAI_API_KEY is not set');
   const model = modelOverride || process.env.OPENAI_MODEL || 'gpt-4o-mini';
   return callOpenAICompat(
     'OpenAI',
@@ -268,8 +277,8 @@ async function callOpenAI(system, user, modelOverride, opts) {
 // TokenRouter: OpenAI-compatible gateway (free key). Base URL is env-
 // overridable in case your TokenRouter lives on a different host.
 async function callTokenRouter(system, user, modelOverride, opts) {
-  const key = process.env.TOKENROUTER_API_KEY;
-  if (!validKey(key)) throw new Error('TOKENROUTER_API_KEY is not set');
+  const key = cleanKey(process.env.TOKENROUTER_API_KEY);
+  if (!key) throw new Error('TOKENROUTER_API_KEY is not set');
   const base = (process.env.TOKENROUTER_BASE_URL || 'https://tokenrouter.me/v1').replace(/\/+$/, '');
   const model = modelOverride || process.env.TOKENROUTER_MODEL || 'deepseek-v4-flash'; // real IDs: deepseek-v4-flash, deepseek-v4-pro, kimi-k2p6, kimi-k2p5, qwen3p7-plus, qwen3p6-plus, glm-5p1, gpt-oss-120b, minimax-m3, minimax-m2p7 (GET {base}/v1/models lists yours)
   return callOpenAICompat(
@@ -285,8 +294,8 @@ async function callTokenRouter(system, user, modelOverride, opts) {
 }
 
 async function callSambaNova(system, user, modelOverride, opts) {
-  const key = process.env.SAMBANOVA_API_KEY;
-  if (!validKey(key)) throw new Error('SAMBANOVA_API_KEY is not set');
+  const key = cleanKey(process.env.SAMBANOVA_API_KEY);
+  if (!key) throw new Error('SAMBANOVA_API_KEY is not set');
   const model =
     modelOverride || process.env.SAMBANOVA_MODEL || 'Meta-Llama-3.3-70B-Instruct';
   return callOpenAICompat(
@@ -414,6 +423,7 @@ module.exports = {
   CLAUDE_MODEL,
   groqSlot,
   validKey,
+  cleanKey,
   configuredProviders,
   callGemini,
   callClaude,

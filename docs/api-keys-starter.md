@@ -102,17 +102,10 @@ No `.env` key needed — each shop pastes its own 2 values on the Connect page
    (sandbox rule!) — verify your own domain at resend.com → Domains for real users.
 3. SMTP wins when both are set. Either set = codes deliver.
 
-## 4b. Bot wall (set before launch!)
+## 4b. Bot wall (nothing to configure)
 
-### Google reCAPTCHA v2 — checkbox on signup/login/OTP/forgot (FREE)
-1. Go to https://www.google.com/recaptcha/admin → **v2 "I'm not a robot"** →
-   register **BOTH** hosts (Render backend URL + Vercel frontend URL — no custom domain needed!).
-2. Paste the **SECRET** key as `RECAPTCHA_SECRET_KEY` (Render — server only!)
-   and the **SITE** key into Vercel as `VITE_RECAPTCHA_SITE_KEY` (public widget key).
-3. Phone app: set the SAME `MOBILE_APP_KEY` on Render AND in the app build
-   (`flutter ... --dart-define MOBILE_APP_KEY=...`) — native apps can't tick a
-   checkbox, so the header stands in (rate limits still apply!).
-- Unset = check off (old behavior). Login rate limits (30/15min) still apply regardless.
+Login/signup/OTP/forgot sit behind rate limits (30 tries/15min per IP) plus a
+5-attempt burn on OTP codes — enough for a shop app without a checkbox in the way.
 
 ## 5. Things that need NO key
 

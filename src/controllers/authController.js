@@ -117,10 +117,7 @@ function logout(req, res) {
 // GET /api/auth/config — PUBLIC knobs the login page needs (client id ONLY —
 // never secrets! Secrets stay server-side; the client id is public by design).
 function authConfig(req, res) {
-  res.json({
-    googleClientId: process.env.GOOGLE_CLIENT_ID || null, // null → Google button explains "not switched on" (no dead button!)
-    recaptchaSiteKey: (process.env.VITE_RECAPTCHA_SITE_KEY || process.env.RECAPTCHA_SITE_KEY || '').trim() || null, // public widget key (Vercel var mirrored backend-side so ONE fetch configures auth forms!)
-  });
+  res.json({ googleClientId: process.env.GOOGLE_CLIENT_ID || null }); // null → Google button explains "not switched on" (no dead button!)
 }
 
 // POST /api/auth/google { credential } — Sign in with Google (FREE forever).

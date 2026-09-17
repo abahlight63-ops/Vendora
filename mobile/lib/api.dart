@@ -34,13 +34,7 @@ class ApiClient {
   String? _cookie; // raw "connect.sid=..." pair (attributes stripped)
   bool _loaded = false;
 
-  // Bot-wall pass: header X-Mobile-Key proves "official app" (set BOTH the
-  // Render env MOBILE_APP_KEY and this dart-define, same value!). It's
-  // obfuscation, not proof — rate limits + OTP burn still guard everything.
-  static const String mobileKey = String.fromEnvironment(
-    'MOBILE_APP_KEY',
-    defaultValue: '',
-  );
+
 
   Future<void> _ensureLoaded() async {
     if (_loaded) return;
@@ -69,7 +63,6 @@ class ApiClient {
 
   Map<String, String> _headers({bool json = true}) => {
         if (json) 'Content-Type': 'application/json',
-        if (mobileKey.isNotEmpty) 'X-Mobile-Key': mobileKey,
         ...?_cookieHeader,
       };
 

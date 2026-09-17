@@ -123,9 +123,9 @@ footer{border-top:1px solid var(--line);margin-top:40px;padding:22px 0 40px;colo
 <details class="key"><summary><span class="dot gold"></span><code>TELEGRAM_WEBHOOK_SECRET · TELEGRAM_SHARED_BOT_TOKEN · TELEGRAM_SHARED_BOT_NAME</code> <span class="badge b-opt">OPTIONAL · Telegram channel only</span></summary>
 <div class="body"><ol><li>Telegram → chat with <b>@BotFather</b> → <code>/newbot</code> → name it → copy the token → <code>TELEGRAM_SHARED_BOT_TOKEN</code>, username → <code>TELEGRAM_SHARED_BOT_NAME</code>. Free.</li><li>Invent a random string → <code>TELEGRAM_WEBHOOK_SECRET</code> (same value goes in every BotFather <code>setWebhook … secret_token</code> call).</li><li>Skip all three = Telegram stays off, WhatsApp unaffected.</li></ol></div></details>
 
-<details class="key"><summary><span class="dot gold"></span><code>OPENROUTER_API_KEY · OPENAI_API_KEY</code> <span class="badge b-opt">OPTIONAL · extra AI brains</span></summary>
+<details class="key"><summary><span class="dot gold"></span><code>TOKENROUTER_API_KEY · SAMBANOVA_API_KEY · OPENAI_API_KEY</code> <span class="badge b-opt">OPTIONAL · extra AI brains</span></summary>
 <div class="body"><p>Backup AIs only (Gemini + Groq already cover you free).
-OpenRouter: <code>openrouter.ai</code> → Keys (free <code>:free</code> models). OpenAI: <code>platform.openai.com</code> → API keys (paid, cheapest <code>gpt-4o-mini</code>).</p></div></details>
+TokenRouter: your TokenRouter dashboard → API Keys (free key → <code>TOKENROUTER_API_KEY</code>, model names → <code>TOKENROUTER_MODEL / TOKENROUTER_MODEL_2</code>). SambaNova: <code>cloud.sambanova.ai</code> → API Keys (free). Pollinations needs no key and is always on. OpenAI: <code>platform.openai.com</code> → API keys (paid, cheapest <code>gpt-4o-mini</code>).</p></div></details>
 
 <details class="key"><summary><span class="dot gold"></span><code>ADS_SCRIPT_URL(2) · SPONSOR_*</code> <span class="badge b-opt">OPTIONAL · ad money</span></summary>
 <div class="body"><p>Networks: Monetag (<code>monetag.com</code> → Sites → MultiTag zone → tag URL) and optional Adsterra Social Bar. Direct sponsor (best ₦): set <code>SPONSOR_TITLE + TEXT + LINK + IMAGE + RATE</code> for one local business; clicks logged, invoice via <code>GET /api/ads/stats</code> + admin key. Full playbook in Section 6.</p></div></details>

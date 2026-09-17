@@ -1,6 +1,7 @@
 // ── src/services/ai/client.js ────────────────────────────────────
 // WHAT: the low-level AI transport layer — keys, timeouts, rate governor,
-// and one caller per provider (Gemini / Claude / Groq / OpenAI / OpenRouter).
+// and one caller per provider (Gemini / Claude / Groq / OpenAI / TokenRouter
+// / SambaNova / Pollinations).
 // RULE: one API key per provider, 2 models max per key (see aiModels.js).
 // The BRAIN lives in ../replyEngine.js (prompts + grounding); THIS file only
 // moves text to providers and back. No prompts here, no business logic.
@@ -70,7 +71,9 @@ function configuredProviders() {
     gemini: validKey(process.env.GEMINI_API_KEY),
     claude: validKey(process.env.ANTHROPIC_API_KEY),
     groq: validKey(process.env.GROQ_API_KEY),
-    openrouter: validKey(process.env.OPENROUTER_API_KEY),
+    tokenrouter: validKey(process.env.TOKENROUTER_API_KEY),
+    sambanova: validKey(process.env.SAMBANOVA_API_KEY),
+    pollinations: true, // keyless emergency fallback — always "configured"
     openai: validKey(process.env.OPENAI_API_KEY),
   };
 }
@@ -182,7 +185,7 @@ async function callClaude(system, user, image, modelOverride, opts) {
     .trim();
 }
 
-// Groq + OpenRouter + OpenAI share the OpenAI chat shape.
+// Groq + TokenRouter + SambaNova + OpenAI share the OpenAI chat shape.
 async function callOpenAICompat(
   name,
   url,
@@ -262,24 +265,78 @@ async function callOpenAI(system, user, modelOverride, opts) {
   );
 }
 
-async function callOpenRouter(system, user, modelOverride, opts) {
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!validKey(key)) throw new Error('OPENROUTER_API_KEY is not set');
-  const model =
-    modelOverride ||
-    process.env.OPENROUTER_MODEL ||
-    'meta-llama/llama-3.1-8b-instruct:free';
-  const base = process.env.PUBLIC_BASE_URL || 'http://localhost:3000';
+// TokenRouter: OpenAI-compatible gateway (free key). Base URL is env-
+// overridable in case your TokenRouter lives on a different host.
+async function callTokenRouter(system, user, modelOverride, opts) {
+  const key = process.env.TOKENROUTER_API_KEY;
+  if (!validKey(key)) throw new Error('TOKENROUTER_API_KEY is not set');
+  const base = (process.env.TOKENROUTER_BASE_URL || 'https://tokenrouter.me/v1').replace(/\/+$/, '');
+  const model = modelOverride || process.env.TOKENROUTER_MODEL || 'kimi-k2p6';
   return callOpenAICompat(
-    'OpenRouter',
-    'https://openrouter.ai/api/v1/chat/completions',
+    'TokenRouter',
+    `${base}/chat/completions`,
     key,
     model,
     system,
     user,
-    { 'HTTP-Referer': base, 'X-Title': 'Vendora' },
+    null,
     opts
   );
+}
+
+async function callSambaNova(system, user, modelOverride, opts) {
+  const key = process.env.SAMBANOVA_API_KEY;
+  if (!validKey(key)) throw new Error('SAMBANOVA_API_KEY is not set');
+  const model =
+    modelOverride || process.env.SAMBANOVA_MODEL || 'Meta-Llama-3.3-70B-Instruct';
+  return callOpenAICompat(
+    'SambaNova',
+    'https://api.sambanova.ai/v1/chat/completions',
+    key,
+    model,
+    system,
+    user,
+    null,
+    opts
+  );
+}
+
+// Pollinations.ai: ZERO key, emergency last-resort. Slower + weaker, but it
+// never 429s on your quota because there is no quota. Always tried LAST.
+async function callPollinations(system, user, modelOverride, opts) {
+  const model = modelOverride || process.env.POLLINATIONS_MODEL || 'openai';
+  const { temp, maxT } = optsOf(opts, 0.3, 350);
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), Math.max(AI_TIMEOUT_MS, 45000));
+  try {
+    const res = await fetch('https://text.pollinations.ai/openai', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      signal: ctrl.signal,
+      body: JSON.stringify({
+        model,
+        temperature: temp,
+        max_tokens: maxT,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+      }),
+    });
+    if (!res.ok) {
+      throw new Error(
+        `Pollinations error ${res.status}: ${(await res.text()).slice(0, 200)}`
+      );
+    }
+    const data = await res.json();
+    const text = (data.choices?.[0]?.message?.content || '').trim();
+    if (!text) throw new Error('Pollinations returned an empty reply');
+    return text;
+  } catch (e) {
+    throw new Error(`Pollinations network/timeout: ${e.message}`);
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 // ── Route ONE catalog entry to its provider with its EXACT model id.
@@ -295,8 +352,14 @@ async function callModel(entry, system, user, image, opts) {
   if (entry.provider === 'groq') {
     return callGroq(system, user, modelId, opts);
   }
-  if (entry.provider === 'openrouter') {
-    return callOpenRouter(system, user, modelId, opts);
+  if (entry.provider === 'tokenrouter') {
+    return callTokenRouter(system, user, modelId, opts);
+  }
+  if (entry.provider === 'sambanova') {
+    return callSambaNova(system, user, modelId, opts);
+  }
+  if (entry.provider === 'pollinations') {
+    return callPollinations(system, user, modelId, opts);
   }
   if (entry.provider === 'openai') {
     return callOpenAI(system, user, modelId, opts);
@@ -305,24 +368,27 @@ async function callModel(entry, system, user, image, opts) {
 }
 
 // ── Generic chain for the WhatsApp bot (no dropdown): AI_PROVIDER first,
-// then every other configured provider. ──
+// then every other configured provider. Pollinations always last (slow but
+// keyless — the net that catches everything). ──
 async function callAI(system, user, image) {
   const provider = (process.env.AI_PROVIDER || 'gemini').toLowerCase();
   const has = configuredProviders();
-  const order = [provider, 'groq', 'openrouter', 'gemini', 'claude', 'openai'].filter(
+  const order = [provider, 'groq', 'tokenrouter', 'sambanova', 'gemini', 'claude', 'openai', 'pollinations'].filter(
     (p, i, a) => a.indexOf(p) === i
   );
   const runners = {
     gemini: () => callGemini(system, user, image),
     claude: () => callClaude(system, user, image),
     groq: () => callGroq(system, user),
-    openrouter: () => callOpenRouter(system, user),
+    tokenrouter: () => callTokenRouter(system, user),
+    sambanova: () => callSambaNova(system, user),
     openai: () => callOpenAI(system, user),
+    pollinations: () => callPollinations(system, user),
   };
   let lastErr = null;
   for (const name of order) {
     if (!has[name]) continue;
-    if (image && (name === 'groq' || name === 'openrouter')) continue;
+    if (image && (name === 'groq' || name === 'tokenrouter' || name === 'sambanova' || name === 'pollinations')) continue;
     const started = Date.now();
     try {
       const text = await runners[name]();
@@ -336,7 +402,7 @@ async function callAI(system, user, image) {
   throw (
     lastErr ||
     new Error(
-      'No AI provider configured — add GEMINI_API_KEY, GROQ_API_KEY or OPENROUTER_API_KEY to .env and restart the server'
+      'No AI provider configured — add GEMINI_API_KEY, GROQ_API_KEY or TOKENROUTER_API_KEY to .env and restart the server'
     )
   );
 }
@@ -353,7 +419,9 @@ module.exports = {
   callClaude,
   callGroq,
   callOpenAI,
-  callOpenRouter,
+  callTokenRouter,
+  callSambaNova,
+  callPollinations,
   callModel,
   callAI,
 };

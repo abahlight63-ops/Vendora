@@ -42,12 +42,12 @@ export default function Privacy() {
           <p>We do not collect Bank Verification Numbers (BVN), National Identification Numbers (NIN), payment card numbers, or precise location data. Passwords are stored exclusively as salted cryptographic hashes and cannot be retrieved in readable form. We do not create advertising profiles. As a matter of policy, we do not collect or retain any personal data that is not reasonably necessary for the provision of the Service.</p>
 
           <h3>4. How the AI uses your data</h3>
-          <p>When a customer messages you, we send the message plus your catalog/profile to our AI providers (Google Gemini by default, with Groq and OpenRouter as automatic backups) to draft the reply. Providers process this text to generate the answer and are contractually forbidden from training on it or keeping it beyond their standard short retention. Customer photos are analyzed the same way — matched against your catalog, then forgotten.</p>
+          <p>When a customer messages you, we send the message plus your catalog/profile to our AI providers (Google Gemini by default, with Groq and TokenRouter as automatic backups) to draft the reply. Providers process this text to generate the answer and are contractually forbidden from training on it or keeping it beyond their standard short retention. Customer photos are analyzed the same way — matched against your catalog, then forgotten.</p>
 
           <h3>5. Who else touches your data (our processors)</h3>
           <ul>
             <li><b>Meta (WhatsApp Cloud API)</b> — delivers WhatsApp messages both ways.</li>
-            <li><b>Google Gemini / Groq / OpenRouter / Anthropic</b> — generate AI replies.</li>
+            <li><b>Google Gemini / Groq / TokenRouter / SambaNova / Anthropic</b> — generate AI replies.</li>
             <li><b>Paystack</b> — processes Naira card payments (they see the payer email and amount, never your catalog).</li>
             <li><b>Flutterwave</b> — processes US Dollar card payments for international shops (same business: email and amount only).</li>
             <li><b>Resend</b> — sends verification and account emails.</li>

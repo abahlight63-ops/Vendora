@@ -27,10 +27,16 @@ const CATALOG = [
     model: () => process.env.GROQ_FAST_MODEL || 'llama-3.1-8b-instant' },
   { id: 'llama-70b', label: 'Llama 3.3 70B', provider: 'groq', tier: 'free', badge: 'Smart', desc: 'Meta via Groq · best free quality', // Groq model 2 of 2
     model: () => process.env.GROQ_LLAMA_MODEL || 'llama-3.3-70b-versatile' },
-  { id: 'openrouter-free', label: 'OpenRouter Free', provider: 'openrouter', tier: 'free', badge: 'Smart', desc: 'Gateway · 400+ free models', // OpenRouter model 1 of 2 (:free suffix = $0 ones)
-    model: () => process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.1-8b-instruct:free' },
-  { id: 'openrouter-free-2', label: 'OpenRouter 70B', provider: 'openrouter', tier: 'free', badge: 'Smart', desc: 'Gateway · bigger free model', // OpenRouter model 2 of 2
-    model: () => process.env.OPENROUTER_MODEL_2 || 'meta-llama/llama-3.3-70b-instruct:free' },
+  { id: 'tokenrouter-free', label: 'Token Router Free', provider: 'tokenrouter', tier: 'free', badge: 'Smart', desc: 'Gateway · free key, many models', // TokenRouter model 1 of 2 (ONE free key, TWO models)
+    model: () => (process.env.TOKENROUTER_MODEL || 'kimi-k2p6').trim() },
+  { id: 'tokenrouter-free-2', label: 'Token Router Free 2', provider: 'tokenrouter', tier: 'free', badge: 'Smart', desc: 'Gateway · second free model', // TokenRouter model 2 of 2 (set names from your dashboard model list)
+    model: () => (process.env.TOKENROUTER_MODEL_2 || 'kimi-k2p6').trim() },
+  { id: 'sambanova-70b', label: 'SambaNova 70B', provider: 'sambanova', tier: 'free', badge: 'Smart', desc: 'SambaNova free · best quality', // SambaNova model 1 of 2 (ONE free key, TWO models)
+    model: () => (process.env.SAMBANOVA_MODEL || 'Meta-Llama-3.3-70B-Instruct').trim() },
+  { id: 'sambanova-8b', label: 'SambaNova 8B', provider: 'sambanova', tier: 'free', badge: 'Fast', desc: 'SambaNova free · fast model', // SambaNova model 2 of 2
+    model: () => (process.env.SAMBANOVA_FAST_MODEL || 'Meta-Llama-3.1-8B-Instruct').trim() },
+  { id: 'pollinations', label: 'Pollinations', provider: 'pollinations', tier: 'free', badge: 'Smart', desc: 'No key needed · emergency backup', // keyless last-resort, always tried last
+    model: () => (process.env.POLLINATIONS_MODEL || 'openai').trim() },
   { id: 'kimi-k2', label: 'Kimi K2', provider: 'groq', tier: 'paid', minTier: 'plus', badge: 'Premium', desc: 'Moonshot · agentic tasks · Pro Plus', // Plus-only, rarely used — rides the same GROQ_API_KEY without hammering free quota
     model: () => process.env.GROQ_KIMI_MODEL || 'moonshotai/kimi-k2-instruct' },
   { id: 'claude-haiku', label: 'Claude Haiku', provider: 'claude', tier: 'paid', badge: 'Premium', desc: 'Anthropic · cheapest & careful', // Anthropic cheap model 1 of 2 (~$0.25/1M tokens)

@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS ai_usage ( -- one row per business per day; PRIMARY K
 CREATE TABLE IF NOT EXISTS model_usage (
   business_id INTEGER NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
   day DATE NOT NULL DEFAULT CURRENT_DATE,
-  model_id TEXT NOT NULL, -- catalog id (llama-8b, kimi-k2…) — stable keys, not provider model names!
+  model_id TEXT NOT NULL, -- catalog id (gpt-oss-20b, kimi-k2…) — stable keys, not provider model names!
   count INTEGER NOT NULL DEFAULT 0, -- calls today
   PRIMARY KEY (business_id, day, model_id)
 );

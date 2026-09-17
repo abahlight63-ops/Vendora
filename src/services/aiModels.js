@@ -23,8 +23,8 @@ const CATALOG = [
     model: () => (process.env.GEMINI_LITE_MODEL || 'gemini-2.5-flash-lite').trim() }, // pinned lite; set GEMINI_LITE_MODEL=gemini-3.5-flash-lite once Google ships that name — no deploy needed
   { id: 'gemini-flash-full', label: 'Gemini Flash (full)', provider: 'gemini', tier: 'free', badge: 'Smart', desc: 'Google · fuller answers (default), still free',
     model: () => (process.env.GEMINI_FULL_MODEL || 'gemini-2.5-flash').trim() },
-  { id: 'llama-8b', label: 'Llama 3.1 8B', provider: 'groq', tier: 'free', badge: 'Fast', desc: 'Meta via Groq · speed king', // Groq model 1 of 2 (one GROQ_API_KEY, two models max)
-    model: () => process.env.GROQ_FAST_MODEL || 'llama-3.1-8b-instant' },
+  { id: 'gpt-oss-20b', label: 'GPT-OSS 20B', provider: 'groq', tier: 'free', badge: 'Fast', desc: 'OpenAI open-weight via Groq · best free pick', // Groq model 1 of 2 (one GROQ_API_KEY, two models max)
+    model: () => process.env.GROQ_OSS_MODEL || 'openai/gpt-oss-20b' },
   { id: 'llama-70b', label: 'Llama 3.3 70B', provider: 'groq', tier: 'free', badge: 'Smart', desc: 'Meta via Groq · best free quality', // Groq model 2 of 2
     model: () => process.env.GROQ_LLAMA_MODEL || 'llama-3.3-70b-versatile' },
   { id: 'tokenrouter-free', label: 'Token Router Free', provider: 'tokenrouter', tier: 'free', badge: 'Smart', desc: 'Gateway · free key, many models', // TokenRouter model 1 of 2 (ONE free key, TWO models)

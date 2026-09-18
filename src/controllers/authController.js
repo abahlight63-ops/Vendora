@@ -117,7 +117,10 @@ function logout(req, res) {
 // GET /api/auth/config — PUBLIC knobs the login page needs (client id ONLY —
 // never secrets! Secrets stay server-side; the client id is public by design).
 function authConfig(req, res) {
-  res.json({ googleClientId: process.env.GOOGLE_CLIENT_ID || null }); // null → Google button explains "not switched on" (no dead button!)
+  res.json({
+    googleClientId: process.env.GOOGLE_CLIENT_ID || null, // null → Google button explains "not switched on" (no dead button!)
+    vapidPublicKey: (process.env.VAPID_PUBLIC_KEY || '').trim() || null, // public push key (Profile toggle needs it — public by design, like the Google id!)
+  });
 }
 
 // POST /api/auth/google { credential } — Sign in with Google (FREE forever).

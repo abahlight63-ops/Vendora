@@ -257,6 +257,17 @@ CREATE TABLE IF NOT EXISTS notification_templates (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Web Push subscriptions: one row per browser (phone + laptop separately!).
+-- Powers phone-bar alerts even with the tab closed (bell fan-out rides here).
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  business_id INTEGER NOT NULL REFERENCES businesses(id) ON DELETE CASCADE, -- owner scope (shop gone = subs gone)
+  endpoint TEXT PRIMARY KEY, -- push-service URL (unique per browser — re-subscribing upserts!)
+  p256dh TEXT NOT NULL, -- receiver public key (payload encryption!)
+  auth TEXT NOT NULL, -- receiver auth secret (key derivation!)
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_push_business ON push_subscriptions(business_id);
+
 -- AI voice controls: the owner's own words for greetings + human handoff.
 -- Empty = built-in polite defaults (replyEngine + webhookController fall back).
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS greeting_msg TEXT NOT NULL DEFAULT '';

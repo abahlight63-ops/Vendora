@@ -45,5 +45,7 @@ router.post('/me/feedback', ownerController.feedbackCreate); // categorized feed
 router.get('/me/notifications', ownerController.getNotifications); // bell inbox (newest first + unread count)
 router.post('/me/notifications/read', ownerController.readNotifications); // mark all read on open
 router.post('/me/notifications/:id/read', ownerController.readNotification); // open ONE fully (detail page)
+router.post('/me/push/subscribe', ownerController.pushSubscribe); // phone-bar alerts on (this browser!)
+router.post('/me/push/unsubscribe', ownerController.pushUnsubscribe); // phone-bar alerts off (this browser!)
 
 module.exports = router; // server.js does app.use('/api', ownerRoutes)

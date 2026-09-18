@@ -14,7 +14,8 @@
     "digest:send": "node src/digest.js",
     "digest:weekly": "node src/digest.js --weekly",
     "recovery:send": "node src/recovery.js",
-    "winback": "node src/winback.js"
+    "winback": "node src/winback.js",
+    "push:vapid": "node scripts/vapid.js"
   },
   "engines": {
     "node": ">=20.19.0"

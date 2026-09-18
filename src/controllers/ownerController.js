@@ -208,42 +208,22 @@ async function upsertProduct(req, res, next) {
 // Upload media: host an owner-picked product photo (Catalog "Upload media"
 // button). Body: { filename, dataUrl } where dataUrl is a
 // "data:image/…;base64,…" string (no new deps — JSON, not multipart!).
-// Files land in public/uploads/ (served by express.static) and we hand back
-// an absolute URL the bot can attach on WhatsApp/Telegram.
+// Cloudinary when configured (survives redeploys!), else local public/uploads.
+// Hands back an absolute URL the bot can attach on WhatsApp/Telegram.
 async function uploadProductPhoto(req, res) {
-  const fs = require('fs'); // built-in: mkdir + writeFileSync
-  const path = require('path'); // built-in: safe path joins
   const { dataUrl } = req.body || {};
-  const m = typeof dataUrl === 'string'
-    && dataUrl.match(/^data:(image\/(jpeg|png|webp|gif));base64,([A-Za-z0-9+/=\s]+)$/); // MIME whitelist in the regex (jpg/png/webp/gif only!)
-  if (!m) return res.status(400).json({ error: 'Send an image file (jpg, png, webp or gif).' });
-  let buf;
   try {
-    buf = Buffer.from(m[3].replace(/\s/g, ''), 'base64'); // \s strip: some pickers wrap lines (harmless either way!)
-  } catch {
-    return res.status(400).json({ error: 'Could not read that image.' });
-  }
-  if (buf.length === 0 || buf.length > 2.5 * 1024 * 1024) return res.status(400).json({ error: 'Image too large — max 2.5MB.' }); // cap: keeps disks + attachment sends cheap
-  const kind = m[2]; // jpeg | png | webp | gif (from the whitelist above!)
-  const magicOk = // magic-byte check: extension claims must match the actual bytes (renamed .exe files die here!)
-    (kind === 'jpeg' && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) ||
-    (kind === 'png' && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) ||
-    (kind === 'gif' && buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) ||
-    (kind === 'webp' && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP');
-  if (!magicOk) return res.status(400).json({ error: 'That file is not a real image.' });
-  const ext = kind === 'jpeg' ? 'jpg' : kind; // jpeg → jpg (shorter URLs!)
-  const dir = path.join(__dirname, '..', '..', 'public', 'uploads'); // public/ = served statically (server.js express.static!)
-  fs.mkdirSync(dir, { recursive: true }); // recursive: creates public/uploads on first use (deploy-safe!)
-  const safe = `biz${Number(req.session.businessId) || 0}-${Date.now()}.${ext}`; // server-built name (user filenames NEVER touch the disk — path-traversal impossible!)
-  try {
-    fs.writeFileSync(path.join(dir, safe), buf); // sync write: small files, request-scoped (simplest correct!)
+    const media = require('../services/mediaStore');
+    const saved = await media.saveUpload({ dataUrl, prefix: 'biz', businessId: req.session.businessId, allowVideo: false });
+    if (saved.url) return res.json({ url: saved.url }); // cloud (permanent!)
+    const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '') // explicit public host wins (set it on Railway/Render!)…
+      || `${req.protocol}://${req.get('host')}`; // …else build from this request (right in local dev!)
+    return res.json({ url: `${base}/uploads/${saved.localFile}` }); // absolute URL: Meta/Telegram fetch it server-side!
   } catch (e) {
-    console.error('product-photo write error:', e.message);
+    if (e && e.status === 400) return res.status(400).json({ error: e.message });
+    console.error('product-photo upload error:', e.message);
     return res.status(500).json({ error: 'Could not save photo — try again.' });
   }
-  const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '') // explicit public host wins (set it on Railway/Render!)…
-    || `${req.protocol}://${req.get('host')}`; // …else build from this request (right in local dev!)
-  res.json({ url: `${base}/uploads/${safe}` }); // absolute URL: Meta/Telegram fetch it server-side!
 }
 
 async function deleteProduct(req, res) {
@@ -788,6 +768,33 @@ async function readNotifications(req, res) {
   }
 }
 
+// Phone-bar alerts: store this browser's push subscription (Profile toggle).
+// Body: { endpoint, keys: { p256dh, auth } } straight from PushManager.
+async function pushSubscribe(req, res) {
+  try {
+    const push = require('../services/pushService');
+    const { endpoint, keys } = req.body || {};
+    await push.saveSubscription(req.session.businessId, { endpoint, p256dh: keys && keys.p256dh, auth: keys && keys.auth });
+    res.json({ ok: true });
+  } catch (e) {
+    const code = (e && e.status === 400) ? 400 : 500;
+    res.status(code).json({ error: (e && e.message) || 'Could not enable alerts' });
+  }
+}
+
+// Phone-bar alerts off for this browser (toggle off — other browsers keep theirs!).
+async function pushUnsubscribe(req, res) {
+  try {
+    const push = require('../services/pushService');
+    const { endpoint } = req.body || {};
+    await push.removeSubscription(req.session.businessId, endpoint);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('push unsubscribe error:', e.message);
+    res.status(500).json({ error: 'Could not disable alerts' });
+  }
+}
+
 // One notification, fully read (detail page open). Scoped to the owner's own
 // inbox — returns 404 for anyone else's id (never leak across shops!).
 async function readNotification(req, res) {
@@ -839,4 +846,6 @@ module.exports = { // every handler the routes file wires up (miss one here = ro
   getNotifications,
   readNotifications,
   readNotification,
+  pushSubscribe,
+  pushUnsubscribe,
 };

@@ -31,6 +31,7 @@ export default function Profile({ biz }) { // biz prop = business from App's use
         </div>
       </div>
       <TelegramCard />
+      <PhoneAlerts />
       <div className="card">
         <div className="grid2"> {/* two-column grid (stacks mobile) */}
           <div><label>Business name</label><input value={f.name} onChange={set('name')} /></div> {/* controlled input: value mirrors state, onChange writes back (React owns the text!) */}
@@ -52,6 +53,74 @@ export default function Profile({ biz }) { // biz prop = business from App's use
         <div style={{ marginTop: 14 }}><button className="btn" onClick={save}>Save profile</button></div>
       </div>
     </>
+  );
+}
+
+function PhoneAlerts() { // Web Push toggle: quota/support/broadcast alerts on the phone notification bar, tab closed or not!
+  const [st, setSt] = React.useState('checking'); // checking | off | on | unsupported | denied
+  const [busy, setBusy] = React.useState(false); // subscribe in flight (double-tap protection!)
+  function supported() { // all three APIs or nothing (iOS Safari needs installed-PWA + iOS 16.4+!)
+    return typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
+  }
+  React.useEffect(() => { // mount: already subscribed in THIS browser?
+    (async () => {
+      if (!supported()) { setSt('unsupported'); return; }
+      try {
+        const reg = await navigator.serviceWorker.getRegistration() || await navigator.serviceWorker.register('/sw-push.js');
+        const sub = await reg.pushManager.getSubscription();
+        setSt(sub ? 'on' : 'off');
+      } catch { setSt('off'); } // worker blocked (private mode?) → offer the button anyway (tap explains!)
+    })();
+  }, []); // [] = mount-only probe
+  function urlB64ToU8(s) { // websafe base64 → Uint8Array (PushManager demands raw bytes, not the string!)
+    const norm = String(s).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = window.atob(norm + '='.repeat((4 - (norm.length % 4)) % 4));
+    const out = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
+  }
+  async function enable() { // permission → subscribe → POST to backend (three gates, each with its own message!)
+    if (busy) return; setBusy(true);
+    try {
+      if (Notification.permission === 'denied') { setSt('denied'); return; } // browser-level block (only Settings can undo — say so!)
+      const perm = await Notification.requestPermission(); // the browser prompt (must come from a tap — it does, this IS the tap handler!)
+      if (perm !== 'granted') { setSt(Notification.permission === 'denied' ? 'denied' : 'off'); return; }
+      const { ok, data } = await api('/api/auth/config'); // VAPID public key (backend serves it — public by design!)
+      const key = ok && data && data.vapidPublicKey;
+      if (!key) { toast('Phone alerts are not switched on yet (server keys missing).'); return; } // backend has no VAPID pair (admin: npm run push:vapid!)
+      const reg = await navigator.serviceWorker.register('/sw-push.js'); // our worker (NOT the ad tag sw.js!)
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToU8(key) });
+      const put = await api('/api/me/push/subscribe', { method: 'POST', body: JSON.stringify(sub.toJSON()) }); // {endpoint, keys:{p256dh, auth}} → stored per business!
+      if (put.ok) { setSt('on'); toast('Phone alerts on — quota and support news will find you.'); }
+      else toast((put.data && put.data.error) || 'Could not enable alerts', 'err');
+    } catch { toast('Could not enable alerts — try again (private mode blocks workers).', 'err'); } // any throw above lands here (never a dead button!)
+    finally { setBusy(false); } // unlock either way!
+  }
+  async function disable() { // unsubscribe locally + forget server-side (other browsers keep theirs!)
+    if (busy) return; setBusy(true);
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      const sub = reg ? await reg.pushManager.getSubscription() : null;
+      const endpoint = sub ? sub.endpoint : '';
+      if (sub) await sub.unsubscribe(); // browser forgets first (server delete can't strand a live sub!)
+      await api('/api/me/push/unsubscribe', { method: 'POST', body: JSON.stringify({ endpoint }) });
+      setSt('off'); toast('Phone alerts off for this browser.');
+    } catch { toast('Could not disable alerts', 'err'); }
+    finally { setBusy(false); }
+  }
+  return (
+    <div className="card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div><h2>Phone alerts</h2><p className="desc" style={{ margin: 0 }}>
+          {st === 'checking' ? 'Checking…' : st === 'on' ? 'ON — quota, replies and broadcasts reach your notification bar.' : st === 'denied' ? 'Blocked — allow notifications in browser Settings, then tap again.' : st === 'unsupported' ? 'This browser cannot do phone alerts — try Chrome on Android or an installed app.' : 'OFF — quota and support news stay in the bell only.'}
+        </p></div>
+        {st !== 'checking' && st !== 'unsupported' && (
+          st === 'on'
+            ? <button className="btn sm ghost" disabled={busy} onClick={disable}>{busy ? 'Working…' : 'Turn off'}</button>
+            : <button className="btn sm" disabled={busy} onClick={enable}>{busy ? 'Enabling…' : 'Turn on'}</button>
+        )}
+      </div>
+    </div>
   );
 }
 

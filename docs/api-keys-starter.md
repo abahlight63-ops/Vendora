@@ -107,6 +107,35 @@ No `.env` key needed — each shop pastes its own 2 values on the Connect page
 Login/signup/OTP/forgot sit behind rate limits (30 tries/15min per IP) plus a
 5-attempt burn on OTP codes — enough for a shop app without a checkbox in the way.
 
+## 4c. Phone-bar push (no vendor key — generate your own, FREE forever)
+
+Web Push alerts owners on their phone notification bar even with the tab closed.
+1. Run `npm run push:vapid` → paste `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` +
+   `VAPID_SUBJECT=mailto:you@yourshop.com` into Render env → redeploy.
+2. Open Profile → Phone alerts → Turn on (per browser — phone + laptop separately).
+3. Every bell (quota limits, support replies, broadcasts) now ALSO pushes.
+- HTTPS required (Render/Vercel have it). iOS needs the app installed to Home
+  Screen (Apple's rule). Unset keys = bell only, nothing breaks.
+- Native FCM (icon badges in the Play Store app) comes later — needs Firebase
+  + Apple paperwork, a week by itself. Web push covers ~90% of the value now.
+
+## 4d. Photos that survive redeploys (Cloudinary free tier)
+
+Render's disk is wiped on every deploy — product + notice photos die with it.
+1. Sign up at https://cloudinary.com (free) → Settings → Upload → Upload presets
+   → Add → Signing Mode: **Unsigned** → copy the preset name.
+2. Paste `CLOUDINARY_CLOUD_NAME` (dashboard top) + `CLOUDINARY_UPLOAD_PRESET`.
+3. Unset = local disk (dev only!). After setting: re-upload one photo to confirm
+   the URL is `res.cloudinary.com/...`.
+
+## 4e. Uptime alerts (know before users complain — FREE, no code)
+
+1. Sign up at https://uptimerobot.com (free: 50 monitors, 5-min checks).
+2. Add monitor 1: `https://YOUR-BACKEND/health` (keyword: `ok`).
+3. Add monitor 2: your Vercel login page URL (keyword: `Vendora`).
+4. Alerts → your email/WhatsApp. Also switch Render off the Free plan (sleeping
+   instances = 50s cold starts that look like outages) — Starter or higher.
+
 ## 5. Things that need NO key
 
 - **Trial countdown + expiry bells** — built in, checked on every app load. No cron, no key.
@@ -123,3 +152,8 @@ Login/signup/OTP/forgot sit behind rate limits (30 tries/15min per IP) plus a
 - [ ] `FRONTEND_URL=https://your-frontend-url` (split deploy cookies).
 - [ ] Gemini + Groq keys in place, test message answered in Playground.
 - [ ] Meta Embedded Signup live (App ID + Configuration ID set, TEST message flips Connect to LIVE).
+- [ ] Gmail SMTP (or Resend domain) live — sign up a test user with a REAL inbox, code arrives.
+- [ ] `npm run push:vapid` → VAPID keys on Render → Profile → Phone alerts ON (test bell!).
+- [ ] Cloudinary preset set → upload one product photo → URL is res.cloudinary.com.
+- [ ] UptimeRobot watching /health + login page; Render off Free plan (no sleeping!).
+- [ ] Hit a free limit on purpose (ask 50× / use Test-my-AIs in /admin) → Pro card shows.

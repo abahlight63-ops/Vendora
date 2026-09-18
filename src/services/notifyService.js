@@ -43,6 +43,9 @@ async function notify(businessId, { title, body, link, image_url, video_url }) {
       ]
     );
     prune(Number(businessId)).catch(() => {});
+    try { // phone-bar fan-out (fire-and-forget: no await — the bell insert NEVER waits for push!)
+      require('./pushService').pushBusiness(Number(businessId), { title: rows[0].title, body: rows[0].body, url: rows[0].link || '/dashboard' }).catch(() => {});
+    } catch {} // push module hiccup → bell already landed (never break notifications!)
     return rows[0];
   } catch (e) {
     console.error('notify error:', e.message);

@@ -381,53 +381,23 @@ async function templateDelete(req, res) {
 
 // ---- Host a notice photo/video for broadcasts. Body: { filename, dataUrl }.
 // Images: jpg/png/webp/gif ≤2.5MB. Video: mp4 ≤10MB. Files land in
-// public/uploads/ (served statically) — same pattern as product photos. ----
+// Cloudinary when configured (survives redeploys!), else local disk. ----
 async function uploadMedia(req, res) {
-  const fs = require('fs');
-  const path = require('path');
   const { dataUrl } = req.body || {};
-  if (typeof dataUrl !== 'string') return res.status(400).json({ error: 'Send an image or video file.' });
-  const img = dataUrl.match(/^data:(image\/(jpeg|png|webp|gif));base64,([A-Za-z0-9+/=\s]+)$/);
-  const vid = !img && dataUrl.match(/^data:(video\/mp4);base64,([A-Za-z0-9+/=\s]+)$/);
-  const m = img || vid;
-  if (!m) return res.status(400).json({ error: 'Send an image (jpg, png, webp, gif) or mp4 video.' });
-  let buf;
   try {
-    buf = Buffer.from(m[img ? 3 : 2].replace(/\s/g, ''), 'base64');
-  } catch {
-    return res.status(400).json({ error: 'Could not read that file.' });
-  }
-  const cap = img ? 2.5 * 1024 * 1024 : 10 * 1024 * 1024; // photos 2.5MB, video 10MB (disk guard!)
-  if (buf.length === 0 || buf.length > cap) {
-    return res.status(400).json({ error: img ? 'Image too large — max 2.5MB.' : 'Video too large — max 10MB.' });
-  }
-  let ext;
-  if (img) {
-    const kind = m[2];
-    const magicOk =
-      (kind === 'jpeg' && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) ||
-      (kind === 'png' && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) ||
-      (kind === 'gif' && buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) ||
-      (kind === 'webp' && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP');
-    if (!magicOk) return res.status(400).json({ error: 'That file is not a real image.' });
-    ext = kind === 'jpeg' ? 'jpg' : kind;
-  } else {
-    if (buf.toString('ascii', 4, 8) !== 'ftyp') return res.status(400).json({ error: 'That file is not a real mp4.' }); // mp4 magic: "ftyp" at byte 4
-    ext = 'mp4';
-  }
-  const dir = path.join(__dirname, '..', '..', 'public', 'uploads');
-  fs.mkdirSync(dir, { recursive: true });
-  const safe = `notice-${Date.now()}.${ext}`; // server-built name (user filenames NEVER touch disk!)
-  try {
-    fs.writeFileSync(path.join(dir, safe), buf);
+    const media = require('../services/mediaStore');
+    const saved = await media.saveUpload({ dataUrl, prefix: 'notice', businessId: 0, allowVideo: true });
+    if (saved.url) return res.json({ url: saved.url }); // cloud (permanent!)
+    const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/+$/, ''); // absolute URL (Meta + apps fetch server-side!)
+    const host = base || `${req.protocol}://${req.get('host')}`;
+    return res.json({ url: `${host}/uploads/${saved.localFile}` });
   } catch (e) {
-    console.error('notice media write error:', e.message);
+    if (e && e.status === 400) return res.status(400).json({ error: e.message });
+    console.error('notice media upload error:', e.message);
     return res.status(500).json({ error: 'Could not save that file.' });
   }
-  const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/+$/, ''); // absolute URL (Meta + apps fetch server-side!)
-  const host = base || `${req.protocol}://${req.get('host')}`;
-  res.json({ url: `${host}/uploads/${safe}` });
 }
+
 
 // ---- Warn ONE user: drop a notification into a single owner's bell.
 // Find the shop three ways (whatever the admin has at hand): business_id,

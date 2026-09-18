@@ -258,13 +258,28 @@ async function handleInbound(req, res) {
            AND created_at >= CURRENT_DATE AND body LIKE '%reply limit%' LIMIT 1`,
           [customerId]
         );
+        const tierName = planService.effectiveTier(business); // hoisted: the owner bell below needs it too (const is block-scoped!)
         if (!already.length) { // one kind notice per chat per day (never a reply-bomb!)
-          const tierName = planService.effectiveTier(business);
           const limitMsg = tierName === 'free'
             ? `Sorry! ${business.name} has hit today's free reply limit (${WA_LIMIT}/day). A teammate will follow up with you shortly — or tap to upgrade for more replies!`
             : `Sorry! We've hit today's reply limit (${WA_LIMIT}/day). A teammate will follow up with you shortly.`;
           await reply(From, limitMsg);
           await conversationService.logMessage(customerId, 'out', limitMsg);
+        }
+        if (tierName === 'free') { // owner upgrade moment: ONE bell per shop per day (never spam the owner!)
+          try {
+            const { rows: nb } = await db.query(
+              `SELECT 1 FROM notifications WHERE business_id = $1 AND title = 'Free reply limit reached' AND created_at >= CURRENT_DATE LIMIT 1`,
+              [business.id]
+            );
+            if (!nb.length) {
+              require('../services/notifyService').notify(business.id, {
+                title: 'Free reply limit reached',
+                body: `Your shop hit today's ${WA_LIMIT} free replies — customers now see a limit note. Pro raises it to 500/day and removes the ceiling talk.`,
+                link: '/billing',
+              });
+            }
+          } catch (e) { console.error('limit bell error:', e.message); } // bell failing must never break the webhook!
         }
         return res.status(200).send('');
       }

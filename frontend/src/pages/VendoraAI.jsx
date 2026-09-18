@@ -129,6 +129,7 @@ export default function VendoraAI({ biz }) {
     }, 24);
   }
   const [upsell, setUpsell] = useState(false);
+  const [upsellLines, setUpsellLines] = useState(null); // quota-hit context lines (null = default premium list!)
   const first = (biz?.name || 'there').split(' ')[0];
 
   function onThreadScroll(e) { // track whether the user is at the bottom…
@@ -198,6 +199,13 @@ export default function VendoraAI({ biz }) {
         setMsgs((m) => [...m, { from: 'ai', text: data.error }]);
         toast('Daily limit reached', 'err');
         maybeShowSponsor();
+        setUpsellLines([ // quota wall = upgrade moment (context lines beat the generic list!)
+          '50 free chats a day — Pro never queues',
+          'Unlimited free AIs + 50 premium chats daily',
+          'Kimi K2, Claude + GPT-4o mini included',
+          'Zero ads, priority support',
+        ]);
+        setUpsell(true);
       } else {
         setMsgs((m) => [...m, { from: 'ai', text: data.error || 'Vendora AI is resting — try again in a moment.' }]);
         toast(data.error || 'Ask failed', 'err');
@@ -224,7 +232,7 @@ export default function VendoraAI({ biz }) {
         <ModelPicker models={models} model={model} onPick={persistPick} onLocked={() => setUpsell(true)} />
         {current?.locked && <Link className="mini-link" to="/billing">See upgrade options</Link>} {/* locked pick → billing (modal already explains why!) */}
         <span className="mpick-hint">Switch brains anytime — the caption under each reply tells you who answered.</span>
-        <GlassUpsell show={upsell} onClose={() => setUpsell(false)} />
+        <GlassUpsell show={upsell} lines={upsellLines} onClose={() => { setUpsell(false); setUpsellLines(null); }} />
       </div>
       {msgs.length === 0 ? (
         <div className="vai-hero">

@@ -5,9 +5,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../ads.dart';
 import '../api.dart';
+import '../glass.dart';
 import '../motion.dart';
 
 class AiScreen extends StatefulWidget {
@@ -202,6 +204,7 @@ class _AiScreenState extends State<AiScreen> {
       // Web parity: daily-limit wall doubles as the sponsor moment (free tier, max once/day).
       if (e.status == 429 && mounted && !_testBot) {
         unawaited(maybeShowSponsor(context));
+        _showUpgrade(); // quota wall = upgrade moment (same as the web Pro card!)
       }
     } catch (_) {
       setState(() =>
@@ -213,6 +216,43 @@ class _AiScreenState extends State<AiScreen> {
       }
       _jump();
     }
+  }
+
+  /// Quota-hit upgrade card (web GlassUpsell parity): quota context lines +
+  /// billing link. The ONLY paywall affordance here — drawn, never pushy.
+  Future<void> _showUpgrade() {
+    return glassSheet(
+      context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(children: [
+            Icon(Icons.lock_outline, size: 20),
+            SizedBox(width: 8),
+            Text('Daily free chats used up',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+          ]),
+          const SizedBox(height: 10),
+          const Text(
+              '50 free chats a day — Pro never queues, and unlocks the premium brains.'),
+          const SizedBox(height: 6),
+          const Text('• Unlimited free AIs + 50 premium chats daily'),
+          const Text('• Kimi K2, Claude + GPT-4o mini included'),
+          const Text('• Zero ads, priority support'),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () => launchUrl(
+                  Uri.parse('https://vendorabot.vercel.app/billing'),
+                  mode: LaunchMode.externalApplication),
+              child: const Text('See upgrade options'),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Web parity: short/weak answer → re-ask the last question.

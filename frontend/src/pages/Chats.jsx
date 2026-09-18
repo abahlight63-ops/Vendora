@@ -7,6 +7,7 @@
 // renders a totally different screen from the same component.
 import { useEffect, useState } from 'react'; // useState ×4; useEffect = load inbox on mount
 import { api, fmtTime, toast } from '../lib/api.js'; // api() fetches; fmtTime stamps
+import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 30s video gate (free tier, once/day — inbox pays too!)
 import Ic from '../components/icons.jsx'; // back-arrow icon
 
 export default function Chats() {
@@ -15,7 +16,7 @@ export default function Chats() {
   const [thread, setThread] = useState(null); // null = LIST screen; conversation object = THREAD screen
   const [msgs, setMsgs] = useState(null); // thread messages (null = loading thread → bubble skeletons)
   async function load() { const { data } = await api('/api/me/conversations'); setConvos(data || []); } // reusable reload (called on mount + back-from-thread to refresh flags)
-  useEffect(() => { load(); }, []); // [] = mount-only fetch
+  useEffect(() => { load(); maybeShowVideoAd({ slot: 'page-chats' }); }, []); // [] = mount-only fetch + video gate (fire-and-forget: inbox loads UNDER the overlay!)
   async function open(c) { setThread(c); setMsgs(null); const { data } = await api('/api/me/conversations/' + c.id + '/messages'); setMsgs(data || []); } // open thread: show screen instantly (thread set) + spinner messages (msgs null) → fill when fetch lands. c.id in URL (backend ownership-checks it!)
   const list = (convos || []).filter((c) => filter === 'all' ? true : filter === 'needs' ? c.needs_human : !c.needs_human); // nested ternary filter: all→everything; needs→flagged; handled→rest ((convos||[]) guards loading)
 

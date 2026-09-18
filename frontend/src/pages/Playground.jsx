@@ -4,12 +4,14 @@
 // If an answer is wrong HERE, fix the catalog — the bot will be wrong there too.
 // STATE: msgs (thread incl. greeting), input (draft), busy (AI thinking?).
 // Also sets localStorage 'vendora-tested' so the Dashboard checklist ticks!
-import { useState } from 'react'; // useState only (no mount fetch — starts with a greeting)
+import { useEffect, useState } from 'react'; // useState only (no mount fetch — starts with a greeting); useEffect = video gate once
+import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 30s video gate (free tier, once/day!)
 
 export default function Playground() { // no props (uses session catalog server-side)
   const [msgs, setMsgs] = useState([{ from: 'ai', text: 'Hi! I\'m your AI shop assistant. Ask me like a customer — e.g. "Abeg, do you have blue gown?"' }]); // initial AI greeting (from:'ai' renders left/green bubble; \' escapes apostrophe)
   const [input, setInput] = useState(''); // controlled input draft
   const [busy, setBusy] = useState(false); // true while awaiting AI (typing indicator + send lock — prevents double-submit races!)
+  useEffect(() => { maybeShowVideoAd({ slot: 'page-playground' }); }, []); // [] = video gate once on entry (fire-and-forget: playground works UNDER the overlay!)
   async function send() {
     const text = input.trim(); // trim whitespace-only messages…
     if (!text || busy) return; // …reject empties AND clicks while busy (guard clause — the cheapest validation)

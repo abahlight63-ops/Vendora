@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from 'react'; // useState ×6 slices of UI state; useEffect = triple-fetch on mount
 import { Link } from 'react-router-dom'; // Link for the inline billing links (client-side nav)
 import { api, pop, toast } from '../lib/api.js'; // api() calls; pop() big animated results; toast() small notes
+import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 30s video gate (free tier, once/day!)
 import { categoriesFor, detailHintFor, learnExampleFor } from '../lib/niches.js'; // niche shelves + hints (electronics sees Phones, fashion sees Gowns!)
 import { maybeShowSponsor } from '../lib/ads.js'; // sponsor interstitial after adds (free tier, max once/day)
 import Ic from '../components/icons.jsx'; // trash + close glyphs
@@ -43,6 +44,7 @@ export default function Catalog() { // no props needed (fetches everything itsel
     api('/api/me/billing').then(({ data }) => { if (data?.tier) setTier(data.tier); }); // ?. guards failed responses (tier stays 'free' default)
     api('/api/me/profile-sync').then(({ data }) => { if (data) setSyncInfo(data); }); // if (data) guards null (logged-out edge)
     api('/api/me').then(({ data }) => { if (data?.business?.business_niche) setNiche(data.business.business_niche); }); // shop lane → niche shelves + hints
+    maybeShowVideoAd({ slot: 'page-catalog' }); // video gate (fire-and-forget: catalog loads UNDER the overlay!)
   }, []); // [] = mount-only
   async function sync() { // Pro profile-sync: paste text → AI scaffolds catalog
     if (!syncText.trim()) return toast('Paste your business profile text first', 'err'); // guard: blank submit → error toast (return stops here)

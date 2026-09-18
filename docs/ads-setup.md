@@ -70,6 +70,18 @@ estimate). A sponsor click inside the player ALSO lands in `ad_clicks`.
 Test: Admin → "Preview 30s video gate" (force-plays, logs under slot=preview),
 or connect as a free-tier shop with no ad-blocker.
 
+### Get started checklist (make video ads actually work)
+1. Pick ONE source to start (own sponsor mp4 = fastest: `SPONSOR_TITLE` +
+   `SPONSOR_LINK` + `SPONSOR_VIDEO_URL`). Network zones can wait.
+2. Paste it in Render → Environment → **redeploy** (env loads at boot only!).
+3. Open an **incognito window** (fresh daily caps!) → sign up a test shop (free
+   tier) → open Catalog: the 30s gate appears (skip unlocks at 5s).
+4. Visit Connect, Test bot, Inbox — one gate per page per day, Pro sees none.
+5. Click "Visit sponsor" → Admin → ad console shows the click + completions.
+6. Add network zones one by one (`ADS_VIDEO_HILLTOPADS` → test → next).
+   Order check: temporarily unset the mp4 to watch each network layer fire.
+7. Go live: share the app. Completions × your rate = the sponsor invoice.
+
 ## Stream 4 — Per-CLICK sponsor billing (both platforms)
 
 Every "Visit sponsor" tap is logged to the `ad_clicks` table BEFORE the

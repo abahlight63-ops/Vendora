@@ -41,6 +41,16 @@ services:
         sync: false
       - key: SAMBANOVA_API_KEY
         sync: false
+      - key: ADS_VIDEO_HILLTOPADS
+        sync: false
+      - key: ADS_VIDEO_MONETAG
+        sync: false
+      - key: ADS_VIDEO_FALLBACK
+        sync: false
+      - key: ADS_VIDEO_ORDER
+        value: sponsor,hilltopads,monetag,adsterra
+      - key: SPONSOR_RATE_PER_VIEW
+        value: 5
       - key: OPENAI_API_KEY
         sync: false
       - key: TELEGRAM_WEBHOOK_SECRET

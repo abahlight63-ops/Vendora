@@ -29,6 +29,7 @@ router.post('/me/ask', ownerController.ask); // Vendora AI chat (tier + caps enf
 router.get('/me/ai-models', ownerController.aiModels); // dropdown list with locked flags
 router.get('/me/ai-status', ownerController.aiStatus); // one-tap health ping per provider (owner diagnosis)
 router.post('/me/ads/click', ownerController.adClick);
+router.post('/me/ads/video', ownerController.adVideoEvent); // gated video funnel events (starts → completes!)
 router.post('/me/bot', ownerController.botToggle);
 router.post('/me/conversations/:id/takeover', ownerController.chatTakeover);
 router.get('/me/telegram', ownerController.telegramStatus);

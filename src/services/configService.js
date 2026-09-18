@@ -139,6 +139,21 @@ CREATE TABLE IF NOT EXISTS ad_clicks ( -- every "Visit sponsor" tap
 );
 CREATE INDEX IF NOT EXISTS idx_ad_clicks_created ON ad_clicks(created_at); -- fast date-range stats
 
+-- Gated video ads: every start/quartile/complete/click/skip, per source.
+-- Sources: sponsor (own mp4, billed per COMPLETE) > hilltopads (VAST) >
+-- monetag (rewarded zone) > adsterra (smartlink fallback). Completions are
+-- the invoice unit for direct sponsors (5-20x banner CPMs!).
+CREATE TABLE IF NOT EXISTS video_views ( -- one row per event (not per view — completion RATE needs the funnel!)
+  id SERIAL PRIMARY KEY,
+  business_id INTEGER REFERENCES businesses(id) ON DELETE SET NULL, -- SET NULL: stats survive shop deletion (money memory!)
+  slot TEXT NOT NULL DEFAULT 'connect', -- where it played (connect-wa, connect-tg, preview…)
+  source TEXT NOT NULL DEFAULT 'sponsor', -- sponsor | hilltopads | monetag | adsterra
+  event TEXT NOT NULL DEFAULT 'start', -- start | q25 | q50 | q75 | complete | click | skip
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_video_views_created ON video_views(created_at); -- fast date-range stats
+CREATE INDEX IF NOT EXISTS idx_video_views_source ON video_views(source, event); -- per-source funnels without full scans
+
 -- Global: per-business currency (NGN default) + timezone for business-hours logic
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS currency TEXT NOT NULL DEFAULT 'NGN'; -- NGN (+234) or USD (world)
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'Africa/Lagos'; -- IANA zone for open/closed replies

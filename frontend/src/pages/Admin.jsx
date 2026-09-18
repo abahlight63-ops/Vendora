@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api, fmtDate, pop, toast } from '../lib/api.js';
 import { money } from '../lib/money.js';
 import Ic from '../components/icons.jsx';
-import { adsStatus, clearSponsorSeen, maybeShowSponsor } from '../lib/ads.js'; // sponsor preview (this browser's tier/tags, daily cap bypassed)
+import { adsStatus, clearSponsorSeen, clearVideoSeen, maybeShowSponsor, maybeShowVideoAd } from '../lib/ads.js'; // sponsor + video previews (this browser's tier/tags, daily caps bypassed)
 
 const TABS = [['stats', 'Overview', 'chart'], ['users', 'Users', 'profile'], ['revenue', 'Revenue', 'card'], ['transfers', 'Transfers', 'send'], ['referrals', 'Referrals', 'gift'], ['complaints', 'Complaints', 'help']]; // [key, label, icon] triples (icons at fixed 16px per the icon system!)
 
@@ -337,7 +337,9 @@ function AiHealth() { // AI KEYS LIVE? one-tap ping per provider (booleans + sho
 function AdsStatus() { // AD KEYS LIVE? booleans only — key VALUES never leave the server…
   const [s, setS] = useState(null); // null = loading (skeleton first — same habit as tabs!)
   const [previewMsg, setPreviewMsg] = useState(''); // preview outcome line (tells the truth when nothing shows) — hooks BEFORE any early return (React rule: same hook order every render!)
+  const [vstats, setVstats] = useState(null); // video funnel per source (starts/completes/clicks + invoice estimate!)
   useEffect(() => { api('/api/admin/ads/status').then(({ ok, data }) => { if (ok) setS(data); }); }, []); // mount-only probe (admin session already open — 401 impossible here!)
+  useEffect(() => { api('/api/ads/stats').then(({ ok, data }) => { if (ok) setVstats(data); }); }, []); // earnings funnel (same mount — completions × rate = sponsor invoice!)
   if (!s) return <div className="card"><div className="skel" /></div>;
   const dot = (on) => (<span className={'pill ' + (on ? 'ok' : 'flag')} style={{ fontSize: 11 }}>{on ? 'Yes' : 'No'}</span>); // boolean → at-a-glance pill (no key values shown, ever!)
   async function preview() { // Preview button: bypass today's cap, then run the REAL interstitial path…
@@ -349,15 +351,41 @@ function AdsStatus() { // AD KEYS LIVE? booleans only — key VALUES never leave
     const shown = await maybeShowSponsor(); // real interstitial (same card owners see)
     setPreviewMsg(shown ? '' : 'Not shown: already previewed today or sponsor missing.');
   }
+  async function previewVideo() { // Preview button: force the REAL 30s gate (cap bypassed, events still logged as slot=preview!)
+    setPreviewMsg('Checking…');
+    clearVideoSeen('preview'); // bypass the daily cap (preview-only!)
+    const st = await adsStatus(); // Pro session? video config present?
+    if (st.state === 'pro') { setPreviewMsg('No preview: THIS browser session is Pro/trial — video gates serve free-tier owners only. Log in as a free shop to preview.'); return; }
+    const out = await maybeShowVideoAd({ slot: 'preview', force: true }); // force = play even past cap (same player owners see!)
+    setPreviewMsg(out === 'skipped-empty' ? 'No preview: nothing configured — set SPONSOR_VIDEO_URL or a network video zone, then restart.' : `Preview done (${out}). Events logged under slot=preview.`);
+  }
   return (
     <div className="card">
       <h2><Ic n="cash" s={18} /> Ad keys live?</h2>
       <p className="desc">Network 1 ({s.provider1}): {dot(s.network1)} · Network 2 ({s.provider2}): {dot(s.network2)} · Sponsor “{(s.sponsorTitle || '—')}”: {dot(s.sponsor)}{s.sponsor ? <> · Video: {dot(s.sponsorVideo)}</> : null} · Sponsor rate: ₦{s.rateNaira}/click</p>
+      <p className="desc">Video gate — own mp4: {dot(s.sponsorVideo)} · HilltopAds: {dot(s.videoHilltopads)} · Monetag: {dot(s.videoMonetag)} · Smartlink: {dot(s.videoFallback)} · Order: <code>{s.videoOrder}</code> · ₦{s.rateViewNaira}/completed view</p>
       <p className="hint">{s.note}</p>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
         <button className="btn ghost sm" onClick={preview}>Preview sponsor card</button>
+        <button className="btn ghost sm" onClick={previewVideo}>Preview 30s video gate</button>
         {previewMsg ? <span className="hint">{previewMsg}</span> : null}
       </div>
+      {vstats && Array.isArray(vstats.video) && vstats.video.length > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <p className="hint" style={{ marginBottom: 6 }}>Video funnel by source (completions = invoice unit · est. this month: ₦{(vstats.estimate_video_month_naira || 0).toLocaleString()})</p>
+          <div className="table-wrap"><table>
+            <thead><tr><th>Source</th><th>Starts</th><th>Completes</th><th>Clicks</th><th>Rate</th></tr></thead>
+            <tbody>
+              {vstats.video.map((r) => (
+                <tr key={r.source}>
+                  <td><b>{r.source}</b></td><td>{r.starts}</td><td><b>{r.completes}</b></td><td>{r.clicks}</td>
+                  <td><span className="hint">{r.starts ? Math.round(r.completes / r.starts * 100) + '%' : '—'}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div>
+        </div>
+      )}
     </div>
   );
 }

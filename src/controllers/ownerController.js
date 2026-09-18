@@ -52,7 +52,18 @@ async function getMe(req, res) {
       { provider: process.env.ADS_PROVIDER_2 || 'custom', scriptUrl: process.env.ADS_SCRIPT_URL_2 || null, freq: 'session' },
       { provider: process.env.ADS_POPUNDER_PROVIDER || 'custom', scriptUrl: process.env.ADS_POPUNDER_URL || null, freq: 'daily' },
     ].filter((n) => n.scriptUrl); // .filter keeps only configured networks (unconfigured = no tag = no crash)
-    ads = { networks, sponsor, scriptUrl: networks[0]?.scriptUrl || null, provider: networks[0]?.provider || 'custom' }; // scriptUrl/provider kept for backward-compat with older frontend
+    const videoOrder = String(process.env.ADS_VIDEO_ORDER || 'sponsor,hilltopads,monetag,adsterra') // waterfall order (reorder without a deploy!)
+      .split(',').map((s) => s.trim().toLowerCase()).filter((s) => ['sponsor', 'hilltopads', 'monetag', 'adsterra'].includes(s));
+    const video = { // 30s gated player on Connect (free tier): sponsor mp4 > HilltopAds VAST > Monetag rewarded > Adsterra Smartlink
+      order: videoOrder.length ? videoOrder : ['sponsor', 'hilltopads', 'monetag', 'adsterra'], // empty env = full waterfall (safe default!)
+      sponsorVideo: (sponsor && sponsor.video) || null, // own mp4 (first priority, billed per COMPLETE!)
+      sponsorLink: (sponsor && sponsor.link) || null,
+      sponsorTitle: (sponsor && sponsor.title) || null,
+      hilltopads: (process.env.ADS_VIDEO_HILLTOPADS || '').trim() || null, // VAST/video zone tag URL
+      monetag: (process.env.ADS_VIDEO_MONETAG || '').trim() || null, // rewarded/interstitial zone tag URL
+      adsterra: (process.env.ADS_VIDEO_FALLBACK || '').trim() || null, // Smartlink URL (never-empty exit traffic!)
+    };
+    ads = { networks, sponsor, scriptUrl: networks[0]?.scriptUrl || null, provider: networks[0]?.provider || 'custom', video }; // scriptUrl/provider kept for backward-compat with older frontend
   }
   res.json({ business: { ...b, tier }, ads }); // spread ...b copies all columns + adds tier; ads rides along so App.jsx knows whether to load tags
 }
@@ -675,6 +686,28 @@ async function adClick(req, res) {
   }
 }
 
+// Gated video event: { slot, source, event } → video_views row (starts,
+// quartiles, completes, clicks, skips — completions are the invoice unit!).
+// Whitelisted values only (junk events die with 400, never touch the DB!).
+async function adVideoEvent(req, res) {
+  const SOURCES = ['sponsor', 'hilltopads', 'monetag', 'adsterra'];
+  const EVENTS = ['start', 'q25', 'q50', 'q75', 'complete', 'click', 'skip'];
+  const { slot, source, event } = req.body || {};
+  if (!SOURCES.includes(source) || !EVENTS.includes(event)) {
+    return res.status(400).json({ error: 'Bad video event.' }); // tampered payloads stop here
+  }
+  try {
+    await db.query(
+      'INSERT INTO video_views (business_id, slot, source, event) VALUES ($1, $2, $3, $4)',
+      [req.session.businessId, String(slot || 'connect').slice(0, 40), source, event] // slice caps untrusted input (same habit as adClick!)
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('adVideo error:', e.message);
+    res.status(500).json({ error: 'Could not record video event' });
+  }
+}
+
 // Vendora AI model list for the dropdown (locked flags depend on tier).
 async function aiModels(req, res) {
   const planService = require('../services/planService');
@@ -847,6 +880,7 @@ module.exports = { // every handler the routes file wires up (miss one here = ro
   aiModels,
   aiStatus,
   adClick,
+  adVideoEvent,
   botToggle,
   chatTakeover,
   complaintCreate,

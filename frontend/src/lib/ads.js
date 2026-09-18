@@ -5,8 +5,11 @@
 //   per-VIEW: network tags (Monetag MultiTag, Adsterra Social Bar) injected once
 //   per-CLICK: in-house "Sponsored" interstitial, max once/day, clicks logged
 //     to /api/me/ads/click for per-click sponsor billing (/api/ads/stats).
+//   per-COMPLETE: gated 30s VIDEO on Connect (free tier): own sponsor mp4 >
+//     HilltopAds VAST > Monetag rewarded > Adsterra Smartlink. Completions are
+//     the invoice unit (5-20x banner CPMs!) — logged to /api/me/ads/video.
 // No npm modules — fetch (api.js) + DOM + localStorage only.
-import { api } from './api.js'; // shared fetch helper (session cookie included)
+import { api, toast } from './api.js'; // shared fetch helper (session cookie included) + toast (gentle upgrade pill!)
 
 let cached = null; // module-level cache: ONE /api/me call per page-load (null = not fetched yet; note: null also means "logged out" after a failed fetch)
 let seeded = false; // true once App.jsx seeds the cache from its own /api/me (avoids a duplicate fetch + race)
@@ -82,6 +85,129 @@ function markSeen() { // record today's showing…
 
 // Clears today's sponsor cap (Admin "Preview" button uses this, then calls maybeShowSponsor).
 export function clearSponsorSeen() { try { localStorage.removeItem('sponsor_seen'); } catch {} }
+
+const VIDEO_LEN = 30; // the gate: 30 seconds of attention (sponsor invoice unit!)
+const VIDEO_SKIP_AT = 5; // skip unlocks at 5s (polite but paid — completions still track!)
+
+function videoCapKey(slot) { // once per action per day (never stack videos back-to-back!)
+  return `advideo:${slot}:` + new Date().toISOString().slice(0, 10); // UTC date (same convention as sponsor_seen!)
+}
+function videoSeen(slot) {
+  try { return !!localStorage.getItem(videoCapKey(slot)); } catch { return true; } // storage broken → pretend seen (fewer ads, never errors!)
+}
+function markVideoSeen(slot) {
+  try { localStorage.setItem(videoCapKey(slot), '1'); } catch {} // mark FIRST (even instant closes consume the day — no nagging!)
+}
+export function clearVideoSeen(slot) { try { localStorage.removeItem(videoCapKey(slot || 'connect')); } catch {} } // Admin preview bypass!
+
+async function logVideo(slot, source, event) { // funnel event → backend (fire-and-forget: logging never blocks the gate!)
+  try { await api('/api/me/ads/video', { method: 'POST', body: JSON.stringify({ slot, source, event }) }); } catch {} // network down → drop it (funnel gaps beat frozen gates!)
+}
+
+// GATED 30s VIDEO (Connect buttons, free tier only): sponsor mp4 >
+// HilltopAds VAST > Monetag rewarded > Adsterra Smartlink fallback.
+// Countdown + progress bar + skip-at-5s. Resolves when the flow ends —
+// callers ALWAYS proceed afterwards (the gate delays, never blocks!).
+// force = Admin preview (bypasses the daily cap, never marks it!).
+export async function maybeShowVideoAd({ slot = 'connect', force = false } = {}) {
+  const ads = await getAds(); // tier-resolved config (Pro = null → straight through!)
+  const v = ads && ads.video;
+  if (!v) return 'skipped-empty'; // Pro, logged-out, or backend without video config
+  if (!force && videoSeen(slot)) return 'skipped-cap'; // already gated this action today
+  const order = Array.isArray(v.order) && v.order.length ? v.order : ['sponsor', 'hilltopads', 'monetag', 'adsterra'];
+  const has = { // what's actually playable right now?
+    sponsor: !!(v.sponsorVideo && v.sponsorLink),
+    hilltopads: !!v.hilltopads,
+    monetag: !!v.monetag,
+    adsterra: !!v.adsterra,
+  };
+  const pick = order.find((s) => has[s]); // first available in waterfall order (sponsor mp4 wins ties!)
+  if (!pick) return 'skipped-empty'; // nothing configured → button works exactly as today (never a dead end!)
+  if (typeof document !== 'undefined' && document.querySelector('.pop-card.vgate')) return 'already-open'; // double-tap guard (one gate at a time — second click sails straight through!)
+  if (pick === 'adsterra') { // Smartlink = exit traffic (no player, no gate — open + continue!)
+    if (!force) markVideoSeen(slot);
+    logVideo(slot, 'adsterra', 'click');
+    window.open(v.adsterra, '_blank', 'noopener'); // new tab (noopener = offer page can't touch us!)
+    return 'fallback-click';
+  }
+  if (!force) markVideoSeen(slot);
+  return new Promise((resolve) => { // overlay lifetime = this promise (close paths ALL resolve it!)
+    const t0 = Date.now(); // gate clock (drives countdown + progress + completion!)
+    let done = false; // settled once (timers + events race — first wins!)
+    let quartiles = {}; // q25/q50/q75 logged once each (completion RATE = attention quality!)
+    const finish = (outcome) => { // single exit (clear timers, remove overlay, resolve caller!)
+      if (done) return; done = true;
+      clearInterval(tick); clearTimeout(watchdog);
+      try { tagScript && tagScript.remove(); } catch {} // network tag yanked (no orphan players phoning home!)
+      ov.classList.add('out'); setTimeout(() => ov.remove(), 250); // fade, then gone
+      resolve(outcome);
+    };
+    const log = (event) => logVideo(slot, pick, event); // source pinned (closure!)
+    // ── overlay skeleton (DOM-built + textContent = XSS-safe!) ──
+    const ov = document.createElement('div');
+    ov.className = 'pop-overlay';
+    ov.innerHTML =
+      '<div class="pop-card sponsor vgate">' +
+      '<span class="sponsor-tag">Sponsored · video</span>' +
+      '<h3></h3>' +
+      '<div class="vgate-bar"><i></i></div>' +
+      '<div class="vgate-meta"><span class="vgate-count">30</span><button class="vgate-skip" hidden>Skip →</button></div>' +
+      '<div class="vgate-body"></div>' +
+      '<button class="btn sm vgate-visit" hidden>Visit sponsor</button>' +
+      '</div>';
+    const title = pick === 'sponsor' ? (v.sponsorTitle || 'Sponsored') : pick === 'hilltopads' ? 'Sponsored video' : 'Rewarded video';
+    ov.querySelector('h3').textContent = title; // textContent (never innerHTML with config strings!)
+    const bar = ov.querySelector('.vgate-bar i');
+    const count = ov.querySelector('.vgate-count');
+    const skipBtn = ov.querySelector('.vgate-skip');
+    const body = ov.querySelector('.vgate-body');
+    const visitBtn = ov.querySelector('.vgate-visit');
+    // ── countdown + progress (one 250ms ticker drives everything!) ──
+    const tick = setInterval(() => {
+      const el = Math.min(VIDEO_LEN, (Date.now() - t0) / 1000); // elapsed, capped at 30
+      bar.style.width = (el / VIDEO_LEN * 100) + '%';
+      count.textContent = String(Math.max(0, Math.ceil(VIDEO_LEN - el)));
+      if (el >= VIDEO_SKIP_AT && skipBtn.hidden) skipBtn.hidden = false; // skip unlocks at 5s (polite!)
+      for (const [mark, ev] of [[7.5, 'q25'], [15, 'q50'], [22.5, 'q75']]) { // quartile marks (7.5/15/22.5s of 30!)
+        if (el >= mark && !quartiles[ev]) { quartiles[ev] = true; log(ev); }
+      }
+    }, 250);
+    const watchdog = setTimeout(() => { log('complete'); finish('completed'); }, VIDEO_LEN * 1000 + 1500); // 30s + grace (hung players can't trap users!)
+    skipBtn.onclick = () => { log('skip'); finish('skipped'); }; // skip = logged + out (no upsell on skips — politeness!)
+    // ── the playable: own mp4 OR network tag in our frame ──
+    let tagScript = null;
+    if (pick === 'sponsor') { // own mp4: full gated player (countdown meters it, completion invoices it!)
+      const video = document.createElement('video');
+      video.src = v.sponsorVideo; video.muted = true; video.playsInline = true; video.preload = 'auto'; // muted autoplay (browser POLICY — sound needs a tap!); playsInline (no iOS takeover!)
+      video.setAttribute('disablepictureinpicture', ''); // keep it in the card (no floating escape hatch!)
+      video.style.cssText = 'width:100%;border-radius:12px;background:#000;max-height:300px;display:block;margin-top:8px;';
+      body.appendChild(video);
+      video.addEventListener('ended', () => { log('complete'); finish('completed'); }); // natural end (< 30s clips complete early — fair!)
+      video.play().catch(() => {}); // autoplay blocked (rare, muted usually passes) → countdown still completes fairly
+      visitBtn.hidden = false; // sponsor gets the billable button (tap = money!)
+      visitBtn.onclick = async () => { // VISIT = the money event (logged BEFORE leaving, like sponsor clicks!)
+        log('click');
+        try { await api('/api/me/ads/click', { method: 'POST', body: JSON.stringify({ slot: 'video-' + slot, target_url: v.sponsorLink }) }); } catch {} // click ALSO lands in ad_clicks (sponsor invoices read both tables!)
+        window.open(v.sponsorLink, '_blank', 'noopener');
+        toast('Pro removes all ads — see Billing'); // gentle upgrade pill (toast auto-dismisses, never blocks — the polite upsell!)
+        finish('visited');
+      };
+    } else { // network zone (HilltopAds VAST / Monetag rewarded): their tag renders INSIDE our frame…
+      const holder = document.createElement('div');
+      holder.style.cssText = 'margin-top:8px;min-height:120px;';
+      holder.innerHTML = '<p class="hint">Loading video…</p>'; // placeholder (slow networks show intent, not blank!)
+      body.appendChild(holder);
+      tagScript = document.createElement('script');
+      tagScript.async = true;
+      tagScript.dataset.vgate = pick; // data-vgate = our marker (cleanup finds it!)
+      tagScript.src = pick === 'hilltopads' ? v.hilltopads : v.monetag;
+      tagScript.onerror = () => { holder.innerHTML = '<p class="hint">Video unavailable — continuing…</p>'; setTimeout(() => finish('tag-failed'), 1200); }; // dead tag → honest note, then through (never trap!)
+      document.head.appendChild(tagScript); // mount → their unit renders (their player, THEIR close buttons ignored — OUR countdown rules!)
+    }
+    log('start'); // funnel opens (completions ÷ starts = the number sponsors pay for!)
+    document.body.appendChild(ov); // mount (outside React, like toasts/pops!)
+  });
+}
 
 // Per-CLICK: sponsored interstitial, max once/day, clearly labeled, one-tap close.
 // Call after high-attention free-tier moments (product add, AI limit hit).

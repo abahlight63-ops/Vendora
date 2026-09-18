@@ -6,6 +6,7 @@
 // DATA: GET /api/me/channels (status + Meta App ID/Config ID) + GET /api/me/ai-models.
 import { useEffect, useRef, useState } from 'react'; // state per step; effect loads status once
 import { api, pop, toast } from '../lib/api.js'; // api() calls; pop() big outcomes; toast() small notes
+import { maybeShowVideoAd } from '../lib/ads.js'; // gated 30s video (free tier connects watch first — Pro never sees it!)
 import Ic from '../components/icons.jsx'; // drawn glyphs (never emoji!)
 import GlassUpsell from '../components/GlassUpsell.jsx'; // locked-model upgrade card
 
@@ -103,7 +104,8 @@ export default function Connect() {
     setBusy(true);
     const { ok, data } = await api('/api/me/channels/meta/embedded', { method: 'POST', body: JSON.stringify({ code, waba_id: wabaId, phone_number_id: pid }) });
     setBusy(false);
-    if (ok) { setMetaProof(data); setStep(2); load(); pop('ok', 'WhatsApp connected!', `Number ${data.phone || ''} is linked. One paste in Meta, then TEST.`); }
+    // NOTE: the 30s video gate runs AFTER success here (not before!) — FB.login MUST stay inside the click gesture or popup blockers eat it. Same gate, same cap, just post-connect!
+    if (ok) { setMetaProof(data); setStep(2); load(); await maybeShowVideoAd({ slot: 'connect-wa' }); pop('ok', 'WhatsApp connected!', `Number ${data.phone || ''} is linked. One paste in Meta, then TEST.`); }
     else pop('err', 'Signup did not finish', data.error || 'Try again or paste your details manually below.');
   }
 
@@ -138,6 +140,7 @@ export default function Connect() {
   // ---- Meta manual fallback (popup unavailable) ----
   async function metaConnect() {
     if (!phoneId.trim() || !metaToken.trim()) return toast('Paste both values first', 'err');
+    await maybeShowVideoAd({ slot: 'connect-wa' }); // 30s gate AFTER validation (validated users never watch for nothing!), before the API call
     setBusy(true);
     const { ok, data } = await api('/api/me/channels/meta', { method: 'POST', body: JSON.stringify({ phone_number_id: phoneId.trim(), token: metaToken.trim() }) });
     setBusy(false);
@@ -153,6 +156,7 @@ export default function Connect() {
   // ---- Telegram actions ----
   async function tgConnect() {
     if (!tgToken.trim()) return toast('Paste your BotFather token first', 'err');
+    await maybeShowVideoAd({ slot: 'connect-tg' }); // 30s gate AFTER validation (same rule: never gate an error!)
     setBusy(true);
     const { ok, data } = await api('/api/me/telegram/token', { method: 'POST', body: JSON.stringify({ token: tgToken.trim() }) });
     setBusy(false);

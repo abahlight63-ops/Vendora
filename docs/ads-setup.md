@@ -1,6 +1,6 @@
 # Ads setup — how money actually flows in
 
-Three income streams. All serve **FREE-tier owners only** (Pro and trial
+Four income streams. All serve **FREE-tier owners only** (Pro and trial
 accounts get `ads: null` by design — paying users never see ads).
 
 ## Stream 1 — Per-VIEW network ads (Monetag, recommended)
@@ -41,7 +41,36 @@ Sponsored card on web, plus a Watch-video button in the phone app.
 5. Test with a free-tier account: add a product (Catalog) or hit the AI
    daily limit → Sponsored card appears (max once/day) with the video.
 
-## Stream 3 — Per-CLICK sponsor billing (both platforms)
+## Stream 3 — GATED 30s VIDEO on Connect (the big money)
+
+Free-tier owners tapping a Connect button watch 30 seconds first (countdown +
+progress, skip unlocks at 5s), then the connect action continues. Pro never
+sees it. Waterfall, first AVAILABLE wins:
+
+1. **Your sponsor mp4** (`SPONSOR_VIDEO_URL`) — direct deals, billed per
+   COMPLETED view (`SPONSOR_RATE_PER_VIEW`, default ₦5). Highest pay, always first.
+2. **HilltopAds video** (`ADS_VIDEO_HILLTOPADS` = VAST/video zone tag URL) —
+   true video CPMs. Sign up at **hilltopads.com** → add site → video zone.
+3. **Monetag rewarded** (`ADS_VIDEO_MONETAG` = rewarded/interstitial zone tag)
+   — sign up at **monetag.com** → create a rewarded/interstitial zone.
+4. **Adsterra Smartlink** (`ADS_VIDEO_FALLBACK` = offer URL) — never-empty exit
+   traffic. Sign up at **beta.publishers.adsterra.com** → Direct Links.
+5. Reorder without a deploy: `ADS_VIDEO_ORDER=sponsor,hilltopads,monetag,adsterra`.
+
+All three networks: free signup, no traffic minimums, $5–20 minimum payouts
+(Payoneer/Paxum/crypto — skip PayPal for Nigerian receiving). Realistic
+Nigeria CPMs: $0.50–$2 blended (US $10–20 does NOT apply here — geography
+prices ads, 4–10× gap). Nigeria money comes from VOLUME (more shops) +
+direct sponsors at fixed ₦3–5k per 1,000 completions.
+
+Completions ÷ starts per source live in Admin → ad console (the funnel
+table) + `GET /api/admin/ads/stats` (`video` array + monthly invoice
+estimate). A sponsor click inside the player ALSO lands in `ad_clicks`.
+
+Test: Admin → "Preview 30s video gate" (force-plays, logs under slot=preview),
+or connect as a free-tier shop with no ad-blocker.
+
+## Stream 4 — Per-CLICK sponsor billing (both platforms)
 
 Every "Visit sponsor" tap is logged to the `ad_clicks` table BEFORE the
 visitor leaves (web `ads.js`, phone `lib/ads.dart` — identical rule).

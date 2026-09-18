@@ -351,7 +351,18 @@ async function adStats(req, res) {
      FROM ad_clicks`
   );
   const s = rows[0]; // single summary row
-  res.json({ ...s, rate_naira: rate, estimate_month_naira: s.month * rate, estimate_total_naira: s.total * rate }); // spread counts + computed Naira estimates (bill sponsors from these!)
+  const rateView = Number(process.env.SPONSOR_RATE_PER_VIEW || 5); // ₦ per COMPLETED sponsor view (video invoice unit — completions, not starts!)
+  const { rows: v } = await db.query( // video funnel per source: starts vs completes vs clicks (completion RATE = attention quality!)
+    `SELECT source,
+       COUNT(*) FILTER (WHERE event = 'start')::int AS starts,
+       COUNT(*) FILTER (WHERE event = 'complete')::int AS completes,
+       COUNT(*) FILTER (WHERE event = 'click')::int AS clicks,
+       COUNT(*) FILTER (WHERE event = 'complete' AND created_at >= date_trunc('month', now()))::int AS month_completes
+     FROM video_views GROUP BY source ORDER BY completes DESC`
+  );
+  const sponsorMonth = (v.find((r) => r.source === 'sponsor') || {}).month_completes || 0; // own-mp4 completions this month (the sponsor invoice!)
+  res.json({ ...s, rate_naira: rate, estimate_month_naira: s.month * rate, estimate_total_naira: s.total * rate, // spread counts + computed Naira estimates (bill sponsors from these!)
+    video: v, rate_view_naira: rateView, estimate_video_month_naira: sponsorMonth * rateView }); // per-source funnel + video invoice estimate (completions × rate!)
 }
 
 // ---- Broadcast an app update to EVERY owner's bell (new features, fixes).
@@ -524,8 +535,13 @@ async function adsStatus(req, res) {
     provider2: process.env.ADS_PROVIDER_2 || 'custom',
     sponsor: !!(process.env.SPONSOR_TITLE || '').trim() && !!(process.env.SPONSOR_LINK || '').trim(),
     sponsorTitle: (process.env.SPONSOR_TITLE || '').slice(0, 60),
-    sponsorVideo: !!(process.env.SPONSOR_VIDEO_URL || '').trim(), // video file set? (plays inside the interstitial — no network needed)
+    sponsorVideo: !!(process.env.SPONSOR_VIDEO_URL || '').trim(), // own mp4 set? (gated player first priority — no network needed)
+    videoHilltopads: !!(process.env.ADS_VIDEO_HILLTOPADS || '').trim(), // VAST/video zone tag set?
+    videoMonetag: !!(process.env.ADS_VIDEO_MONETAG || '').trim(), // rewarded zone tag set?
+    videoFallback: !!(process.env.ADS_VIDEO_FALLBACK || '').trim(), // Adsterra Smartlink set?
+    videoOrder: process.env.ADS_VIDEO_ORDER || 'sponsor,hilltopads,monetag,adsterra',
     rateNaira: Number(process.env.SPONSOR_RATE_PER_CLICK || 50),
+    rateViewNaira: Number(process.env.SPONSOR_RATE_PER_VIEW || 5), // ₦ per COMPLETED sponsor view (video invoice unit!)
     note: 'Ads serve to FREE-tier owners only — Pro and trial accounts get ads:null by design. Test with a free account and no ad-blocker.',
   });
 }

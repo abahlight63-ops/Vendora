@@ -18,7 +18,7 @@ const PLANS = {
   pro_monthly: { NGN: Number(process.env.PRICE_MONTHLY_NAIRA || 7499), USD: Number(process.env.PRICE_MONTHLY_USD || 5), days: 30, label: 'Pro Monthly', tier: 'pro' }, // Number() because env vars are strings; || defaults
   pro_yearly: { NGN: Number(process.env.PRICE_YEARLY_NAIRA || 69999), USD: Number(process.env.PRICE_YEARLY_USD || 47), days: 365, label: 'Pro Yearly', tier: 'pro' }, // 7499×12−69999 = ₦19,989 saved ≈ 22%
   plus_monthly: { NGN: Number(process.env.PRICE_PLUS_MONTHLY_NAIRA || 14999), USD: Number(process.env.PRICE_PLUS_MONTHLY_USD || 10), days: 30, label: 'Pro Plus Monthly', tier: 'plus' },
-  plus_yearly: { NGN: Number(process.env.PRICE_PLUS_YEARLY_NAIRA || 120000), USD: Number(process.env.PRICE_PLUS_YEARLY_USD || 80), days: 365, label: 'Pro Plus Yearly', tier: 'plus' }, // 14999×12−120000 = ₦59,988 saved ≈ 33%
+  plus_yearly: { NGN: Number(process.env.PRICE_PLUS_YEARLY_NAIRA || 119999), USD: Number(process.env.PRICE_PLUS_YEARLY_USD || 80), days: 365, label: 'Pro Plus Yearly', tier: 'plus' }, // 14999×12−119999 = ₦59,989 saved ≈ 33%
 };
 // Legacy keys (old apps/clients send monthly/yearly) → Pro tier.
 PLANS.monthly = PLANS.pro_monthly;
@@ -186,6 +186,8 @@ async function activateSubscription(businessId, kind, days, reference, method, a
     body: `Your card payment went through. Enjoy ${days} days of Pro.`,
     link: '/billing',
   });
+  require('../services/referralService').onPaidActivation(Number(businessId)) // milestone check (every 5th paying referral = ₦500 airtime row!)
+    .catch((e) => console.error('referral milestone error:', e.message)); // rewards never break payments!
 }
 
 async function handlePaystackWebhook(req, res) {

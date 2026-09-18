@@ -172,6 +172,32 @@ ALTER TABLE businesses ADD COLUMN IF NOT EXISTS catalog_size TEXT; -- starting |
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS channels TEXT; -- comma list: whatsapp,telegram,instagram,walkin
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS daily_volume TEXT; -- few | 10-50 | 50-plus
 
+-- Refer & Earn: codes, attribution, bonus Pro time, airtime payouts.
+-- referral_code: shareable code per shop (UNIQUE — enforced below).
+-- referred_by: referrer's BUSINESS id (NULL = organic signup).
+-- bonus_pro_until: referral-earned Pro time (isPro() treats it as Pro!).
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS referral_code TEXT;
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS referred_by INTEGER REFERENCES businesses(id) ON DELETE SET NULL;
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS bonus_pro_until TIMESTAMPTZ;
+DO $$ BEGIN -- UNIQUE, but only when no duplicate legacy rows exist (safe on fresh + old DBs!)
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'businesses_referral_code_unique') THEN
+    ALTER TABLE businesses ADD CONSTRAINT businesses_referral_code_unique UNIQUE (referral_code);
+  END IF;
+END $$;
+-- Every reward movement, append-only (audit: who earned what, airtime sent?).
+CREATE TABLE IF NOT EXISTS referral_payouts (
+  id SERIAL PRIMARY KEY,
+  referrer_business_id INTEGER NOT NULL REFERENCES businesses(id) ON DELETE CASCADE, -- who earned
+  referred_business_id INTEGER REFERENCES businesses(id) ON DELETE SET NULL, -- which friend triggered it (NULL = manual/champion grant)
+  kind TEXT NOT NULL DEFAULT 'pro_days', -- pro_days | airtime | plus_month
+  status TEXT NOT NULL DEFAULT 'granted', -- granted (auto) | pending (airtime due) | sent (admin paid it!)
+  days INTEGER NOT NULL DEFAULT 0, -- pro_days: how many (14); else 0
+  amount INTEGER NOT NULL DEFAULT 0, -- airtime: minor units (50000 = ₦500); else 0
+  note TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_payouts_referrer ON referral_payouts(referrer_business_id, created_at DESC);
+
 -- Paid-tier tracking: which tier the shop BOUGHT (pro | plus). Trials count as
 -- Pro without touching this (planService.effectiveTier handles trial → pro).
 -- Old single-plan buyers default to pro (same features they paid for).

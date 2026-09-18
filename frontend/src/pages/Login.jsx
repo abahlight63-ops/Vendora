@@ -46,7 +46,7 @@ function DemoChat() { // self-playing chat preview (NOT a component with props �
 function GoogleButton({ busy, setBusy, fail, afterAuth, setMe }) { // "Continue with Google" (GIS button + full flow: session OR one-tap business form). Props drilled from Login (shared busy/fail/afterAuth = consistent UX!).
   const [gBusy, setGBusy] = useState(false); // google in-flight (separate from form busy — both lock!)
   const [needBiz, setNeedBiz] = useState(null); // null = no form; {email, name, credential} = Google user WITHOUT Vendora account (one-tap creation form!)
-  const [g, setG] = useState({ name: '', wa: '', hours: '' }); // mini business form (name + number + hours — email comes from Google!)
+  const [g, setG] = useState({ name: '', wa: '', hours: '', ref: '' }); // mini business form (name + number + hours + optional referral code — email comes from Google!)
   function loadGIS() { // lazy-load Google's script ONCE (no render-blocking <script> in index.html — speed!)
     return new Promise((resolve, reject) => { // Promise wrapper around script injection (async/await-friendly!)
       if (window.google?.accounts?.id) return resolve(); // ?. chain: already loaded → resolve instantly (no double-inject!)
@@ -86,7 +86,7 @@ function GoogleButton({ busy, setBusy, fail, afterAuth, setMe }) { // "Continue 
     if (!number) return fail('Enter a valid WhatsApp number (e.g. 0803 123 4567).');
     setGBusy(true);
     try {
-      const { ok, data } = await api('/api/auth/google-signup', { method: 'POST', body: JSON.stringify({ credential: needBiz.credential, name: g.name.trim(), whatsapp_number: g.wa.trim(), owner_number: g.wa.trim(), hours: g.hours.trim() }) }); // credential RE-VERIFIED server-side (never trust the frontend's claim!)
+      const { ok, data } = await api('/api/auth/google-signup', { method: 'POST', body: JSON.stringify({ credential: needBiz.credential, name: g.name.trim(), whatsapp_number: g.wa.trim(), owner_number: g.wa.trim(), hours: g.hours.trim(), ...(g.ref && g.ref.trim() ? { referral_code: g.ref.trim() } : {}) }) }); // credential RE-VERIFIED server-side (never trust the frontend's claim!); referral code rides along when pasted!
       setGBusy(false);
       if (ok && data.user) {
         const me = await api('/api/me'); // confirm session stuck before leaving the page
@@ -103,6 +103,7 @@ function GoogleButton({ busy, setBusy, fail, afterAuth, setMe }) { // "Continue 
         <label>Business name</label><input value={g.name} onChange={(e) => setG({ ...g, name: e.target.value })} placeholder="Amaka Beauty Studio" autoComplete="organization" />
         <label>Business WhatsApp</label><input value={g.wa} onChange={(e) => setG({ ...g, wa: e.target.value })} placeholder="0803 123 4567" inputMode="tel" />
         <label>Opening hours</label><input value={g.hours} onChange={(e) => setG({ ...g, hours: e.target.value })} placeholder="Mon–Sat, 9am–7pm" />
+        <label>Referral code <span className="hint">(optional — bonus for you both)</span></label><input value={g.ref} onChange={(e) => setG({ ...g, ref: e.target.value })} placeholder="e.g. AMAKA-4F2K" spellCheck="false" autoComplete="off" style={{ textTransform: 'uppercase' }} />
         <button className="btn login-cta" disabled={gBusy} onClick={finishSignup}>{gBusy ? 'Creating…' : 'Create my shop →'}</button>
         <p className="auth-toggle"><a onClick={() => setNeedBiz(null)}>Back</a></p> {/* Back drops the form (credential discarded — re-click to restart!) */}
       </div>
@@ -133,8 +134,35 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
   const [busy, setBusy] = useState(false); // request in flight (button spinner + lock — double-submit protection!)
   const [showPw, setShowPw] = useState(false); // password visible? (eye toggle)
   const [needsVerify, setNeedsVerify] = useState(false); // backend said "verify first" → show resend button
-  const [f, setF] = useState({ email: '', password: '', name: '', wa: '', hours: '' }); // ONE form object (5 controlled fields)
+  const [f, setF] = useState({ email: '', password: '', name: '', wa: '', hours: '', ref: '' }); // ONE form object (6 controlled fields — ref = referral/promo code, optional!)
+  const [refState, setRefState] = useState(null); // null = unchecked; {ok, text} = live reward preview (green = attached!)
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value }); // curried setter (same factory as Profile!): set('email') → onChange writing f.email
+  async function checkRef(code) { // live code check (debounced below — no request per keystroke!)
+    const c = (code || '').trim();
+    if (!c) { setRefState(null); return; } // empty → clear preview (no call!)
+    try {
+      const { ok, data } = await api('/api/auth/check-referral?code=' + encodeURIComponent(c)); // encode: codes have dashes (URL-safe anyway — belt + braces!)
+      if (ok && data.valid) setRefState({ ok: true, text: data.reward }); // "Reward attached — you both get 14 Pro days free"
+      else setRefState({ ok: false, text: 'That code is not recognised — signup still works, just no bonus.' }); // invalid ≠ blocked (typos must never kill signups!)
+    } catch { setRefState(null); } // offline → silent (signup proceeds — reward retries server-side anyway!)
+  }
+  useEffect(() => { // ?ref=CODE links (share kit!) → signup mode + prefilled + checked…
+    try {
+      const q = new URLSearchParams(window.location.search).get('ref');
+      if (q && q.trim()) {
+        setMode('signup'); // land straight on signup (guests with a code came to JOIN!)
+        setF((prev) => ({ ...prev, ref: q.trim().toUpperCase().slice(0, 20) })); // uppercase + cap (matches server normalization!)
+        checkRef(q);
+      }
+    } catch {} // URL API never throws in practice (paranoia guard!)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // [] = mount-only (?ref read once!)
+  useEffect(() => { // debounce the TYPED code (600ms after last keystroke — no per-letter requests!)
+    if (!f.ref.trim()) { setRefState(null); return; }
+    const t = setTimeout(() => checkRef(f.ref), 600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [f.ref]); // [f.ref] = re-arm per keystroke
   const pwScore = f.password.length >= 12 ? 3 : f.password.length >= 8 ? 2 : f.password.length >= 4 ? 1 : 0; // chained ternary: length → 0-3 bars (derived during render — NOT state, since it's computable!)
 
   function fail(m) { setMsg(m); setMsgErr(true); } // helper: red status line (two setStates = one re-render, batched!)
@@ -170,7 +198,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
   async function signup() { // SIGN UP flow (same shape, more fields)…
     if (busy) return; setBusy(true); setMsg(''); setMsgErr(false);
     try { // try/catch: unreachable server throws — must show why, never hang on "Please wait…"!
-      const { ok, data } = await api('/api/auth/signup', { method: 'POST', body: JSON.stringify({ name: f.name.trim(), whatsapp_number: f.wa.trim(), owner_number: f.wa.trim(), hours: f.hours.trim(), email: f.email.trim(), password: f.password }) }); // owner_number = same as business number initially (editable later in Profile!); password raw
+      const { ok, data } = await api('/api/auth/signup', { method: 'POST', body: JSON.stringify({ name: f.name.trim(), whatsapp_number: f.wa.trim(), owner_number: f.wa.trim(), hours: f.hours.trim(), email: f.email.trim(), password: f.password, ...(f.ref.trim() ? { referral_code: f.ref.trim() } : {}) }) }); // owner_number = same as business number initially (editable later in Profile!); password raw; referral code only when typed (absent = organic!)
       setBusy(false);
       if (ok && data.user) { setMsg('Account created — setting up your assistant…'); setMsgErr(false); afterAuth('/onboarding'); return; } // dev auto-login path (no Resend key): user object present → straight in!
       if (ok && data.needsOTP) { setOtpEmail(data.email || f.email.trim()); setOtp(''); setMsg(''); setMsgErr(false); switchMode('otp'); return; } // OTP path: stash the email, clear code draft, flip to the code screen (NO session yet — unverified gets nothing!)
@@ -291,6 +319,9 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
             <label>Business WhatsApp</label><input value={f.wa} onChange={set('wa')} onBlur={() => { const n = normalizePhone(f.wa); if (n) setF({ ...f, wa: prettyPhone(n) }); }} placeholder="0803 123 4567" spellCheck="false" inputMode="tel" /> {/* onBlur pretty-prints ("0803…" → "0803 123 4567"); inputMode="tel" = phone keyboard on mobile! */}
             {f.wa.trim() !== '' && (normalizePhone(f.wa) ? <span className="hint ok-line"><Ic n="check" s={13} /> Saved as {normalizePhone(f.wa)}</span> : <span className="hint err-line">That number doesn't look right — try 0803 123 4567</span>)} {/* live validation line: non-empty only; green normalized form vs red hint */}
             <label>Opening hours</label><input value={f.hours} onChange={set('hours')} placeholder="Mon–Sat, 9am–7pm" />
+            <label>Referral or promo code <span className="hint">(optional)</span></label>
+            <input value={f.ref} onChange={set('ref')} placeholder="e.g. AMAKA-4F2K" spellCheck="false" autoComplete="off" style={{ textTransform: 'uppercase' }} />
+            {refState && <span className={'hint ' + (refState.ok ? 'ok-line' : 'err-line')}>{refState.ok ? <><Ic n="check" s={13} /> {refState.text}</> : refState.text}</span>} {/* live reward preview (green = bonus attached!) */}
           </>)}
           <label>Email</label><input value={f.email} onChange={set('email')} type="email" placeholder="you@business.com" autoComplete="email" /> {/* type="email" = email keyboard + browser validation assist */}
           <label>Password {mode === 'signup' && <span className="hint">· 8+ characters</span>}</label> {/* && inline hint (signup only) */}

@@ -11,7 +11,7 @@ import { money } from '../lib/money.js';
 import Ic from '../components/icons.jsx';
 import { adsStatus, clearSponsorSeen, maybeShowSponsor } from '../lib/ads.js'; // sponsor preview (this browser's tier/tags, daily cap bypassed)
 
-const TABS = [['stats', 'Overview', 'chart'], ['users', 'Users', 'profile'], ['revenue', 'Revenue', 'card'], ['transfers', 'Transfers', 'send'], ['complaints', 'Complaints', 'help']]; // [key, label, icon] triples (icons at fixed 16px per the icon system!)
+const TABS = [['stats', 'Overview', 'chart'], ['users', 'Users', 'profile'], ['revenue', 'Revenue', 'card'], ['transfers', 'Transfers', 'send'], ['referrals', 'Referrals', 'gift'], ['complaints', 'Complaints', 'help']]; // [key, label, icon] triples (icons at fixed 16px per the icon system!)
 
 export default function Admin() {
   const [gate, setGate] = useState('checking'); // 'checking' | 'locked' | 'open' (three gate states — never flash the console to strangers!)
@@ -38,6 +38,12 @@ export default function Admin() {
 
   async function load(t) { // tab loader: one endpoint per tab (switch re-fetches = always fresh!)…
     setTab(t); setD(null); // set tab + null data (null renders skeletons — consistent loading UX!)
+    if (t === 'referrals') { // referrals = THREE endpoints at once (overview + airtime queue + leaderboard!)
+      const [o, p, l] = await Promise.all([api('/api/admin/referrals'), api('/api/admin/referrals/pending'), api('/api/admin/referrals/leaders')]);
+      if (o.status === 401 || p.status === 401 || l.status === 401) { setGate('locked'); toast('Admin session expired — sign in again', 'err'); return; }
+      if (o.ok && p.ok && l.ok) { setD({ overview: o.data.rows || [], pending: p.data.rows || [], leaders: l.data.rows || [] }); return; }
+      toast('Could not load referrals', 'err'); return;
+    }
     const urls = { stats: '/api/admin/stats', users: '/api/admin/users', revenue: '/api/admin/stats', transfers: '/api/admin/transfers', complaints: '/api/admin/complaints' }; // tab → endpoint map (revenue reuses stats + payments list below? stats covers totals; transfers tab shows the money ACTIONS)
     const { ok, status, data } = await api(urls[t]); // fetch…
     if (ok) setD(data); // …store (array or object — panels branch on tab, not shape!)
@@ -85,6 +91,7 @@ export default function Admin() {
         : tab === 'users' ? <Users rows={d} refresh={() => load('users')} act={act} />
         : tab === 'revenue' ? <Revenue d={d} />
         : tab === 'transfers' ? <Transfers rows={d} act={act} />
+        : tab === 'referrals' ? <Referrals d={d} act={act} refresh={() => load('referrals')} />
         : <Complaints rows={d} act={act} />}
       <Templates onBroadcast={(t) => setBlastSeed({ ...t, n: Date.now() })} onWarn={(t) => setWarnSeed({ ...t, n: Date.now() })} /> {/* gallery + builder (Use-buttons prefill the forms below!) */}
       <Broadcast act={act} seed={blastSeed} /> {/* always mounted: announce updates to every bell */}
@@ -437,6 +444,81 @@ function Transfers({ rows, act }) { // TRANSFERS: FIFO approval queue (empty = c
         </tbody>
       </table></div>
     </div>
+  );
+}
+
+function Referrals({ d, act, refresh }) { // REFERRALS: airtime queue (pay!) + monthly leaderboard (crown!) + every referrer (watch!)
+  const naira = (kobo) => '₦' + (Number(kobo || 0) / 100).toLocaleString(); // minor → major (ledger stores kobo!)
+  async function grantPlus(bizId, name) { // monthly champion → free Plus month (confirm: it grants REAL plan time!)
+    if (!confirm(`Grant a FREE Plus month to ${name}?`)) return;
+    const { ok, data } = await api('/api/admin/referrals/grant-plus', { method: 'POST', body: JSON.stringify({ business_id: bizId }) });
+    if (ok) { pop('ok', 'Champion crowned!', `${name} got a free Plus month.`); refresh(); }
+    else pop('err', 'Failed', (data && data.error) || 'Try again.');
+  }
+  return (
+    <>
+      <div className="card" style={{ borderColor: 'var(--gold-line)' }}>
+        <h2><Ic n="cash" s={18} /> Airtime to send ({d.pending.length})</h2>
+        <p className="desc">Every 5th paying referral earns ₦500 airtime. Buy the card yourself, send it to their number, then tap Sent — the referrer gets a bell.</p>
+        {d.pending.length === 0 ? <p className="hint">Queue clear — nobody owed right now.</p> : (
+          <div className="table-wrap"><table>
+            <thead><tr><th>Who</th><th>Amount</th><th>Why</th><th></th></tr></thead>
+            <tbody>
+              {d.pending.map((p) => (
+                <tr key={p.id}>
+                  <td><b>{p.name || '—'}</b><br /><span className="hint">{p.whatsapp_number || p.owner_number || ''} · {fmtDate(p.created_at)}</span></td>
+                  <td><b>{naira(p.amount)}</b></td>
+                  <td><span className="hint">{p.note || ''}</span></td>
+                  <td style={{ whiteSpace: 'nowrap' }}><button className="btn sm" onClick={() => { if (confirm(`Mark ${naira(p.amount)} airtime SENT to ${p.name}? Only after the card is delivered!`)) act(`/api/admin/referrals/${p.id}/sent`, null, 'Marked sent — referrer notified.'); }}>Mark sent</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div>
+        )}
+      </div>
+      <div className="card">
+        <h2><Ic n="chart" s={18} /> This month's leaderboard</h2>
+        <p className="desc">Paying referrals per referrer, this month. Crown the winner with a free Plus month.</p>
+        {d.leaders.length === 0 ? <p className="hint">No paying referrals yet this month.</p> : (
+          <div className="table-wrap"><table>
+            <thead><tr><th>#</th><th>Referrer</th><th>Code</th><th>Paying</th><th></th></tr></thead>
+            <tbody>
+              {d.leaders.map((l, i) => (
+                <tr key={l.id}>
+                  <td><b>{i + 1}</b></td>
+                  <td><b>{l.name || '—'}</b></td>
+                  <td><code>{l.referral_code || '—'}</code></td>
+                  <td><b>{l.paying}</b></td>
+                  <td>{i === 0 ? <button className="btn ghost sm" onClick={() => grantPlus(l.id, l.name)}>Grant Plus month</button> : null}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div>
+        )}
+      </div>
+      <div className="card">
+        <h2>All referrers</h2>
+        <p className="desc">Invited → finished setup (earned days) → paying (earn airtime). Watch for clusters sharing one number (fraud smell!).</p>
+        {d.overview.length === 0 ? <p className="hint">No referrers yet — share your own code to seed it.</p> : (
+          <div className="table-wrap"><table>
+            <thead><tr><th>Referrer</th><th>Code</th><th>Invited</th><th>Setup</th><th>Paying</th><th>Days</th><th>Airtime</th></tr></thead>
+            <tbody>
+              {d.overview.map((r) => (
+                <tr key={r.id}>
+                  <td><b>{r.name || '—'}</b><br /><span className="hint">{r.whatsapp_number || ''}</span></td>
+                  <td><code>{r.referral_code || '—'}</code></td>
+                  <td>{r.invited}</td>
+                  <td>{r.qualified}</td>
+                  <td><b>{r.paying}</b></td>
+                  <td>{r.days_granted}d</td>
+                  <td><span className="hint">{naira(r.airtime_sent)} sent{naira(r.airtime_due) !== '₦0' ? ` · ${naira(r.airtime_due)} due` : ''}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div>
+        )}
+      </div>
+    </>
   );
 }
 

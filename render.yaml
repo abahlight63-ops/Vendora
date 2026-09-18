@@ -76,7 +76,7 @@ services:
       - key: PRICE_PLUS_MONTHLY_NAIRA
         value: 14999
       - key: PRICE_PLUS_YEARLY_NAIRA
-        value: 120000
+        value: 119999
       - key: PRICE_MONTHLY_USD
         value: 5
       - key: PRICE_YEARLY_USD

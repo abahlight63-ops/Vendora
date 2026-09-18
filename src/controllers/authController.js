@@ -31,8 +31,18 @@ async function saveSession(req, res) {
   }
 }
 
+// Public referral-code check (signup field live-validates + shows the reward).
+// GET (rate-limited like auth!) — returns { valid, reward } or { valid:false }.
+// Never enumerates beyond the code itself (that's the point of sharing it!).
+async function checkReferral(req, res) {
+  const ref = require('../services/referralService');
+  const shop = await ref.resolveCode(req.query.code);
+  if (!shop) return res.json({ valid: false });
+  return res.json({ valid: true, reward: `Reward attached — you and ${String(shop.name || '').split(' ')[0] || 'your friend'} both get ${ref.QUIZ_DAYS} Pro days free when you finish setup.` });
+}
+
 async function signup(req, res) {
-  const { email, password, name, whatsapp_number: numberRaw, owner_number: ownerRaw, hours, tone } = req.body || {}; // pull + rename raw inputs (Raw = unvalidated, un-normalized)
+  const { email, password, name, whatsapp_number: numberRaw, owner_number: ownerRaw, hours, tone, referral_code: refRaw } = req.body || {}; // pull + rename raw inputs (Raw = unvalidated, un-normalized)
   const number = normalizePhone(numberRaw); // → 'whatsapp:+234…' or null (accepts 0803…, spaces…)
   const owner = normalizePhone(ownerRaw); // owner's personal number (LEARN rights + alerts)
   const errors = []; // collect ALL input problems (better forms than one-at-a-time)
@@ -55,6 +65,22 @@ async function signup(req, res) {
       [name, number, owner || number, hours || '', '[]', tone || 'friendly and helpful', planService.resolveCurrency(number, owner)] // owner falls back to shop number; faq starts '[]'; currency auto: +234→NGN else USD
     );
     const business = bRows[0]; // the new shop
+    const ref = require('../services/referralService');
+    await ref.ensureCode(business.id); // every shop is born with a shareable code (referral card ready day one!)
+    if (typeof refRaw === 'string' && refRaw.trim()) { // referral/promo code pasted?…
+      const referrer = await ref.resolveCode(refRaw); // …resolve it (case-insensitive!)
+      if (referrer && Number(referrer.id) !== Number(business.id)) {
+        const clash = await db.query( // self-referral guard: same WhatsApp number or same email root = no attribution!
+          `SELECT 1 FROM businesses b LEFT JOIN users u ON u.business_id = b.id
+           WHERE b.id = $1 AND (b.whatsapp_number = $2 OR LOWER(u.email) = LOWER($3)) LIMIT 1`,
+          [referrer.id, number, email]
+        );
+        if (!clash.rows.length) {
+          await db.query('UPDATE businesses SET referred_by = $1 WHERE id = $2', [referrer.id, business.id]); // attributed (reward pays when THEY finish the quiz!)
+        }
+      }
+      // Invalid/foreign code → ignored silently (signup must NEVER fail over a typo'd code!)
+    }
 
     const user = await authService.createUser(business.id, email, password); // hash password + users row (+ verification email or auto-verify)
     const otp = await authService.issueOTP(email); // OTP-first registration: 6-digit code emailed (link is the FALLBACK, not the default!)…
@@ -161,7 +187,7 @@ async function googleSignup(req, res) {
   try {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) return res.status(503).json({ error: 'Google sign-in is not switched on yet.' });
-    const { credential, name, whatsapp_number: numberRaw, owner_number: ownerRaw, hours } = req.body || {};
+    const { credential, name, whatsapp_number: numberRaw, owner_number: ownerRaw, hours, referral_code: refRaw } = req.body || {};
     if (!credential) return res.status(400).json({ error: 'Missing Google credential.' });
     const r = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`); // re-verify (NEVER trust the frontend's word about identity!)
     if (!r.ok) return res.status(401).json({ error: 'Google sign-in failed — try again.' });
@@ -188,6 +214,21 @@ async function googleSignup(req, res) {
       [name.trim(), number, owner || number, (hours || '').trim(), '[]', 'friendly and helpful', planService.resolveCurrency(number, owner)]
     );
     const business = bRows[0];
+    const ref = require('../services/referralService');
+    await ref.ensureCode(business.id); // born with a shareable code (same as password signup!)
+    if (typeof refRaw === 'string' && refRaw.trim()) { // referral code pasted? (same attribution rules — silently ignored when invalid!)
+      const referrer = await ref.resolveCode(refRaw);
+      if (referrer && Number(referrer.id) !== Number(business.id)) {
+        const clash = await db.query(
+          `SELECT 1 FROM businesses b LEFT JOIN users u ON u.business_id = b.id
+           WHERE b.id = $1 AND (b.whatsapp_number = $2 OR LOWER(u.email) = LOWER($3)) LIMIT 1`,
+          [referrer.id, number, email]
+        );
+        if (!clash.rows.length) {
+          await db.query('UPDATE businesses SET referred_by = $1 WHERE id = $2', [referrer.id, business.id]);
+        }
+      }
+    }
     const { rows: uRows } = await db.query( // …but user row WITHOUT password (password_hash empty = "Google-only account"; login blocks empty hashes — verifyPassword on '' fails safely!)
       `INSERT INTO users (business_id, email, password_hash, verified, verify_token)
        VALUES ($1, $2, $3, true, NULL)
@@ -271,4 +312,4 @@ async function reset(req, res) {
   res.json({ ok: true }); // frontend routes to /login ("password set — sign in!")
 }
 
-module.exports = { signup, verify, resendVerification, login, logout, verifyOtp, otpResend, otpLink, forgot, reset, google, googleSignup, authConfig }; // routes/authRoutes.js wires these five
+module.exports = { signup, verify, resendVerification, login, logout, verifyOtp, otpResend, otpLink, forgot, reset, google, googleSignup, authConfig, checkReferral }; // routes/authRoutes.js wires these (checkReferral = public code preview!)

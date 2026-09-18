@@ -124,6 +124,8 @@ export default function Dashboard({ biz }) { // biz = business object from App (
       </div>
       )}
 
+      <ReferCard /> {/* Refer & Earn: code, share, funnel, milestone progress (drives itself!) */}
+
       <div className="grid2" style={{ marginTop: 18 }}> {/* two cards side-by-side (stack on mobile via CSS) */}
         <div className="card">
           <div className="card-head"><h2>Needs your attention</h2><Link className="mini-link" to="/chats">Inbox <Ic n="next" s={13} /></Link></div>
@@ -151,3 +153,36 @@ export default function Dashboard({ biz }) { // biz = business object from App (
     </>
   );
 }
+
+
+function ReferCard() { // REFER & EARN: your code + share buttons + live funnel (invited → setup → paying!) + milestone bar to ₦500 airtime.
+  const [r, setR] = useState(null); // null = loading (skeleton!); object = myStats (code, counts, earnings!)
+  const [copied, setCopied] = useState(false); // copy feedback (tick + "Copied!" for 2s!)
+  useEffect(() => { api('/api/me/referral').then(({ ok, data }) => { if (ok) setR(data); }); }, []); // [] = mount-only (fresh each dashboard visit!)
+  if (!r) return null; // loading → render NOTHING (card pops in when ready — no skeleton flash for a bonus card!)
+  const link = window.location.origin + '/login?ref=' + encodeURIComponent(r.code); // share link (Login prefills + validates the code!)
+  const text = `I use Vendora — my WhatsApp shop answers customers 24/7, even at 2am. Start free with my code ${r.code} (we BOTH get 14 Pro days free): ${link}`;
+  async function copy() { // clipboard with fallback (older browsers / permissions!)
+    try { await navigator.clipboard.writeText(r.code); }
+    catch { const ta = document.createElement('textarea'); ta.value = r.code; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch {} ta.remove(); }
+    setCopied(true); setTimeout(() => setCopied(false), 2000); // tick 2s (then back to copy icon!)
+  }
+  const pct = Math.min(100, Math.round((r.paying % r.milestoneEvery) / r.milestoneEvery * 100)); // milestone bar (0–100 — resets each 5-pack, by design!)
+  const naira = (kobo) => '₦' + (Number(kobo || 0) / 100).toLocaleString(); // minor → major (ledger stores kobo!)
+  return (
+    <div className="card" style={{ marginTop: 18, borderColor: 'var(--gold-line)' }}>
+      <div className="card-head"><h2><Ic n="gift" s={16} /> Refer & Earn</h2><span className="hint">{r.paying} paying · {r.daysEarned} Pro days earned</span></div>
+      <p className="desc">Friends join with your code → you <b>both</b> get 14 Pro days. Every 5th paying friend = <b>₦500 airtime</b> from us.</p>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
+        <code style={{ fontSize: 18 }}>{r.code}</code>
+        <button className="btn sm ghost" onClick={copy}><Ic n={copied ? 'check' : 'copy'} s={14} />{copied ? 'Copied!' : 'Copy code'}</button>
+        <a className="btn sm" href={'https://wa.me/?text=' + encodeURIComponent(text)} target="_blank" rel="noreferrer"><Ic n="send" s={14} />Share on WhatsApp</a>
+      </div>
+      <div className="guide-bar" style={{ marginTop: 12 }}><i style={{ width: `${pct}%` }} /></div> {/* milestone fill (same bar as the checklist!) */}
+      <p className="hint" style={{ marginTop: 6 }}>
+        {r.invited} invited · {r.qualified} finished setup · {r.paying} paying · {r.nextMilestoneIn} more to {naira(r.milestoneAmount)} airtime
+        {r.airtimeDue > 0 ? ` · ${naira(r.airtimeDue)} on the way!` : ''}
+      </p>
+    </div>
+  );
+}

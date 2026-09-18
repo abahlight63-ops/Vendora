@@ -15,6 +15,7 @@ async function getMe(req, res) {
             b.max_discount_pct, b.min_order_naira, b.currency, b.timezone,
             b.bot_enabled, b.personal_contacts, b.plan_tier,
             b.business_niche, b.heard_from, b.catalog_size, b.channels, b.daily_volume,
+            b.referral_code, b.bonus_pro_until,
             b.greeting_msg, b.handoff_msg,
             b.subscription_status, b.subscription_expires, b.trial_started_at,
             b.trial_warned, b.trial_expiry_notified
@@ -160,12 +161,28 @@ async function saveSetup(req, res) {
     : (typeof channelsRaw === 'string' ? channelsRaw.split(',').map((c) => c.trim()).filter((c) => QUIZ_CHANNELS.includes(c)).slice(0, 4).join(',') : ''); // …or comma string (same rule — mobile sends either!)
   const volume = QUIZ_VOLUMES.includes(volumeRaw) ? volumeRaw : ''; // whitelist-or-blank
   if (!niche) return res.status(400).json({ error: 'Pick what your business sells first.' }); // niche is the hard requirement (everything else skippable!)
+  const before = await db.query('SELECT business_niche FROM businesses WHERE id = $1', [req.session.businessId]); // quiz-complete detection needs the BEFORE value!
+  const wasNiche = before.rows[0] && before.rows[0].business_niche;
   const { rows } = await db.query( // session-scoped write (owners set ONLY their own answers!)
     `UPDATE businesses SET business_niche = $1, heard_from = $2, catalog_size = $3, channels = $4, daily_volume = $5 WHERE id = $6
      RETURNING business_niche, heard_from, catalog_size, channels, daily_volume`, // RETURNING echoes truth (UI shows what stuck, no refetch!)
     [niche, heard, size || null, channels || null, volume || null, req.session.businessId]
   );
+  if (!wasNiche && niche) { // FIRST-EVER niche = quiz finished → pay the referral reward (both sides, once — onQuizComplete is idempotent!)
+    require('../services/referralService').onQuizComplete(req.session.businessId).catch((e) => console.error('quiz reward error:', e.message));
+  }
   res.json(rows[0]);
+}
+
+// Refer & Earn card data: my code, funnel counts, earnings, next milestone.
+async function referralStats(req, res) {
+  try {
+    const ref = require('../services/referralService');
+    res.json(await ref.myStats(req.session.businessId));
+  } catch (e) {
+    console.error('referral stats error:', e.message);
+    res.status(500).json({ error: 'Could not load referral stats' });
+  }
 }
 
 async function getProducts(req, res) {
@@ -561,7 +578,7 @@ async function whatsappModel(req, res) {
   const aiModels = require('../services/aiModels');
   const { model } = req.body || {};
   const { rows } = await db.query(
-    'SELECT subscription_status, subscription_expires, trial_started_at, plan_tier FROM businesses WHERE id = $1',
+    'SELECT subscription_status, subscription_expires, trial_started_at, plan_tier, bonus_pro_until FROM businesses WHERE id = $1',
     [req.session.businessId]
   );
   const resolved = aiModels.resolveChoice(model, planService.effectiveTier(rows[0] || {})); // exists? below-floor? ('' → free default!)
@@ -662,8 +679,8 @@ async function adClick(req, res) {
 async function aiModels(req, res) {
   const planService = require('../services/planService');
   const aiModels = require('../services/aiModels');
-  const { rows } = await db.query( // subscription + purchased tier (effectiveTier needs plan_tier for the Plus floor!)
-    'SELECT subscription_status, subscription_expires, trial_started_at, plan_tier FROM businesses WHERE id = $1',
+  const { rows } = await db.query( // subscription + purchased tier + referral bonus (effectiveTier needs all three!)
+    'SELECT subscription_status, subscription_expires, trial_started_at, plan_tier, bonus_pro_until FROM businesses WHERE id = $1',
     [req.session.businessId]
   );
   const b = rows[0] || {}; // || {} : deleted business → effectiveTier('{}') = free (safe default)
@@ -695,8 +712,8 @@ async function ask(req, res) {
     const planService = require('../services/planService');
     const aiModels = require('../services/aiModels');
     const replyEngine = require('../services/replyEngine');
-    const { rows } = await db.query( // tier first (gates EVERYTHING below)
-      'SELECT subscription_status, subscription_expires, trial_started_at, plan_tier, name, business_niche FROM businesses WHERE id = $1',
+    const { rows } = await db.query( // tier first (gates EVERYTHING below — bonus column included for referral Pro!)
+      'SELECT subscription_status, subscription_expires, trial_started_at, plan_tier, bonus_pro_until, name, business_niche FROM businesses WHERE id = $1',
       [req.session.businessId]
     );
     const tier = planService.effectiveTier(rows[0] || {}); // 'plus' | 'pro' | 'free' (Plus-only heavy models enforced inside resolveChoice!)
@@ -815,6 +832,7 @@ module.exports = { // every handler the routes file wires up (miss one here = ro
   saveSetup,
   getProducts,
   catalogMeta,
+  referralStats,
   upsertProduct,
   uploadProductPhoto,
   deleteProduct,

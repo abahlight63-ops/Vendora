@@ -21,5 +21,6 @@ router.post('/logout', authController.logout); // destroy session
 router.get('/config', authController.authConfig); // public knobs (Google client id) — no auth needed (it's PUBLIC by design!)
 router.post('/google', authLimiter, authController.google); // { credential } → session OR { needsSignup } (FREE social login — Google IS the bot check, no checkbox needed!)
 router.post('/google-signup', authLimiter, authController.googleSignup); // { credential, name, whatsapp_number… } → full account + session (same: Google credential proves humanity!)
+router.get('/check-referral', authLimiter, authController.checkReferral); // ?code= → live reward preview on the signup form (rate-limited like auth!)
 
 module.exports = router; // server.js does app.use('/api/auth', authRoutes)

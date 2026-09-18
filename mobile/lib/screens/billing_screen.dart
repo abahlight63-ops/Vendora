@@ -4,7 +4,7 @@
 // web page) — this screen deep-links there with one tap. Same account, same
 // session state server-side. Checkout brand names never appear here.
 // TIERS: Pro (₦7,499/mo · ₦69,999/yr ≈ 22% off) + Pro Plus (₦14,999/mo ·
-// ₦120,000/yr ≈ 33% off, + voice notes + 2 heavy work models). Pay-once
+// ₦119,999/yr ≈ 33% off, + voice notes + 2 heavy work models). Pay-once
 // goes via sales email (no self-serve lifetime checkout).
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -131,7 +131,7 @@ class _BillingScreenState extends State<BillingScreen> {
       final y = plans['yearly'];
       return {
         'monthly': m is Map ? m : {'amount': key == 'plus' ? 14999 : 7499},
-        'yearly': y is Map ? y : {'amount': key == 'plus' ? 120000 : 69999},
+        'yearly': y is Map ? y : {'amount': key == 'plus' ? 119999 : 69999},
       };
     }
 

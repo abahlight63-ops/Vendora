@@ -30,11 +30,17 @@ function subscriptionActive(business) {
   return new Date(business.subscription_expires) > new Date(); // expiry in the future?
 }
 
+function bonusActive(business) {
+  if (!business || !business.bonus_pro_until) return false; // no bonus stamped (most shops!)
+  return new Date(business.bonus_pro_until) > new Date(); // future timestamp = referral-earned Pro time!
+}
+
 function isPro(business) {
   if (!business) return false; // null-safety: unknown business is never Pro
   if (subscriptionActive(business)) return true; // paid up → Pro, trial irrelevant
   // The 7-day trial IS the Pro trial.
   if (business.subscription_status === 'trialing' && trialActive(business)) return true; // BOTH conditions (status + clock)
+  if (bonusActive(business)) return true; // referral-earned Pro days (real Pro everywhere — sync, premium AIs, no ads!)
   return false; // expired trial, pending transfer, or anything else → free
 }
 
@@ -78,4 +84,4 @@ function resolveCurrency(...numbers) {
   return 'NGN'; // no country code at all → default home market
 }
 
-module.exports = { isPro, isProPlus, tier, effectiveTier, whatsappDailyLimit, trialActive, subscriptionActive, trialDays, trialDaysLeft, resolveCurrency }; // webhook, replyEngine, controllers all import from here
+module.exports = { isPro, isProPlus, tier, effectiveTier, whatsappDailyLimit, trialActive, subscriptionActive, trialDays, trialDaysLeft, resolveCurrency, bonusActive }; // webhook, replyEngine, controllers all import from here

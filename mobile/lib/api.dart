@@ -123,17 +123,28 @@ class ApiClient {
     return (b as Map).cast<String, dynamic>();
   }
 
+  Future<Map<String, dynamic>> checkReferral(String code) async =>
+      (await get(
+              '/api/auth/check-referral?code=${Uri.encodeComponent(code.trim())}'))
+          as Map<String, dynamic>;
+
+  Future<Map<String, dynamic>> referralStats() async =>
+      (await get('/api/me/referral') as Map).cast<String, dynamic>();
+
   Future<Map<String, dynamic>> signup(
     String name,
     String email,
     String password,
-    String whatsappNumber,
-  ) async {
+    String whatsappNumber, [
+    String? referralCode,
+  ]) async {
     final b = await post('/api/auth/signup', {
       'name': name,
       'email': email,
       'password': password,
       'whatsapp_number': whatsappNumber,
+      if (referralCode != null && referralCode.trim().isNotEmpty)
+        'referral_code': referralCode.trim(),
     });
     return (b as Map).cast<String, dynamic>();
   }

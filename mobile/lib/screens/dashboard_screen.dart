@@ -4,6 +4,7 @@
 // flagged chats, setup checklist. Three parallel fetches crunched into
 // one summary (same Promise.all pattern as web).
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../api.dart';
 import '../format.dart';
@@ -226,6 +227,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
           const SizedBox(height: 12),
+          // ── Refer & Earn card (own fetch — never blocks the dashboard!) ──
+          const _ReferCard(),
+          const SizedBox(height: 12),
           // ── 4 stat cards (.stat num/lbl pattern) ──
           GridView.count(
             crossAxisCount: 2,
@@ -388,6 +392,98 @@ class _Step {
   final String hint;
   final int tab; // target bottom tab, -1 = push Profile
   _Step(this.done, this.label, this.hint, this.tab);
+}
+
+/// Refer & Earn card (web ReferCard parity): code + share + live funnel +
+/// milestone bar to the N500 airtime. Own fetch (dashboard never waits!).
+class _ReferCard extends StatefulWidget {
+  const _ReferCard();
+
+  @override
+  State<_ReferCard> createState() => _ReferCardState();
+}
+
+class _ReferCardState extends State<_ReferCard> {
+  Map<String, dynamic>? _r;
+
+  @override
+  void initState() {
+    super.initState();
+    ApiClient.instance.referralStats().then((v) {
+      if (mounted) setState(() => _r = v);
+    }).catchError((_) {});
+  }
+
+  String _naira(num? kobo) {
+    final v = ((kobo ?? 0) / 100).round().toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < v.length; i++) {
+      if (i > 0 && (v.length - i) % 3 == 0) buf.write(',');
+      buf.write(v[i]);
+    }
+    return 'N$buf'; // N + grouped digits (no intl dep — same trick as web money()!)
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final r = _r;
+    if (r == null) return const SizedBox.shrink(); // loading → nothing (pops in when ready!)
+    final code = '${r['code'] ?? ''}';
+    final paying = (r['paying'] as num? ?? 0).toInt();
+    final every = (r['milestoneEvery'] as num? ?? 5).toInt();
+    final pct = (paying % every) / every;
+    final link = 'https://vendorabot.vercel.app/login?ref=$code'; // web login prefills + validates!
+    final text =
+        'I use Vendora — my WhatsApp shop answers customers 24/7. Start free with my code $code (we BOTH get 14 Pro days free): $link';
+    return FadeSlideIn(
+      child: GlassCard(
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(children: [
+                  Icon(Icons.card_giftcard, size: 18),
+                  SizedBox(width: 8),
+                  Text('Refer & Earn',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                ]),
+                const SizedBox(height: 6),
+                const Text(
+                    'Friends join with your code — you BOTH get 14 Pro days. Every 5th paying friend = N500 airtime.',
+                    style: TextStyle(fontSize: 12.5)),
+                const SizedBox(height: 10),
+                Row(children: [
+                  Expanded(
+                    child: Text(code,
+                        style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.5)),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => launchUrl(
+                        Uri.parse('https://wa.me/?text=${Uri.encodeComponent(text)}'),
+                        mode: LaunchMode.externalApplication),
+                    icon: const Icon(Icons.send, size: 15),
+                    label: const Text('Share'),
+                  ),
+                ]),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: LinearProgressIndicator(value: pct, minHeight: 8),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                    '${r['invited'] ?? 0} invited · ${r['qualified'] ?? 0} set up · $paying paying · ${r['nextMilestoneIn'] ?? every} more to ${_naira(r['milestoneAmount'])} airtime',
+                    style: const TextStyle(fontSize: 12)),
+              ]),
+        ),
+      ),
+    );
+  }
 }
 
 class _Stat extends StatelessWidget {

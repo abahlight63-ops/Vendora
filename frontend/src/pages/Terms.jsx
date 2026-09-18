@@ -35,7 +35,7 @@ export default function Terms() {
           <ul>
             <li><b>Free forever:</b> manual catalog (dashboard adds + LEARN: messages) with AI replies. No card, no expiry.</li>
             <li><b>7-day Pro trial:</b> every new account gets full Pro (profile sync + verification) free for 7 days, no card required. The countdown shows in-app and your bell warns you before it ends; afterwards you drop to free automatically.</li>
-            <li><b>Paid plans:</b> Pro ₦7,499 / $5 monthly, ₦69,999 / $47 yearly (save ~22%) · Pro Plus ₦14,999 / $10 monthly, ₦120,000 / $80 yearly (save ~33%, adds voice-note transcription + heavy work models). Currency is set automatically from your WhatsApp number (+234 → Naira, else US Dollar) and can be changed in Business profile. You pay by card on a secure checkout page. Enterprise plans are handled personally through sales.</li>
+            <li><b>Paid plans:</b> Pro ₦7,499 / $5 monthly, ₦69,999 / $47 yearly (save ~22%) · Pro Plus ₦14,999 / $10 monthly, ₦119,999 / $80 yearly (save ~33%, adds voice-note transcription + heavy work models). Currency is set automatically from your WhatsApp number (+234 → Naira, else US Dollar) and can be changed in Business profile. You pay by card on a secure checkout page. Enterprise plans are handled personally through sales.</li>
             <li><b>After trial / expiry / cancellation:</b> you drop to the free plan. Your catalog, chats and history stay. The bot keeps replying from your manual catalog — we never hold your data hostage.</li>
           </ul>
 

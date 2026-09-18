@@ -66,7 +66,7 @@ const FALLBACK_PLANS = { // display defaults while /api/me/billing loads (MUST m
   },
   plus: {
     monthly: { amount: 14999 }, // ₦14,999/mo
-    yearly: { amount: 120000, save: 59988, save_pct: 33 }, // ₦120,000/yr (saves ₦59,988 ≈ 33%)
+    yearly: { amount: 119999, save: 59989, save_pct: 33 }, // ₦119,999/yr (saves ₦59,989 ≈ 33%)
   },
   sales_email: 'vendorabot26@gmail.com',
   monthly: { naira: 7499, amount: 7499 }, // legacy aliases (old clients read these)

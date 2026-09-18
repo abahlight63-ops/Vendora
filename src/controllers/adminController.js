@@ -214,6 +214,8 @@ async function transferApprove(req, res) {
     body: `Your ${pay.plan} payment was confirmed. Enjoy ${days} days of Pro — nothing else to do.`,
     link: '/billing',
   });
+  require('../services/referralService').onPaidActivation(Number(pay.business_id)) // milestone check (transfer approvals count as paying too!)
+    .catch((e) => console.error('referral milestone error:', e.message));
   res.json({ ok: true, days }); // days echoed (UI confirms "+30 days")
 }
 
@@ -264,6 +266,66 @@ async function complaintReply(req, res) {
     link: '/help',
   });
   res.json({ ok: true });
+}
+
+// ---- Referrals: who brings users (funnel per referrer + airtime due/sent) ----
+async function referralOverview(req, res) {
+  try {
+    const ref = require('../services/referralService');
+    res.json({ rows: await ref.adminOverview() });
+  } catch (e) {
+    console.error('referral overview error:', e.message);
+    res.status(500).json({ error: 'Could not load referrers' });
+  }
+}
+
+// ---- Referrals: pending ₦500 airtime queue (who to pay + their numbers!) ----
+async function referralPending(req, res) {
+  try {
+    const ref = require('../services/referralService');
+    res.json({ rows: await ref.pendingAirtime() });
+  } catch (e) {
+    console.error('referral pending error:', e.message);
+    res.status(500).json({ error: 'Could not load airtime queue' });
+  }
+}
+
+// ---- Referrals: monthly leaderboard (champion picking!) ----
+async function referralLeaders(req, res) {
+  try {
+    const ref = require('../services/referralService');
+    res.json({ rows: await ref.leaderboard(10) });
+  } catch (e) {
+    console.error('referral leaders error:', e.message);
+    res.status(500).json({ error: 'Could not load leaderboard' });
+  }
+}
+
+// ---- Referrals: mark airtime sent (you bought the card manually!) ----
+async function referralAirtimeSent(req, res) {
+  try {
+    const ref = require('../services/referralService');
+    const ok = await ref.markAirtimeSent(req.params.id);
+    if (!ok) return res.status(404).json({ error: 'Payout not found (already sent?).' });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('referral sent error:', e.message);
+    res.status(500).json({ error: 'Could not mark sent' });
+  }
+}
+
+// ---- Referrals: grant the monthly champion a free Plus month ----
+async function referralGrantPlus(req, res) {
+  try {
+    const ref = require('../services/referralService');
+    const { business_id } = req.body || {};
+    if (!business_id) return res.status(400).json({ error: 'business_id required.' });
+    await ref.grantPlusMonth(business_id);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('referral plus error:', e.message);
+    res.status(500).json({ error: 'Could not grant Plus month' });
+  }
 }
 
 // ---- Resolve a complaint (no reply needed / done) ----
@@ -499,6 +561,11 @@ module.exports = {
   complaintList,
   complaintReply,
   complaintResolve,
+  referralOverview,
+  referralPending,
+  referralLeaders,
+  referralAirtimeSent,
+  referralGrantPlus,
   templateList,
   templateCreate,
   templateUpdate,

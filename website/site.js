@@ -142,7 +142,7 @@ document.getElementById('learnInput').addEventListener('keydown', (e) => {
 
 /* ── pricing: NGN/USD × monthly/yearly (mirrors Billing.jsx) ── */
 const PRICES = {
-  NGN: { pro: { m: 7499, y: 69999 }, plus: { m: 14999, y: 120000 } },
+  NGN: { pro: { m: 7499, y: 69999 }, plus: { m: 14999, y: 119999 } },
   USD: { pro: { m: 5, y: 47 }, plus: { m: 10, y: 80 } },
 };
 let cur = 'NGN', per = 'yearly';

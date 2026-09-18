@@ -28,6 +28,11 @@ router.post('/complaints/:id/reply', adminController.requireAdmin, adminControll
 router.post('/complaints/:id/resolve', adminController.requireAdmin, adminController.complaintResolve); // close without reply
 router.post('/broadcast', adminController.requireAdmin, adminController.broadcast); // app-update notice → every owner's bell
 router.post('/notify', adminController.requireAdmin, adminController.notifyUser); // warning/notice → ONE owner's bell (business id, email, or WhatsApp number)
+router.get('/referrals', adminController.requireAdmin, adminController.referralOverview); // referrer funnel (invited/qualified/paying + airtime due/sent)
+router.get('/referrals/pending', adminController.requireAdmin, adminController.referralPending); // ₦500 airtime queue (who to pay + numbers!)
+router.get('/referrals/leaders', adminController.requireAdmin, adminController.referralLeaders); // monthly leaderboard (champion picking!)
+router.post('/referrals/:id/sent', adminController.requireAdmin, adminController.referralAirtimeSent); // airtime card bought → mark sent
+router.post('/referrals/grant-plus', adminController.requireAdmin, adminController.referralGrantPlus); // monthly champion → free Plus month
 router.get('/templates', adminController.requireAdmin, adminController.templateList); // 12 built-ins + your customs
 router.post('/templates', adminController.requireAdmin, adminController.templateCreate); // save your own template
 router.put('/templates/:id', adminController.requireAdmin, adminController.templateUpdate); // edit your template

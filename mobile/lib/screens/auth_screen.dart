@@ -22,8 +22,11 @@ class _AuthScreenState extends State<AuthScreen> {
   final _pass = TextEditingController();
   final _phone = TextEditingController();
   final _code = TextEditingController();
+  final _ref = TextEditingController(); // referral/promo code (optional — bonus for both sides!)
   bool _busy = false;
   String? _err;
+  String? _refMsg; // live reward preview ("Reward attached…") or null
+  bool _refOk = false; // green (attached!) vs red (unknown code — signup still works!)
 
   @override
   void dispose() {
@@ -32,7 +35,28 @@ class _AuthScreenState extends State<AuthScreen> {
     _pass.dispose();
     _phone.dispose();
     _code.dispose();
+    _ref.dispose();
     super.dispose();
+  }
+
+  /// Live code check (on blur — no request per keystroke!).
+  Future<void> _checkRef() async {
+    final c = _ref.text.trim();
+    if (c.isEmpty) {
+      if (mounted) setState(() { _refMsg = null; _refOk = false; });
+      return;
+    }
+    try {
+      final r = await ApiClient.instance.checkReferral(c);
+      if (!mounted) return;
+      if (r['valid'] == true) {
+        setState(() { _refOk = true; _refMsg = '${r['reward'] ?? 'Reward attached!'}'; });
+      } else {
+        setState(() { _refOk = false; _refMsg = 'Code not recognised — signup still works, just no bonus.'; });
+      }
+    } catch (_) {
+      // Offline → silent (server rechecks at signup anyway!).
+    }
   }
 
   Future<void> _run(Future<void> Function() fn) async {
@@ -124,6 +148,28 @@ class _AuthScreenState extends State<AuthScreen> {
                       decoration: const InputDecoration(
                           labelText: 'WhatsApp number',
                           hintText: '0803 123 4567')),
+                if (_mode == 1) const SizedBox(height: 12),
+                if (_mode == 1)
+                  TextField(
+                      controller: _ref,
+                      textCapitalization: TextCapitalization.characters,
+                      onChanged: (_) => setState(() {
+                        _refMsg = null; // typing clears the preview (recheck on blur!)
+                        _refOk = false;
+                      }),
+                      onEditingComplete: _checkRef, // done typing → validate + show the reward!
+                      decoration: const InputDecoration(
+                          labelText: 'Referral code (optional)',
+                          hintText: 'e.g. AMAKA-4F2K')),
+                if (_mode == 1 && _refMsg != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(_refMsg!,
+                        style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: _refOk ? Colors.green : Colors.orange)),
+                  ),
                 if (_mode == 2)
                   TextField(
                       controller: _code,
@@ -156,6 +202,9 @@ class _AuthScreenState extends State<AuthScreen> {
                                 _email.text.trim(),
                                 _pass.text,
                                 _phone.text.trim(),
+                                _ref.text.trim().isEmpty
+                                    ? null
+                                    : _ref.text.trim(), // omitted when blank = organic signup!
                               );
                               // Dev-mode auto-login (email service off) skips OTP.
                               if (b['auto'] == true) {

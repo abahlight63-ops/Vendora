@@ -351,12 +351,12 @@ function AdsStatus() { // AD KEYS LIVE? booleans only — key VALUES never leave
     const shown = await maybeShowSponsor(); // real interstitial (same card owners see)
     setPreviewMsg(shown ? '' : 'Not shown: already previewed today or sponsor missing.');
   }
-  async function previewVideo() { // Preview button: force the REAL 30s gate (cap bypassed, events still logged as slot=preview!)
+  async function previewVideo(only) { // Preview button: force the REAL 30s gate (cap bypassed, events still logged as slot=preview!)
     setPreviewMsg('Checking…');
     clearVideoSeen('preview'); // bypass the daily cap (preview-only!)
     const st = await adsStatus(); // Pro session? video config present?
     if (st.state === 'pro') { setPreviewMsg('No preview: THIS browser session is Pro/trial — video gates serve free-tier owners only. Log in as a free shop to preview.'); return; }
-    const out = await maybeShowVideoAd({ slot: 'preview', force: true }); // force = play even past cap (same player owners see!)
+    const out = await maybeShowVideoAd({ slot: 'preview', force: true, only: only || null }); // only = fire ONE layer alone (isolated debugging!)
     setPreviewMsg(out === 'skipped-empty' ? 'No preview: nothing configured — set SPONSOR_VIDEO_URL or a network video zone, then restart.' : `Preview done (${out}). Events logged under slot=preview.`);
   }
   return (
@@ -367,8 +367,14 @@ function AdsStatus() { // AD KEYS LIVE? booleans only — key VALUES never leave
       <p className="hint">{s.note}</p>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
         <button className="btn ghost sm" onClick={preview}>Preview sponsor card</button>
-        <button className="btn ghost sm" onClick={previewVideo}>Preview 30s video gate</button>
+        <button className="btn ghost sm" onClick={() => previewVideo()}>Preview 30s video gate</button>
         {previewMsg ? <span className="hint">{previewMsg}</span> : null}
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+        <span className="hint">Test one layer alone:</span>
+        {[['sponsor', 'Own mp4'], ['hilltopads', 'HilltopAds'], ['monetag', 'Monetag'], ['adsterra', 'Smartlink']].map(([id, label]) => (
+          <button key={id} className="btn ghost sm" onClick={() => previewVideo(id)}>Only {label}</button>
+        ))}
       </div>
       {vstats && Array.isArray(vstats.video) && vstats.video.length > 0 && (
         <div style={{ marginTop: 12 }}>

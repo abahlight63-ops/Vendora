@@ -67,6 +67,15 @@ Completions ÷ starts per source live in Admin → ad console (the funnel
 table) + `GET /api/admin/ads/stats` (`video` array + monthly invoice
 estimate). A sponsor click inside the player ALSO lands in `ad_clicks`.
 
+### Self-healing rules (wrong tags can't blank-screen you)
+- Tag URLs are auto-detected: `.js` tags play in the frame; offer-style links
+  (no `.js`, e.g. a `/drm/…` URL) auto-degrade to Smartlink exit traffic.
+  A misplaced URL earns as fallback instead of showing a dead timer.
+- 5s empty-frame guard: a tag that loads but paints nothing advances to the
+  next waterfall layer automatically (logged as `tag-failed`).
+- Admin preview has per-layer buttons (Only mp4 / HilltopAds / Monetag /
+  Smartlink) — verify each layer in isolation, never by guessing.
+
 Test: Admin → "Preview 30s video gate" (force-plays, logs under slot=preview),
 or connect as a free-tier shop with no ad-blocker.
 

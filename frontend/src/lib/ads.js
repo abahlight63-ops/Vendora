@@ -104,40 +104,65 @@ async function logVideo(slot, source, event) { // funnel event → backend (fire
   try { await api('/api/me/ads/video', { method: 'POST', body: JSON.stringify({ slot, source, event }) }); } catch {} // network down → drop it (funnel gaps beat frozen gates!)
 }
 
-// GATED 30s VIDEO (Connect buttons, free tier only): sponsor mp4 >
-// HilltopAds VAST > Monetag rewarded > Adsterra Smartlink fallback.
+// A tag URL is a PLAYABLE script only if it looks like one (.js tag).
+// Offer/direct links (no .js — e.g. a /drm/… URL) are EXIT traffic: opening
+// them as <script> renders nothing (the infamous dead-timer page!). Such URLs
+// auto-degrade to the Smartlink path instead of a blank player. NEVER break!
+function isScriptTag(url) {
+  return /\.js(\?|#|$)/i.test(String(url || '')); // offer/direct links (no .js) are NOT players!
+}
+
+// GATED 30s VIDEO (page entries, free tier only): sponsor mp4 >
+// HilltopAds > Monetag > Adsterra Smartlink fallback.
 // Countdown + progress bar + skip-at-5s. Resolves when the flow ends —
 // callers ALWAYS proceed afterwards (the gate delays, never blocks!).
 // force = Admin preview (bypasses the daily cap, never marks it!).
-export async function maybeShowVideoAd({ slot = 'connect', force = false } = {}) {
+// only = Admin per-layer test ('sponsor' | 'hilltopads' | 'monetag' | 'adsterra').
+export async function maybeShowVideoAd({ slot = 'connect', force = false, only = null } = {}) {
   const ads = await getAds(); // tier-resolved config (Pro = null → straight through!)
   const v = ads && ads.video;
   if (!v) return 'skipped-empty'; // Pro, logged-out, or backend without video config
   if (!force && videoSeen(slot)) return 'skipped-cap'; // already gated this action today
-  const order = Array.isArray(v.order) && v.order.length ? v.order : ['sponsor', 'hilltopads', 'monetag', 'adsterra'];
+  const order = only ? [only] : (Array.isArray(v.order) && v.order.length ? v.order : ['sponsor', 'hilltopads', 'monetag', 'adsterra']);
+  const tagUrlOf = { sponsor: null, hilltopads: v.hilltopads, monetag: v.monetag, adsterra: v.adsterra }; // sponsor plays mp4 (never a tag!)
   const has = { // what's actually playable right now?
     sponsor: !!(v.sponsorVideo && v.sponsorLink),
     hilltopads: !!v.hilltopads,
     monetag: !!v.monetag,
     adsterra: !!v.adsterra,
   };
-  const pick = order.find((s) => has[s]); // first available in waterfall order (sponsor mp4 wins ties!)
-  if (!pick) return 'skipped-empty'; // nothing configured → button works exactly as today (never a dead end!)
+  const candidates = order.filter((s) => has[s]); // available layers, waterfall order (sponsor mp4 wins ties!)
+  if (!candidates.length) return 'skipped-empty'; // nothing configured → button works exactly as today (never a dead end!)
   if (typeof document !== 'undefined' && document.querySelector('.pop-card.vgate')) return 'already-open'; // double-tap guard (one gate at a time — second click sails straight through!)
-  if (pick === 'adsterra') { // Smartlink = exit traffic (no player, no gate — open + continue!)
-    if (!force) markVideoSeen(slot);
-    logVideo(slot, 'adsterra', 'click');
-    window.open(v.adsterra, '_blank', 'noopener'); // new tab (noopener = offer page can't touch us!)
-    return 'fallback-click';
-  }
   if (!force) markVideoSeen(slot);
-  return new Promise((resolve) => { // overlay lifetime = this promise (close paths ALL resolve it!)
+  for (const pick of candidates) { // try each layer in turn (dead layer → next, never a dead timer!)
+    const tagUrl = tagUrlOf[pick];
+    if (tagUrl && !isScriptTag(tagUrl)) { // offer-style URL (no .js) = EXIT traffic, not a player (auto-degrade — the /drm/… lesson!)
+      logVideo(slot, pick, 'click');
+      const win = window.open(tagUrl, '_blank', 'noopener'); // popup blockers eat non-gesture opens → null (then just continue!)
+      if (win) return pick + '-click';
+      continue; // blocked? fall through to the next layer (or out — never trap!)
+    }
+    if (pick === 'adsterra') { // Smartlink = exit traffic (no player, no gate — open + continue!)
+      logVideo(slot, 'adsterra', 'click');
+      const win = window.open(v.adsterra, '_blank', 'noopener'); // new tab (noopener = offer page can't touch us!)
+      if (win) return 'fallback-click';
+      continue; // blocked (page-entry gates have no click gesture!) → next layer or out
+    }
+    const outcome = await playVideoLayer({ slot, pick, v }); // gated player (resolves completed/skipped/layer-empty!)
+    if (outcome !== 'layer-empty') return outcome; // empty frame → NEXT layer (a broken tag never embarrasses us!)
+    logVideo(slot, pick, 'tag-failed');
+  }
+  return 'skipped-empty'; // every layer dead → straight through (buttons always work!)
+
+  // ── one gated player attempt (overlay lifetime = this promise!) ──
+  function playVideoLayer({ slot, pick, v }) { return new Promise((resolve) => { // overlay lifetime = this promise (close paths ALL resolve it!)
     const t0 = Date.now(); // gate clock (drives countdown + progress + completion!)
     let done = false; // settled once (timers + events race — first wins!)
     let quartiles = {}; // q25/q50/q75 logged once each (completion RATE = attention quality!)
     const finish = (outcome) => { // single exit (clear timers, remove overlay, resolve caller!)
       if (done) return; done = true;
-      clearInterval(tick); clearTimeout(watchdog);
+      clearInterval(tick); clearTimeout(watchdog); clearTimeout(emptyCheck);
       try { tagScript && tagScript.remove(); } catch {} // network tag yanked (no orphan players phoning home!)
       ov.classList.add('out'); setTimeout(() => ov.remove(), 250); // fade, then gone
       resolve(outcome);
@@ -176,6 +201,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false } = {})
     skipBtn.onclick = () => { log('skip'); finish('skipped'); }; // skip = logged + out (no upsell on skips — politeness!)
     // ── the playable: own mp4 OR network tag in our frame ──
     let tagScript = null;
+    let emptyCheck = null; // 5s blank-frame watchdog (network path only!)
     if (pick === 'sponsor') { // own mp4: full gated player (countdown meters it, completion invoices it!)
       const video = document.createElement('video');
       video.src = v.sponsorVideo; video.muted = true; video.playsInline = true; video.preload = 'auto'; // muted autoplay (browser POLICY — sound needs a tap!); playsInline (no iOS takeover!)
@@ -192,21 +218,27 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false } = {})
         toast('Pro removes all ads — see Billing'); // gentle upgrade pill (toast auto-dismisses, never blocks — the polite upsell!)
         finish('visited');
       };
-    } else { // network zone (HilltopAds VAST / Monetag rewarded): their tag renders INSIDE our frame…
+    } else { // network zone (HilltopAds / Monetag self-rendering .js tag): renders INSIDE our frame…
       const holder = document.createElement('div');
       holder.style.cssText = 'margin-top:8px;min-height:120px;';
-      holder.innerHTML = '<p class="hint">Loading video…</p>'; // placeholder (slow networks show intent, not blank!)
+      holder.innerHTML = '<p class="hint" data-vgate-ph>Loading video…</p>'; // placeholder (slow networks show intent, not blank!)
       body.appendChild(holder);
       tagScript = document.createElement('script');
       tagScript.async = true;
       tagScript.dataset.vgate = pick; // data-vgate = our marker (cleanup finds it!)
       tagScript.src = pick === 'hilltopads' ? v.hilltopads : v.monetag;
-      tagScript.onerror = () => { holder.innerHTML = '<p class="hint">Video unavailable — continuing…</p>'; setTimeout(() => finish('tag-failed'), 1200); }; // dead tag → honest note, then through (never trap!)
+      tagScript.onerror = () => finish('layer-empty'); // dead tag → NEXT layer (never a dead timer!)
       document.head.appendChild(tagScript); // mount → their unit renders (their player, THEIR close buttons ignored — OUR countdown rules!)
+      emptyCheck = setTimeout(() => { // 5s empty-frame guard: tag loaded but painted NOTHING? (the /drm/… lesson!)
+        const painted = holder.querySelector('video,iframe,canvas,object,embed') // real players…
+          || Array.from(holder.querySelectorAll('*')).some((el) => !el.hasAttribute('data-vgate-ph') && el.getBoundingClientRect().height > 4); // …or any visible tag output (placeholder excluded!)
+        if (!painted) finish('layer-empty'); // blank → NEXT layer (a broken tag never embarrasses us!)
+      }, 5000);
     }
     log('start'); // funnel opens (completions ÷ starts = the number sponsors pay for!)
     document.body.appendChild(ov); // mount (outside React, like toasts/pops!)
   });
+  } // end playVideoLayer (nested — hoisted, one layer attempt per call!)
 }
 
 // Per-CLICK: sponsored interstitial, max once/day, clearly labeled, one-tap close.

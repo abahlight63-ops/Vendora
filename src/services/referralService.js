@@ -185,6 +185,25 @@ async function myStats(businessId) {
   };
 }
 
+/** My payout history (the page + mobile sheet list mine newest-first!). */
+async function myHistory(businessId) {
+  const { rows } = await db.query(
+    `SELECT kind, status, days, amount, note, created_at FROM referral_payouts
+     WHERE referrer_business_id = $1 ORDER BY created_at DESC LIMIT 50`,
+    [Number(businessId)]
+  );
+  return rows;
+}
+
+/** Public mini-leaderboard (first names + counts only — no numbers, no codes!). */
+async function publicLeaders(limit) {
+  const rows = await leaderboard(limit);
+  return rows.map((r) => ({
+    name: String(r.name || 'A seller').split(' ')[0] || 'A seller',
+    paying: r.paying,
+  }));
+}
+
 /** Monthly leaderboard (champion picking): paying referrals per referrer, this month. */
 async function leaderboard(limit) {
   const { rows } = await db.query(
@@ -270,6 +289,6 @@ module.exports = {
   QUIZ_DAYS, MILESTONE_EVERY, MILESTONE_AMOUNT,
   codeFor, ensureCode, resolveCode, grantProDays,
   onQuizComplete, onPaidActivation, payingCount,
-  myStats, leaderboard, adminOverview, pendingAirtime,
+  myStats, myHistory, publicLeaders, leaderboard, adminOverview, pendingAirtime,
   markAirtimeSent, grantPlusMonth,
 };

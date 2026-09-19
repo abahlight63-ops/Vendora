@@ -424,6 +424,88 @@ class _ReferCardState extends State<_ReferCard> {
     return 'N$buf'; // N + grouped digits (no intl dep — same trick as web money()!)
   }
 
+  /// Full Refer & Earn sheet (web /refer-earn parity): big share, 3 rewards,
+  /// history, leaderboard. History + leaders load on open (card already has stats!).
+  Future<void> _openReferPage() async {
+    final r = _r;
+    if (r == null) return;
+    final code = '${r['code'] ?? ''}';
+    final link = 'https://vendorabot.vercel.app/login?ref=$code';
+    final text =
+        'I use Vendora — my WhatsApp shop answers customers 24/7. Start free with my code $code (we BOTH get 14 Pro days free): $link';
+    List<dynamic> history = [];
+    List<dynamic> leaders = [];
+    try {
+      final x = await ApiClient.instance.referralExtra();
+      history = List<dynamic>.from(x['history'] ?? []);
+      leaders = List<dynamic>.from(x['leaders'] ?? []);
+    } catch (_) {} // offline → sheet still opens with stats + share!
+    if (!mounted) return;
+    await glassSheet(
+      context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Refer & Earn',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 4),
+          Text('Code: $code — friends join, you BOTH get 14 Pro days. Every 5th paying friend = N500 airtime.',
+              style: const TextStyle(fontSize: 12.5)),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => launchUrl(
+                  Uri.parse('https://wa.me/?text=${Uri.encodeComponent(text)}'),
+                  mode: LaunchMode.externalApplication),
+              icon: const Icon(Icons.send, size: 15),
+              label: const Text('Share on WhatsApp'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text('My rewards',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          if (history.isEmpty)
+            const Text('Nothing yet — share your code and rewards land here.',
+                style: TextStyle(fontSize: 12)),
+          for (final h in history.take(10))
+            Builder(builder: (c) {
+              final m = (h as Map).cast<String, dynamic>();
+              final kind = '${m['kind'] ?? ''}';
+              final detail = kind == 'pro_days'
+                  ? '+${m['days'] ?? 0}d Pro days'
+                  : kind == 'airtime'
+                      ? '${_naira(m['amount'])} airtime (${m['status'] ?? ''})'
+                      : 'Free Plus month';
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text('• $detail — ${m['note'] ?? ''}',
+                    style: const TextStyle(fontSize: 12.5)),
+              );
+            }),
+          const SizedBox(height: 10),
+          const Text("This month's leaders",
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          if (leaders.isEmpty)
+            const Text('Nobody yet — be the first name here.',
+                style: TextStyle(fontSize: 12)),
+          for (var i = 0; i < leaders.length && i < 5; i++)
+            Builder(builder: (c) {
+              final m = (leaders[i] as Map).cast<String, dynamic>();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text('${i + 1}. ${m['name'] ?? '?'} — ${m['paying'] ?? 0} paying',
+                    style: const TextStyle(fontSize: 12.5)),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final r = _r;
@@ -437,6 +519,7 @@ class _ReferCardState extends State<_ReferCard> {
         'I use Vendora — my WhatsApp shop answers customers 24/7. Start free with my code $code (we BOTH get 14 Pro days free): $link';
     return FadeSlideIn(
       child: GlassCard(
+        onTap: _openReferPage, // full page (history + leaderboard + big share!)
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
@@ -448,6 +531,8 @@ class _ReferCardState extends State<_ReferCard> {
                   Text('Refer & Earn',
                       style:
                           TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                  Spacer(),
+                  Icon(Icons.chevron_right, size: 18),
                 ]),
                 const SizedBox(height: 6),
                 const Text(

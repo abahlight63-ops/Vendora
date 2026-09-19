@@ -131,6 +131,10 @@ class ApiClient {
   Future<Map<String, dynamic>> referralStats() async =>
       (await get('/api/me/referral') as Map).cast<String, dynamic>();
 
+  /// Refer & Earn page data: payout history + public leaderboard.
+  Future<Map<String, dynamic>> referralExtra() async =>
+      (await get('/api/me/referral/extra') as Map).cast<String, dynamic>();
+
   Future<Map<String, dynamic>> signup(
     String name,
     String email,

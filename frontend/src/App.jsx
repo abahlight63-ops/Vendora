@@ -27,6 +27,7 @@ import Playground from './pages/Playground.jsx'; // test-bot (no WhatsApp needed
 import Insights from './pages/Insights.jsx'; // AI-handled % + flag reasons
 import Settings from './pages/Settings.jsx'; // SmartDeal discounts + handoff text
 import Help from './pages/Help.jsx';
+import ReferEarn from './pages/ReferEarn.jsx'; // full Refer & Earn page (code + rewards + history + leaders!)
 import Notifications from './pages/Notifications.jsx'; // full inbox page (bell previews, this shows all!)
 import Admin from './pages/Admin.jsx'; // FAQ accordion + tour replay
 import VendoraAI from './pages/VendoraAI.jsx'; // general AI chat + model dropdown
@@ -86,6 +87,7 @@ export default function App() { // ROOT component (main.jsx renders this)
       <Route path="/help" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Help /></Guard>} />
       <Route path="/notifications" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Notifications /></Guard>} /> {/* full inbox (bell previews, tap → here!) */}
       <Route path="/notifications/:id" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Notifications /></Guard>} /> {/* one notice fully (photo/video + long body!) */}
+      <Route path="/refer-earn" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><ReferEarn /></Guard>} /> {/* full Refer & Earn page (Dashboard card teasers it!) */}
       <Route path="/vendora-ai" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><VendoraAI biz={me} /></Guard>} />
       <Route path="/" element={loading ? <div className="page"><div className="card"><p className="hint">Loading…</p></div></div> : me ? <Navigate to="/dashboard" replace /> : <Landing theme={theme} onToggleTheme={toggleTheme} />} /> {/* / = smart root: loading→placeholder, logged-in→dashboard, guest→marketing landing (ternary chain) */}
       <Route path="*" element={<div className="page"><div className="card"><h2>Page not found</h2><p className="hint">That link doesn't exist.</p><p style={{ marginTop: 12 }}><a href="/dashboard">Back to overview</a></p></div></div>} /> {/* path="*" = catch-all 404 (MUST be last — Routes picks first match!) */}

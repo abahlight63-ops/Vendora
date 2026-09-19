@@ -185,6 +185,18 @@ async function saveSetup(req, res) {
   res.json(rows[0]);
 }
 
+// Refer & Earn page data: payout history + public leaderboard (first names!).
+async function referralExtra(req, res) {
+  try {
+    const ref = require('../services/referralService');
+    const [history, leaders] = await Promise.all([ref.myHistory(req.session.businessId), ref.publicLeaders(5)]);
+    res.json({ history, leaders });
+  } catch (e) {
+    console.error('referral extra error:', e.message);
+    res.status(500).json({ error: 'Could not load referral details' });
+  }
+}
+
 // Refer & Earn card data: my code, funnel counts, earnings, next milestone.
 async function referralStats(req, res) {
   try {
@@ -866,6 +878,7 @@ module.exports = { // every handler the routes file wires up (miss one here = ro
   getProducts,
   catalogMeta,
   referralStats,
+  referralExtra,
   upsertProduct,
   uploadProductPhoto,
   deleteProduct,

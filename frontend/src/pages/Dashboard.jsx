@@ -171,8 +171,8 @@ function ReferCard() { // REFER & EARN: your code + share buttons + live funnel 
   const naira = (kobo) => '₦' + (Number(kobo || 0) / 100).toLocaleString(); // minor → major (ledger stores kobo!)
   return (
     <div className="card" style={{ marginTop: 18, borderColor: 'var(--gold-line)' }}>
-      <div className="card-head"><h2><Ic n="gift" s={16} /> Refer & Earn</h2><span className="hint">{r.paying} paying · {r.daysEarned} Pro days earned</span></div>
-      <p className="desc">Friends join with your code → you <b>both</b> get 14 Pro days. Every 5th paying friend = <b>₦500 airtime</b> from us.</p>
+      <div className="card-head"><h2><Ic n="gift" s={16} /> Refer & Earn</h2><Link className="mini-link" to="/refer-earn">Open full page <Ic n="next" s={13} /></Link></div>
+      <p className="desc">Friends join with your code → you <b>both</b> get 14 Pro days. Every 5th paying friend = <b>₦500 airtime</b> from us. ({r.paying} paying · {r.daysEarned} Pro days earned so far)</p>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
         <code style={{ fontSize: 18 }}>{r.code}</code>
         <button className="btn sm ghost" onClick={copy}><Ic n={copied ? 'check' : 'copy'} s={14} />{copied ? 'Copied!' : 'Copy code'}</button>

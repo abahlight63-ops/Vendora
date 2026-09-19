@@ -15,6 +15,7 @@ router.post('/me/setup', ownerController.saveSetup); // POST = welcome niche + h
 router.get('/me/products', ownerController.getProducts); // list catalog
 router.get('/me/catalog-meta', ownerController.catalogMeta); // niche shelves + hints (mobile parity!)
 router.get('/me/referral', ownerController.referralStats); // Refer & Earn card (my code + funnel + earnings!)
+router.get('/me/referral/extra', ownerController.referralExtra); // Refer & Earn page (history + leaderboard!)
 router.post('/me/products', ownerController.upsertProduct); // POST = add/update one product
 router.post('/me/product-photo', ownerController.uploadProductPhoto); // Upload media: host a file-picker image, get back a URL
 router.delete('/me/products/:id', ownerController.deleteProduct); // :id = URL param (req.params.id)

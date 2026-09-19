@@ -52,7 +52,11 @@ export default function Catalog() { // no props needed (fetches everything itsel
     const { ok, data } = await api('/api/me/profile-sync', { method: 'POST', body: JSON.stringify({ profile_text: syncText.trim() }) }); // .trim() once, send clean
     setSyncing(false); // unlock (BOTH paths — success AND failure — or button stays dead!)
     if (ok) { // 200: scaffolded…
-      pop('ok', 'Profile synced!', `${(data.products || []).length} verified products added to your catalog.`); // big success popup with COUNT
+      const added = data.added || [], updated = data.updated || [], unmentioned = data.unmentioned || []; // diff lists (report-only: stale items listed, never auto-touched!)
+      let detail = `${added.length} new, ${updated.length} updated.`; // headline counts (always true!)
+      if (unmentioned.length) detail += ` NOT in this profile (still in catalog): ${unmentioned.slice(0, 8).join(', ')}${unmentioned.length > 8 ? ` +${unmentioned.length - 8} more` : ''} — mark out of stock or delete them below.`; // stale warning (cap 8 names — popups stay readable!)
+      if (data.truncated) detail += ' Note: profile text was longer than kept — first part synced only.'; // truncation honesty (no silent drops!)
+      pop('ok', 'Profile synced!', detail); // big success popup with the FULL report
       setSyncText(''); setSyncInfo({ synced: true, synced_at: data.synced_at }); load(); // clear box, update label, reload table (three state updates = one re-render — React batches!)
     } else if (data?.error?.includes('Pro feature')) { // ?. chain guards missing error; .includes matches backend's 402 message specifically…
       pop('err', 'Locked feature', 'Profile sync is premium — tap the lock above to see upgrade options. Manual teaching stays free.'); // …friendly paywall (not a raw error dump)

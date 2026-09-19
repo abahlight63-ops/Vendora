@@ -396,9 +396,10 @@ async function profileSync(req, res) {
   if (!ok || products.length === 0) { // nothing sellable found → 422 Unprocessable (input understood, but useless)
     return res.status(422).json({ error: 'No products found in that text. Paste the part of your profile that lists what you sell.' });
   }
-  const saved = await productService.upsertProducts(business.id, products); // scaffold the catalog…
+  const { saved, added, updated, unmentioned } = await productService.syncWithReport(business.id, products); // scaffold + DIFF (report-only: stale items listed, never auto-touched!)
+  const truncated = profile_text.trim().length > 4000; // honesty flag (see below!)
   await db.query('UPDATE businesses SET profile_snapshot = $1, profile_synced_at = now() WHERE id = $2', [profile_text.trim().slice(0, 4000), business.id]); // …AND store the trusted snapshot (slice caps at 4000 chars so prompts stay cheap)
-  res.json({ products: saved, synced_at: new Date().toISOString() }); // toISOString = standard UTC string for the "Last synced" label
+  res.json({ products: saved, added, updated, unmentioned, truncated, synced_at: new Date().toISOString() }); // toISOString = standard UTC string for the "Last synced" label
 }
 
 async function getProfileSync(req, res) {
@@ -684,9 +685,9 @@ async function metaPullProfile(req, res) {
   if (pulled.error) return res.status(400).json({ error: pulled.error });
   const { products, ok } = await replyEngine.extractProducts(pulled.profileText, business); // same extractor as LEARN/SYNC!
   if (!ok || !products.length) return res.status(422).json({ error: 'Your Meta profile has no products listed — add them in WhatsApp Manager, or paste the text manually.' });
-  const saved = await productService.upsertProducts(business.id, products);
+  const { saved, added, updated, unmentioned } = await productService.syncWithReport(business.id, products); // scaffold + DIFF (same report as dashboard sync!)
   await db.query('UPDATE businesses SET profile_snapshot = $1, profile_synced_at = now() WHERE id = $2', [pulled.profileText.slice(0, 4000), business.id]);
-  res.json({ ok: true, count: saved.length, products: saved.map((p) => ({ name: p.name, price: p.price })) });
+  res.json({ ok: true, count: saved.length, added, updated, unmentioned, products: saved.map((p) => ({ name: p.name, price: p.price })) });
 }
 
 // Log a sponsor/ad click (per-click billing for direct sponsors).
@@ -764,12 +765,28 @@ async function ask(req, res) {
     const aiModels = require('../services/aiModels');
     const replyEngine = require('../services/replyEngine');
     const { rows } = await db.query( // tier first (gates EVERYTHING below — bonus column included for referral Pro!)
-      'SELECT subscription_status, subscription_expires, trial_started_at, plan_tier, bonus_pro_until, name, business_niche FROM businesses WHERE id = $1',
+      'SELECT subscription_status, subscription_expires, trial_started_at, plan_tier, bonus_pro_until, name, business_niche, hours, tone, faq FROM businesses WHERE id = $1',
       [req.session.businessId]
     );
     const tier = planService.effectiveTier(rows[0] || {}); // 'plus' | 'pro' | 'free' (Plus-only heavy models enforced inside resolveChoice!)
     const bizName = rows[0]?.name || '';
     const bizNiche = rows[0]?.business_niche || ''; // niche-aware suggestions (empty = generic chips)
+    // SHOP GROUNDING: Vendora AI answers about the OWNER'S shop from real data,
+    // not training memory (a model can't know your prices unless we SEND them!).
+    // Same query the dashboard already runs — one extra SELECT per ask, cheap.
+    let shopCtx = null;
+    try {
+      const productService = require('../services/productService');
+      const products = await productService.getProducts(req.session.businessId);
+      const full = productService.formatCatalog(products);
+      shopCtx = {
+        name: bizName,
+        hours: rows[0]?.hours || '',
+        tone: rows[0]?.tone || '',
+        faq: Array.isArray(rows[0]?.faq) ? rows[0].faq.slice(0, 10) : [], // first 10 FAQs (prompt budget!)
+        catalog: full.length > 2500 ? full.slice(0, 2500) + '\n…(catalog continues — ask about the rest!)' : full, // cap ~2500 chars (big catalogs stay cheap!)
+      };
+    } catch (e) { console.error('ask grounding error:', e.message); } // grounding failed → askGeneral runs ungrounded (never block a chat over context!)
     const resolved = aiModels.resolveChoice(model, tier); // validate dropdown id: exists? below-floor? → {entry, model} or {error}
     if (resolved.error) return res.status(402).json({ error: resolved.error }); // 402 = paywall (locked premium model)
     const paid = resolved.entry.tier === 'paid'; // which counter to check/increment?
@@ -796,7 +813,7 @@ async function ask(req, res) {
     if (mrows[0].count >= MODEL_DAILY_CAP) { // this business maxed THIS model today (quota justice: others' share untouched!)…
       return res.status(429).json({ error: `You've used ${resolved.entry.label} 50 times today — try another AI below, fresh quota!` }); // …redirect, don't dead-end (dropdown has 7 more!)
     }
-    const result = await replyEngine.askGeneral(message.trim(), Array.isArray(history) ? history.slice(-12) : [], resolved.entry.id, tier, bizName, bizNiche); // Array.isArray guards tampered history; slice(-12) caps context cost; niche tailors examples + follow-ups
+    const result = await replyEngine.askGeneral(message.trim(), Array.isArray(history) ? history.slice(-12) : [], resolved.entry.id, tier, bizName, bizNiche, shopCtx); // Array.isArray guards tampered history; slice(-12) caps context cost; niche tailors examples + follow-ups; shopCtx grounds shop questions in REAL data!
     if (result.reply) { // SUCCESS → count it (only successful chats consume quota — failures are free retries!)
       await db.query( // dynamic column via ${} — SAFE here: `paid` is a boolean WE computed, not user input (never interpolate raw user text into SQL!)
         `UPDATE ai_usage SET ${paid ? 'paid_count = paid_count + 1' : 'free_count = free_count + 1'}

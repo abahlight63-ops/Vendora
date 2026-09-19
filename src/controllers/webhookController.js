@@ -91,10 +91,15 @@ async function handleInbound(req, res) {
         await reply(From, "I couldn't find any products in that profile text. Paste the part of your business profile that lists what you sell.");
         return res.status(200).send('');
       }
-      const saved = await productService.upsertProducts(business.id, products); // scaffold the catalog…
+      const { saved, added, updated, unmentioned } = await productService.syncWithReport(business.id, products); // scaffold + DIFF (stale items reported, never auto-touched!)
+      const truncated = profileText.length > 4000; // honesty flag (see below!)
       await db.query('UPDATE businesses SET profile_snapshot = $1, profile_synced_at = now() WHERE id = $2', [profileText.slice(0, 4000), business.id]); // …AND store the snapshot (generateReply grounds Pro answers in it; slice caps at 4000 chars)
       const list = saved.map((p) => `• ${p.name}${p.price ? ' — ' + p.price : ''}`).join('\n');
-      await reply(From, `Done — profile synced: ${saved.length} verified product${saved.length > 1 ? 's' : ''}:\n${list}\n\nI'll now verify customer questions against your business profile.`);
+      let msg = `Done — profile synced: ${added.length} new, ${updated.length} updated:\n${list}`;
+      if (unmentioned.length) msg += `\n\nNot in this profile (still in your catalog — reply with what to do):\n${unmentioned.slice(0, 10).map((n) => `• ${n}`).join('\n')}`; // report-only (cap 10 names — WhatsApp bubbles stay readable!)
+      if (truncated) msg += `\n\nNote: your profile text was longer than I keep — first part synced. Send the rest as a second SYNC: if needed.`;
+      msg += `\n\nI'll now verify customer questions against your business profile.`;
+      await reply(From, msg);
       return res.status(200).send('');
     }
 

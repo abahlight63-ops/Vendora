@@ -106,10 +106,31 @@ function formatCatalog(products) {
       if (p.category) bits.push(`  Category: ${p.category}`); // shelf section (AI recommends within the asked lane first!)
       if (p.price) bits.push(`  Price: ${p.price}`);
       if (p.description) bits.push(`  Details: ${p.description}`);
-      if (p.quantity !== undefined && p.quantity !== null) bits.push(`  In stock: ${p.quantity}`); // quantity line (AI answers "how many left?" truthfully; absent on legacy rows → no line, no crash!)
+      if (Number(p.quantity) > 0) bits.push(`  In stock: ${p.quantity}`); // count line ONLY when above 0 (synced-but-uncounted rows default to 0 — printing "In stock: 0" made the AI tell customers "finished" for shelf-full items! availability flag still governs!)
       return bits.join('\n'); // block lines → one string
     })
     .join('\n'); // blocks → whole catalog text for the system prompt
 }
 
-module.exports = { getProducts, upsertProducts, formatCatalog, cleanImageUrl, cleanQuantity, cleanCategory }; // the catalog API (+ validators for controllers)
+/**
+ * Sync with a REPORT (never silent!): snapshots existing names, upserts, then
+ * diffs. Returns { saved, added, updated, unmentioned } — name lists the
+ * owner can ACT on. Unmentioned items are NEVER auto-deleted or auto-flagged
+ * (one careless SYNC: must not darken the shop — report-only by design!).
+ */
+async function syncWithReport(businessId, products) {
+  const before = await getProducts(businessId); // snapshot BEFORE (names lowercased for matching!)
+  const beforeNames = new Map(before.map((p) => [String(p.name).toLowerCase(), p.name]));
+  const incoming = new Set((products || []).map((p) => String(p.name || '').toLowerCase()));
+  const saved = await upsertProducts(businessId, products);
+  const added = [];
+  const updated = [];
+  for (const p of saved) {
+    if (beforeNames.has(String(p.name).toLowerCase())) updated.push(p.name);
+    else added.push(p.name);
+  }
+  const unmentioned = [...beforeNames.values()].filter((n) => !incoming.has(n.toLowerCase())); // in catalog but NOT in this sync (stale? discontinued? owner decides!)
+  return { saved, added, updated, unmentioned };
+}
+
+module.exports = { getProducts, upsertProducts, syncWithReport, formatCatalog, cleanImageUrl, cleanQuantity, cleanCategory }; // the catalog API (+ validators for controllers)

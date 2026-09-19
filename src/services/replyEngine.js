@@ -127,7 +127,7 @@ const NICHE_SEEDS = {
  * choiceId comes from the dropdown and is validated against the tier.
  * niche tailors examples + follow-ups to the owner's hustle (empty = generic).
  */
-async function askGeneral(message, history, choiceId, tier, bizName, niche) {
+async function askGeneral(message, history, choiceId, tier, bizName, niche, shopCtx) {
   const aiModels = require('./aiModels');
   const shop = (bizName || '').split(' ')[0] || 'friend';
   const cleanNiche = typeof niche === 'string' ? niche.trim().slice(0, 80) : '';
@@ -135,7 +135,27 @@ async function askGeneral(message, history, choiceId, tier, bizName, niche) {
   const nicheLine = cleanNiche
     ? `\nOWNER NICHE: "${cleanNiche}" — tailor EVERY example, caption, and suggestion to this hustle (think ${seeds}). When they ask open questions ("give me ideas", "help me sell"), default to this niche without asking what they sell.`
     : '';
-  const system = `You are Vendora AI, a smart, warm general-purpose assistant inside the Vendora app.${nicheLine}
+  // TODAY, spelled out: models default to training-cutoff knowledge and sound
+  // STALE ("as of my knowledge…"). A concrete date keeps answers current-year.
+  let todayLine = '';
+  try {
+    todayLine = `\nTODAY IS: ${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} (Africa/Lagos). Answer with current-year context — seasons, prices and trends as of THIS date. Never mention training cutoffs or knowledge limits; if something genuinely needs live data (today's exact FX rate, breaking news), say what you know plus how to verify in one line.`;
+  } catch { todayLine = '\nTODAY IS: sometime in 2026 (Africa/Lagos) — answer with current-year context.'; } // locale data missing? degrade, never crash!
+  // SHOP GROUNDING: the model knows the WORLD, not THIS shop — unless we send
+  // it. Catalog/hours/FAQs below outrank general knowledge for shop questions
+  // ("how much is my wig?" → quote THEIR price, never invent or guess!).
+  let shopLine = '';
+  if (shopCtx && typeof shopCtx === 'object') {
+    const bits = [];
+    if (shopCtx.hours) bits.push(`Hours: ${shopCtx.hours}`);
+    if (shopCtx.tone) bits.push(`Shop voice: ${shopCtx.tone}`);
+    if (Array.isArray(shopCtx.faq) && shopCtx.faq.length) {
+      bits.push('Owner FAQs:\n' + shopCtx.faq.map((f) => `Q: ${f.question || f.q || ''}\nA: ${f.answer || f.a || ''}`).join('\n'));
+    }
+    if (shopCtx.catalog) bits.push(`SHOP CATALOG (single source of truth — quote these exact names/prices, never invent siblings):\n${shopCtx.catalog}`);
+    if (bits.length) shopLine = `\nSHOP FACTS (answer shop questions ONLY from these — "${shop}" means THIS shop):\n${bits.join('\n')}`;
+  }
+  const system = `You are Vendora AI, a smart, warm general-purpose assistant inside the Vendora app.${nicheLine}${todayLine}${shopLine}
 
 PERSONALITY: knowledgeable friend + sharp business coach. Friendly, respectful, encouraging. Greet warmly, always offer a concrete next step.
 
@@ -371,8 +391,10 @@ Rules: item MUST match a catalog product (fuzzy ok: "rice" matches "Rice 20kg").
 async function extractProducts(adText, business) {
   const system = `You extract structured product data from WhatsApp business ad posts.
 Return ONLY a JSON array, no markdown, no explanation. Each item:
-{"name": string, "price": string or null, "description": string or null}
+{"name": string, "price": string or null, "description": string or null, "quantity": number or null, "category": string or null}
 Prices keep the currency as written (e.g. "₦5,000"). Product names short (max 8 words).
+quantity: whole units ONLY when the text states a count ("20 pieces", "x12", "50 in stock") — else null, NEVER 0 (0 means confirmed empty!).
+category: short shelf section ONLY when obvious ("phones", "wigs", "cakes") — else null.
 If the text contains no products, return [].`;
 
   try {

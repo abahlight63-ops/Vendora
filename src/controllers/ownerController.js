@@ -179,8 +179,8 @@ async function saveSetup(req, res) {
      RETURNING business_niche, heard_from, catalog_size, channels, daily_volume`, // RETURNING echoes truth (UI shows what stuck, no refetch!)
     [niche, heard, size || null, channels || null, volume || null, req.session.businessId]
   );
-  if (!wasNiche && niche) { // FIRST-EVER niche = quiz finished → pay the referral reward (both sides, once — onQuizComplete is idempotent!)
-    require('../services/referralService').onQuizComplete(req.session.businessId).catch((e) => console.error('quiz reward error:', e.message));
+  if (!wasNiche && niche) { // FIRST-EVER niche = quiz finished → CHECK the referral reward (pays only if already ACTIVE: connected or chatted!)
+    require('../services/referralService').onFirstActive(req.session.businessId).catch((e) => console.error('referral reward error:', e.message));
   }
   res.json(rows[0]);
 }
@@ -519,6 +519,10 @@ async function telegramToken(req, res) {
     'UPDATE businesses SET telegram_bot_token = $1, owner_telegram_id = CASE WHEN $1 = $2 THEN owner_telegram_id ELSE $3 END WHERE id = $4 RETURNING telegram_bot_token <> $2 AS connected',
     [clean, '', null, req.session.businessId]
   ); // CASE: empty token keeps the owner link; a NEW token wipes it (stale owner id on a different bot = wrong human with owner powers — security!)
+  if (rows[0] && rows[0].connected) { // bot just linked → referral reward check (first real use!)
+    require('../services/referralService').onFirstActive(req.session.businessId)
+      .catch((e) => console.error('referral reward error:', e.message));
+  }
   res.json({ connected: rows[0] ? rows[0].connected : false }); // boolean for the UI toggle state
 }
 
@@ -626,6 +630,8 @@ async function metaConnect(req, res) {
     [String(token).trim(), String(phone_number_id).trim(), String(waba_id || '').trim(), verify, req.session.businessId]
   );
   const { rows } = await db.query('SELECT meta_verify_token FROM businesses WHERE id = $1', [req.session.businessId]);
+  require('../services/referralService').onFirstActive(req.session.businessId) // channel just went live → referral reward check (referred shops pay out on FIRST REAL USE!)
+    .catch((e) => console.error('referral reward error:', e.message)); // rewards never break connects!
   res.json({ ok: true, phone: checked.phone, verifyToken: rows[0].meta_verify_token, webhookUrl: webhookUrl(req) });
 }
 

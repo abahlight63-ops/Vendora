@@ -38,7 +38,7 @@ async function checkReferral(req, res) {
   const ref = require('../services/referralService');
   const shop = await ref.resolveCode(req.query.code);
   if (!shop) return res.json({ valid: false });
-  return res.json({ valid: true, reward: `Reward attached — you and ${String(shop.name || '').split(' ')[0] || 'your friend'} both get ${ref.QUIZ_DAYS} Pro days free when you finish setup.` });
+  return res.json({ valid: true, reward: `Reward attached — connect WhatsApp/Telegram or get your first chat and you + ${String(shop.name || '').split(' ')[0] || 'your friend'} both get ${ref.QUIZ_DAYS} Pro days free.` });
 }
 
 async function signup(req, res) {

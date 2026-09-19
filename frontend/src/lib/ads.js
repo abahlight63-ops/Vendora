@@ -137,23 +137,53 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
   if (!force) markVideoSeen(slot);
   for (const pick of candidates) { // try each layer in turn (dead layer → next, never a dead timer!)
     const tagUrl = tagUrlOf[pick];
-    if (tagUrl && !isScriptTag(tagUrl)) { // offer-style URL (no .js) = EXIT traffic, not a player (auto-degrade — the /drm/… lesson!)
-      logVideo(slot, pick, 'click');
-      const win = window.open(tagUrl, '_blank', 'noopener'); // popup blockers eat non-gesture opens → null (then just continue!)
-      if (win) return pick + '-click';
-      continue; // blocked? fall through to the next layer (or out — never trap!)
-    }
-    if (pick === 'adsterra') { // Smartlink = exit traffic (no player, no gate — open + continue!)
-      logVideo(slot, 'adsterra', 'click');
-      const win = window.open(v.adsterra, '_blank', 'noopener'); // new tab (noopener = offer page can't touch us!)
-      if (win) return 'fallback-click';
-      continue; // blocked (page-entry gates have no click gesture!) → next layer or out
+    if (pick === 'adsterra' || (tagUrl && !isScriptTag(tagUrl))) { // exit traffic (Smartlink OR offer-style URL with no .js — the /drm/… lesson!)
+      const url = pick === 'adsterra' ? v.adsterra : tagUrl;
+      const direct = window.open(url, '_blank', 'noopener'); // click-gesture flows open instantly (button gates!)
+      if (direct) { logVideo(slot, pick, 'click'); return pick + '-click'; }
+      const seen = await playLinkLayer({ slot, pick, url }); // popup blocked (page-entry gates have no gesture!) → VISIBLE mini-card instead (never silent!)
+      if (seen !== 'layer-empty') return seen; // visited/skipped → done (skip advances past Smartlink — one layer per gate!)
+      continue;
     }
     const outcome = await playVideoLayer({ slot, pick, v }); // gated player (resolves completed/skipped/layer-empty!)
     if (outcome !== 'layer-empty') return outcome; // empty frame → NEXT layer (a broken tag never embarrasses us!)
     logVideo(slot, pick, 'tag-failed');
   }
   return 'skipped-empty'; // every layer dead → straight through (buttons always work!)
+
+  // ── exit-traffic mini-card (page-entry gates): visible offer card with
+  // Visit (user tap = real gesture, popup opens!) + instant Skip. NEVER silent —
+  // this is what page visitors see when only link-layers are configured.
+  function playLinkLayer({ slot, pick, url }) { return new Promise((resolve) => {
+    let done = false;
+    const finish = (outcome) => {
+      if (done) return; done = true;
+      ov.classList.add('out'); setTimeout(() => ov.remove(), 250);
+      resolve(outcome);
+    };
+    const ov = document.createElement('div');
+    ov.className = 'pop-overlay';
+    ov.innerHTML =
+      '<div class="pop-card sponsor vgate">' +
+      '<span class="sponsor-tag">Sponsored · offer</span>' +
+      '<h3></h3>' +
+      '<p class="hint">Tap Visit to open the offer — it keeps Vendora free.</p>' +
+      '<button class="btn sm vgate-visit">Visit sponsor</button>' +
+      '<button class="sponsor-skip">Skip →</button>' +
+      '</div>';
+    ov.querySelector('h3').textContent = pick === 'adsterra' ? 'Sponsored offer' : 'Sponsored video';
+    ov.querySelector('.vgate-visit').onclick = async () => { // VISIT = the money event (tap = gesture, opens!)
+      logVideo(slot, pick, 'click');
+      try { await api('/api/me/ads/click', { method: 'POST', body: JSON.stringify({ slot: 'video-' + slot, target_url: url }) }); } catch {} // click ALSO in ad_clicks (sponsor invoices read both!)
+      window.open(url, '_blank', 'noopener');
+      toast('Pro removes all ads — see Billing'); // gentle pill (auto-dismisses, never blocks!)
+      finish('visited');
+    };
+    ov.querySelector('.sponsor-skip').onclick = () => { logVideo(slot, pick, 'skip'); finish('skipped'); }; // skip = logged + out
+    setTimeout(() => finish('layer-empty'), 60000); // absolute backstop (60s — nothing traps, ever!)
+    logVideo(slot, pick, 'start'); // funnel opens (visible card, counted!)
+    document.body.appendChild(ov);
+  }); }
 
   // ── one gated player attempt (overlay lifetime = this promise!) ──
   function playVideoLayer({ slot, pick, v }) { return new Promise((resolve) => { // overlay lifetime = this promise (close paths ALL resolve it!)

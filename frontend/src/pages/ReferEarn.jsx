@@ -43,11 +43,11 @@ export default function ReferEarn() {
           <a className="btn sm" href={'https://wa.me/?text=' + encodeURIComponent(text)} target="_blank" rel="noreferrer"><Ic n="send" s={14} />Share on WhatsApp</a>
         </div>
         <div className="guide-bar" style={{ marginTop: 14 }}><i style={{ width: `${pct}%` }} /></div>
-        <p className="hint" style={{ marginTop: 6 }}>{s.invited} invited · {s.qualified} finished setup · {s.paying} paying · {s.nextMilestoneIn} more to {naira(s.milestoneAmount)} airtime{s.airtimeDue > 0 ? ` · ${naira(s.airtimeDue)} on the way!` : ''}</p>
+        <p className="hint" style={{ marginTop: 6 }}>{s.invited} invited · {s.qualified} active · {s.paying} paying · {s.nextMilestoneIn} more to {naira(s.milestoneAmount)} airtime{s.airtimeDue > 0 ? ` · ${naira(s.airtimeDue)} on the way!` : ''}</p>
       </div>
 
       <div className="grid3">
-        <div className="card"><h2><Ic n="gift" s={16} /> 14 Pro days × 2</h2><p className="desc">Friend finishes setup with your code → <b>both</b> shops get {s.quizDays} Pro days. Real Pro everywhere. Costs you nothing, earns you loyalty.</p></div>
+        <div className="card"><h2><Ic n="gift" s={16} /> 14 Pro days × 2</h2><p className="desc">Friend joins with your code and <b>starts using</b> (connects or first chat) → <b>both</b> shops get {s.quizDays} Pro days. Real Pro everywhere. Costs you nothing, earns you loyalty.</p></div>
         <div className="card"><h2><Ic n="cash" s={16} /> ₦500 airtime</h2><p className="desc">Every {s.milestoneEvery}th paying friend = ₦500 airtime. We track it, you get a bell, the card follows. Top champions only.</p></div>
         <div className="card"><h2><Ic n="chart" s={16} /> Monthly champion</h2><p className="desc">Top referrer each month wins a <b>free Plus month</b> + shout-out. Sell the dream, wear the crown.</p></div>
       </div>

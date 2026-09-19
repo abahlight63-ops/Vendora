@@ -432,7 +432,7 @@ class _ReferCardState extends State<_ReferCard> {
     final code = '${r['code'] ?? ''}';
     final link = 'https://vendorabot.vercel.app/login?ref=$code';
     final text =
-        'I use Vendora — my WhatsApp shop answers customers 24/7. Start free with my code $code (we BOTH get 14 Pro days free): $link';
+        'I use Vendora — my WhatsApp shop answers customers 24/7. Start free with my code $code (connect + use it and we BOTH get 14 Pro days free): $link';
     List<dynamic> history = [];
     List<dynamic> leaders = [];
     try {
@@ -450,7 +450,7 @@ class _ReferCardState extends State<_ReferCard> {
           const Text('Refer & Earn',
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
-          Text('Code: $code — friends join, you BOTH get 14 Pro days. Every 5th paying friend = N500 airtime.',
+          Text('Code: $code — friends join AND start using (connect or first chat), you BOTH get 14 Pro days. Every 5th paying friend = N500 airtime.',
               style: const TextStyle(fontSize: 12.5)),
           const SizedBox(height: 10),
           SizedBox(
@@ -516,7 +516,7 @@ class _ReferCardState extends State<_ReferCard> {
     final pct = (paying % every) / every;
     final link = 'https://vendorabot.vercel.app/login?ref=$code'; // web login prefills + validates!
     final text =
-        'I use Vendora — my WhatsApp shop answers customers 24/7. Start free with my code $code (we BOTH get 14 Pro days free): $link';
+        'I use Vendora — my WhatsApp shop answers customers 24/7. Start free with my code $code (connect + use it and we BOTH get 14 Pro days free): $link';
     return FadeSlideIn(
       child: GlassCard(
         onTap: _openReferPage, // full page (history + leaderboard + big share!)

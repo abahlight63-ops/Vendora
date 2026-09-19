@@ -532,10 +532,10 @@ function Referrals({ d, act, refresh }) { // REFERRALS: airtime queue (pay!) + m
       </div>
       <div className="card">
         <h2>All referrers</h2>
-        <p className="desc">Invited → finished setup (earned days) → paying (earn airtime). Watch for clusters sharing one number (fraud smell!).</p>
+        <p className="desc">Invited → active = connected or chatted (earned days) → paying (earn airtime). Watch for clusters sharing one number (fraud smell!).</p>
         {d.overview.length === 0 ? <p className="hint">No referrers yet — share your own code to seed it.</p> : (
           <div className="table-wrap"><table>
-            <thead><tr><th>Referrer</th><th>Code</th><th>Invited</th><th>Setup</th><th>Paying</th><th>Days</th><th>Airtime</th></tr></thead>
+                  <thead><tr><th>Referrer</th><th>Code</th><th>Invited</th><th>Active</th><th>Paying</th><th>Days</th><th>Airtime</th></tr></thead>
             <tbody>
               {d.overview.map((r) => (
                 <tr key={r.id}>

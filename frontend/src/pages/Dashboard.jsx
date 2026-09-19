@@ -172,7 +172,7 @@ function ReferCard() { // REFER & EARN: your code + share buttons + live funnel 
   return (
     <div className="card" style={{ marginTop: 18, borderColor: 'var(--gold-line)' }}>
       <div className="card-head"><h2><Ic n="gift" s={16} /> Refer & Earn</h2><Link className="mini-link" to="/refer-earn">Open full page <Ic n="next" s={13} /></Link></div>
-      <p className="desc">Friends join with your code → you <b>both</b> get 14 Pro days. Every 5th paying friend = <b>₦500 airtime</b> from us. ({r.paying} paying · {r.daysEarned} Pro days earned so far)</p>
+      <p className="desc">Friends join with your code and <b>start using</b> (connect or first chat) → you <b>both</b> get 14 Pro days. Every 5th paying friend = <b>₦500 airtime</b> from us. ({r.paying} paying · {r.daysEarned} Pro days earned so far)</p>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
         <code style={{ fontSize: 18 }}>{r.code}</code>
         <button className="btn sm ghost" onClick={copy}><Ic n={copied ? 'check' : 'copy'} s={14} />{copied ? 'Copied!' : 'Copy code'}</button>

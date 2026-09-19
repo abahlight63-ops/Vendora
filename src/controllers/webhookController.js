@@ -36,6 +36,10 @@ async function handleInbound(req, res) {
     if (!tgCtx) { // WhatsApp-class doors stamp last-inbound (Connect LIVE pill + TEST-verify read this!)
       try { await db.query('UPDATE businesses SET whatsapp_last_inbound_at = now() WHERE id = $1', [business.id]); } catch (e) { console.error('inbound stamp error:', e.message); } // guarded: a stamp must never break a reply
     }
+    if (business.referred_by) { // referred shop, first real chat? → referral reward check (in-memory gate first: everyone else skips with ZERO extra queries!)
+      require('../services/referralService').onFirstActive(business.id)
+        .catch((e) => console.error('referral reward error:', e.message)); // idempotent inside (repeat chats never double-pay, rewards never break replies!)
+    }
     const telegram = require('../services/channels/telegram'); // hoisted here: the photo branch below reuses sendPhoto (lazy require above stays for sendText parity!)
     const meta = require('../services/channels/meta'); // Meta Cloud API sender (shop token — never logged!)
     const reply = tgCtx // ONE sender for every reply below (Telegram bot OR WhatsApp — call sites stay identical!)…

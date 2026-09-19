@@ -79,33 +79,47 @@ async function logPayout(referrerId, referredId, kind, { days, amount, note, sta
   return rows[0].id;
 }
 
+/** Has this shop STARTED USING the app? (channel live OR any customer chat!) */
+async function isActiveShop(businessId) {
+  const { rows } = await db.query(
+    `SELECT 1 FROM businesses
+     WHERE id = $1 AND (whatsapp_last_inbound_at IS NOT NULL OR NULLIF(telegram_bot_token, '') IS NOT NULL)
+     UNION ALL
+     SELECT 1 FROM conversations WHERE business_id = $1 LIMIT 1`,
+    [Number(businessId)]
+  );
+  return rows.length > 0;
+}
+
 /**
- * Quiz finished (first niche set!) + referred_by present → pay BOTH sides
- * 14 Pro days + bell them. Idempotent: the referred shop can only trigger
- * this ONCE (referred_rewarded flag lives on the payout row lookup!).
+ * FIRST REAL USAGE + referred_by present → pay BOTH sides 14 Pro days +
+ * bell them. Triggered by channel connect AND first inbound chat (whichever
+ * comes first!). Idempotent: each referred shop pays exactly ONCE (payout-row
+ * lookup — reconnects and repeat chats never double-pay!).
  */
-async function onQuizComplete(referredBusinessId) {
+async function onFirstActive(referredBusinessId) {
   const { rows } = await db.query('SELECT id, name, referred_by FROM businesses WHERE id = $1', [Number(referredBusinessId)]);
   const shop = rows[0];
   if (!shop || !shop.referred_by) return null; // organic (no referrer — nothing to pay!)
   if (Number(shop.referred_by) === Number(referredBusinessId)) return null; // self-referral (paranoia — signup already blocks!)
+  if (!(await isActiveShop(referredBusinessId))) return null; // quiz-only so far (reward waits for REAL usage: connect or first chat!)
   const dup = await db.query(
     `SELECT 1 FROM referral_payouts WHERE referred_business_id = $1 AND kind = 'pro_days' LIMIT 1`,
     [Number(referredBusinessId)]
   );
-  if (dup.rows.length) return null; // already paid (re-saving the quiz never double-pays!)
+  if (dup.rows.length) return null; // already paid!
   const referrer = await db.query('SELECT id, name FROM businesses WHERE id = $1', [Number(shop.referred_by)]);
   if (!referrer.rows[0]) return null; // referrer shop deleted (orphan — skip quietly!)
   await grantProDays(shop.referred_by, QUIZ_DAYS, 'referred friend finished setup');
   await grantProDays(referredBusinessId, QUIZ_DAYS, 'joined with a referral code');
-  await logPayout(shop.referred_by, referredBusinessId, 'pro_days', { days: QUIZ_DAYS, note: 'Double-sided quiz reward' });
+  await logPayout(shop.referred_by, referredBusinessId, 'pro_days', { days: QUIZ_DAYS, note: 'Double-sided usage reward' });
   await logPayout(referredBusinessId, shop.referred_by, 'pro_days', { days: QUIZ_DAYS, note: 'Welcome bonus (referred friend)' });
   const notify = require('./notifyService'); // lazy (style-consistent, dodge cycles!)
   const first = String(shop.name || '').split(' ')[0] || 'there';
   const rfirst = String(referrer.rows[0].name || '').split(' ')[0] || 'there';
-  notify.notify(shop.referred_by, { // referrer side (fire-and-forget — rewards never break quizzes!)
+  notify.notify(shop.referred_by, { // referrer side (fire-and-forget — rewards never break chats!)
     title: 'Referral reward: +14 Pro days!',
-    body: `${first} just finished setup with your code — 14 Pro days added to YOUR shop too. Keep sharing!`,
+    body: `${first} just started USING the app with your code — 14 Pro days added to YOUR shop too. Keep sharing!`,
     link: '/billing',
   }).catch(() => {});
   notify.notify(referredBusinessId, {
@@ -162,7 +176,9 @@ async function myStats(businessId) {
   const { rows } = await db.query(
     `SELECT COUNT(*)::int AS invited FROM businesses WHERE referred_by = $1`, [Number(businessId)]);
   const { rows: q } = await db.query(
-    `SELECT COUNT(*)::int AS n FROM businesses WHERE referred_by = $1 AND business_niche IS NOT NULL AND business_niche <> ''`, [Number(businessId)]);
+    `SELECT COUNT(*)::int AS n FROM businesses r WHERE r.referred_by = $1
+     AND (r.whatsapp_last_inbound_at IS NOT NULL OR NULLIF(r.telegram_bot_token, '') IS NOT NULL
+          OR EXISTS (SELECT 1 FROM conversations c WHERE c.business_id = r.id))`, [Number(businessId)]); // qualified = ACTUALLY USING (connected or chatted — not just signed up!)
   const paid = await payingCount(businessId);
   const { rows: e } = await db.query(
     `SELECT COALESCE(SUM(days), 0)::int AS days,
@@ -224,7 +240,9 @@ async function adminOverview() {
   const { rows } = await db.query(
     `SELECT b.id, b.name, b.whatsapp_number, b.referral_code,
        (SELECT COUNT(*)::int FROM businesses r WHERE r.referred_by = b.id) AS invited,
-       (SELECT COUNT(*)::int FROM businesses r WHERE r.referred_by = b.id AND r.business_niche IS NOT NULL AND r.business_niche <> '') AS qualified,
+       (SELECT COUNT(*)::int FROM businesses r WHERE r.referred_by = b.id
+         AND (r.whatsapp_last_inbound_at IS NOT NULL OR NULLIF(r.telegram_bot_token, '') IS NOT NULL
+              OR EXISTS (SELECT 1 FROM conversations c WHERE c.business_id = r.id))) AS qualified,
        (SELECT COUNT(DISTINCT p.business_id)::int FROM businesses r JOIN payments p ON p.business_id = r.id AND p.status = 'active' WHERE r.referred_by = b.id) AS paying,
        (SELECT COALESCE(SUM(days),0)::int FROM referral_payouts WHERE referrer_business_id = b.id AND kind = 'pro_days') AS days_granted,
        (SELECT COALESCE(SUM(amount),0)::int FROM referral_payouts WHERE referrer_business_id = b.id AND kind = 'airtime' AND status = 'pending') AS airtime_due,
@@ -288,7 +306,7 @@ async function pendingAirtime() {
 module.exports = {
   QUIZ_DAYS, MILESTONE_EVERY, MILESTONE_AMOUNT,
   codeFor, ensureCode, resolveCode, grantProDays,
-  onQuizComplete, onPaidActivation, payingCount,
+  onFirstActive, onPaidActivation, payingCount, isActiveShop,
   myStats, myHistory, publicLeaders, leaderboard, adminOverview, pendingAirtime,
   markAirtimeSent, grantPlusMonth,
 };

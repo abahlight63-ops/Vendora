@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api, fmtDate, pop, toast } from '../lib/api.js';
 import { money } from '../lib/money.js';
 import Ic from '../components/icons.jsx';
+import Loader from '../components/Loader.jsx'; // Orbit V while the gate checks
 import { adsStatus, clearSponsorSeen, clearVideoSeen, maybeShowSponsor, maybeShowVideoAd } from '../lib/ads.js'; // sponsor + video previews (this browser's tier/tags, daily caps bypassed)
 
 const TABS = [['stats', 'Overview', 'chart', 'green'], ['users', 'Users', 'profile', 'blue'], ['revenue', 'Revenue', 'card', 'gold'], ['transfers', 'Transfers', 'send', 'orange'], ['referrals', 'Referrals', 'gift', 'purple'], ['complaints', 'Complaints', 'help', 'red']]; // [key, label, icon, accent] quads (accent = per-tab color identity!)
@@ -69,6 +70,7 @@ export default function Admin() {
           <div className="auth-pane">
             <h1>Admin only</h1> {/* plain title (no branding fanfare — obscurity is a feature here!) */}
             <p className="switch-note">{gate === 'checking' ? 'Checking access…' : 'This area is private. Enter the admin password.'}</p>
+            {gate === 'checking' && <div style={{ display: 'grid', placeItems: 'center', padding: '18px 0 6px' }}><Loader size={40} /></div>}
             {gate === 'locked' && ( // password form ONLY when confirmed locked (checking shows text alone — no flash of inputs!)
               <>
                 <label>Admin password</label>

@@ -9,6 +9,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import 'theme.dart'; // accentTeal (same glow the web app uses!)
+
 /// Blur strength for cards (18) vs sheets/dialogs (22, chunkier surfaces).
 class Glass {
   static const double cardBlur = 18;
@@ -112,7 +114,8 @@ class GlassBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final glow = scheme.primary;
+    // Brand glow: primary green melted toward web teal (same liquid family!).
+    final glow = Color.lerp(scheme.primary, VendoraTheme.accentTeal, 0.35) ?? scheme.primary;
     return Stack(children: [
       Positioned.fill(
           child: ColoredBox(color: scheme.surfaceContainerLowest)),

@@ -4,6 +4,7 @@
 // Shortened from 1.5s (every millisecond of forced waiting feels like lag!).
 // No npm modules — React hooks + styles.css keyframes.
 import { useEffect, useState } from 'react'; // useState = fade flag; useEffect = timers
+import Loader from './Loader.jsx'; // branded Orbit V loader (logo rides inside the orbit!)
 
 export default function Splash({ done }) { // done = callback prop: App hides splash when called
   const [out, setOut] = useState(false); // false → visible; true → fading (CSS .out transition)
@@ -15,7 +16,7 @@ export default function Splash({ done }) { // done = callback prop: App hides sp
   return (
     <div className={'splash' + (out ? ' out' : '')}> {/* string concat toggles the fade class */}
       <div className="splash-inner"> {/* cardIn-style entrance animation (CSS) */}
-        <img src="/logo.png" alt="Vendora" className="splash-logo" /> {/* /logo.png = served from dist/public (Express static) */}
+        <Loader size={88} withLogo /> {/* Orbit V around the logo mark (the brand, in motion!) */}
         <div className="splash-name">VENDORA</div> {/* letterspaced brand text */}
         <div className="splash-tag">Your WhatsApp shop, open 24/7</div> {/* tagline */}
         <div className="splash-bar"><i /></div> {/* indeterminate loading bar (CSS slides the <i> forever) */}

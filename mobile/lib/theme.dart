@@ -18,6 +18,10 @@ class VendoraTheme {
   static const darkGreen = Color(0xFF25D366);
   static const darkGreenSoft = Color(0xFF7EF0C0);
 
+  // ── liquid-glass glow (shared with web --glass-teal) ──
+  static const accentTeal = Color(0xFF5EEAD4);
+  static const accentGold = Color(0xFFFFCF5C);
+
   static Future<ThemeMode> loadMode() async {
     final p = await SharedPreferences.getInstance();
     switch (p.getString(_key)) {

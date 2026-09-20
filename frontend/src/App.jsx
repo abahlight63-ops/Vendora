@@ -8,6 +8,7 @@ import { Suspense, lazy, useCallback, useEffect, useState } from 'react'; // Sus
 import { Routes, Route, Navigate } from 'react-router-dom'; // Routes = switch; Route = path→element; Navigate = redirect element
 import Shell from './components/Shell.jsx'; // app frame (sidebar+topbar) wrapping guarded pages — ALWAYS needed (eager!)
 import Splash from './components/Splash.jsx'; // brand intro (shown first — eager, it's tiny!)
+import Loader from './components/Loader.jsx'; // branded Orbit V (page fallback + login wall!)
 import { api } from './lib/api.js'; // backend fetch helper (session cookie included)
 import { loadNetworkAds, setAdsCache, resetAdsCache } from './lib/ads.js'; // free-tier ad tags (single loader — Pro gets nothing)
 import { useTheme } from './lib/theme.js'; // [theme, toggleTheme] (dark/light, persisted)
@@ -35,8 +36,8 @@ const VendoraAI = lazy(() => import('./pages/VendoraAI.jsx')); // general AI cha
 const Privacy = lazy(() => import('./pages/Privacy.jsx')); // public legal (no login needed)
 const Terms = lazy(() => import('./pages/Terms.jsx')); // public legal
 const Faq = lazy(() => import('./pages/Faq.jsx')); // public FAQ marketing page
-function PageFallback() { // chunk loading placeholder (same look as Guard's — seamless!)
-  return <div className="page"><div className="card"><p className="hint">Loading…</p></div></div>;
+function PageFallback() { // chunk loading placeholder (Orbit V — on-brand, same as Splash!)
+  return <div className="page"><div className="card" style={{ display: 'grid', placeItems: 'center', padding: 44 }}><Loader size={44} /></div></div>;
 }
 
 function useMe() { // CUSTOM HOOK: "who's logged in?" — returns {me, loading, setMe}. Hooks let us reuse stateful logic.
@@ -56,7 +57,7 @@ function useMe() { // CUSTOM HOOK: "who's logged in?" — returns {me, loading, 
 }
 
 function Guard({ me, loading, theme, onToggleTheme, onLogout, children }) { // login wall: wraps every private page (destructure 6 props)
-  if (loading) return <div className="page"><div className="card"><p className="hint">Loading…</p></div></div>; // still checking session → skeleton-ish placeholder (no flashing!)
+  if (loading) return <div className="page"><div className="card" style={{ display: 'grid', placeItems: 'center', padding: 44 }}><Loader size={40} /></div></div>; // still checking session → Orbit V (no flashing!)
   if (!me) return <Navigate to="/login" replace />; // guest → redirect to /login (replace = don't keep bad URL in history)
   return <Shell biz={me} theme={theme} onToggleTheme={onToggleTheme} onLogout={onLogout}>{children}</Shell>; // logged in → frame + page (children = the page element; onLogout clears login state on sign-out)
 }

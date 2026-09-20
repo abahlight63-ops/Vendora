@@ -1183,6 +1183,36 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
 .table-wrap::-webkit-scrollbar, .nbell-pop::-webkit-scrollbar, .mpick-pop::-webkit-scrollbar,
 .vai-thread::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
+/* ── Orbit V loader (the ONE branded spinner: splash, fallbacks, gates) ── */
+.orbit-loader { display: inline-flex; flex: 0 0 auto; }
+.orbit-loader .orbit-spin { transform-origin: 60px 60px; animation: orbitRot 1.4s linear infinite; }
+@keyframes orbitRot { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .orbit-loader .orbit-spin { animation: none; } }
+
+/* ── brand unification: auth cards (login + admin gate) go dark liquid glass ──
+   They were the last white surfaces while the whole app is dark glass. */
+.auth-card.glass {
+  background: linear-gradient(150deg, rgba(22,48,60,.88), rgba(10,24,32,.82)) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.5); backdrop-filter: blur(22px) saturate(1.5);
+  border: 1.5px solid rgba(126,240,192,.28) !important; color: #e6f6f1 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 30px 80px rgba(0,0,0,.55), 0 0 40px rgba(94,234,212,.12) !important;
+}
+.auth-card.glass .auth-pane h1 { color: #fff !important; }
+.auth-card.glass .switch-note, .auth-card.glass .auth-hint, .auth-card.glass .auth-toggle { color: #9fb8c8 !important; }
+.auth-card.glass .auth-toggle a { color: var(--glass-mint, #7ef0c0) !important; }
+.auth-card.glass label { color: #9fd8cb !important; }
+.auth-card.glass .auth-message { color: #7ef0c0 !important; }
+.auth-card.glass .auth-message.err { color: #ff9d8a !important; }
+
+/* ── brand unification: logo tiles go dark so the mark pops everywhere ──
+   White tiles clashed with the dark glass AND hid the logo's white outline. */
+.sidebar .logo img, .brand-chip img, .landing-brand img, .vai-logo, .vai-mini {
+  background: rgba(6,17,12,.65) !important;
+  border: 1px solid rgba(126,240,192,.35);
+  box-shadow: 0 0 14px rgba(94,234,212,.25);
+}
+.splash-logo { background: rgba(6,17,12,.65) !important; border: 1px solid rgba(126,240,192,.4); }
+
 /* ── billing polish (glass overflow:hidden was slicing badges halfway) ── */
 .plan { overflow: visible !important; } /* tier badges sit at top:-12px — half outside by design */
 .card .plan-badge { position: static !important; transform: none !important; display: inline-block; } /* CONTACT SALES pill lives inside a .card (overflow hidden) → inline instead of clipped */

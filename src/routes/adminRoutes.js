@@ -18,6 +18,7 @@ router.get('/ads/status', adminController.requireAdmin, adminController.adsStatu
 router.get('/ai-status', adminController.requireAdmin, adminController.aiStatus); // AI health ping per provider (admin diagnosis!)
 // Admin console (session-password OR x-admin-key — requireAdmin decides per route)
 router.get('/stats', adminController.requireAdmin, adminController.adminStats); // overview cards (users, tiers, money, chats, complaints)
+router.get('/charts', adminController.requireAdmin, adminController.chartData); // Control Hub series (chats/day + revenue/month — real!)
 router.get('/users', adminController.requireAdmin, adminController.adminUsers); // every account + shop (newest first)
 router.post('/users/:id/verify', adminController.requireAdmin, adminController.adminVerifyUser); // manual email verify (support action)
 router.get('/transfers', adminController.requireAdmin, adminController.transferQueue); // pending bank transfers (FIFO)

@@ -50,9 +50,7 @@ function dayKey(provider) { // daily-cap storage key, e.g. 'adfreq:adsterra-popu
 }
 function injectTag(provider, url, freq) { // NOT exported: internal helper (only loadNetworkAds uses it)
   if (!url || document.querySelector(`script[data-adnet="${provider}"]`)) return; // no URL, or tag already present → skip (idempotent = safe to call repeatedly)
-  if (freq === 'daily') { // popunder-style: one showing per browser per day…
-    try { if (localStorage.getItem(dayKey(provider))) return; } catch { return; } // already shown today (or storage broken → fail CLOSED: fewer ads, never errors)
-  }
+  if (freq === 'daily' || /popunder/i.test(provider || '')) return; // popunder-style tags HIJACK the next click (whole tab → offer URL). Banned from auto-inject — offers open ONLY behind explicit "Visit sponsor" taps (new tab!).
   const s = document.createElement('script'); // create <script> element programmatically…
   s.async = true; // async = never blocks page rendering (ads must never slow the app)
   s.dataset.adnet = provider; // data-adnet="monetag" → the dedupe hook above finds it next time

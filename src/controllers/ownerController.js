@@ -42,15 +42,14 @@ async function getMe(req, res) {
           video: (process.env.SPONSOR_VIDEO_URL || '').trim() || null } // optional mp4: plays inside the interstitial (video ads without any network!)
       : null; // no sponsor configured → null (frontend shows its house notice)
     // One entry per network (Monetag primary, Adsterra Social Bar secondary…).
-    // Different formats per network — never two popunder codes at once.
-    // freq: 'session' = inject once per login (banners, social bar — the
-    // network itself throttles impressions); 'daily' = max once per browser
-    // per day (popunder — aggressive format, strictly capped so it never
-    // annoys). The frontend enforces freq; the backend just labels it.
+    // Banners/social bars ONLY — popunders are banned from auto-inject (they
+    // hijack the user's next click and drag the whole tab to the offer URL —
+    // the /drm/… lesson!). Offer links open ONLY behind explicit "Visit
+    // sponsor" taps (new tab, user gesture). freq 'session' = inject once per
+    // login; the network itself throttles impressions.
     const networks = [
       { provider: process.env.ADS_PROVIDER || 'custom', scriptUrl: process.env.ADS_SCRIPT_URL || null, freq: 'session' },
       { provider: process.env.ADS_PROVIDER_2 || 'custom', scriptUrl: process.env.ADS_SCRIPT_URL_2 || null, freq: 'session' },
-      { provider: process.env.ADS_POPUNDER_PROVIDER || 'custom', scriptUrl: process.env.ADS_POPUNDER_URL || null, freq: 'daily' },
     ].filter((n) => n.scriptUrl); // .filter keeps only configured networks (unconfigured = no tag = no crash)
     const videoOrder = String(process.env.ADS_VIDEO_ORDER || 'sponsor,hilltopads,monetag,adsterra') // waterfall order (reorder without a deploy!)
       .split(',').map((s) => s.trim().toLowerCase()).filter((s) => ['sponsor', 'hilltopads', 'monetag', 'adsterra'].includes(s));

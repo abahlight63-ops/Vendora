@@ -553,6 +553,31 @@ async function aiStatus(req, res) {
   res.json({ status: await client.pingAll() });
 }
 
+// ---- Charts: REAL series for the Control Hub (wave = chats per day,
+// bars = collected revenue per month). No estimates, no placeholders. ----
+async function chartData(req, res) {
+  try {
+    const { rows: daily } = await db.query(
+      `SELECT (CURRENT_DATE - s)::text AS day, COUNT(c.id)::int AS chats
+       FROM generate_series(0, 13) s
+       LEFT JOIN conversations c ON c.updated_at::date = CURRENT_DATE - s
+       GROUP BY 1 ORDER BY 1` // 14 points, oldest → today (wave draws left → right!)
+    );
+    const { rows: monthly } = await db.query(
+      `SELECT to_char(m.m, 'Mon') AS m,
+              COALESCE(SUM(p.amount) FILTER (WHERE p.currency = 'NGN'), 0)::bigint AS ngn,
+              COALESCE(SUM(p.amount) FILTER (WHERE p.currency = 'USD'), 0)::bigint AS usd
+       FROM (SELECT date_trunc('month', now()) - (s || ' months')::interval AS m FROM generate_series(0, 5) s) m
+       LEFT JOIN payments p ON date_trunc('month', p.created_at) = m.m AND p.status = 'active'
+       GROUP BY m.m ORDER BY m.m` // 6 bars, oldest → this month (missing months = 0, never null!)
+    );
+    res.json({ daily, monthly });
+  } catch (e) {
+    console.error('chart data error:', e.message);
+    res.status(500).json({ error: 'Could not load charts' });
+  }
+}
+
 module.exports = {
   listBusinesses,
   getBusiness,
@@ -587,4 +612,5 @@ module.exports = {
   templateUpdate,
   templateDelete,
   uploadMedia,
+  chartData,
 }; // routes/adminRoutes.js wires these (behind x-admin-key in server.js)

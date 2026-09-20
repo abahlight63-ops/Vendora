@@ -410,22 +410,38 @@ function Stat({ n, l, good }) { // tiny tile (local component — lowercase file
   return <div className={'stat' + (good === false ? ' warn' : ' good')}><div className="num">{n}</div><div className="lbl">{l}</div></div>; // good=false → gold (needs attention), else green
 }
 
-function Stats({ d }) { // CONTROL HUB (docs/image_e1a38d81.jpg): liquid glass, teal glow, live numbers.
+function wavePath(vals) { // values → SVG polyline across the 355×64 hub card (area fills under it!)
+  if (!vals.length) return 'M0,56 L355,56'; // no data yet → flat baseline (honest, never fake waves!)
+  const max = Math.max(...vals, 1); // ||1 guards all-zero weeks (divide-by-zero → flat!)
+  return vals.map((v, i) => `${i === 0 ? 'M' : 'L'}${(i / (vals.length - 1) * 355).toFixed(1)},${(56 - (v / max) * 44).toFixed(1)}`).join(' ');
+}
+
+function Stats({ d }) { // CONTROL HUB (docs/image_e1a38d81.jpg): liquid glass, teal glow, REAL numbers only.
+  const [charts, setCharts] = useState(null); // { daily:[{day,chats}], monthly:[{m,ngn,usd}] } — null = loading (flat fallbacks!)
+  const [ver, setVer] = useState(''); // app version (public endpoint — real!)
+  useEffect(() => {
+    api('/api/admin/charts').then(({ ok, data }) => { if (ok) setCharts(data); }).catch(() => {}); // fail → flat charts (numbers below still real!)
+    api('/api/version').then(({ ok, data }) => { if (ok && data.version) setVer('v' + data.version); }).catch(() => {});
+  }, []); // mount-only
   const ngn = '₦' + (Number(d.ngn_kobo || 0) / 100).toLocaleString();
   const usd = '$' + (Number(d.usd_cents || 0) / 100).toLocaleString();
-  const wave = 'M0,52 C25,50 35,30 55,34 C75,38 85,52 105,48 C125,44 135,22 155,26 C175,30 185,46 205,42 C225,38 235,20 255,24 C275,28 285,44 305,40 C325,36 335,18 355,16 L355,64 L0,64 Z';
+  const daily = ((charts && charts.daily) || []).map((x) => Number(x.chats) || 0);
+  const monthly = ((charts && charts.monthly) || []).map((x) => Number(x.ngn) || 0);
+  const handled = d.today > 0 ? Math.round(((d.today - (d.flagged || 0)) / d.today) * 100) : null; // AI-handled % today (real — not "uptime"!)
+  const peak = daily.length && Math.max(...daily) > 0 ? daily.indexOf(Math.max(...daily)) : -1; // busiest day gets the dot
+  const mmax = Math.max(...monthly, 1);
   return (
     <div className="hub">
       <div className="hub-top">
         <div className="card hub-perf">
-          <div className="hub-row"><span className="hub-title">App Performance</span><span className="hub-uptime">{d.today > 0 ? '99.1%' : '94.7%'}</span></div>
-          <svg viewBox="0 0 355 64" className="hub-wave" preserveAspectRatio="none"><path d={wave} /><circle cx="55" cy="34" r="3" /><circle cx="155" cy="26" r="3" /><circle cx="255" cy="24" r="3" /><circle cx="355" cy="16" r="3" /></svg>
-          <div className="hub-sub">Uptime</div>
+          <div className="hub-row"><span className="hub-title">App Performance</span><span className="hub-uptime">{handled === null ? '—' : handled + '%'}</span></div>
+          <svg viewBox="0 0 355 64" className="hub-wave" preserveAspectRatio="none"><path d={wavePath(daily)} />{peak >= 0 && <circle cx={peak / (daily.length - 1) * 355} cy={56 - (daily[peak] / Math.max(...daily, 1)) * 44} r="3.5" />}</svg>
+          <div className="hub-sub">Chats/day · 14 days · AI handled today</div>
         </div>
         <div className="card hub-active">
           <div className="hub-row"><span className="hub-title">Active Users</span><Ic n="profile" s={16} /></div>
           <div className="hub-big">{Number(d.users || 0).toLocaleString()}</div>
-          <div className="hub-sub">online</div>
+          <div className="hub-sub">total accounts</div>
         </div>
       </div>
       <div className="hub-head"><h2>Control Hub</h2><p>Platform Control Center</p></div>
@@ -433,14 +449,14 @@ function Stats({ d }) { // CONTROL HUB (docs/image_e1a38d81.jpg): liquid glass, 
         <div className="card hub-status">
           <div className="hub-row"><span className="hub-title">System Status</span><span className="hub-dots">•••</span></div>
           <div className="hub-tiles">
-            <div className="hub-tile"><span>CPU</span><b>{Math.min(96, 28 + (Number(d.today || 0) % 40))}%</b></div>
-            <div className="hub-tile"><span>RAM</span><b>{(4 + (Number(d.users || 0) % 50) / 20).toFixed(1)} GB</b></div>
-            <div className="hub-tile"><span>Requests</span><b>{Number(d.today || 0) >= 1000 ? (Number(d.today || 0) / 1000).toFixed(1) + 'K' : String(d.today || 0)}</b></div>
-            <div className="hub-tile"><span>Errors</span><b>{Number(d.complaints || 0) === 0 ? '0.02%' : Number(d.complaints || 0) + '%'}</b></div>
+            <div className="hub-tile"><span>Chats today</span><b>{d.today || 0}</b></div>
+            <div className="hub-tile"><span>Need you</span><b>{d.flagged || 0}</b></div>
+            <div className="hub-tile"><span>Awaiting pay</span><b>{d.pending || 0}</b></div>
+            <div className="hub-tile"><span>Open tickets</span><b>{d.complaints || 0}</b></div>
           </div>
-          <div className="hub-line"><span>Maintenance Mode</span><span className="hub-toggle on"><i /></span></div>
-          <div className="hub-line"><span>Server Scaling</span><span className="hub-auto">Auto ›</span></div>
-          <button className="hub-deploy" onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}>Deploy Update <span>Garnet/Gold</span></button>
+          <div className="hub-line"><span>App version</span><span className="hub-auto">{ver || '…'}</span></div>
+          <div className="hub-line"><span>Collected this month</span><span className="hub-auto">{'₦' + (Number(d.month_all || 0) / 100).toLocaleString()}</span></div>
+          <button className="hub-deploy" onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}>Deploy Update <span>Broadcast</span></button>
         </div>
         <div className="hub-col">
           <div className="card hub-activity">
@@ -453,7 +469,7 @@ function Stats({ d }) { // CONTROL HUB (docs/image_e1a38d81.jpg): liquid glass, 
           </div>
           <div className="hub-duo">
             <div className="card hub-threat"><span className="hub-title">Threat Monitor</span><div className="hub-big small">{d.complaints || 0} <span>threats</span></div><Ic n="shield" s={34} /></div>
-            <div className="card hub-rev"><span className="hub-title">Revenue Metrics</span><div className="hub-big small">{ngn === '₦0' ? usd : ngn}</div><div className="hub-bars"><i style={{ height: 14 }} /><i style={{ height: 26 }} /><i style={{ height: 12 }} /><i style={{ height: 20 }} /><i style={{ height: 16 }} /><i style={{ height: 30 }} /></div></div>
+            <div className="card hub-rev"><span className="hub-title">Revenue Metrics</span><div className="hub-big small">{ngn === '₦0' ? usd : ngn}</div><div className="hub-bars">{monthly.length ? monthly.map((v, i) => <i key={i} style={{ height: `${Math.max(10, Math.round((v / mmax) * 100))}%` }} title={`${(charts.monthly[i] && charts.monthly[i].m) || ''}: ₦${(v / 100).toLocaleString()}`} />) : [14, 26, 12, 20, 16, 30].map((h, i) => <i key={i} style={{ height: h }} />)}</div></div>
           </div>
         </div>
       </div>

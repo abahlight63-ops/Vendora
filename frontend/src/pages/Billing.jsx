@@ -200,7 +200,7 @@ export default function Billing() {
       <div className="card" style={{ marginTop: 14 }}> {/* Compare plans: what each tier actually gets (kills "what am I paying for?" doubts) */}
         <h2>Compare plans</h2>
         <p className="desc">Every tier keeps the bot replying — paid tiers add automation, volume and premium brains.</p>
-        <div className="table-wrap" style={{ marginTop: 10 }}>
+        <div className="table-wrap compare" style={{ marginTop: 10 }}>
           <table>
             <thead><tr><th>What you get</th><th>Free</th><th>Pro</th><th>Pro Plus</th></tr></thead>
             <tbody>

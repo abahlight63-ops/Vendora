@@ -1182,3 +1182,18 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
 .sidebar::-webkit-scrollbar, .main-col::-webkit-scrollbar, .page::-webkit-scrollbar,
 .table-wrap::-webkit-scrollbar, .nbell-pop::-webkit-scrollbar, .mpick-pop::-webkit-scrollbar,
 .vai-thread::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+/* ── billing polish (glass overflow:hidden was slicing badges halfway) ── */
+.plan { overflow: visible !important; } /* tier badges sit at top:-12px — half outside by design */
+.card .plan-badge { position: static !important; transform: none !important; display: inline-block; } /* CONTACT SALES pill lives inside a .card (overflow hidden) → inline instead of clipped */
+.plan .btn { white-space: normal; line-height: 1.4; text-align: center; } /* long price labels wrap fully, never cut */
+.plan-price { overflow-wrap: anywhere; }
+@media (max-width: 960px) {
+  /* compare table keeps sideways scroll — stacked blocks lose the Free/Pro/Plus columns */
+  .table-wrap.compare { border: 1px solid rgba(255,255,255,.12); border-radius: 14px; overflow-x: auto; }
+  .table-wrap.compare table { display: table; min-width: 560px; }
+  .table-wrap.compare thead { display: table-header-group; }
+  .table-wrap.compare tbody { display: table-row-group; }
+  .table-wrap.compare tr { display: table-row; background: none; border: none; border-radius: 0; margin: 0; padding: 0; }
+  .table-wrap.compare th, .table-wrap.compare td { display: table-cell; width: auto; padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,.08); }
+}

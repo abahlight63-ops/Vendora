@@ -1049,48 +1049,45 @@ body::before {
     radial-gradient(900px 700px at 50% 110%, rgba(179,136,255,.12), transparent 60%),
     radial-gradient(600px 500px at 85% 85%, rgba(255,207,92,.08), transparent 60%),
     linear-gradient(180deg, #070f14 0%, #0a1822 45%, #070d18 100%);
-  animation: liquidDrift 22s ease-in-out infinite alternate;
+  /* static (no drift animation — the 22s hue-rotate loop was hammering low-end GPUs) */
 }
-@keyframes liquidDrift { to { transform: scale(1.05) translateY(-20px); filter: hue-rotate(14deg); } }
 body::after {
-  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .5;
-  background-image: radial-gradient(rgba(255,255,255,.06) 1px, transparent 1px);
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .35;
+  background-image: radial-gradient(rgba(255,255,255,.05) 1px, transparent 1px);
   background-size: 26px 26px;
-  mask-image: radial-gradient(80% 70% at 50% 30%, black, transparent);
 }
 /* shell + sidebar + topbar go floating glass (like the reference panel!) */
 .shell { gap: 16px; padding: 16px; }
 .sidebar {
+  position: sticky; /* keep pinned while page scrolls (relative broke this + the mobile drawer) */
+  top: 16px; height: calc(100vh - 32px);
   background: linear-gradient(165deg, rgba(18,38,48,.78), rgba(8,18,26,.62)) !important;
-  -webkit-backdrop-filter: blur(26px) saturate(1.7); backdrop-filter: blur(26px) saturate(1.7);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3); backdrop-filter: blur(16px) saturate(1.3);
   border: 1px solid rgba(255,255,255,.1); border-radius: 22px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 2px 0 12px rgba(94,234,212,.12), 0 24px 70px rgba(0,0,0,.5);
-  height: calc(100vh - 32px); overflow: hidden;
+  overflow-y: auto; /* Setup section + foot scroll instead of clipping */
+  flex-shrink: 0;
 }
+.sidebar .foot { flex-shrink: 0; margin-top: auto; display: block !important; visibility: visible !important; }
+.sidebar nav { flex-shrink: 0; }
 .sidebar::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 2px; background: linear-gradient(180deg, transparent, var(--glass-teal), transparent); opacity: .7; box-shadow: var(--glass-glow); }
 .sidebar nav a { border: 1px solid transparent; color: #b9d4e2; }
 .sidebar nav a:hover { background: rgba(94,234,212,.1); border-color: rgba(94,234,212,.2); color: #fff; }
 .sidebar nav a.active { background: linear-gradient(135deg, rgba(94,234,212,.22), rgba(34,211,238,.12)); border-color: rgba(94,234,212,.4); color: #fff; box-shadow: 0 0 18px rgba(94,234,212,.25), inset 0 1px 0 rgba(255,255,255,.2); }
 .topbar {
   background: linear-gradient(150deg, rgba(18,38,48,.72), rgba(10,22,30,.55)) !important;
-  -webkit-backdrop-filter: blur(26px) saturate(1.7); backdrop-filter: blur(26px) saturate(1.7);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3); backdrop-filter: blur(16px) saturate(1.3);
   border: 1px solid rgba(255,255,255,.1) !important; border-radius: 20px; margin: 0 0 16px 0;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 16px 50px rgba(0,0,0,.4);
 }
 .topbar h1, .topbar .crumb { color: #e6f6f1 !important; }
-/* every card/stat becomes liquid glass */
+/* every card/stat becomes liquid glass (static shine — per-card infinite sweep removed for speed) */
 .card, .stat, .dash-hero, .trial-strip, .qa, .plan, .landing-phone, .nbell-pop, .pop-card, .learn-box.light {
   position: relative; overflow: hidden;
   background: linear-gradient(150deg, rgba(22,48,60,.72), rgba(10,24,32,.55)) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4); backdrop-filter: blur(16px) saturate(1.4);
   border: 1.5px solid rgba(255,255,255,.12) !important; color: #e6f6f1 !important;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.16), inset 0 -1px 0 rgba(94,234,212,.08), 0 20px 60px rgba(0,0,0,.45) !important;
-}
-.card::after, .stat::after, .dash-hero::after {
-  content: ""; position: absolute; top: -60%; left: -30%; width: 45%; height: 220%;
-  transform: rotate(18deg); pointer-events: none;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.14), transparent);
-  animation: adminShine 6s ease-in-out infinite;
 }
 .card h2, .stat .lbl, .card .desc, .hint, .qa .hint, .page-head p, .page-head h1 { color: #e6f6f1 !important; }
 .page-head h1 { text-shadow: 0 0 24px rgba(94,234,212,.35); }
@@ -1106,7 +1103,7 @@ body::after {
 .dash-hero h1 { color: #fff !important; }
 .dash-hero p { color: #b9d4e2 !important; }
 .live-dot { background: rgba(94,234,212,.14) !important; border-color: rgba(94,234,212,.45) !important; color: var(--glass-mint) !important; box-shadow: var(--glass-glow); }
-.live-dot i { background: var(--glass-teal) !important; box-shadow: 0 0 10px var(--glass-teal); animation: adminPulse 1.6s ease-in-out infinite; }
+.live-dot i { background: var(--glass-teal) !important; box-shadow: 0 0 10px var(--glass-teal); }
 .guide-bar { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.1); }
 .guide-bar i { background: linear-gradient(90deg, var(--glass-teal), var(--glass-cyan)); box-shadow: var(--glass-glow); }
 .btn { box-shadow: 0 8px 26px rgba(34,211,238,.25); }
@@ -1117,7 +1114,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--glass-teal) !imp
 table { background: transparent !important; color: #e6f6f1 !important; }
 thead th { background: rgba(255,255,255,.05) !important; color: #9fd8cb !important; }
 tbody td { border-bottom-color: rgba(255,255,255,.08) !important; }
-.mobile-bar { background: rgba(10,22,30,.8) !important; -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); border-top: 1px solid rgba(94,234,212,.2) !important; }
+.mobile-bar { background: rgba(10,22,30,.9) !important; border-top: 1px solid rgba(94,234,212,.2) !important; }
 .mobile-bar a { color: #9fb8c8 !important; }
 .mobile-bar a.active { color: var(--glass-teal) !important; }
 /* ── HUB (Control Hub grid exactly like the reference) ── */
@@ -1127,7 +1124,7 @@ tbody td { border-bottom-color: rgba(255,255,255,.08) !important; }
 .hub-title { font-size: 14px; font-weight: 600; color: #e6f6f1; }
 .hub-uptime { color: var(--glass-teal); font-weight: 800; text-shadow: 0 0 14px rgba(94,234,212,.6); }
 .hub-wave { width: 100%; height: 90px; margin-top: 8px; }
-.hub-wave path { fill: rgba(94,234,212,.12); stroke: var(--glass-teal); stroke-width: 2; filter: drop-shadow(0 0 10px rgba(94,234,212,.6)); }
+.hub-wave path { fill: rgba(94,234,212,.12); stroke: var(--glass-teal); stroke-width: 2; }
 .hub-wave circle { fill: #fff; stroke: var(--glass-teal); stroke-width: 2; }
 .hub-sub { font-size: 12px; color: #9fb8c8; text-align: right; margin-top: 4px; }
 .hub-active .hub-big, .hub-big { font-size: 38px; font-weight: 800; letter-spacing: -.5px; }
@@ -1156,17 +1153,22 @@ tbody td { border-bottom-color: rgba(255,255,255,.08) !important; }
 .hub-duo { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .hub-threat svg { color: var(--glass-teal); filter: drop-shadow(0 0 12px rgba(94,234,212,.6)); margin-top: 8px; }
 .hub-bars { display: flex; align-items: flex-end; gap: 8px; height: 56px; margin-top: 10px; }
-.hub-bars i { flex: 1; border-radius: 6px 6px 3px 3px; background: linear-gradient(180deg, var(--glass-teal), rgba(94,234,212,.2)); box-shadow: 0 0 12px rgba(94,234,212,.4); animation: barPulse 2.4s ease-in-out infinite alternate; }
-.hub-bars i:nth-child(2n) { animation-delay: .4s; } .hub-bars i:nth-child(3n) { animation-delay: .8s; }
-@keyframes barPulse { to { filter: brightness(1.3); transform: scaleY(1.06); } }
+.hub-bars i { flex: 1; border-radius: 6px 6px 3px 3px; background: linear-gradient(180deg, var(--glass-teal), rgba(94,234,212,.2)); }
 .hub-dots { color: #9fb8c8; letter-spacing: 2px; }
 @media (max-width: 960px) {
   .shell { padding: 0; gap: 0; }
-  .sidebar { border-radius: 0; height: 100vh; }
+  .sidebar {
+    position: fixed !important; /* restore drawer overlay (desktop sticky above would keep it in-flow) */
+    top: 0; left: 0; bottom: 0;
+    border-radius: 0; height: 100vh;
+  }
   .topbar { border-radius: 0; margin: 0; }
   .hub-top, .hub-grid, .hub-duo { grid-template-columns: 1fr; }
-  body::before { background-attachment: fixed; }
+  /* phones: kill all glass blur + glow (biggest speed win) */
+  .sidebar, .topbar, .card, .stat, .dash-hero, .trial-strip, .qa, .plan {
+    -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  body::before, .card::after, .stat::after, .dash-hero::after, .hub-wave path, .hub-bars i { animation: none; }
+  body::before, .hub-wave path, .hub-bars i { animation: none; }
 }

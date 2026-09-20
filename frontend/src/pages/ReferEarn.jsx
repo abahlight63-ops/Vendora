@@ -14,10 +14,18 @@ const naira = (kobo) => '₦' + (Number(kobo || 0) / 100).toLocaleString(); // m
 export default function ReferEarn() {
   const [s, setS] = useState(null); // myStats (code, funnel, earnings!) — null = loading
   const [x, setX] = useState(null); // extra (history + leaders!) — null = loading
+  const [failed, setFailed] = useState(false); // stats endpoint failed (stale backend? logged out?) — show it, never spin forever!
   const [copied, setCopied] = useState(''); // which button ticked ('code' | 'link' | '')
   useEffect(() => { // mount: both endpoints fly in parallel (no await between!)
-    api('/api/me/referral').then(({ ok, data }) => { if (ok) setS(data); });
-    api('/api/me/referral/extra').then(({ ok, data }) => { if (ok) setX(data); });
+    let dead = false; // unmount guard (slow networks + fast navigation!)
+    api('/api/me/referral').then(({ ok, data, status }) => {
+      if (dead) return;
+      if (ok) setS(data);
+      else if (status === 401) window.location.href = '/login'; // session died → login (not an error loop!)
+      else setFailed(true); // 404/500 = backend older than this page (redeploy!) — SAY SO below
+    }).catch(() => { if (!dead) setFailed(true); }); // network down → error card, not eternal skeleton
+    api('/api/me/referral/extra').then(({ ok, data }) => { if (!dead && ok) setX(data); }).catch(() => {}); // extra is garnish (page works without it!)
+    return () => { dead = true; };
   }, []); // [] = mount-only
   async function copy(text, which) { // clipboard with legacy fallback (older browsers / permissions!)
     try { await navigator.clipboard.writeText(text); }
@@ -25,7 +33,14 @@ export default function ReferEarn() {
     setCopied(which); setTimeout(() => setCopied(''), 2000); // tick 2s (then back!)
     toast('Copied — go share it!');
   }
-  if (!s) return <div className="page"><div className="card"><div className="skel" /></div></div>; // loading → skeleton (stats drive everything below!)
+  if (!s && !failed) return <div className="page"><div className="card"><div className="skel" /></div></div>; // loading → skeleton (stats drive everything below!)
+  if (!s && failed) return ( // backend unreachable or older than this page — SAY SO with a way back (never spin forever!)
+    <div className="page">
+      <div className="page-head"><div><h1>Refer & Earn</h1></div><Link className="mini-link" to="/dashboard">← Dashboard</Link></div>
+      <div className="card"><div className="empty"><b>Couldn't load rewards</b>The server didn't answer (offline? old version?). Check your connection, then try again — your code and earnings are safe.</div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}><button className="btn sm" onClick={() => window.location.reload()}>Retry</button></div></div>
+    </div>
+  );
   const link = window.location.origin + '/login?ref=' + encodeURIComponent(s.code); // share link (Login prefills + validates!)
   const text = `I use Vendora — my WhatsApp shop answers customers 24/7, even at 2am. Start free with my code ${s.code} (we BOTH get ${s.quizDays} Pro days free): ${link}`;
   const pct = Math.min(100, Math.round((s.paying % s.milestoneEvery) / s.milestoneEvery * 100)); // milestone fill (resets each 5-pack!)

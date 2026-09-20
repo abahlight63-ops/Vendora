@@ -10,14 +10,22 @@
 // VITE_API_URL remains as an override (e.g. testing the API directly), but
 // empty is now the recommended value on Vercel (proxy handles it).
 export const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, ''); // import.meta.env = Vite's env (VITE_*-prefixed vars baked in at BUILD time!); strip trailing slash so '/api' joins cleanly
-export async function api(url, opts = {}) { // url like '/api/me'; opts = {method, body, headers…}
-  const r = await fetch(API_BASE + url, { // prefix: '' locally (same-origin) or the Render URL on Vercel (cross-origin + cookies — needs backend CORS!)
-    credentials: 'include', // CRITICAL: send the session cookie (without this, backend thinks we're logged out!)
-    headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) }, // JSON bodies by default; ...spread lets callers add/override headers
-    ...opts, // spread the rest (method: 'POST', body: JSON.stringify(…)…)
-  }); // NOTE: opts spread AFTER headers — so a caller-supplied method/body can't be clobbered… (headers merged above instead)
-  const data = await r.json().catch(() => ({})); // parse JSON; .catch(()=>({})) = empty/204 responses become {} instead of throwing
-  return { ok: r.ok, status: r.status, data }; // r.ok = status 200–299; callers branch on ok (if (ok) … else …)
+export async function api(url, opts = {}) { // url like '/api/me'; opts = {method, body, headers…, timeout} (timeout ms, default 30s!)
+  const ctrl = new AbortController(); // hanging requests must DIE (a stuck fetch = an eternally-loading page — the 12-hour skeleton bug!)
+  const timer = setTimeout(() => ctrl.abort(), Number(opts.timeout) || 30000); // sleeping servers + dead networks abort into a catchable error
+  try {
+    const { timeout: _t, ...rest } = opts; // strip our custom key (fetch would choke on it!)
+    const r = await fetch(API_BASE + url, { // prefix: '' locally (same-origin) or the Render URL on Vercel (cross-origin + cookies — needs backend CORS!)
+      credentials: 'include', // CRITICAL: send the session cookie (without this, backend thinks we're logged out!)
+      headers: { 'Content-Type': 'application/json', ...(rest.headers || {}) }, // JSON bodies by default; ...spread lets callers add/override headers
+      signal: ctrl.signal, // abort wiring (aborted fetch THROWS — callers' .catch handles it!)
+      ...rest, // spread the rest (method: 'POST', body: JSON.stringify(…)…)
+    }); // NOTE: rest spread AFTER headers — so a caller-supplied method/body can't be clobbered… (headers merged above instead)
+    const data = await r.json().catch(() => ({})); // parse JSON; .catch(()=>({})) = empty/204 responses become {} instead of throwing
+    return { ok: r.ok, status: r.status, data }; // r.ok = status 200–299; callers branch on ok (if (ok) … else …)
+  } finally {
+    clearTimeout(timer); // answered (or threw) → disarm (no leaked timers!)
+  }
 }
 
 export function esc(s) { // escape HTML special chars (XSS defense if we ever inject strings into HTML)

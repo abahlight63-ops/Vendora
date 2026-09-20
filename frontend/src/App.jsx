@@ -4,36 +4,40 @@
 // Also owns: theme state (useTheme), splash gate, login state (useMe).
 // ROUTER LESSON: <Routes> picks the FIRST matching <Route path>. element =
 // what renders. <Navigate> = redirect. Guard = our login-wall wrapper.
-import { useCallback, useEffect, useState } from 'react'; // useCallback memoizes hideSplash (stable prop for Splash); useEffect = /api/me fetch; useState = me/loading/splash/theme
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react'; // Suspense+lazy = code-split pages (phones download ONLY the opened page!); useCallback memoizes hideSplash; useEffect = /api/me fetch
 import { Routes, Route, Navigate } from 'react-router-dom'; // Routes = switch; Route = path→element; Navigate = redirect element
-import Shell from './components/Shell.jsx'; // app frame (sidebar+topbar) wrapping guarded pages
-import Splash from './components/Splash.jsx'; // 1.5s brand intro (shown first)
+import Shell from './components/Shell.jsx'; // app frame (sidebar+topbar) wrapping guarded pages — ALWAYS needed (eager!)
+import Splash from './components/Splash.jsx'; // brand intro (shown first — eager, it's tiny!)
 import { api } from './lib/api.js'; // backend fetch helper (session cookie included)
 import { loadNetworkAds, setAdsCache, resetAdsCache } from './lib/ads.js'; // free-tier ad tags (single loader — Pro gets nothing)
 import { useTheme } from './lib/theme.js'; // [theme, toggleTheme] (dark/light, persisted)
-import Login from './pages/Login.jsx'; // sign in / sign up / OTP / forgot (public)
-import Reset from './pages/Reset.jsx'; // forgot-password landing (?token= — public, token IS the credential!)
-import Landing from './pages/Landing.jsx'; // marketing homepage (public, at /)
-import Onboarding from './pages/Onboarding.jsx'; // welcome tour (post-signup)
-import Welcome from './pages/Welcome.jsx'; // niche + heard-from setup (tour → here → dashboard)
-import Dashboard from './pages/Dashboard.jsx'; // overview: stats + attention + checklist
-import Profile from './pages/Profile.jsx'; // business name/number/hours/tone/FAQs/currency/timezone
-import Catalog from './pages/Catalog.jsx'; // products + Pro profile-sync
-import Connect from './pages/Connect.jsx'; // channel switchboard (WhatsApp Embedded Signup + Telegram + brain pick)
-import Chats from './pages/Chats.jsx'; // inbox + threads
-import Billing from './pages/Billing.jsx'; // plans + status + trial countdown
-import ContactSales from './pages/ContactSales.jsx'; // enterprise enquiry form (new-tab from Billing!)
-import Playground from './pages/Playground.jsx'; // test-bot (no WhatsApp needed)
-import Insights from './pages/Insights.jsx'; // AI-handled % + flag reasons
-import Settings from './pages/Settings.jsx'; // SmartDeal discounts + handoff text
-import Help from './pages/Help.jsx';
-import ReferEarn from './pages/ReferEarn.jsx'; // full Refer & Earn page (code + rewards + history + leaders!)
-import Notifications from './pages/Notifications.jsx'; // full inbox page (bell previews, this shows all!)
-import Admin from './pages/Admin.jsx'; // FAQ accordion + tour replay
-import VendoraAI from './pages/VendoraAI.jsx'; // general AI chat + model dropdown
-import Privacy from './pages/Privacy.jsx'; // public legal (no login needed)
-import Terms from './pages/Terms.jsx'; // public legal
-import Faq from './pages/Faq.jsx'; // public FAQ marketing page
+// Pages load LAZY (one chunk each — first paint downloads shell + current page only, not all 20!):
+const Login = lazy(() => import('./pages/Login.jsx')); // sign in / sign up / OTP / forgot (public)
+const Reset = lazy(() => import('./pages/Reset.jsx')); // forgot-password landing (?token= — public, token IS the credential!)
+const Landing = lazy(() => import('./pages/Landing.jsx')); // marketing homepage (public, at /)
+const Onboarding = lazy(() => import('./pages/Onboarding.jsx')); // welcome tour (post-signup)
+const Welcome = lazy(() => import('./pages/Welcome.jsx')); // niche + heard-from setup (tour → here → dashboard)
+const Dashboard = lazy(() => import('./pages/Dashboard.jsx')); // overview: stats + attention + checklist
+const Profile = lazy(() => import('./pages/Profile.jsx')); // business name/number/hours/tone/FAQs/currency/timezone
+const Catalog = lazy(() => import('./pages/Catalog.jsx')); // products + Pro profile-sync
+const Connect = lazy(() => import('./pages/Connect.jsx')); // channel switchboard (WhatsApp Embedded Signup + Telegram + brain pick)
+const Chats = lazy(() => import('./pages/Chats.jsx')); // inbox + threads
+const Billing = lazy(() => import('./pages/Billing.jsx')); // plans + status + trial countdown
+const ContactSales = lazy(() => import('./pages/ContactSales.jsx')); // enterprise enquiry form (new-tab from Billing!)
+const Playground = lazy(() => import('./pages/Playground.jsx')); // test-bot (no WhatsApp needed)
+const Insights = lazy(() => import('./pages/Insights.jsx')); // AI-handled % + flag reasons
+const Settings = lazy(() => import('./pages/Settings.jsx')); // SmartDeal discounts + handoff text
+const Help = lazy(() => import('./pages/Help.jsx'));
+const ReferEarn = lazy(() => import('./pages/ReferEarn.jsx')); // full Refer & Earn page (code + rewards + history + leaders!)
+const Notifications = lazy(() => import('./pages/Notifications.jsx')); // full inbox page (bell previews, this shows all!)
+const Admin = lazy(() => import('./pages/Admin.jsx')); // admin console (rarely opened — must NOT weigh first paint!)
+const VendoraAI = lazy(() => import('./pages/VendoraAI.jsx')); // general AI chat + model dropdown
+const Privacy = lazy(() => import('./pages/Privacy.jsx')); // public legal (no login needed)
+const Terms = lazy(() => import('./pages/Terms.jsx')); // public legal
+const Faq = lazy(() => import('./pages/Faq.jsx')); // public FAQ marketing page
+function PageFallback() { // chunk loading placeholder (same look as Guard's — seamless!)
+  return <div className="page"><div className="card"><p className="hint">Loading…</p></div></div>;
+}
 
 function useMe() { // CUSTOM HOOK: "who's logged in?" — returns {me, loading, setMe}. Hooks let us reuse stateful logic.
   const [me, setMe] = useState(null); // me = business object or null (guest). null initial = "unknown yet" (loading covers the gap)
@@ -63,9 +67,9 @@ export default function App() { // ROOT component (main.jsx renders this)
   const [splash, setSplash] = useState(true); // brand intro visible?
   const hideSplash = useCallback(() => setSplash(false), []); // useCallback = stable function identity (Splash's effect dep won't loop)
   const handleLogout = useCallback(() => { setMe(null); resetAdsCache(); }, []); // logout clears login state AND ads cache (next login refetches fresh tier/tags)
-  if (splash) return <Splash done={hideSplash} />; // EARLY RETURN: splash covers everything until done() fires (1.5s)
+  if (splash) return <Splash done={hideSplash} />; // EARLY RETURN: splash covers everything until done() fires
   return ( // after splash: the route table (order matters — first match wins!)
-    <Routes>
+    <Suspense fallback={<PageFallback />}> {/* lazy pages suspend here while their chunk downloads (fallback matches Guard's look!) */}<Routes>
       <Route path="/admin" element={<Admin />} />
       <Route path="/privacy" element={<Privacy />} /> {/* public legal trio (no Guard — Google + guests must read them!) */}
       <Route path="/terms" element={<Terms />} />
@@ -91,6 +95,6 @@ export default function App() { // ROOT component (main.jsx renders this)
       <Route path="/vendora-ai" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><VendoraAI biz={me} /></Guard>} />
       <Route path="/" element={loading ? <div className="page"><div className="card"><p className="hint">Loading…</p></div></div> : me ? <Navigate to="/dashboard" replace /> : <Landing theme={theme} onToggleTheme={toggleTheme} />} /> {/* / = smart root: loading→placeholder, logged-in→dashboard, guest→marketing landing (ternary chain) */}
       <Route path="*" element={<div className="page"><div className="card"><h2>Page not found</h2><p className="hint">That link doesn't exist.</p><p style={{ marginTop: 12 }}><a href="/dashboard">Back to overview</a></p></div></div>} /> {/* path="*" = catch-all 404 (MUST be last — Routes picks first match!) */}
-    </Routes>
+    </Routes></Suspense>
   );
 }

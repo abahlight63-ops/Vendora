@@ -11,7 +11,12 @@ import { money } from '../lib/money.js';
 import Ic from '../components/icons.jsx';
 import { adsStatus, clearSponsorSeen, clearVideoSeen, maybeShowSponsor, maybeShowVideoAd } from '../lib/ads.js'; // sponsor + video previews (this browser's tier/tags, daily caps bypassed)
 
-const TABS = [['stats', 'Overview', 'chart'], ['users', 'Users', 'profile'], ['revenue', 'Revenue', 'card'], ['transfers', 'Transfers', 'send'], ['referrals', 'Referrals', 'gift'], ['complaints', 'Complaints', 'help']]; // [key, label, icon] triples (icons at fixed 16px per the icon system!)
+const TABS = [['stats', 'Overview', 'chart', 'green'], ['users', 'Users', 'profile', 'blue'], ['revenue', 'Revenue', 'card', 'gold'], ['transfers', 'Transfers', 'send', 'orange'], ['referrals', 'Referrals', 'gift', 'purple'], ['complaints', 'Complaints', 'help', 'red']]; // [key, label, icon, accent] quads (accent = per-tab color identity!)
+
+function isFresh(ts) { // "NEW" pill window: created within the last 24h (new users, fresh transfers, new referrals light up!)
+  const t = new Date(ts).getTime();
+  return Number.isFinite(t) && (Date.now() - t) < 24 * 3600 * 1000;
+}
 
 export default function Admin() {
   const [gate, setGate] = useState('checking'); // 'checking' | 'locked' | 'open' (three gate states — never flash the console to strangers!)
@@ -77,28 +82,31 @@ export default function Admin() {
     );
   }
 
+  const accent = (TABS.find(([k]) => k === tab) || [, , , 'green'])[3]; // active tab's color (drives header dot + panel tint!)
   return ( // CONSOLE (gate open)…
-    <>
-      <div className="page-head"><div className="row" style={{ width: '100%' }}><div><h1>Admin console</h1><p>Private — users, revenue, transfers, complaints. No owner ever sees this page.</p></div><button className="btn ghost sm" onClick={async () => { await api('/api/admin/logout', { method: 'POST' }); setGate('locked'); }}>Sign out</button></div></div>
-      <div className="card"> {/* tab bar (icons at 16px + labels, active solid / rest ghost) */}
+    <div className="admin-liquid">
+      <div className="page-head"><div className="row" style={{ width: '100%' }}><div><h1><span className={'admin-dot acc-' + accent} />Admin console</h1><p>Private — users, revenue, transfers, referrals, complaints. No owner ever sees this page.</p></div><button className="btn ghost sm" onClick={async () => { await api('/api/admin/logout', { method: 'POST' }); setGate('locked'); }}>Sign out</button></div></div>
+      <div className="card admin-tabs"> {/* tab bar (icons at 16px + labels, active solid / rest ghost) */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {TABS.map(([k, l, ic]) => ( // destructure triples; icon + label per tab…
-            <button key={k} className={'btn sm ' + (tab === k ? '' : 'ghost')} onClick={() => load(k)}><Ic n={ic} s={16} />{l}</button>
+          {TABS.map(([k, l, ic, ac]) => ( // destructure quads; icon + label per tab…
+            <button key={k} className={'btn sm ' + (tab === k ? 'acc-' + ac : 'ghost')} onClick={() => load(k)}><Ic n={ic} s={16} />{l}</button>
           ))}
         </div>
       </div>
+      <div key={tab} className={'admin-panel acc-' + accent}> {/* key={tab} = remount per tab → entrance animation replays every switch! */}
       {!d ? <div className="card"><div className="skel" /></div> : tab === 'stats' ? <Stats d={d} /> // null → skeleton; else panel per tab (ternary chain!)
         : tab === 'users' ? <Users rows={d} refresh={() => load('users')} act={act} />
         : tab === 'revenue' ? <Revenue d={d} />
         : tab === 'transfers' ? <Transfers rows={d} act={act} />
         : tab === 'referrals' ? <Referrals d={d} act={act} refresh={() => load('referrals')} />
         : <Complaints rows={d} act={act} />}
+      </div>
       <Templates onBroadcast={(t) => setBlastSeed({ ...t, n: Date.now() })} onWarn={(t) => setWarnSeed({ ...t, n: Date.now() })} /> {/* gallery + builder (Use-buttons prefill the forms below!) */}
       <Broadcast act={act} seed={blastSeed} /> {/* always mounted: announce updates to every bell */}
       <WarnUser act={act} seed={warnSeed} /> {/* always mounted: warn ONE user straight to their bell */}
       <AiHealth /> {/* always mounted: ping every AI key (booleans + short errors only) */}
       <AdsStatus /> {/* always mounted: are the Render ad keys live? (booleans only) */}
-    </>
+    </div>
   );
 }
 
@@ -429,9 +437,9 @@ function Users({ rows, refresh, act }) { // USERS: search + verify + inspect (20
       <div className="table-wrap"><table>
         <thead><tr><th>User</th><th>Business</th><th>Status</th><th></th></tr></thead>
         <tbody>
-          {list.map((u) => ( // key={u.id} stable DB ids…
-            <tr key={u.id}>
-              <td><b>{u.email}</b><br /><span className="hint">{u.verified ? 'verified' : 'UNVERIFIED'} · {fmtDate(u.created_at)}</span></td> {/* verified flag + signup date (support context!) */}
+          {list.map((u, i) => ( // key={u.id} stable DB ids…
+            <tr key={u.id} className="admin-row" style={{ animationDelay: `${Math.min(i * 40, 400)}ms` }}> {/* staggered entrance (capped — 200 rows never wait long!) */}
+              <td><b>{u.email}</b> {isFresh(u.created_at) ? <span className="pill new">NEW</span> : null}<br /><span className="hint">{u.verified ? 'verified' : 'UNVERIFIED'} · {fmtDate(u.created_at)}</span></td> {/* NEW = signed up in the last 24h (fresh users pulse at you!) */}
               <td>{u.business_name || '—'}<br /><span className="hint">{u.whatsapp_number || ''} · {u.subscription_status || ''} {u.currency ? `(${u.currency})` : ''}</span></td> {/* shop + number + plan + currency */}
               <td>{!u.verified ? <button className="btn ghost sm" onClick={() => { if (confirm(`Verify ${u.email}?`)) act(`/api/admin/users/${u.id}/verify`, null, `${u.email} verified.`); }}>Verify</button> : <span className="pill ok">ok</span>}</td> {/* unverified → Verify button (confirm() guards mis-taps!); verified → green pill */}
             </tr>
@@ -465,9 +473,9 @@ function Transfers({ rows, act }) { // TRANSFERS: FIFO approval queue (empty = c
       <div className="table-wrap"><table>
         <thead><tr><th>Who</th><th>Plan</th><th>Amount</th><th>Sender proof</th><th>Reported</th><th></th></tr></thead>
         <tbody>
-          {rows.map((t) => ( // key={t.id} payment ids…
-            <tr key={t.id}>
-              <td><b>{t.business_name || '—'}</b><br /><span className="hint">{t.email || ''} · {t.whatsapp_number || ''}</span></td> {/* who + contacts (verify the credit against THESE!) */}
+          {rows.map((t, i) => ( // key={t.id} payment ids…
+            <tr key={t.id} className="admin-row" style={{ animationDelay: `${Math.min(i * 40, 400)}ms` }}>
+              <td><b>{t.business_name || '—'}</b> {isFresh(t.created_at) ? <span className="pill new">NEW</span> : null}<br /><span className="hint">{t.email || ''} · {t.whatsapp_number || ''}</span></td> {/* NEW = reported in the last 24h (fresh money pulses!) */}
               <td>{t.plan} ({t.currency})<br /><span className="hint">{t.reference || ''}</span></td> {/* plan + audit tag */}
               <td><b>{money(t.amount / 100, t.currency)}</b></td> {/* minor→major units via money() (single formatter everywhere!) */}
               <td style={{ fontSize: 13 }}><b>{t.sender_name || '—'}</b><br /><span className="hint">{t.sender_bank || ''}{t.sender_ref ? ` · ref: ${t.sender_ref}` : ''}</span></td>
@@ -498,9 +506,9 @@ function Referrals({ d, act, refresh }) { // REFERRALS: airtime queue (pay!) + m
           <div className="table-wrap"><table>
             <thead><tr><th>Who</th><th>Amount</th><th>Why</th><th></th></tr></thead>
             <tbody>
-              {d.pending.map((p) => (
-                <tr key={p.id}>
-                  <td><b>{p.name || '—'}</b><br /><span className="hint">{p.whatsapp_number || p.owner_number || ''} · {fmtDate(p.created_at)}</span></td>
+              {d.pending.map((p, i) => (
+                <tr key={p.id} className="admin-row" style={{ animationDelay: `${Math.min(i * 40, 400)}ms` }}>
+                  <td><b>{p.name || '—'}</b> {isFresh(p.created_at) ? <span className="pill new">NEW</span> : null}<br /><span className="hint">{p.whatsapp_number || p.owner_number || ''} · {fmtDate(p.created_at)}</span></td> {/* NEW = fresh referral payout (new referrer money pulses!) */}
                   <td><b>{naira(p.amount)}</b></td>
                   <td><span className="hint">{p.note || ''}</span></td>
                   <td style={{ whiteSpace: 'nowrap' }}><button className="btn sm" onClick={() => { if (confirm(`Mark ${naira(p.amount)} airtime SENT to ${p.name}? Only after the card is delivered!`)) act(`/api/admin/referrals/${p.id}/sent`, null, 'Marked sent — referrer notified.'); }}>Mark sent</button></td>
@@ -567,9 +575,9 @@ function Complaints({ rows, act }) { // COMPLAINTS: open-first tickets with inli
   return (
     <div className="qa-list">
       {rows.length === 0 && <div className="card"><div className="empty"><b>No complaints</b>Silence is golden — or nobody found the form yet.</div></div>} {/* && empty state (honest humor, zero dev-talk!) */}
-      {rows.map((c) => ( // key={c.id} ticket ids…
-        <div key={c.id} className="card">
-          <div className="card-head"><h2><Ic n="help" s={16} /> {c.subject || 'Support request'}</h2><span className={'pill ' + (c.status === 'open' ? 'flag' : c.status === 'answered' ? 'info' : 'ok')}>{c.status}</span></div> {/* status pill: gold open / blue answered / green resolved */}
+      {rows.map((c, i) => ( // key={c.id} ticket ids…
+        <div key={c.id} className="card admin-row" style={{ animationDelay: `${Math.min(i * 60, 420)}ms` }}>
+          <div className="card-head"><h2><Ic n="help" s={16} /> {c.subject || 'Support request'}</h2><span>{isFresh(c.created_at) && c.status === 'open' ? <span className="pill new">NEW</span> : null} <span className={'pill ' + (c.status === 'open' ? 'flag' : c.status === 'answered' ? 'info' : 'ok')}>{c.status}</span></span></div> {/* NEW = fresh open ticket (pulse at you!); status pill: gold open / blue answered / green resolved */}
           <p className="hint">{c.business_name || ''} · {c.whatsapp_number || ''} · {fmtDate(c.created_at)}</p> {/* who + when (triage context!) */}
           <p style={{ marginTop: 8 }}>{c.body}</p> {/* the complaint itself */}
           {c.reply && <div className="learn-box light" style={{ fontFamily: 'var(--font)', marginTop: 8 }}><b>Your reply:</b> {c.reply}</div>} {/* && conditional: past reply shown (no double-answering blind!) */}

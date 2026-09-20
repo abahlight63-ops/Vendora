@@ -894,6 +894,43 @@ tbody tr.rowlink:hover { background: #f6fef9; }
   .grid4 { gap: 8px; }
   .stat { padding: 12px; }
 }
+/* 4-inch phones (≤360px): breathe — tighter chrome, nothing cramped */
+@media (max-width: 360px) {
+  .page { padding: 12px 10px 104px; }
+  .card { padding: 14px 12px; }
+  .page-head h1 { font-size: 20px; }
+  .auth-pane { padding: 24px 16px; }
+  .vai-modelbar { gap: 6px; }
+  .row-input { gap: 8px; }
+  .qa { padding: 12px 10px; }
+  .btn { font-size: 14px; }
+}
+
+/* ── ADMIN LIQUID GLASS (private console: color per tab, motion everywhere) ── */
+.admin-liquid .card { /* glass upgrade: frosted surface + gradient hairline + deep soft shadow */
+  background: linear-gradient(150deg, rgba(255,255,255,.09), rgba(255,255,255,.03)), var(--card);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 18px 50px rgba(0,0,0,.28);
+}
+.admin-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 9px; animation: adminPulse 1.8s ease-in-out infinite; } /* live console dot (pulses!) */
+@keyframes adminPulse { 50% { opacity: .35; transform: scale(.8); } }
+/* per-tab accents: header dot + active tab + panel top-glow (theme-safe solid colors!) */
+.acc-green { --acc: #25d366; } .acc-blue { --acc: #4da3ff; } .acc-gold { --acc: #ffcf5c; }
+.acc-orange { --acc: #ff9a3d; } .acc-purple { --acc: #b388ff; } .acc-red { --acc: #e5484d; }
+.admin-dot.acc-green, .admin-dot.acc-blue, .admin-dot.acc-gold, .admin-dot.acc-orange, .admin-dot.acc-purple, .admin-dot.acc-red { background: var(--acc); box-shadow: 0 0 12px var(--acc); }
+.admin-liquid .btn.sm[class*="acc-"] { background: var(--acc); border-color: transparent; color: #04120c; box-shadow: 0 6px 22px rgba(0,0,0,.35); } /* active tab = solid accent (instant identity!) */
+.admin-panel { animation: adminIn 0.35s cubic-bezier(0.2, 0.9, 0.25, 1.1) both; border-top: 3px solid var(--acc, #25d366); border-radius: 6px; padding-top: 4px; } /* remounts per tab (key={tab}) — entrance replays + accent spine! */
+@keyframes adminIn { from { opacity: 0; transform: translateY(14px) scale(0.99); } }
+.admin-row { animation: fadeSlide 0.35s ease both; } /* staggered via inline animationDelay (capped in JSX!) */
+.admin-tabs .btn { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.admin-tabs .btn:active { transform: scale(0.95); }
+/* admin on phones: tab bar becomes 2-col grid, forms stack full-width */
+@media (max-width: 640px) {
+  .admin-liquid .admin-tabs > div { display: grid; grid-template-columns: 1fr 1fr; }
+  .admin-liquid .admin-tabs .btn { width: 100%; min-height: 46px; }
+  .admin-liquid .grid2, .admin-liquid .grid3 { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .admin-panel, .admin-row, .admin-dot { animation: none; } }
 /* ── WELCOME TOUR, DESIGNED FOR PHONES (was desktop-shaped: centered 340px card,
    spotlight math aimed at the sidebar, art panel eating half the screen).
    Phones now get: tour = bottom sheet (thumb-reachable, safe-area aware);

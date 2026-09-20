@@ -6,7 +6,7 @@
   --bg:#04120c; --bg2:#071a10; --card:rgba(255,255,255,.055);
   --glass-brd:rgba(255,255,255,.14); --glass-hi:rgba(255,255,255,.22);
   --ink:#f2f7f3; --muted:#a9c8b4; --faint:#7da391;
-  --green:#25d366; --green-d:#128c4b; --gold:#ffcf5c; --gold-d:#b54708;
+  --green:#25d366; --green-d:#128c4b; --teal:#5eead4; --mint:#7ef0c0; --gold:#ffcf5c; --gold-d:#b54708;
   --blue:#4da3ff; --radius:20px;
   --font:'Inter',system-ui,sans-serif; --disp:'Sora','Inter',system-ui,sans-serif;
   --shadow:0 24px 70px rgba(0,0,0,.5);
@@ -40,13 +40,13 @@ a{color:#7ef0c0}
              linear-gradient(var(--bg),var(--bg2))}
 .orb{position:absolute;border-radius:50%;filter:blur(90px);opacity:.5;animation:drift 14s ease-in-out infinite alternate}
 .orb-a{width:480px;height:480px;left:-140px;top:-120px;background:radial-gradient(circle,#128c4b,transparent 65%)}
-.orb-b{width:560px;height:560px;right:-180px;top:22%;background:radial-gradient(circle,#1d5c38,transparent 65%);animation-delay:-5s}
+.orb-b{width:560px;height:560px;right:-180px;top:22%;background:radial-gradient(circle,rgba(94,234,212,.5),transparent 65%);animation-delay:-5s}
 .orb-c{width:420px;height:420px;left:30%;bottom:-180px;background:radial-gradient(circle,rgba(255,207,92,.5),transparent 65%);opacity:.22;animation-delay:-9s}
 @keyframes drift{to{transform:translate(70px,50px) scale(1.08)}}
 .grain{position:absolute;inset:0;opacity:.07;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.9'/%3E%3C/svg%3E")}
 .scroll-progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:80;
-  background:linear-gradient(90deg,var(--green),var(--gold));box-shadow:0 0 14px rgba(37,211,102,.7)}
+  background:linear-gradient(90deg,var(--green),var(--teal));box-shadow:0 0 14px rgba(94,234,212,.7)}
 
 /* ── glass primitives ── */
 .glass{background:linear-gradient(150deg,rgba(255,255,255,.09),rgba(255,255,255,.03));

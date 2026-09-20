@@ -1262,6 +1262,37 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
 [data-theme="light"] .vai-logo, [data-theme="light"] .vai-mini, [data-theme="light"] .splash-logo {
   background: #fff !important; border-color: var(--line); box-shadow: var(--shadow-sm); }
 
+/* ── popover restore (MUST stay last: glass gave .nbell-pop position:relative +
+   overflow:hidden, which yanked the dropdown inline and scattered the topbar) ── */
+.nbell-pop { position: absolute !important; overflow-y: auto !important; overflow-x: hidden !important; }
+@media (max-width: 960px) { .nbell-pop { position: fixed !important; } }
+
+/* ══ LIGHT MODE clean white+green (calm daylight: solid whites, zero frost,
+   zero blobs — sits AFTER the frosted rules so it wins every tie) ══ */
+[data-theme="light"] body::before { background: linear-gradient(180deg, #f8fbf9 0%, #edf2ee 100%) !important; }
+[data-theme="light"] body::after { display: none !important; }
+[data-theme="light"] .topbar, [data-theme="light"] .card, [data-theme="light"] .stat,
+[data-theme="light"] .trial-strip, [data-theme="light"] .qa, [data-theme="light"] .plan,
+[data-theme="light"] .landing-phone, [data-theme="light"] .nbell-pop, [data-theme="light"] .pop-card,
+[data-theme="light"] .learn-box.light, [data-theme="light"] .admin-liquid .card, [data-theme="light"] .admin-liquid .stat {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
+[data-theme="light"] .topbar { background: #fff !important; border: 1px solid var(--line) !important; box-shadow: var(--shadow-sm) !important; }
+[data-theme="light"] .card, [data-theme="light"] .stat, [data-theme="light"] .trial-strip,
+[data-theme="light"] .qa, [data-theme="light"] .plan, [data-theme="light"] .landing-phone,
+[data-theme="light"] .nbell-pop, [data-theme="light"] .pop-card, [data-theme="light"] .learn-box.light,
+[data-theme="light"] .admin-liquid .card, [data-theme="light"] .admin-liquid .stat {
+  background: #fff !important; border: 1px solid #d9e9dd !important; color: var(--ink) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+[data-theme="light"] .admin-liquid .card::before { display: none !important; } /* no shine sweeps on white */
+[data-theme="light"] .dash-hero {
+  background: linear-gradient(135deg, #0d1f16 0%, #16432c 100%) !important;
+  border: 1px solid #0d1f16 !important; color: #eaf3ed !important; box-shadow: var(--shadow-md) !important;
+}
+[data-theme="light"] .mobile-bar { background: #fff !important; }
+[data-theme="light"] .auth-card.glass { box-shadow: var(--shadow-lg) !important; }
+
 /* ── Orbit V loader (the ONE branded spinner: splash, fallbacks, gates) ── */
 .orbit-loader { display: inline-flex; flex: 0 0 auto; }
 .orbit-loader .orbit-spin { transform-origin: 60px 60px; animation: orbitRot 1.4s linear infinite; }

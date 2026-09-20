@@ -1172,3 +1172,13 @@ tbody td { border-bottom-color: rgba(255,255,255,.08) !important; }
 @media (prefers-reduced-motion: reduce) {
   body::before, .hub-wave path, .hub-bars i { animation: none; }
 }
+
+/* ── invisible scrollbars (scroll still works, bars just never show) ── */
+html, body { scrollbar-width: none; -ms-overflow-style: none; }
+html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.sidebar, .main-col, .page, .table-wrap, .nbell-pop, .mpick-pop, .vai-thread {
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+.sidebar::-webkit-scrollbar, .main-col::-webkit-scrollbar, .page::-webkit-scrollbar,
+.table-wrap::-webkit-scrollbar, .nbell-pop::-webkit-scrollbar, .mpick-pop::-webkit-scrollbar,
+.vai-thread::-webkit-scrollbar { display: none; width: 0; height: 0; }

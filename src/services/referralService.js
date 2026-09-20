@@ -132,13 +132,31 @@ async function onFirstActive(referredBusinessId) {
 
 /** Paying referrals count (activated subscriptions only — trials don't count!). */
 async function payingCount(referrerId) {
-  const { rows } = await db.query(
-    `SELECT COUNT(DISTINCT b.id)::int AS n FROM businesses b
+  try {
+    const { rows } = await db.query(
+      `SELECT COUNT(DISTINCT b.id)::int AS n FROM businesses b
      JOIN payments p ON p.business_id = b.id AND p.status = 'active'
      WHERE b.referred_by = $1`,
-    [Number(referrerId)]
-  );
-  return (rows[0] && rows[0].n) || 0;
+      [Number(referrerId)]
+    );
+    return (rows[0] && rows[0].n) || 0;
+  } catch (e) {
+    // Missing payments table on a stale DB → heal once, else 0 (never break the card!)
+    if (e && (e.code === '42P01' || e.code === '42703')) {
+      try { await require('./configService').ensureSchema(); } catch {}
+      try {
+        const { rows } = await db.query(
+          `SELECT COUNT(DISTINCT b.id)::int AS n FROM businesses b
+           JOIN payments p ON p.business_id = b.id AND p.status = 'active'
+           WHERE b.referred_by = $1`,
+          [Number(referrerId)]
+        );
+        return (rows[0] && rows[0].n) || 0;
+      } catch { return 0; }
+    }
+    console.error('payingCount error:', e.message);
+    return 0;
+  }
 }
 
 /**
@@ -172,67 +190,136 @@ async function onPaidActivation(businessId) {
 
 /** Owner dashboard card data: my code, funnel counts, earnings, next milestone. */
 async function myStats(businessId) {
-  const code = await ensureCode(businessId); // every shop gets a code the moment they open the card!
-  const { rows } = await db.query(
-    `SELECT COUNT(*)::int AS invited FROM businesses WHERE referred_by = $1`, [Number(businessId)]);
-  const { rows: q } = await db.query(
-    `SELECT COUNT(*)::int AS n FROM businesses r WHERE r.referred_by = $1
+  const id = Number(businessId);
+  // Self-heal wrapper: a stale DB (missing referral_code / referral_payouts)
+  // must NEVER 500 the card — heal once via ensureSchema, then serve
+  // degraded-but-real numbers. Offline DB errors still bubble to the
+  // controller which returns a retryable 503 (frontend shows Retry!).
+  async function runOnce() {
+    const code = await ensureCode(id); // every shop gets a code the moment they open the card!
+    const { rows } = await db.query(
+      `SELECT COUNT(*)::int AS invited FROM businesses WHERE referred_by = $1`, [id]);
+    const { rows: q } = await db.query(
+      `SELECT COUNT(*)::int AS n FROM businesses r WHERE r.referred_by = $1
      AND (r.whatsapp_last_inbound_at IS NOT NULL OR NULLIF(r.telegram_bot_token, '') IS NOT NULL
-          OR EXISTS (SELECT 1 FROM conversations c WHERE c.business_id = r.id))`, [Number(businessId)]); // qualified = ACTUALLY USING (connected or chatted — not just signed up!)
-  const paid = await payingCount(businessId);
-  const { rows: e } = await db.query(
-    `SELECT COALESCE(SUM(days), 0)::int AS days,
+          OR EXISTS (SELECT 1 FROM conversations c WHERE c.business_id = r.id))`, [id]); // qualified = ACTUALLY USING (connected or chatted — not just signed up!)
+    const paid = await payingCount(id);
+    const { rows: e } = await db.query(
+      `SELECT COALESCE(SUM(days), 0)::int AS days,
             COALESCE(SUM(amount) FILTER (WHERE kind = 'airtime' AND status = 'sent'), 0)::int AS airtime_sent,
             COALESCE(SUM(amount) FILTER (WHERE kind = 'airtime' AND status = 'pending'), 0)::int AS airtime_due
-     FROM referral_payouts WHERE referrer_business_id = $1`, [Number(businessId)]);
-  const nextIn = MILESTONE_EVERY - (paid % MILESTONE_EVERY); // friends-to-go till the next ₦500 (5→5, 7→3!)
-  return {
-    code,
-    invited: (rows[0] && rows[0].invited) || 0,
-    qualified: (q.rows[0] && q.rows[0].n) || 0, // finished the quiz (earned days!)
-    paying: paid, // activated Pro/Plus (earn airtime!)
-    daysEarned: (e.rows[0] && e.rows[0].days) || 0,
-    airtimeDue: (e.rows[0] && e.rows[0].airtime_due) || 0, // minor units!
-    airtimeSent: (e.rows[0] && e.rows[0].airtime_sent) || 0,
-    nextMilestoneIn: paid % MILESTONE_EVERY === 0 && paid > 0 ? MILESTONE_EVERY : nextIn, // just hit 5? next target is a fresh 5!
-    milestoneEvery: MILESTONE_EVERY,
-    milestoneAmount: MILESTONE_AMOUNT,
-    quizDays: QUIZ_DAYS,
-  };
+     FROM referral_payouts WHERE referrer_business_id = $1`, [id]);
+    const nextIn = MILESTONE_EVERY - (paid % MILESTONE_EVERY); // friends-to-go till the next ₦500 (5→5, 7→3!)
+    return {
+      code,
+      invited: (rows[0] && rows[0].invited) || 0,
+      qualified: (q.rows[0] && q.rows[0].n) || 0, // finished the quiz (earned days!)
+      paying: paid, // activated Pro/Plus (earn airtime!)
+      daysEarned: (e.rows[0] && e.rows[0].days) || 0,
+      airtimeDue: (e.rows[0] && e.rows[0].airtime_due) || 0, // minor units!
+      airtimeSent: (e.rows[0] && e.rows[0].airtime_sent) || 0,
+      nextMilestoneIn: paid % MILESTONE_EVERY === 0 && paid > 0 ? MILESTONE_EVERY : nextIn, // just hit 5? next target is a fresh 5!
+      milestoneEvery: MILESTONE_EVERY,
+      milestoneAmount: MILESTONE_AMOUNT,
+      quizDays: QUIZ_DAYS,
+    };
+  }
+  try {
+    return await runOnce();
+  } catch (e) {
+    const missing = e && (e.code === '42P01' || e.code === '42703');
+    if (missing) {
+      try { await require('./configService').ensureSchema(); } catch {}
+      try { return await runOnce(); } catch (e2) { console.error('referral myStats retry failed:', e2.message); }
+    } else {
+      console.error('referral myStats error:', e.message);
+    }
+    // Last-resort degraded card (code may still be derivable — never blank the page!)
+    let code = 'VENDORA';
+    try { code = await ensureCode(id); } catch {}
+    return {
+      code, invited: 0, qualified: 0, paying: 0, daysEarned: 0,
+      airtimeDue: 0, airtimeSent: 0, nextMilestoneIn: MILESTONE_EVERY,
+      milestoneEvery: MILESTONE_EVERY, milestoneAmount: MILESTONE_AMOUNT,
+      quizDays: QUIZ_DAYS, degraded: true,
+    };
+  }
 }
 
 /** My payout history (the page + mobile sheet list mine newest-first!). */
 async function myHistory(businessId) {
-  const { rows } = await db.query(
-    `SELECT kind, status, days, amount, note, created_at FROM referral_payouts
+  try {
+    const { rows } = await db.query(
+      `SELECT kind, status, days, amount, note, created_at FROM referral_payouts
      WHERE referrer_business_id = $1 ORDER BY created_at DESC LIMIT 50`,
-    [Number(businessId)]
-  );
-  return rows;
+      [Number(businessId)]
+    );
+    return rows;
+  } catch (e) {
+    if (e && (e.code === '42P01' || e.code === '42703')) {
+      try { await require('./configService').ensureSchema(); } catch {}
+      try {
+        const { rows } = await db.query(
+          `SELECT kind, status, days, amount, note, created_at FROM referral_payouts
+           WHERE referrer_business_id = $1 ORDER BY created_at DESC LIMIT 50`,
+          [Number(businessId)]
+        );
+        return rows;
+      } catch { return []; }
+    }
+    console.error('referral history error:', e.message);
+    return [];
+  }
 }
 
 /** Public mini-leaderboard (first names + counts only — no numbers, no codes!). */
 async function publicLeaders(limit) {
-  const rows = await leaderboard(limit);
-  return rows.map((r) => ({
-    name: String(r.name || 'A seller').split(' ')[0] || 'A seller',
-    paying: r.paying,
-  }));
+  try {
+    const rows = await leaderboard(limit);
+    return rows.map((r) => ({
+      name: String(r.name || 'A seller').split(' ')[0] || 'A seller',
+      paying: r.paying,
+    }));
+  } catch (e) {
+    console.error('referral publicLeaders error:', e.message);
+    return [];
+  }
 }
 
 /** Monthly leaderboard (champion picking): paying referrals per referrer, this month. */
 async function leaderboard(limit) {
-  const { rows } = await db.query(
-    `SELECT b.id, b.name, b.referral_code, COUNT(DISTINCT p.business_id)::int AS paying
+  try {
+    const { rows } = await db.query(
+      `SELECT b.id, b.name, b.referral_code, COUNT(DISTINCT p.business_id)::int AS paying
      FROM businesses b
      JOIN businesses r ON r.referred_by = b.id
      JOIN payments p ON p.business_id = r.id AND p.status = 'active' AND p.created_at >= date_trunc('month', now())
      GROUP BY b.id, b.name, b.referral_code
      ORDER BY paying DESC, b.id ASC
      LIMIT $1`,
-    [Math.min(Number(limit) || 10, 50)]
-  );
-  return rows;
+      [Math.min(Number(limit) || 10, 50)]
+    );
+    return rows;
+  } catch (e) {
+    if (e && (e.code === '42P01' || e.code === '42703')) {
+      try { await require('./configService').ensureSchema(); } catch {}
+      try {
+        const { rows } = await db.query(
+          `SELECT b.id, b.name, b.referral_code, COUNT(DISTINCT p.business_id)::int AS paying
+           FROM businesses b
+           JOIN businesses r ON r.referred_by = b.id
+           JOIN payments p ON p.business_id = r.id AND p.status = 'active' AND p.created_at >= date_trunc('month', now())
+           GROUP BY b.id, b.name, b.referral_code
+           ORDER BY paying DESC, b.id ASC
+           LIMIT $1`,
+          [Math.min(Number(limit) || 10, 50)]
+        );
+        return rows;
+      } catch { return []; }
+    }
+    console.error('referral leaderboard error:', e.message);
+    return [];
+  }
 }
 
 /** Admin overview: every referrer + funnel + payouts + pending airtime. */

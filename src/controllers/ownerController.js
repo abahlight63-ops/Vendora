@@ -186,25 +186,33 @@ async function saveSetup(req, res) {
 }
 
 // Refer & Earn page data: payout history + public leaderboard (first names!).
+// Never 500 for garnish — partial data beats a dead page (frontend renders what it gets!).
 async function referralExtra(req, res) {
   try {
     const ref = require('../services/referralService');
-    const [history, leaders] = await Promise.all([ref.myHistory(req.session.businessId), ref.publicLeaders(5)]);
-    res.json({ history, leaders });
+    const [h, l] = await Promise.allSettled([ref.myHistory(req.session.businessId), ref.publicLeaders(5)]);
+    res.json({
+      history: (h && h.status === 'fulfilled' && Array.isArray(h.value)) ? h.value : [],
+      leaders: (l && l.status === 'fulfilled' && Array.isArray(l.value)) ? l.value : [],
+    });
   } catch (e) {
     console.error('referral extra error:', e.message);
-    res.status(500).json({ error: 'Could not load referral details' });
+    res.json({ history: [], leaders: [] });
   }
 }
 
 // Refer & Earn card data: my code, funnel counts, earnings, next milestone.
+// myStats() self-heals + returns degraded defaults — this stays 200 so the
+// card NEVER shows "Couldn't load rewards" on a stale DB. True offline/DB-down
+// still bubbles as a retryable error below.
 async function referralStats(req, res) {
   try {
     const ref = require('../services/referralService');
-    res.json(await ref.myStats(req.session.businessId));
+    const stats = await ref.myStats(req.session.businessId);
+    res.json(stats);
   } catch (e) {
     console.error('referral stats error:', e.message);
-    res.status(500).json({ error: 'Could not load referral stats' });
+    res.status(503).json({ error: 'Rewards are waking up — retry in a few seconds.', retryable: true });
   }
 }
 

@@ -158,8 +158,9 @@ export default function Dashboard({ biz }) { // biz = business object from App (
 function ReferCard() { // REFER & EARN: your code + share buttons + live funnel (invited → setup → paying!) + milestone bar to ₦500 airtime.
   const [r, setR] = useState(null); // null = loading (skeleton!); object = myStats (code, counts, earnings!)
   const [copied, setCopied] = useState(false); // copy feedback (tick + "Copied!" for 2s!)
-  useEffect(() => { api('/api/me/referral').then(({ ok, data }) => { if (ok) setR(data); }); }, []); // [] = mount-only (fresh each dashboard visit!)
-  if (!r) return null; // loading → render NOTHING (card pops in when ready — no skeleton flash for a bonus card!)
+  useEffect(() => { api('/api/me/referral', { timeout: 15000 }).then(({ ok, data }) => { if (ok && data && data.code) setR(data); }).catch(() => {}); }, []); // [] = mount-only (fresh each dashboard visit!); fail silent — full page has Retry!
+  if (!r || !r.code) return null; // loading/error → render NOTHING (card pops in when ready — no skeleton flash for a bonus card! full /refer-earn page owns the error UI!)
+  const every = Number(r.milestoneEvery) > 0 ? Number(r.milestoneEvery) : 5;
   const link = window.location.origin + '/login?ref=' + encodeURIComponent(r.code); // share link (Login prefills + validates the code!)
   const text = `I use Vendora — my WhatsApp shop answers customers 24/7, even at 2am. Start free with my code ${r.code} (we BOTH get 14 Pro days free): ${link}`;
   async function copy() { // clipboard with fallback (older browsers / permissions!)
@@ -167,7 +168,7 @@ function ReferCard() { // REFER & EARN: your code + share buttons + live funnel 
     catch { const ta = document.createElement('textarea'); ta.value = r.code; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch {} ta.remove(); }
     setCopied(true); setTimeout(() => setCopied(false), 2000); // tick 2s (then back to copy icon!)
   }
-  const pct = Math.min(100, Math.round((r.paying % r.milestoneEvery) / r.milestoneEvery * 100)); // milestone bar (0–100 — resets each 5-pack, by design!)
+  const pct = Math.min(100, Math.round(((Number(r.paying) || 0) % every) / every * 100)); // milestone bar (0–100 — resets each 5-pack, by design!)
   const naira = (kobo) => '₦' + (Number(kobo || 0) / 100).toLocaleString(); // minor → major (ledger stores kobo!)
   return (
     <div className="card" style={{ marginTop: 18, borderColor: 'var(--gold-line)' }}>

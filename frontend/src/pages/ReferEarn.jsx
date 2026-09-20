@@ -14,19 +14,31 @@ const naira = (kobo) => '₦' + (Number(kobo || 0) / 100).toLocaleString(); // m
 export default function ReferEarn() {
   const [s, setS] = useState(null); // myStats (code, funnel, earnings!) — null = loading
   const [x, setX] = useState(null); // extra (history + leaders!) — null = loading
-  const [failed, setFailed] = useState(false); // stats endpoint failed (stale backend? logged out?) — show it, never spin forever!
+  const [failed, setFailed] = useState(null); // null | { status, detail } — show it, never spin forever!
   const [copied, setCopied] = useState(''); // which button ticked ('code' | 'link' | '')
-  useEffect(() => { // mount: both endpoints fly in parallel (no await between!)
+  const [tries, setTries] = useState(0); // retry counter (forces reload effect!)
+  useEffect(() => { // mount + retry: both endpoints fly in parallel (no await between!)
     let dead = false; // unmount guard (slow networks + fast navigation!)
-    api('/api/me/referral').then(({ ok, data, status }) => {
+    setFailed(null);
+    api('/api/me/referral', { timeout: 15000 }).then(({ ok, data, status }) => {
       if (dead) return;
-      if (ok) setS(data);
+      if (ok && data && data.code) setS(data);
       else if (status === 401) window.location.href = '/login'; // session died → login (not an error loop!)
-      else setFailed(true); // 404/500 = backend older than this page (redeploy!) — SAY SO below
-    }).catch(() => { if (!dead) setFailed(true); }); // network down → error card, not eternal skeleton
-    api('/api/me/referral/extra').then(({ ok, data }) => { if (!dead && ok) setX(data); }).catch(() => {}); // extra is garnish (page works without it!)
-    return () => { dead = true; };
-  }, []); // [] = mount-only
+      else setFailed({
+        status,
+        detail: (data && (data.error || data.message)) || (!navigator.onLine ? 'You look offline — reconnect and retry.' : status === 404 ? 'This app copy is older than the Refer & Earn page — redeploy the backend.' : status === 503 ? 'Server is waking up (cold start?) — tap Retry in a few seconds.' : 'The server did not answer — your code and earnings are safe.'),
+      }); // 404/500/503 = backend older/sleeping (SAY SO below); offline = say offline!
+    }).catch((e) => {
+      if (!dead) setFailed({
+        status: 0,
+        detail: !navigator.onLine ? 'You look offline — reconnect and retry.' : 'Network hiccup (' + (e && e.name === 'AbortError' ? 'timed out after 15s' : 'connection failed') + ') — tap Retry.',
+      });
+    }); // network down / abort → error card, not eternal skeleton
+    api('/api/me/referral/extra', { timeout: 15000 }).then(({ ok, data }) => { if (!dead && ok) setX({ history: data.history || [], leaders: data.leaders || [] }); else if (!dead) setX({ history: [], leaders: [] }); }).catch(() => { if (!dead) setX({ history: [], leaders: [] }); }); // extra is garnish (page works without it — empty beats skeleton!)
+    const onOnline = () => { if (!dead && failed) setTries((t) => t + 1); }; // auto-retry when browser comes back online!
+    window.addEventListener('online', onOnline);
+    return () => { dead = true; window.removeEventListener('online', onOnline); };
+  }, [tries]); // [tries] = Retry button bumps this → refetch (no full page reload!)
   async function copy(text, which) { // clipboard with legacy fallback (older browsers / permissions!)
     try { await navigator.clipboard.writeText(text); }
     catch { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch {} ta.remove(); }
@@ -34,16 +46,17 @@ export default function ReferEarn() {
     toast('Copied — go share it!');
   }
   if (!s && !failed) return <div className="page"><div className="card"><div className="skel" /></div></div>; // loading → skeleton (stats drive everything below!)
-  if (!s && failed) return ( // backend unreachable or older than this page — SAY SO with a way back (never spin forever!)
+  if (!s && failed) return ( // backend unreachable / sleeping / older than this page — SAY SO with in-place retry (never spin forever!)
     <div className="page">
       <div className="page-head"><div><h1>Refer & Earn</h1></div><Link className="mini-link" to="/dashboard">← Dashboard</Link></div>
-      <div className="card"><div className="empty"><b>Couldn't load rewards</b>The server didn't answer (offline? old version?). Check your connection, then try again — your code and earnings are safe.</div>
-      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}><button className="btn sm" onClick={() => window.location.reload()}>Retry</button></div></div>
+      <div className="card"><div className="empty"><b>Couldn't load rewards{failed.status ? ` (${failed.status})` : ''}</b>{failed.detail || "The server didn't answer (offline? old version?). Check your connection, then try again — your code and earnings are safe."}</div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}><button className="btn sm" onClick={() => { setS(null); setX(null); setTries((t) => t + 1); }}>Retry{tries > 0 ? ` (${tries})` : ''}</button><Link className="btn sm ghost" to="/dashboard">Back to Dashboard</Link></div></div>
     </div>
   );
-  const link = window.location.origin + '/login?ref=' + encodeURIComponent(s.code); // share link (Login prefills + validates!)
-  const text = `I use Vendora — my WhatsApp shop answers customers 24/7, even at 2am. Start free with my code ${s.code} (we BOTH get ${s.quizDays} Pro days free): ${link}`;
-  const pct = Math.min(100, Math.round((s.paying % s.milestoneEvery) / s.milestoneEvery * 100)); // milestone fill (resets each 5-pack!)
+  const safeMilestone = Number(s.milestoneEvery) > 0 ? Number(s.milestoneEvery) : 5;
+  const link = window.location.origin + '/login?ref=' + encodeURIComponent(s.code || ''); // share link (Login prefills + validates!)
+  const text = `I use Vendora — my WhatsApp shop answers customers 24/7, even at 2am. Start free with my code ${s.code} (we BOTH get ${s.quizDays || 14} Pro days free): ${link}`;
+  const pct = Math.min(100, Math.round(((Number(s.paying) || 0) % safeMilestone) / safeMilestone * 100)); // milestone fill (resets each 5-pack!)
   const kindName = (k) => k === 'pro_days' ? 'Pro days' : k === 'airtime' ? 'Airtime' : k === 'plus_month' ? 'Plus month' : k; // payout kind → human words
   return (
     <div className="page">
@@ -62,15 +75,15 @@ export default function ReferEarn() {
       </div>
 
       <div className="grid3">
-        <div className="card"><h2><Ic n="gift" s={16} /> 14 Pro days × 2</h2><p className="desc">Friend joins with your code and <b>starts using</b> (connects or first chat) → <b>both</b> shops get {s.quizDays} Pro days. Real Pro everywhere. Costs you nothing, earns you loyalty.</p></div>
-        <div className="card"><h2><Ic n="cash" s={16} /> ₦500 airtime</h2><p className="desc">Every {s.milestoneEvery}th paying friend = ₦500 airtime. We track it, you get a bell, the card follows. Top champions only.</p></div>
+        <div className="card"><h2><Ic n="gift" s={16} /> 14 Pro days × 2</h2><p className="desc">Friend joins with your code and <b>starts using</b> (connects or first chat) → <b>both</b> shops get {s.quizDays || 14} Pro days. Real Pro everywhere. Costs you nothing, earns you loyalty.</p>{s.degraded ? <p className="hint">Stats refreshing — code works, counts syncing.</p> : null}</div>
+        <div className="card"><h2><Ic n="cash" s={16} /> ₦500 airtime</h2><p className="desc">Every {safeMilestone}th paying friend = ₦500 airtime. We track it, you get a bell, the card follows. Top champions only.</p></div>
         <div className="card"><h2><Ic n="chart" s={16} /> Monthly champion</h2><p className="desc">Top referrer each month wins a <b>free Plus month</b> + shout-out. Sell the dream, wear the crown.</p></div>
       </div>
 
       <div className="grid2" style={{ marginTop: 18 }}>
         <div className="card">
-          <div className="card-head"><h2>My rewards</h2><span className="hint">{s.daysEarned} Pro days earned</span></div>
-          {!x ? <div className="skel" /> : x.history.length === 0 ? <p className="hint">Nothing yet — share your code above and rewards land here.</p> : (
+          <div className="card-head"><h2>My rewards</h2><span className="hint">{s.daysEarned || 0} Pro days earned</span></div>
+          {!x || !Array.isArray(x.history) ? <div className="skel" /> : x.history.length === 0 ? <p className="hint">Nothing yet — share your code above and rewards land here.</p> : (
             <div className="qa-list">
               {x.history.map((h, i) => (
                 <div key={i} className="qa static">
@@ -84,7 +97,7 @@ export default function ReferEarn() {
         </div>
         <div className="card">
           <div className="card-head"><h2>This month's leaders</h2></div>
-          {!x ? <div className="skel" /> : x.leaders.length === 0 ? <p className="hint">No paying referrals yet this month — be the first name here.</p> : (
+          {!x || !Array.isArray(x.leaders) ? <div className="skel" /> : x.leaders.length === 0 ? <p className="hint">No paying referrals yet this month — be the first name here.</p> : (
             <div className="qa-list">
               {x.leaders.map((l, i) => (
                 <div key={i} className="qa static">

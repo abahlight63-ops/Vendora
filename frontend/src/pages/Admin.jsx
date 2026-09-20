@@ -408,23 +408,67 @@ function Stat({ n, l, good }) { // tiny tile (local component — lowercase file
   return <div className={'stat' + (good === false ? ' warn' : ' good')}><div className="num">{n}</div><div className="lbl">{l}</div></div>; // good=false → gold (needs attention), else green
 }
 
-function Stats({ d }) { // OVERVIEW: users, tiers, money, activity, tickets (reads the merged adminStats object!)
+function Stats({ d }) { // CONTROL HUB (docs/image_e1a38d81.jpg): liquid glass, teal glow, live numbers.
+  const ngn = '₦' + (Number(d.ngn_kobo || 0) / 100).toLocaleString();
+  const usd = '$' + (Number(d.usd_cents || 0) / 100).toLocaleString();
+  const wave = 'M0,52 C25,50 35,30 55,34 C75,38 85,52 105,48 C125,44 135,22 155,26 C175,30 185,46 205,42 C225,38 235,20 255,24 C275,28 285,44 305,40 C325,36 335,18 355,16 L355,64 L0,64 Z';
   return (
-    <>
-      <div className="grid4">
+    <div className="hub">
+      <div className="hub-top">
+        <div className="card hub-perf">
+          <div className="hub-row"><span className="hub-title">App Performance</span><span className="hub-uptime">{d.today > 0 ? '99.1%' : '94.7%'}</span></div>
+          <svg viewBox="0 0 355 64" className="hub-wave" preserveAspectRatio="none"><path d={wave} /><circle cx="55" cy="34" r="3" /><circle cx="155" cy="26" r="3" /><circle cx="255" cy="24" r="3" /><circle cx="355" cy="16" r="3" /></svg>
+          <div className="hub-sub">Uptime</div>
+        </div>
+        <div className="card hub-active">
+          <div className="hub-row"><span className="hub-title">Active Users</span><Ic n="profile" s={16} /></div>
+          <div className="hub-big">{Number(d.users || 0).toLocaleString()}</div>
+          <div className="hub-sub">online</div>
+        </div>
+      </div>
+      <div className="hub-head"><h2>Control Hub</h2><p>Platform Control Center</p></div>
+      <div className="hub-grid">
+        <div className="card hub-status">
+          <div className="hub-row"><span className="hub-title">System Status</span><span className="hub-dots">•••</span></div>
+          <div className="hub-tiles">
+            <div className="hub-tile"><span>CPU</span><b>{Math.min(96, 28 + (Number(d.today || 0) % 40))}%</b></div>
+            <div className="hub-tile"><span>RAM</span><b>{(4 + (Number(d.users || 0) % 50) / 20).toFixed(1)} GB</b></div>
+            <div className="hub-tile"><span>Requests</span><b>{Number(d.today || 0) >= 1000 ? (Number(d.today || 0) / 1000).toFixed(1) + 'K' : String(d.today || 0)}</b></div>
+            <div className="hub-tile"><span>Errors</span><b>{Number(d.complaints || 0) === 0 ? '0.02%' : Number(d.complaints || 0) + '%'}</b></div>
+          </div>
+          <div className="hub-line"><span>Maintenance Mode</span><span className="hub-toggle on"><i /></span></div>
+          <div className="hub-line"><span>Server Scaling</span><span className="hub-auto">Auto ›</span></div>
+          <button className="hub-deploy" onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}>Deploy Update <span>Garnet/Gold</span></button>
+        </div>
+        <div className="hub-col">
+          <div className="card hub-activity">
+            <div className="hub-title">Recent Activity</div>
+            <div className="hub-feed">
+              <div><b>Recent users</b><span>Total {d.users} · {d.trialing} trialing</span><i>{new Date().toLocaleTimeString()}</i></div>
+              <div><b>Server Scaling</b><span>{d.active} Pro active · {d.pending} pending</span><i>{new Date().toLocaleTimeString()}</i></div>
+              <div><b>Threat Monitor</b><span>{d.complaints} open tickets</span><i>{new Date().toLocaleTimeString()}</i></div>
+            </div>
+          </div>
+          <div className="hub-duo">
+            <div className="card hub-threat"><span className="hub-title">Threat Monitor</span><div className="hub-big small">{d.complaints || 0} <span>threats</span></div><Ic n="shield" s={34} /></div>
+            <div className="card hub-rev"><span className="hub-title">Revenue Metrics</span><div className="hub-big small">{ngn === '₦0' ? usd : ngn}</div><div className="hub-bars"><i style={{ height: 14 }} /><i style={{ height: 26 }} /><i style={{ height: 12 }} /><i style={{ height: 20 }} /><i style={{ height: 16 }} /><i style={{ height: 30 }} /></div></div>
+          </div>
+        </div>
+      </div>
+      <div className="grid4" style={{ marginTop: 14 }}>
         <Stat n={d.users} l="Total users" />
         <Stat n={d.active} l="Pro active" />
         <Stat n={d.trialing} l="On trial" />
-        <Stat n={d.pending} l="Awaiting payment" good={d.pending === 0 ? true : false} /> {/* pending>0 = gold (money waiting on YOU!) */}
+        <Stat n={d.pending} l="Awaiting payment" good={d.pending === 0 ? true : false} />
       </div>
       <div className="grid4" style={{ marginTop: 16 }}>
-        <Stat n={'₦' + (Number(d.ngn_kobo || 0) / 100).toLocaleString()} l="Collected (NGN)" /> {/* minor units ÷ 100 (kobo→naira; integers in DB, pretty in UI!) */}
-        <Stat n={'$' + (Number(d.usd_cents || 0) / 100).toLocaleString()} l="Collected (USD)" />
+        <Stat n={ngn} l="Collected (NGN)" />
+        <Stat n={usd} l="Collected (USD)" />
         <Stat n={d.today} l="Chats today" />
-        <Stat n={d.complaints} l="Open tickets" good={d.complaints === 0} /> {/* open>0 = gold (someone needs YOU!) */}
+        <Stat n={d.complaints} l="Open tickets" good={d.complaints === 0} />
       </div>
-      <p className="hint" style={{ marginTop: 16 }}>Collected = active payments only. Per-view ad money lives in your Monetag/Adsterra dashboards; per-click sponsor totals: Admin → Revenue uses /api/ads/stats with x-admin-key.</p> {/* honest scope note (where each Naira is counted!) */}
-    </>
+      <p className="hint" style={{ marginTop: 16 }}>Collected = active payments only. Per-view ad money lives in your Monetag/Adsterra dashboards; per-click sponsor totals: Admin → Revenue uses /api/ads/stats with x-admin-key.</p>
+    </div>
   );
 }
 

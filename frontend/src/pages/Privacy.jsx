@@ -6,6 +6,7 @@
 // NOTE: legal pages get a FILE header (not per-line comments) — per-line notes
 // inside legal copy would break readability AND risk altering legal meaning!
 import { useEffect } from 'react'; // useEffect = tab title on mount
+import Logo from '../components/Logo.jsx'; // theme-aware brand mark (blue dark / green light!)
 import { Link } from 'react-router-dom'; // brand/login/faq/terms links + footer
 
 export default function Privacy() {
@@ -13,7 +14,7 @@ export default function Privacy() {
   return (
     <div className="landing">
       <header className="landing-nav"><div className="landing-inner">
-        <Link className="landing-brand" to="/"><img src="/logo.png?v=4" alt="VeloSales Ai" />VELOSALES AI</Link>
+        <Link className="landing-brand" to="/"><Logo alt="VeloSales Ai" />VELOSALES AI</Link>
         <span><Link className="btn ghost sm" to="/login">Sign in</Link></span>
       </div></header>
       <section className="landing-inner" style={{ padding: '48px 24px 64px' }}>

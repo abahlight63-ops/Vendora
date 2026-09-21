@@ -67,7 +67,13 @@ class _SplashViewState extends State<SplashView>
                         painter: _OrbitPainter(scheme.primary),
                       ),
                     ),
-                    Image.asset('assets/logo.png', width: 64, height: 64),
+                    Image.asset(
+                      Theme.of(context).brightness == Brightness.light
+                          ? 'assets/logo-green.png'
+                          : 'assets/logo-blue.png',
+                      width: 64,
+                      height: 64,
+                    ),
                   ],
                 ),
               ),

@@ -11,6 +11,7 @@
 // step transitions (fresh entrance animation every step!), encouraging cheer
 // lines that react to the pick.
 import { useEffect, useState } from 'react'; // useState = step + 5 drafts + busy; useEffect = skip-if-done
+import Logo from '../components/Logo.jsx'; // theme-aware brand mark (blue dark / green light!)
 import { useNavigate } from 'react-router-dom'; // nav() after save (dashboard or back)
 import { api, pop } from '../lib/api.js'; // api() calls; pop() for save outcomes
 import { NICHES, HEARD_FROM } from '../lib/niches.js'; // picker data (shared with VeloSalesAI chips!)
@@ -91,7 +92,7 @@ export default function Welcome() {
     <div className="welcome neu-bg">
       <div className="welcome-inner">
         <div className="welcome-top">
-          <span className="landing-brand"><img src="/logo.png?v=4" alt="VeloSales Ai" />VELOSALES AI</span>
+          <span className="landing-brand"><Logo alt="VeloSales Ai" />VELOSALES AI</span>
           <span className="hint">Step {step + 1} of 5</span> {/* progress counter (Onboarding-style!) */}
         </div>
         <div className="quiz-prog"><i style={{ width: `${((step + 1) / 5) * 100}%` }} /></div> {/* progress fill (inline width = dynamic, CSS can't compute!) */}

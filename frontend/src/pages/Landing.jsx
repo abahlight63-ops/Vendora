@@ -4,6 +4,7 @@
 // Guests only (App routes logged-in users to /dashboard instead).
 // Also: scroll-reveal via IntersectionObserver (no animation library!).
 import { useEffect } from 'react'; // useEffect ×1: title + reveal observer setup
+import Logo from '../components/Logo.jsx'; // theme-aware brand mark (blue dark / green light!)
 import { Link } from 'react-router-dom'; // Links (client-side nav, no reloads)
 import ThemeToggle from '../components/ThemeToggle.jsx'; // theme switch in the nav (guests get dark mode too!)
 import { useCurrency } from '../lib/locale.js'; // location → 'NGN' | 'USD' (single-currency pricing!)
@@ -25,7 +26,7 @@ export default function Landing({ theme = 'light', onToggleTheme = () => {} }) {
     <div className="landing"> {/* dark-green marketing theme (own CSS section — separate from app theme!) */}
       <header className="landing-nav"> {/* sticky top nav (CSS) */}
         <div className="landing-inner"> {/* centered max-width container (reused per section!) */}
-          <span className="landing-brand"><img src="/logo.png?v=4" alt="VeloSales Ai" />VELOSALES AI</span> {/* brand lockup (span, not link — already home) */}
+          <span className="landing-brand"><Logo alt="VeloSales Ai" />VELOSALES AI</span> {/* brand lockup (span, not link — already home) */}
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}> {/* right cluster: toggle + two CTAs (inline-flex rows them up) */}
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
             <Link className="btn ghost sm" to="/login">Sign in</Link>{' '} {/* {' '} = explicit space between inline elements (JSX collapses whitespace!) */}

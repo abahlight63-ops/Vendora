@@ -6,6 +6,7 @@
 // React patterns: slide data array, direction-aware animation key, touch swipe,
 // SlideImg fallback chain (png → jpg → svg → icon slot).
 import { useEffect, useRef, useState } from 'react'; // useEffect = title; useRef = touch X WITHOUT re-render (mutable box!); useState = step/dir
+import Logo from '../components/Logo.jsx'; // theme-aware brand mark (blue dark / green light!)
 import { Link, useNavigate } from 'react-router-dom'; // Link = in-slide links (plans/checklist); useNavigate = Skip + Finish
 import Ic from '../components/icons.jsx'; // slide art + row icons
 
@@ -77,7 +78,7 @@ export default function Onboarding() {
     <div className="welcome neu-bg"> {/* fullscreen stage + neumorphic background tint */}
       <div className="welcome-inner"> {/* centered column (max-width) */}
         <div className="welcome-top">
-          <span className="landing-brand"><img src="/logo.png?v=4" alt="VeloSales Ai" />VELOSALES AI</span> {/* brand lockup (logo + letterspaced name) */}
+          <span className="landing-brand"><Logo alt="VeloSales Ai" />VELOSALES AI</span> {/* brand lockup (logo + letterspaced name) */}
           <button className="skip" onClick={() => nav('/welcome')}>Skip intro</button> {/* link-styled skip (impatient users convert too — still lands on niche setup!) */}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}> {/* counter + dots row */}

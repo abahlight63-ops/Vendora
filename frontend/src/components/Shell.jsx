@@ -5,6 +5,7 @@
 // ROUTER LESSON: NavLink = <a> that knows the current route (auto .active
 // class); useLocation = current URL; useNavigate = go somewhere in code.
 import { useEffect, useState } from 'react'; // useState = drawer open flag; useEffect = title + drawer side-effects
+import Logo from './Logo.jsx'; // theme-aware brand mark (blue dark / green light!)
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'; // NavLink (active-aware link), useLocation (current path), useNavigate (code navigation)
 import { api, toast } from '../lib/api.js'; // api() for the logout call (+ version check below)
 import ThemeToggle from './ThemeToggle.jsx'; // sun/moon button (topbar)
@@ -89,7 +90,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
       <div className="shell"> {/* flex row: sidebar + main column (CSS) */}
         {menuOpen && <div className="drawer-backdrop" onClick={() => setMenuOpen(false)} />} {/* && conditional: backdrop ONLY when open; click = close */}
         <aside className={'sidebar' + (menuOpen ? ' open' : '')}> {/* .open slides the drawer in (CSS transform, mobile only) */}
-          <div className="logo"><img src="/logo.png?v=4" alt="VeloSales Ai" /><span>VELOSALES AI</span>
+          <div className="logo"><Logo alt="VeloSales Ai" /><span>VELOSALES AI</span>
             <button className="drawer-close" onClick={() => setMenuOpen(false)} aria-label="Close menu"><Icon k="x" /></button> {/* drawn X, mobile only (CSS) */}
           </div>
           {GROUPS.map((g) => ( // map sections → JSX (key = stable identity for React's reconciler — NEVER use array index when order can change; here labels are stable)

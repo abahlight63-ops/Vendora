@@ -27,7 +27,7 @@ function layout({ title, intro, body, ctaLabel, ctaLink, foot }) {
   return `
     <div style="font-family:Segoe UI,Arial,sans-serif;max-width:520px;margin:auto;background:#f6faf8;border-radius:14px;overflow:hidden;">
       <div style="background:#075E54;padding:20px 24px;text-align:center;">
-        <img src="${base}/logo.png?v=4" alt="VeloSales Ai" width="44" style="border-radius:10px;background:#fff;padding:3px;" />
+        <img src="${base}/logo-green.png?v=1" alt="VeloSales Ai" width="44" style="border-radius:10px;background:#fff;padding:3px;" />
         <div style="color:#ffffff;font-weight:800;letter-spacing:2px;font-size:15px;margin-top:8px;">VELOSALES AI</div>
         <div style="color:#b9e8d2;font-size:12px;">Your WhatsApp shop, open 24/7</div>
       </div>

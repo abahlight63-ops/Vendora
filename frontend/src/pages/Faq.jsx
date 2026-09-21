@@ -5,6 +5,7 @@
 // React patterns: useState for open index + search query; useMemo for filtered
 // list (recomputes only when query changes — no wasted filtering per render!).
 import { useEffect, useMemo, useState } from 'react'; // useMemo = cached computation (filters only when `query` changes)
+import Logo from '../components/Logo.jsx'; // theme-aware brand mark (blue dark / green light!)
 import { Link } from 'react-router-dom'; // brand/home/signin/trial/footer links
 import Ic from '../components/icons.jsx'; // drawn close glyph for the search-clear button
 
@@ -48,7 +49,7 @@ export default function Faq() {
   return (
     <div className="faq-page"> {/* light airy theme (own scope — readable in both app themes via CSS vars!) */}
       <header className="landing-nav"><div className="landing-inner">
-        <Link className="landing-brand" to="/"><img src="/logo.png?v=4" alt="VeloSales Ai" />VELOSALES AI</Link> {/* brand links HOME */}
+        <Link className="landing-brand" to="/"><Logo alt="VeloSales Ai" />VELOSALES AI</Link> {/* brand links HOME */}
         <span><Link className="btn ghost sm" to="/login">Sign in</Link>{' '}<Link className="btn sm" to="/login">Start free trial</Link></span> {/* {' '} = explicit space (JSX collapses whitespace!) */}
       </div></header>
       <section className="landing-inner faq-hero"> {/* centered hero: pill + headline + search */}

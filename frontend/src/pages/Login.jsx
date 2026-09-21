@@ -5,6 +5,7 @@
 // /api/auth/signup → /onboarding. afterAuth() refetches /api/me (single truth!).
 // React patterns: controlled form object, mode toggle, busy lock, live demo loop.
 import { useEffect, useState } from 'react'; // useState ×8 slices; useEffect = title + demo timers
+import Logo from '../components/Logo.jsx'; // theme-aware brand mark (blue dark / green light!)
 import { useNavigate } from 'react-router-dom'; // useNavigate = go somewhere in code (after auth)
 import { api } from '../lib/api.js'; // api() auth calls
 import { normalizePhone, prettyPhone } from '../lib/phone.js'; // WhatsApp input help (validate + pretty-print on blur)
@@ -273,7 +274,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
       <div className="auth-glow" /> {/* drifting light blob (self-closing div, pure CSS animation!) */}
       <div className="auth-card glass"> {/* glassmorphism card: brand panel + form (backdrop-blur + entrance animation) */}
         <div className="auth-side"> {/* LEFT: brand storytelling (hidden on mobile via CSS!) */}
-          <div className="brand-chip"><img src="/logo.png?v=4" alt="VeloSales Ai" /><span>VELOSALES AI · SALES ASSISTANT</span></div> {/* pill badge */}
+          <div className="brand-chip"><Logo alt="VeloSales Ai" /><span>VELOSALES AI · SALES ASSISTANT</span></div> {/* pill badge */}
           <h2>Your WhatsApp shop.<br /><span className="grad">Open even while you sleep.</span></h2> {/* <br/> line break; .grad = gradient text span */}
           <p className="tagline">An AI that answers like you — prices, stock, hours — so no customer is ever ignored.</p>
           <ul className="feat"> {/* feature list with STAGGERED entrance (--d custom property = per-item delay!) */}

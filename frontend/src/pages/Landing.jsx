@@ -25,7 +25,7 @@ export default function Landing({ theme = 'light', onToggleTheme = () => {} }) {
     <div className="landing"> {/* dark-green marketing theme (own CSS section — separate from app theme!) */}
       <header className="landing-nav"> {/* sticky top nav (CSS) */}
         <div className="landing-inner"> {/* centered max-width container (reused per section!) */}
-          <span className="landing-brand"><img src="/logo.png?v=2" alt="VeloSales Ai" />VELOSALES AI</span> {/* brand lockup (span, not link — already home) */}
+          <span className="landing-brand"><img src="/logo.png?v=3" alt="VeloSales Ai" />VELOSALES AI</span> {/* brand lockup (span, not link — already home) */}
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}> {/* right cluster: toggle + two CTAs (inline-flex rows them up) */}
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
             <Link className="btn ghost sm" to="/login">Sign in</Link>{' '} {/* {' '} = explicit space between inline elements (JSX collapses whitespace!) */}

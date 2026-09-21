@@ -18,7 +18,7 @@ export default function Loader({ size = 40, withLogo = false }) {
           <circle cx="60" cy="104" r="5" fill="#ffcf5c" />
         </g>
         {withLogo
-          ? <image href="/logo.png?v=2" x="36" y="36" width="48" height="48" />
+          ? <image href="/logo.png?v=3" x="36" y="36" width="48" height="48" />
           : <path d="M42 44 L60 78 L78 44" fill="none" stroke="url(#orbit-g)" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" />}
       </svg>
     </span>

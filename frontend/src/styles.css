@@ -1198,6 +1198,17 @@ tbody td { border-bottom-color: rgba(255,255,255,.08) !important; }
 .hbar b { text-align: right; }
 @media (max-width: 640px) { .hbar { grid-template-columns: 1fr 34px; } .hbar-track { grid-column: 1 / -1; order: 3; } }
 
+/* ── scatter-and-assemble logo (Splash hero: tiles explode, then snap home) ── */
+.scatter-logo { position: relative; display: inline-block; overflow: hidden; border-radius: 24%; flex: 0 0 auto; }
+.scatter-logo img { position: absolute; inset: 0; width: 100%; height: 100%; animation: scatterAsm 3s ease-in-out infinite; animation-delay: var(--dl, 0s); }
+@keyframes scatterAsm {
+  0% { transform: translate(var(--dx), var(--dy)) rotate(var(--dr)) scale(0.55); opacity: 0; }
+  32% { transform: none; opacity: 1; }
+  68% { transform: none; opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) rotate(var(--dr)) scale(0.55); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .scatter-logo img { animation: none; } }
+
 /* ── invisible scrollbars (scroll still works, bars just never show) ── */
 html, body { scrollbar-width: none; -ms-overflow-style: none; }
 html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; height: 0; }

@@ -236,7 +236,7 @@ export default function VeloSalesAI({ biz }) {
       </div>
       {msgs.length === 0 ? (
         <div className="vai-hero">
-          <img src="/logo.png?v=2" alt="Velo" className="vai-logo" />
+          <img src="/logo.png?v=3" alt="Velo" className="vai-logo" />
           <h1>Chat with Velo.</h1>
           <p>Ask Velo anything — research, writing, ideas, advice. Not just your catalog.</p>
           <div className="vai-chips">
@@ -249,7 +249,7 @@ export default function VeloSalesAI({ biz }) {
         <div className="vai-thread" ref={threadRef} onScroll={onThreadScroll}>
           {msgs.map((m, i) => (
             <div key={i} className={m.from === 'you' ? 'vai-you' : 'vai-ai'}>
-              {m.from === 'ai' && <img src="/logo.png?v=2" alt="" className="vai-mini" />}
+              {m.from === 'ai' && <img src="/logo.png?v=3" alt="" className="vai-mini" />}
               <div>
                 <div className="vai-bubble">{m.text}</div>
                 {m.via && <div className="vai-via">answered by {m.via}</div>}
@@ -258,7 +258,7 @@ export default function VeloSalesAI({ biz }) {
           ))}
           {busy && (
             <div className="vai-ai">
-              <img src="/logo.png?v=2" alt="" className="vai-mini" />
+              <img src="/logo.png?v=3" alt="" className="vai-mini" />
               <div className="vai-bubble typing"><span /><span /><span /></div>
             </div>
           )}

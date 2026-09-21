@@ -68,7 +68,8 @@ a{color:#7ef0c0}
 .btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(37,211,102,.4);filter:brightness(1.06)}
 .btn.ghost{background:rgba(255,255,255,.06);color:var(--ink);border:1.5px solid var(--glass-brd)}
 .btn.ghost:hover{border-color:var(--green);box-shadow:0 10px 28px rgba(0,0,0,.4)}
-.btn.sm{padding:8px 17px;font-size:.86rem}.btn.lg{padding:15px 32px;font-size:1.03rem}
+.btn.sm{padding:8px 17px;font-size:.86rem}
+.btn.lg{padding:15px 32px;font-size:1.03rem}
 .btn-shine::after{content:"";position:absolute;top:-60%;left:-30%;width:55%;height:220%;transform:rotate(18deg);
   background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:shine 3.4s ease-in-out infinite;pointer-events:none}
 @keyframes shine{0%{left:-30%}60%,100%{left:135%}}

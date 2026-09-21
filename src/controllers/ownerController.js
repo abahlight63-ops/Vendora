@@ -34,8 +34,11 @@ async function getMe(req, res) {
   // Free tier ALWAYS gets an object (even when nothing is configured) so the
   // app can show its own house notice — Pro gets null (zero ad pixels).
   const tier = planService.tier(b); // 'pro' | 'free' from subscription + trial clock
-  let ads = null; // default: no ads (Pro, or logged-out edge)
-  if (tier !== 'pro') { // free users only past this point…
+  let ads = null; // default: no ads (Pro, or logged-out edge, or ads opted OUT)
+  // ADS OPT-OUT (owner's call until the custom domain + Hilltop deal land):
+  // ads serve ONLY when ADS_ENABLED=1. Frontend already treats null as
+  // "no ads" (no gates, no tags, no interstitials) — nothing else to remove.
+  if (process.env.ADS_ENABLED === '1' && tier !== 'pro') { // free users only past this point…
     const sponsor = process.env.SPONSOR_TITLE && process.env.SPONSOR_LINK
       ? { title: process.env.SPONSOR_TITLE, text: process.env.SPONSOR_TEXT || '', // && = both must exist; || '' = optional fields default empty
           link: process.env.SPONSOR_LINK, image: process.env.SPONSOR_IMAGE || '',

@@ -245,7 +245,7 @@ class _AiScreenState extends State<AiScreen> {
             width: double.infinity,
             child: FilledButton(
               onPressed: () => launchUrl(
-                  Uri.parse('https://vendorabot.vercel.app/billing'),
+                  Uri.parse('https://velosalesai.vercel.app/billing'),
                   mode: LaunchMode.externalApplication),
               child: const Text('See upgrade options'),
             ),
@@ -279,8 +279,8 @@ class _AiScreenState extends State<AiScreen> {
             _testBot = s.first;
             if (_testBot) {
               _model = null; // test-bot takes no model (server catalog chain)
-            } else if (_model == null) {
-              _model = 'gemini-flash-full'; // back to AI → restore full default
+            } else {
+              _model ??= 'gemini-flash-full'; // back to AI → restore full default
             }
           }),
         ),
@@ -313,6 +313,18 @@ class _AiScreenState extends State<AiScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      Image.asset(
+                        Theme.of(context).brightness == Brightness.light
+                            ? 'assets/logo-green.png'
+                            : 'assets/logo-blue.png',
+                        width: 72,
+                        height: 72,
+                      ),
+                      const SizedBox(height: 12),
+                      const Text('Chat with Velo',
+                          style: TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 6),
                       Text(_testBot
                           ? 'Ask like a customer — prices, stock, delivery.'
                           : 'Ask anything — stock, prices, advice.'),
@@ -414,30 +426,34 @@ class _AiScreenState extends State<AiScreen> {
                 style: TextStyle(fontSize: 12.5)),
           ),
         ),
-      Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(children: [
-          Expanded(
-            child: TextField(
-              controller: _input,
-              minLines: 1,
-              maxLines: 4,
-              decoration:
-                  const InputDecoration(hintText: 'Ask Velo…'),
-              onSubmitted: (_) => _send(),
+      SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(children: [
+            Expanded(
+              child: TextField(
+                controller: _input,
+                minLines: 1,
+                maxLines: 4,
+                textInputAction: TextInputAction.send,
+                decoration:
+                    const InputDecoration(hintText: 'Ask Velo…'),
+                onSubmitted: (_) => _send(),
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          IconButton.filled(
-            onPressed: _busy ? null : _send,
-            icon: _busy
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.send),
-          ),
-        ]),
+            const SizedBox(width: 8),
+            IconButton.filled(
+              onPressed: _busy ? null : _send,
+              icon: _busy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.send),
+            ),
+          ]),
+        ),
       ),
     ]);
   }

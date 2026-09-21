@@ -82,7 +82,7 @@ router.post('/login', async (req, res) => {
     return res.status(401).json({ error: 'Invalid email or password' }); // 401 = bad credentials
   }
   if (!user.verified) { // email not confirmed yet → block with a helpful flag
-    return res.status(403).json({ error: 'Please verify your email first — check your inbox for the Vendora link.', needsVerification: true, email: user.email }); // frontend shows "resend" button on needsVerification
+    return res.status(403).json({ error: 'Please verify your email first — check your inbox for the VeloSales AI link.', needsVerification: true, email: user.email }); // frontend shows "resend" button on needsVerification
   }
   req.session.userId = user.id; // login = write ids into the session…
   req.session.businessId = user.business_id; // …business comes from the JOIN in findUserByEmail

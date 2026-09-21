@@ -1,4 +1,4 @@
-# Netlify deploy — Vendora marketing site (repo ROOT config).
+# Netlify deploy — VeloSales AI marketing site (repo ROOT config).
 # WHY HERE (not just website/): Netlify always reads the ROOT config, so this
 # file works no matter what the dashboard "Base directory" field says.
 # Dashboard settings that match: Base directory = (EMPTY!), Build command =

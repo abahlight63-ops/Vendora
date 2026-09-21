@@ -30,7 +30,7 @@ class ApiClient {
     defaultValue: 'https://vendora-fsse.onrender.com',
   );
 
-  static const _cookieKey = 'vendora_session_cookie';
+  static const _cookieKey = 'velosalesai_session_cookie';
   String? _cookie; // raw "connect.sid=..." pair (attributes stripped)
   bool _loaded = false;
 
@@ -248,7 +248,7 @@ class ApiClient {
       (await post('/api/me/playground', {'message': message}) as Map)
           .cast<String, dynamic>();
 
-  /// Vendora AI chat → { reply, via, model, fallback }.
+  /// VeloSales AI chat → { reply, via, model, fallback }.
   /// history = prior bubbles oldest-first [{from: 'you'|'ai', text}…],
   /// EXCLUDING the current message (web parity: context without duplication).
   Future<Map<String, dynamic>> ask(

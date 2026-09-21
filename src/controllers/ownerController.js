@@ -472,9 +472,9 @@ async function feedbackCreate(req, res) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           accessKey: key,
-          subject: `[Vendora ${label}] ${bizName}`,
-          name: bizName || 'Vendora owner',
-          email: email || 'noreply@vendora',
+          subject: `[VeloSales AI ${label}] ${bizName}`,
+          name: bizName || 'VeloSales AI owner',
+          email: email || 'noreply@velosalesai',
           message: `Business: ${bizName} (id ${req.session.businessId})\nCategory: ${label}\nSubject: ${String(subject || '').slice(0, 120)}\n\n${body.trim().slice(0, 2000)}`,
         }),
       });
@@ -607,7 +607,7 @@ async function channelsStatus(req, res) {
 }
 
 // Per-shop WhatsApp brain pick (Connect page dropdown). Tier-gated EXACTLY like
-// the VendoraAI dropdown (locked → 402, frontend opens the upgrade card!).
+// the VeloSalesAI dropdown (locked → 402, frontend opens the upgrade card!).
 async function whatsappModel(req, res) {
   const planService = require('../services/planService');
   const aiModels = require('../services/aiModels');
@@ -734,7 +734,7 @@ async function adVideoEvent(req, res) {
   }
 }
 
-// Vendora AI model list for the dropdown (locked flags depend on tier).
+// VeloSales AI model list for the dropdown (locked flags depend on tier).
 async function aiModels(req, res) {
   const planService = require('../services/planService');
   const aiModels = require('../services/aiModels');
@@ -755,11 +755,11 @@ async function aiStatus(req, res) {
   res.json({ status: await client.pingAll() });
 }
 
-const FREE_AI_PER_DAY = Number(process.env.FREE_AI_PER_DAY || 50); // free-tier Vendora AI chats/day, 50 for everything (env-tunable)
+const FREE_AI_PER_DAY = Number(process.env.FREE_AI_PER_DAY || 50); // free-tier VeloSales AI chats/day, 50 for everything (env-tunable)
 const PAID_AI_PER_DAY = Number(process.env.PAID_AI_PER_DAY || 50); // Pro premium-model chats/day, 50 too (cost guard!)
 const MODEL_DAILY_CAP = Number(process.env.MODEL_DAILY_CAP || 50); // per-MODEL daily cap per business (one hammered model can't eat the shared key!)
 
-// Vendora AI — general chat. Free tier: 50 chats/day total AND 50/model/day.
+// VeloSales AI — general chat. Free tier: 50 chats/day total AND 50/model/day.
 // Pro: unlimited free models (model caps still apply to shared keys!) + 50 paid chats/day.
 async function ask(req, res) {
   try { // everything inside try: AI + DB failures become JSON, never crashes
@@ -778,7 +778,7 @@ async function ask(req, res) {
     const tier = planService.effectiveTier(rows[0] || {}); // 'plus' | 'pro' | 'free' (Plus-only heavy models enforced inside resolveChoice!)
     const bizName = rows[0]?.name || '';
     const bizNiche = rows[0]?.business_niche || ''; // niche-aware suggestions (empty = generic chips)
-    // SHOP GROUNDING: Vendora AI answers about the OWNER'S shop from real data,
+    // SHOP GROUNDING: VeloSales AI answers about the OWNER'S shop from real data,
     // not training memory (a model can't know your prices unless we SEND them!).
     // Same query the dashboard already runs — one extra SELECT per ask, cheap.
     let shopCtx = null;
@@ -830,7 +830,7 @@ async function ask(req, res) {
       await db.query('UPDATE model_usage SET count = count + 1 WHERE business_id = $1 AND day = CURRENT_DATE AND model_id = $2', [req.session.businessId, resolved.entry.id]); // model counter (plain values — no dynamic SQL needed here!)
       return res.json({ reply: result.reply, via: result.via, model: resolved.entry.id, fallback: !!result.fallback, requested: result.requested || null }); // via = ACTUAL answerer; model = chosen id; fallback tells UI "your pick was down, X answered instead"
     }
-    return res.status(502).json({ error: result.reason || 'Vendora AI is resting — try again in a moment.' }); // 502 = our upstream failed — reason names the cause (key missing? quota? all down?) so the owner can act instead of guessing
+    return res.status(502).json({ error: result.reason || 'VeloSales AI is resting — try again in a moment.' }); // 502 = our upstream failed — reason names the cause (key missing? quota? all down?) so the owner can act instead of guessing
   } catch (e) {
     console.error('ask error:', e.message);
     res.status(500).json({ error: 'Something went wrong — try again.' });

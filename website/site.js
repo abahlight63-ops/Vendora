@@ -1,4 +1,4 @@
-// Vendora welcome site v2 — preloader, 3D tilt, live chat sim, tabs,
+// VeloSales AI welcome site v2 — preloader, 3D tilt, live chat sim, tabs,
 // LEARN playground, pricing toggles, FAQ search, reveals, counters.
 const APP_URL = 'https://vendorabot.vercel.app';
 

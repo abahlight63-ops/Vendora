@@ -87,7 +87,7 @@ function encryptPayload(p256dhB64, authB64, plaintext) {
 async function sendPush(sub, payload) {
   const keys = vapidKeys();
   if (!keys) return false;
-  const text = JSON.stringify({ title: String(payload.title || 'Vendora'), body: String(payload.body || ''), url: String(payload.url || '/dashboard') });
+  const text = JSON.stringify({ title: String(payload.title || 'VeloSales AI'), body: String(payload.body || ''), url: String(payload.url || '/dashboard') });
   let reqBody;
   try {
     reqBody = encryptPayload(sub.p256dh, sub.auth, text);

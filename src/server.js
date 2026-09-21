@@ -50,7 +50,7 @@ app.use( // parse JSON bodies…
 // CORS — split deploy only: lets the Vercel frontend (different origin) call
 // this API WITH cookies. Skipped when FRONTEND_URL is unset (same-origin mode).
 // MODULE: `cors` (npm i cors) — sets Access-Control-Allow-Origin/credentials headers.
-const FRONTEND_URL = (process.env.FRONTEND_URL || '').replace(/\/$/, ''); // e.g. https://vendora.vercel.app (no trailing slash!)
+const FRONTEND_URL = (process.env.FRONTEND_URL || '').replace(/\/$/, ''); // e.g. https://velosalesai.vercel.app (no trailing slash!)
 if (FRONTEND_URL) {
   const cors = require('cors'); // lazy require (only needed for split deploy)
   app.use(cors({ origin: FRONTEND_URL, credentials: true })); // origin = exact Vercel URL (browsers reject '*' + credentials!); credentials:true = allow session cookie cross-site
@@ -76,7 +76,7 @@ app.use(
 app.get('/health', (req, res) => res.json({ status: 'ok' })); // GET /health → {"status":"ok"}
 
 // Version — the Shell checks this on load: version changed since last visit
-// → "Vendora updated" toast + bell badge. Bump src/version.js per release.
+// → "VeloSales AI updated" toast + bell badge. Bump src/version.js per release.
 app.get('/api/version', (req, res) => {
   const { APP_VERSION, WHATS_NEW } = require('./version');
   res.json({ version: APP_VERSION, whatsNew: WHATS_NEW });
@@ -138,7 +138,7 @@ const spa = (req, res) => {
   return res.status(503).json({ error: 'Frontend not built. Run: npm run build' }); // 503 = not ready
 };
 // All app routes → React SPA
-['/', '/login', '/reset', '/onboarding', '/welcome', '/dashboard', '/profile', '/catalog', '/connect', '/chats', '/billing', '/contact-sales', '/playground', '/insights', '/vendora-ai', '/settings', '/help', '/privacy', '/terms', '/faq', '/admin'].forEach((r) => app.get(r, spa)); // register each page → same handler
+['/', '/login', '/reset', '/onboarding', '/welcome', '/dashboard', '/profile', '/catalog', '/connect', '/chats', '/billing', '/contact-sales', '/playground', '/insights', '/velosales-ai', '/settings', '/help', '/privacy', '/terms', '/faq', '/admin'].forEach((r) => app.get(r, spa)); // register each page → same handler
 
 const port = process.env.PORT || 3000; // hosts (Render) inject PORT; locally default 3000
 // Release broadcast: when APP_VERSION changes, push WHATS_NEW into every

@@ -104,7 +104,7 @@ class _SetupScreenState extends State<SetupScreen> {
   Future<void> _save({required bool advance}) async {
     if (_step == 0) {
       if (_finalNiche.isEmpty) {
-        setState(() => _err = 'Pick one first — Vendora speaks your hustle.');
+        setState(() => _err = 'Pick one first — VeloSales AI speaks your hustle.');
         return;
       }
       if (advance) {
@@ -151,7 +151,7 @@ class _SetupScreenState extends State<SetupScreen> {
   @override
   Widget build(BuildContext context) {
     const titles = [
-      'What will you use Vendora for?',
+      'What will you use VeloSales AI for?',
       'How many products do you sell?',
       'Where do customers reach you?',
       'How many customer chats a day?',

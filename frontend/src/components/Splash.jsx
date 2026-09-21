@@ -17,7 +17,7 @@ export default function Splash({ done }) { // done = callback prop: App hides sp
     <div className={'splash' + (out ? ' out' : '')}> {/* string concat toggles the fade class */}
       <div className="splash-inner"> {/* cardIn-style entrance animation (CSS) */}
         <Loader size={88} withLogo /> {/* Orbit V around the logo mark (the brand, in motion!) */}
-        <div className="splash-name">VENDORA</div> {/* letterspaced brand text */}
+        <div className="splash-name">VELOSALES AI</div> {/* letterspaced brand text */}
         <div className="splash-tag">Your WhatsApp shop, open 24/7</div> {/* tagline */}
         <div className="splash-bar"><i /></div> {/* indeterminate loading bar (CSS slides the <i> forever) */}
       </div>

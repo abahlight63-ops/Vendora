@@ -1,6 +1,6 @@
 // ── lib/splash.dart ────────────────────────────────────────────────
 // WHAT: the 1.5-second brand intro — mirrors Splash.jsx: Orbit V ring
-// around the logo + VENDORA letterspacing + tagline + indeterminate bar,
+// around the logo + VELOSALES AI letterspacing + tagline + indeterminate bar,
 // then fade out. Shown while the session check runs (never shorter than
 // the web one). Ring = two arcs (primary green + gold) spinning forever.
 import 'dart:math' as math;
@@ -72,7 +72,7 @@ class _SplashViewState extends State<SplashView>
                 ),
               ),
               const SizedBox(height: 16),
-              const Text('VENDORA',
+              const Text('VELOSALES AI',
                   style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w900,

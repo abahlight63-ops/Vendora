@@ -9,12 +9,12 @@ self.addEventListener('push', (e) => { // encrypted payload arrives (server did 
   let d = {};
   try { d = (e.data && e.data.json()) || {}; } catch {} // unparseable → defaults below (never crash the worker!)
   e.waitUntil(
-    self.registration.showNotification(d.title || 'Vendora', {
+    self.registration.showNotification(d.title || 'VeloSales AI', {
       body: d.body || '',
       icon: '/logo.png', // app icon (from dist root — same origin, always cached!)
       badge: '/logo.png', // monochrome slot (Android uses it on the status bar!)
       data: { url: d.url || '/dashboard' }, // tap target (click handler below!)
-      tag: 'vendora-alert', // collapses repeats (10 quota bells = 1 tidy card, not a flood!)
+      tag: 'velosalesai-alert', // collapses repeats (10 quota bells = 1 tidy card, not a flood!)
     })
   );
 });

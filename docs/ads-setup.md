@@ -6,7 +6,7 @@ accounts get `ads: null` by design — paying users never see ads).
 ## Stream 1 — Per-VIEW network ads (Monetag, recommended)
 
 Pays per 1,000 views. Earnings + payout live in the network's dashboard,
-not in Vendora.
+not in VeloSales AI.
 
 1. Sign up at **monetag.com** → Sites → add your site (`vendorabot.vercel.app`
    or your domain) → create a **MultiTag** zone → copy the tag script URL

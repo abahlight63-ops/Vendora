@@ -8,21 +8,21 @@ import { useEffect } from 'react'; // tab title on mount
 import { Link } from 'react-router-dom'; // brand/login/privacy links + footer
 
 export default function Terms() {
-  useEffect(() => { document.title = 'Vendora — Terms & Conditions'; }, []); // tab title
+  useEffect(() => { document.title = 'VeloSales AI — Terms & Conditions'; }, []); // tab title
   return (
     <div className="landing">
       <header className="landing-nav"><div className="landing-inner">
-        <Link className="landing-brand" to="/"><img src="/logo.png" alt="Vendora" />VENDORA</Link>
+        <Link className="landing-brand" to="/"><img src="/logo.png" alt="VeloSales AI" />VELOSALES AI</Link>
         <span><Link className="btn ghost sm" to="/login">Sign in</Link></span>
       </div></header>
       <section className="landing-inner" style={{ padding: '48px 24px 64px' }}>
         <div className="card legal reveal vis">
           <p className="hint">Last updated: September 2026</p>
           <h1>Terms &amp; Conditions</h1>
-          <p>Welcome to Vendora. These Terms &amp; Conditions constitute a binding legal agreement between you, the business owner ("you", "your"), and Vendora ("we", "us", "our") governing your access to and use of the Vendora platform, website, and AI-powered WhatsApp customer support services (collectively, the "Service"). By creating an account, accessing, or using the Service, you acknowledge that you have read, understood, and agree to be bound by these Terms.</p>
+          <p>Welcome to VeloSales AI. These Terms &amp; Conditions constitute a binding legal agreement between you, the business owner ("you", "your"), and VeloSales AI ("we", "us", "our") governing your access to and use of the VeloSales AI platform, website, and AI-powered WhatsApp customer support services (collectively, the "Service"). By creating an account, accessing, or using the Service, you acknowledge that you have read, understood, and agree to be bound by these Terms.</p>
 
           <h3>1. Description of the Service</h3>
-          <p>Vendora provides an artificial intelligence assistant that automatically responds to your WhatsApp customers on the basis of your product catalog and business information. The Service drafts replies from information you supply, escalates uncertain inquiries to you for human handling rather than speculating, and does not generate prices or product claims independently. You remain solely responsible for the accuracy of your catalog, pricing, availability representations, and all commercial promises made in connection with your business. The Service is a software tool and does not constitute an employee, agent, or representative of your business.</p>
+          <p>VeloSales AI provides an artificial intelligence assistant that automatically responds to your WhatsApp customers on the basis of your product catalog and business information. The Service drafts replies from information you supply, escalates uncertain inquiries to you for human handling rather than speculating, and does not generate prices or product claims independently. You remain solely responsible for the accuracy of your catalog, pricing, availability representations, and all commercial promises made in connection with your business. The Service is a software tool and does not constitute an employee, agent, or representative of your business.</p>
 
           <h3>2. Who can use it</h3>
           <ul>
@@ -50,7 +50,7 @@ export default function Terms() {
           <h3>5. Acceptable use</h3>
           <ul>
             <li>No spam, bulk unsolicited messaging, fraud, counterfeit goods, or anything illegal under Nigerian law.</li>
-            <li>No teaching the AI false prices to bait customers, and no using Vendora to impersonate another business.</li>
+            <li>No teaching the AI false prices to bait customers, and no using VeloSales AI to impersonate another business.</li>
             <li>LEARN: / SYNC: only work from your registered owner number — if someone else gets your phone, tell us immediately.</li>
             <li>Don't probe, scrape or attack the service. Automated abuse gets accounts paused without refund.</li>
           </ul>
@@ -59,7 +59,7 @@ export default function Terms() {
           <p>Artificial intelligence systems may occasionally produce inaccurate, incomplete, or contextually inappropriate responses, including errors of tone, misinterpretation of colloquial language, or confidently stated inaccuracies. To mitigate this risk, the Service escalates uncertain inquiries to you for human handling rather than speculating, and issues owner alerts for flagged conversations. You agree to review flagged conversations promptly and to maintain accurate catalog and business information at all times. We shall not be liable for commercial losses arising from unanswered flagged conversations or from responses generated on the basis of inaccurate information you provided. The quality of AI responses depends directly on the accuracy of your catalog.</p>
 
           <h3>7. Dependencies beyond our control</h3>
-          <p>Vendora rides on WhatsApp/Meta, Telegram, AI providers (Gemini/Groq/TokenRouter/SambaNova/Anthropic/OpenAI), Paystack, Flutterwave, and our hosts. If any of them has an outage, changes prices, or changes rules, parts of Vendora may degrade — and that isn't our breach. We'll always fail safe (flag to human, never invent answers) and post status in the dashboard when we can.</p>
+          <p>VeloSales AI rides on WhatsApp/Meta, Telegram, AI providers (Gemini/Groq/TokenRouter/SambaNova/Anthropic/OpenAI), Paystack, Flutterwave, and our hosts. If any of them has an outage, changes prices, or changes rules, parts of VeloSales AI may degrade — and that isn't our breach. We'll always fail safe (flag to human, never invent answers) and post status in the dashboard when we can.</p>
 
           <h3>8. Your content &amp; our license</h3>
           <p>You own your catalog, profile and chats outright. You grant us only the narrow license needed to store them and feed them to the AI to serve your customers. We claim no ownership, run no ads against your content, and never sell it. Delete your account and the license ends (subject to legal retention in the Privacy Policy).</p>
@@ -71,16 +71,16 @@ export default function Terms() {
           </ul>
 
           <h3>10. Limitation of liability</h3>
-          <p>To the maximum extent permitted by law, Vendora is provided "as is" without warranties of any kind. Our total liability for anything arising from the service is capped at the amount you paid us in the 3 months before the claim (or ₦10,000 / $7 if you never paid). We are never liable for indirect losses: lost profits, lost customers, or Meta/WhatsApp restricting your number for policy breaches on your side.</p>
+          <p>To the maximum extent permitted by law, VeloSales AI is provided "as is" without warranties of any kind. Our total liability for anything arising from the service is capped at the amount you paid us in the 3 months before the claim (or ₦10,000 / $7 if you never paid). We are never liable for indirect losses: lost profits, lost customers, or Meta/WhatsApp restricting your number for policy breaches on your side.</p>
 
           <h3>11. Indemnity</h3>
-          <p>You agree to cover us if your use of Vendora (your catalog content, your messages, your breach of these terms or of WhatsApp's policies) gets us into legal trouble with a third party. We'll notify you promptly and let you lead the defense.</p>
+          <p>You agree to cover us if your use of VeloSales AI (your catalog content, your messages, your breach of these terms or of WhatsApp's policies) gets us into legal trouble with a third party. We'll notify you promptly and let you lead the defense.</p>
 
           <h3>12. Governing law &amp; disputes</h3>
           <p>These terms are governed by the laws of the Federal Republic of Nigeria. Disputes first go to good-faith negotiation for 30 days (write us from Help), then to mediation/arbitration in Lagos under the Arbitration and Mediation Act 2023 before any court action. If any clause is found unenforceable, the rest stands.</p>
 
           <h3>13. Changes</h3>
-          <p>We'll post updates here with a new date and flag material changes in the dashboard or by email at least 7 days before they bite. Keep using Vendora after that and you've accepted them; the version in force when you paid governs that payment.</p>
+          <p>We'll post updates here with a new date and flag material changes in the dashboard or by email at least 7 days before they bite. Keep using VeloSales AI after that and you've accepted them; the version in force when you paid governs that payment.</p>
 
           <div style={{ display: 'flex', gap: 10, marginTop: 22, flexWrap: 'wrap' }}>
             <Link className="btn sm" to="/login">Start free trial</Link>

@@ -1,4 +1,4 @@
-# Vendora Mobile (Flutter) — native app, same backend as the web app
+# VeloSales AI Mobile (Flutter) — native app, same backend as the web app
 
 NOT a web wrapper: real Dart screens calling the same JSON API the React
 app uses (`/api/auth/*`, `/api/me*`). Same account, same shop, same
@@ -33,7 +33,7 @@ LAN IP (`http://192.168.x.x:3000`) + same Wi-Fi.
 | Overview | `GET /api/me` + bot kill-switch `POST /api/me/bot` |
 | Chats + thread + takeover | `GET /api/me/conversations`, `.../:id/messages`, `POST .../takeover` |
 | Catalog add/delete | `GET/POST /api/me/products`, `DELETE /api/me/products/:id` |
-| Vendora AI + model picker | `POST /api/me/ask`, `GET /api/me/ai-models` |
+| VeloSales AI + model picker | `POST /api/me/ask`, `GET /api/me/ai-models` |
 | Billing (status + plans) | `GET /api/me/billing` — checkout itself opens in the browser (Paystack redirect needs a full web page) |
 
 Sessions = the same `connect.sid` cookie as web (`lib/api.dart`
@@ -50,12 +50,12 @@ flutter build appbundle --dart-define API_BASE_URL=https://<your-backend>
 ```
 
 1. `https://play.google.com/console` → pay $25 → verify → Create app
-2. Upload the `.aab` → fill listing (name Vendora, Business category,
+2. Upload the `.aab` → fill listing (name VeloSales AI, Business category,
    screenshots 1080×1920, feature graphic 1024×500, privacy URL
    `https://vendorabot.vercel.app/privacy`)
 3. Content rating + target-audience questionnaires → internal test
    track first → promote to production
 
-Package id: `com.vendora.vendora` (set in `android/app/build.gradle*`
-by `flutter create --org com.vendora`). Keystore: back it up — losing
+Package id: `com.velosalesai.app` (set in `android/app/build.gradle*`
+by `flutter create --org com.velosalesai`). Keystore: back it up — losing
 it means you can never update the listing.

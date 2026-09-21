@@ -3,7 +3,7 @@
 //   per-shop: POST /webhook/telegram/:bizId — shop's own BotFather bot.
 //     Customers just message (bot IS the shop — no code needed!). Owner binds
 //     once via /start link_<CODE> (CODE from Profile → owner_telegram_id).
-//   shared:   POST /webhook/telegram/shared — ONE @VendoraBot for Pro shops.
+//   shared:   POST /webhook/telegram/shared — ONE @VeloSalesBot for Pro shops.
 //     Customers bind via /start <CODE>; owner commands OFF here (dashboard!).
 // Routing into the brain: normalize to controller-shape req.body + req.telegram
 // context, then reuse webhookController.handleInbound (ONE brain, two doors!).
@@ -95,7 +95,7 @@ router.post('/telegram/:bizId', async (req, res) => {
 // ---- Shared bot: POST /webhook/telegram/shared ----
 router.post('/telegram/shared', async (req, res) => {
   if (!tg.verifySecret(req)) return res.status(403).end(); // same secret gate (one secret, all bots!)
-  const sharedToken = process.env.TELEGRAM_SHARED_BOT_TOKEN; // the ONE @VendoraBot token (empty = shared mode off!)
+  const sharedToken = process.env.TELEGRAM_SHARED_BOT_TOKEN; // the ONE @VeloSalesBot token (empty = shared mode off!)
   if (!sharedToken) return res.status(200).send(''); // unconfigured (200, no retries!)
   const parsed = tg.parseInbound(req.body);
   if (!parsed) return res.status(200).send(''); // noise ignored
@@ -112,7 +112,7 @@ router.post('/telegram/shared', async (req, res) => {
       await tg.sendText(sharedToken, parsed.chatId, `Connected to ${rows[0].name} — send your questions! (Pro shops: smarter models + voice included.)`);
       return res.status(200).send('');
     }
-    await tg.sendText(sharedToken, parsed.chatId, 'Welcome to Vendora! Ask your shop for their link code — it looks like BIZ7X2K. (Shops: find yours in Profile → Telegram.)');
+    await tg.sendText(sharedToken, parsed.chatId, 'Welcome to VeloSales AI! Ask your shop for their link code — it looks like BIZ7X2K. (Shops: find yours in Profile → Telegram.)');
     return res.status(200).send('');
   }
   const { rows } = await db.query('SELECT b.* FROM telegram_links l JOIN businesses b ON b.id = l.business_id WHERE l.telegram_id = $1 LIMIT 1', [parsed.fromId]); // route by binding (no code needed after first tap!)

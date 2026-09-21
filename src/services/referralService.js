@@ -235,7 +235,7 @@ async function myStats(businessId) {
       console.error('referral myStats error:', e.message);
     }
     // Last-resort degraded card (code may still be derivable — never blank the page!)
-    let code = 'VENDORA';
+    let code = 'VELOSALES AI';
     try { code = await ensureCode(id); } catch {}
     return {
       code, invited: 0, qualified: 0, paying: 0, daysEarned: 0,
@@ -353,7 +353,7 @@ async function markAirtimeSent(payoutId) {
   const notify = require('./notifyService');
   notify.notify(rows[0].referrer_business_id, {
     title: 'Your ₦500 airtime is on its way!',
-    body: 'Champion reward sent — check your line. Thank you for growing Vendora!',
+    body: 'Champion reward sent — check your line. Thank you for growing VeloSales AI!',
     link: '/dashboard',
   }).catch(() => {});
   return true;

@@ -319,7 +319,7 @@ export default function Connect() {
         </div>
       )}
 
-      <div className="card"> {/* the WhatsApp brain pick (same locks as the VendoraAI dropdown!) */}
+      <div className="card"> {/* the WhatsApp brain pick (same locks as the VeloSalesAI dropdown!) */}
         <h2>Which AI answers WhatsApp?</h2>
         <p className="desc">Locked brains need their plan — tap one to see upgrade options.</p>
         <label>WhatsApp brain</label>

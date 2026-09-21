@@ -1,4 +1,4 @@
-# Netlify deploy — Vendora marketing site (FALLBACK config).
+# Netlify deploy — VeloSales AI marketing site (FALLBACK config).
 # The ROOT /netlify.toml is the one Netlify actually reads — keep this file
 # only for direct "website folder as site root" deploys (e.g. drag-and-drop).
 # NOTE: publish is relative to base, so it must be "." here (NOT "website/" —

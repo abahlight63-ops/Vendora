@@ -1,14 +1,14 @@
 // ── lib/theme.dart ───────────────────────────────────────────────
-// WHAT: Vendora web tokens as Flutter themes — 1:1 with
+// WHAT: VeloSales AI web tokens as Flutter themes — 1:1 with
 // frontend/src/styles.css. Light = :root tokens (the web DEFAULT),
 // dark = [data-theme="dark"] overrides. Same Inter, same 12px radius,
 // same 180ms motion feel. ThemeMode persists (SharedPreferences).
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class VendoraTheme {
+class VeloSalesTheme {
   static const _radius = 12.0;
-  static const _key = 'vendora_theme_mode'; // 'light' | 'dark' | 'system'
+  static const _key = 'velosalesai_theme_mode'; // 'light' | 'dark' | 'system'
 
   // ── :root (web light default) ──
   static const lightGreen = Color(0xFF128C4A);

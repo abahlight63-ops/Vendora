@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.vendora.vendora"
+    namespace = "com.velosalesai.app"
     compileSdk = flutter.compileSdkVersion
     // Local SDK has a complete NDK 30.0.16138531; the pinned 28.2 dir is a
     // partial download (missing source.properties). Prefer the good one.
@@ -18,7 +18,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.vendora.vendora"
+        applicationId = "com.velosalesai.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

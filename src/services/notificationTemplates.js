@@ -10,7 +10,7 @@
 const BUILT_INS = [
  {
  id: 'builtin-welcome',
- title: "Welcome to Vendora — start selling in 10 minutes",
+ title: "Welcome to VeloSales AI — start selling in 10 minutes",
  link: '/catalog',
  body: `Hello {name}, welcome aboard!
 
@@ -37,7 +37,7 @@ What to do now:
 2. Try it once with a real example from your own shop.
 3. Tell us what you think from the Help page — your feedback decides what we build next.
 
-Thank you for selling with Vendora.`,
+Thank you for selling with VeloSales AI.`,
  },
  {
  id: 'builtin-fix',
@@ -99,10 +99,10 @@ If money left your account but no plan activated, message us from the Help page 
  {
  id: 'builtin-new-ai',
  title: "A new AI brain joined your dropdown",
- link: '/vendora-ai',
- body: `Hello {name}, there is a new brain in your Vendora AI picker.
+ link: '/velosales-ai',
+ body: `Hello {name}, there is a new brain in your VeloSales AI picker.
 
-Open Vendora AI, tap the model name at the top, and try the new one. Every brain answers the same way — warm, polite, grounded in your business — they just differ in speed and depth:
+Open VeloSales AI, tap the model name at the top, and try the new one. Every brain answers the same way — warm, polite, grounded in your business — they just differ in speed and depth:
 
 - Fast brains: instant answers, perfect for quick questions.
 - Smart brains: deeper answers with examples and steps.
@@ -147,7 +147,7 @@ Your 15-minute checklist:
 1. Catalog: confirm prices, stock counts and photos are current.
 2. Settings: set a small SmartDeal discount so the bot can rescue price hesitations automatically.
 3. Profile: update hours for the season (customers ask "are you open?" constantly).
-4. Vendora AI: ask it to write you 3 sales captions, then post them.
+4. VeloSales AI: ask it to write you 3 sales captions, then post them.
 
 Shops that prepare sell calmly. Shops that do not, apologize busily. You have got this — and we are one Help message away if you need us.`,
  },
@@ -157,7 +157,7 @@ Shops that prepare sell calmly. Shops that do not, apologize busily. You have go
  link: '/dashboard',
  body: `Hello {name}, quick favour that pays you back.
 
-If you know a seller still replying to every "how much?" by hand at midnight, tell them about Vendora. Every shop they open starts with a free plan and a 7-day Pro trial — no card, no risk.
+If you know a seller still replying to every "how much?" by hand at midnight, tell them about VeloSales AI. Every shop they open starts with a free plan and a 7-day Pro trial — no card, no risk.
 
 Why sellers thank the person who referred them:
 - Customers get instant answers, even at 2am.

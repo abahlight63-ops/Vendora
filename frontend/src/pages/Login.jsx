@@ -45,7 +45,7 @@ function DemoChat() { // self-playing chat preview (NOT a component with props �
 
 function GoogleButton({ busy, setBusy, fail, afterAuth, setMe }) { // "Continue with Google" (GIS button + full flow: session OR one-tap business form). Props drilled from Login (shared busy/fail/afterAuth = consistent UX!).
   const [gBusy, setGBusy] = useState(false); // google in-flight (separate from form busy — both lock!)
-  const [needBiz, setNeedBiz] = useState(null); // null = no form; {email, name, credential} = Google user WITHOUT Vendora account (one-tap creation form!)
+  const [needBiz, setNeedBiz] = useState(null); // null = no form; {email, name, credential} = Google user WITHOUT VeloSales AI account (one-tap creation form!)
   const [g, setG] = useState({ name: '', wa: '', hours: '', ref: '' }); // mini business form (name + number + hours + optional referral code — email comes from Google!)
   function loadGIS() { // lazy-load Google's script ONCE (no render-blocking <script> in index.html — speed!)
     return new Promise((resolve, reject) => { // Promise wrapper around script injection (async/await-friendly!)
@@ -94,7 +94,7 @@ function GoogleButton({ busy, setBusy, fail, afterAuth, setMe }) { // "Continue 
         return fail('Account created, but your session did not stick. Please sign in.');
       }
       fail((data.errors || [data.error || 'Signup failed']).join('; ')); // validation/409 shapes handled like password flow
-    } catch { setGBusy(false); fail("Can't reach the Vendora server. Check your internet connection and try again."); }
+    } catch { setGBusy(false); fail("Can't reach the VeloSales AI server. Check your internet connection and try again."); }
   }
   if (needBiz) { // BUSINESS FORM replaces the button (Google verified email, just needs shop details!)…
     return (
@@ -126,7 +126,7 @@ async function fetchGoogleClientId() { // module-level fetch (called once below)
 fetchGoogleClientId(); // fire on module load (once per page-load — cached on window!)
 
 export default function Login({ setMe }) { // setMe prop = App's state setter (login updates GLOBAL login state directly — no reload!)
-  useEffect(() => { document.title = 'Vendora — Sign in'; }, []); // tab title (mount-only side-effect)
+  useEffect(() => { document.title = 'VeloSales AI — Sign in'; }, []); // tab title (mount-only side-effect)
   const nav = useNavigate(); // code navigation (afterAuth below)
   const [mode, setMode] = useState('login'); // 'login' | 'signup' (one form, two modes — toggled by link below!)
   const [msg, setMsg] = useState(''); // status line text ("Welcome back…" / errors)
@@ -178,7 +178,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
       else fail(`Signed in, but loading your shop failed (server said ${me.status || 'nothing'}). Check your connection and try again.`); // non-401 = backend hiccup, not a cookie problem
       return false;
     } catch {
-      fail("Can't reach the Vendora server. Check your internet connection and try again."); // network-down: fetch threw — explain, don't navigate
+      fail("Can't reach the VeloSales AI server. Check your internet connection and try again."); // network-down: fetch threw — explain, don't navigate
       return false;
     }
   }
@@ -192,7 +192,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
       fail(data.error || (data.errors || []).join('; ') || 'Sign in failed — check your details and try again.'); // server answered with an error (validation/credentials) → show its message, never a bare fallback
     } catch { // …network/server unreachable (backend down, offline, wrong URL) lands HERE with a human message, never silence!
       setBusy(false);
-      fail("Can't reach the Vendora server. Check your internet connection and try again.");
+      fail("Can't reach the VeloSales AI server. Check your internet connection and try again.");
     }
   }
   async function signup() { // SIGN UP flow (same shape, more fields)…
@@ -205,7 +205,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
       fail((data.errors || [data.error || 'Signup failed — check your details and try again.']).join('; ')); // backend sends errors ARRAY (validation!) or single error — handle both, join with '; '
     } catch { // server unreachable (no backend deployed, offline…) → plain-language message, button unlocked!
       setBusy(false);
-      fail("Can't reach the Vendora server. Check your internet connection and try again.");
+      fail("Can't reach the VeloSales AI server. Check your internet connection and try again.");
     }
   }
   async function resend() { // "didn't get the email" button…
@@ -214,7 +214,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
       setMsg(data.message || data.error || (ok ? 'Check your inbox.' : 'Could not resend — try again.')); // backend message wins (it knows Resend state!); || chain of fallbacks
       setMsgErr(!ok); // red iff failed (!ok flips boolean)
     } catch { // server unreachable → plain message, red (never silent!)
-      setMsg("Can't reach the Vendora server. Check your internet connection and try again.");
+      setMsg("Can't reach the VeloSales AI server. Check your internet connection and try again.");
       setMsgErr(true);
     }
   }
@@ -236,7 +236,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
       setBusy(false);
       if (ok) { setMsg('Verified — setting up your assistant…'); setMsgErr(false); await afterAuth('/onboarding'); return; } // verified = logged in (session stamped!) → tour! (await: afterAuth overwrites msg on failure so the user sees WHY, never a silent bounce)
       fail(data.error || 'Wrong code — try again.'); // expired/locked/left-count messages arrive HERE (backend crafts each one!)
-    } catch { setBusy(false); fail("Can't reach the Vendora server. Check your internet connection and try again."); } // unreachable → plain message (same guard as login/signup!)
+    } catch { setBusy(false); fail("Can't reach the VeloSales AI server. Check your internet connection and try again."); } // unreachable → plain message (same guard as login/signup!)
   }
   async function resendCode() { // fresh code (burns the old one server-side!)…
     if (busy || cool > 0) return; // locked while busy OR cooling down (double-tap protection + cost control!)
@@ -247,7 +247,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
       if (ok && data.auto) { setMsg('Email service is off (dev) — verified! Please sign in.'); setMsgErr(false); return; } // dev auto-path (no Resend key → nothing to type!)
       if (ok) { setMsg(data.message || 'New code sent — check your inbox.'); setMsgErr(false); setCool(60); setOtp(''); return; } // success → 60s cooldown + clear draft (old code is DEAD server-side!)
       fail(data.error || 'Could not resend — try again.');
-    } catch { setBusy(false); fail("Can't reach the Vendora server. Check your internet connection and try again."); }
+    } catch { setBusy(false); fail("Can't reach the VeloSales AI server. Check your internet connection and try again."); }
   }
   async function sendLink() { // FALLBACK: "email didn't arrive? send a LINK instead" (token flow — works even when OTP emails land in spam!)…
     if (busy) return; setBusy(true); setMsg(''); setMsgErr(false);
@@ -256,7 +256,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
       setBusy(false);
       setMsg(data.message || data.error || (ok ? 'Link sent — check your inbox.' : 'Could not send — try again.')); // backend message wins (knows Resend state!)
       setMsgErr(!ok);
-    } catch { setBusy(false); fail("Can't reach the Vendora server. Check your internet connection and try again."); }
+    } catch { setBusy(false); fail("Can't reach the VeloSales AI server. Check your internet connection and try again."); }
   }
   async function forgotSend() { // FORGOT path: email → reset link (always "sent" — enumeration-safe by design!)…
     if (busy) return; setBusy(true); setMsg(''); setMsgErr(false);
@@ -265,7 +265,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
       setBusy(false);
       setMsg((data && data.devToken ? `Dev mode — your reset token: ${data.devToken}. ` : '') + 'Reset link sent — check your inbox (and spam folder). It expires in 1 hour.'); // backend always answers "sent" (never reveals who has an account), so we can promise the link confidently
       setMsgErr(false);
-    } catch { setBusy(false); fail("Can't reach the Vendora server. Check your internet connection and try again."); }
+    } catch { setBusy(false); fail("Can't reach the VeloSales AI server. Check your internet connection and try again."); }
   }
 
   return (
@@ -273,7 +273,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
       <div className="auth-glow" /> {/* drifting light blob (self-closing div, pure CSS animation!) */}
       <div className="auth-card glass"> {/* glassmorphism card: brand panel + form (backdrop-blur + entrance animation) */}
         <div className="auth-side"> {/* LEFT: brand storytelling (hidden on mobile via CSS!) */}
-          <div className="brand-chip"><img src="/logo.png" alt="Vendora" /><span>VENDORA — AI SALES ASSISTANT</span></div> {/* pill badge */}
+          <div className="brand-chip"><img src="/logo.png" alt="VeloSales AI" /><span>VELOSALES AI · SALES ASSISTANT</span></div> {/* pill badge */}
           <h2>Your WhatsApp shop.<br /><span className="grad">Open even while you sleep.</span></h2> {/* <br/> line break; .grad = gradient text span */}
           <p className="tagline">An AI that answers like you — prices, stock, hours — so no customer is ever ignored.</p>
           <ul className="feat"> {/* feature list with STAGGERED entrance (--d custom property = per-item delay!) */}

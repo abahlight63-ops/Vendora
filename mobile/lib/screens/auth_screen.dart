@@ -90,7 +90,7 @@ class _AuthScreenState extends State<AuthScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('VENDORA',
+                const Text('VELOSALES AI',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                         fontSize: 28,

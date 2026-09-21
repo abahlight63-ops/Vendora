@@ -24,16 +24,16 @@ import 'screens/connect_screen.dart';
 import 'screens/ai_screen.dart';
 import 'screens/billing_screen.dart';
 
-void main() => runApp(const VendoraApp());
+void main() => runApp(const VeloSalesApp());
 
-class VendoraApp extends StatefulWidget {
-  const VendoraApp({super.key});
+class VeloSalesApp extends StatefulWidget {
+  const VeloSalesApp({super.key});
 
   @override
-  State<VendoraApp> createState() => _VendoraAppState();
+  State<VeloSalesApp> createState() => _VeloSalesAppState();
 }
 
-class _VendoraAppState extends State<VendoraApp> {
+class _VeloSalesAppState extends State<VeloSalesApp> {
   bool? _authed; // null = checking
   bool _needsSetup = false; // true = logged in but no niche yet (setup screen!)
   ThemeMode _mode = ThemeMode.system;
@@ -49,7 +49,7 @@ class _VendoraAppState extends State<VendoraApp> {
     final wait = Future.delayed(const Duration(milliseconds: 1500));
     final results = await Future.wait([
       wait,
-      VendoraTheme.loadMode(),
+      VeloSalesTheme.loadMode(),
       _checkAuth(),
     ]);
     if (!mounted) return;
@@ -85,16 +85,16 @@ class _VendoraAppState extends State<VendoraApp> {
   }
 
   Future<void> _setMode(ThemeMode m) async {
-    await VendoraTheme.saveMode(m);
+    await VeloSalesTheme.saveMode(m);
     if (mounted) setState(() => _mode = m);
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Vendora',
-      theme: VendoraTheme.light,
-      darkTheme: VendoraTheme.dark,
+      title: 'VeloSales AI',
+      theme: VeloSalesTheme.light,
+      darkTheme: VeloSalesTheme.dark,
       themeMode: _mode,
       // Liquid glass: mesh-gradient backdrop behind EVERYTHING (scaffolds
       // are transparent by theme, so every frosted surface refracts this).
@@ -144,7 +144,7 @@ class _HomeShellState extends State<HomeShell> {
     'Chats',
     'Catalog',
     'Connect',
-    'Vendora AI',
+    'VeloSales AI',
     'Billing'
   ];
 
@@ -154,7 +154,7 @@ class _HomeShellState extends State<HomeShell> {
     _bootExtras();
   }
 
-  /// Shell parity: bell unread count + "Vendora updated" toast when the
+  /// Shell parity: bell unread count + "VeloSales AI updated" toast when the
   /// backend version changed since last visit (Shell.jsx does both).
   /// Both calls fly in PARALLEL (one wait, not two — faster cold start!).
   Future<void> _bootExtras() async {
@@ -176,7 +176,7 @@ class _HomeShellState extends State<HomeShell> {
       final last = prefs.getString('vendora-version');
       await prefs.setString('vendora-version', cur);
       if (mounted && last != null && last != cur) {
-        showToast(context, 'Vendora updated to v$cur — open the notification bell to see what changed');
+        showToast(context, 'VeloSales AI updated to v$cur — open the notification bell to see what changed');
         _refreshBell();
       }
     } catch (_) {}

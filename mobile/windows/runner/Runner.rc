@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.vendora" "\0"
-            VALUE "FileDescription", "vendora" "\0"
+            VALUE "CompanyName", "VeloSales AI" "\0"
+            VALUE "FileDescription", "VeloSales AI" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "vendora" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.vendora. All rights reserved." "\0"
-            VALUE "OriginalFilename", "vendora.exe" "\0"
-            VALUE "ProductName", "vendora" "\0"
+            VALUE "InternalName", "velosalesai" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 VeloSales AI. All rights reserved." "\0"
+            VALUE "OriginalFilename", "velosalesai.exe" "\0"
+            VALUE "ProductName", "VeloSales AI" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

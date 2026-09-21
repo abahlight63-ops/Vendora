@@ -10,7 +10,7 @@
 # or you paste them under Environment in the dashboard.
 services:
   - type: web
-    name: vendora
+    name: velosalesai
     runtime: node
     plan: free
     buildCommand: npm install && npm run build
@@ -62,7 +62,7 @@ services:
       - key: RESEND_API_KEY
         sync: false
       - key: EMAIL_FROM
-        value: Vendora <onboarding@resend.dev>
+        value: VeloSales AI <onboarding@resend.dev>
       - key: SUPPORT_EMAIL
         sync: false
       - key: STATICFORMS_KEY

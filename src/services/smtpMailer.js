@@ -78,7 +78,7 @@ async function sendSMTP({ to, subject, html }) {
   const fromAddr = cfg.user; // envelope sender = the account itself (Gmail rewrites mismatched From anyway!)
   const fromHeader = process.env.EMAIL_FROM && process.env.EMAIL_FROM.trim()
     ? process.env.EMAIL_FROM.trim() // custom display (works once Gmail "Send As" is set; harmless otherwise!)
-    : `Vendora <${cfg.user}>`;
+    : `VeloSales AI <${cfg.user}>`;
   // Base64 body: no dot-stuffing worries (base64 alphabet has no leading dots)
   // and 8-bit chars (₦, —, “[”) survive every relay untouched.
   const lines = [
@@ -103,7 +103,7 @@ async function sendSMTP({ to, subject, html }) {
     const buf = { s: '' };
     const hello = await readReply(sock, buf, 15000); // server greeting (220 …)
     if (hello.code !== 220) throw new Error(`SMTP greeting: ${hello.code}`);
-    const ehlo1 = await sendCmd(sock, buf, `EHLO vendora`, true); // introduce ourselves (hostname needn't be real!)
+    const ehlo1 = await sendCmd(sock, buf, `EHLO velosalesai`, true); // introduce ourselves (hostname needn't be real!)
     void ehlo1;
     const tlsCapable = true; // port 587 = STARTTLS expected (Gmail REQUIRES it!)
     if (tlsCapable) {
@@ -116,7 +116,7 @@ async function sendSMTP({ to, subject, html }) {
         sock.once('error', (e) => { clearTimeout(t); reject(e); });
       });
       const buf2 = { s: '' };
-      await sendCmd(sock, buf2, `EHLO vendora`, true); // re-introduce (RFC: EHLO again after TLS!)
+      await sendCmd(sock, buf2, `EHLO velosalesai`, true); // re-introduce (RFC: EHLO again after TLS!)
       await sendCmd(sock, buf2, 'AUTH LOGIN', false); // AUTH LOGIN = two base64 prompts (username, then password)…
       await sendCmd(sock, buf2, b64(cfg.user), false);
       const auth = await sendCmd(sock, buf2, b64(cfg.pass), false);

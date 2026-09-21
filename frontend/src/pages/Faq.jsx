@@ -17,11 +17,11 @@ const FAQS = [ // 15 pairs — CUSTOMER voice (plain answers, zero jargon; in-ap
   ['Does it speak Pidgin?', 'Yes — it mirrors the customer. Pidgin in, Pidgin out. Formal English in, formal out. It never corrects their language.'],
   ['Can customers send photos?', 'Yes — if a customer sends a product photo, the AI matches it against your catalog and replies with the closest item, or hands off to you if nothing matches.'],
   ['How does billing work?', 'Pricing adapts to your location automatically — you pay by card on a secure checkout page — Pro from ₦7,499 or $5 per month, Pro Plus (voice notes + heavy work models) from ₦14,999 or $10 per month, with yearly savings up to 33%. Big shops ask about Enterprise. Dropping to free never deletes anything.'],
-  ['Does Vendora work outside Nigeria?', 'Yes — any WhatsApp number worldwide works. Prices, hours and replies all follow your location and timezone, and the AI matches your customer\u2019s language.'],
+  ['Does VeloSales AI work outside Nigeria?', 'Yes — any WhatsApp number worldwide works. Prices, hours and replies all follow your location and timezone, and the AI matches your customer\u2019s language.'],
   ['Can I get a refund?', 'First-ever payment: yes, within 7 days if the service genuinely didn\u2019t work for you — write to us from Help. Duplicate or failed charges are always refunded in full.'],
   ['How do I cancel?', 'Stop paying and you simply drop to the free plan at period end. Delete your account from Settings or Help and everything is removed within 14 days.'],
   ['Can the AI make mistakes?', 'Rarely, but possible — AI models can misread slang or sound confident about thin facts. That is why unsure moments hand off to you instead of guessing, and why your catalog accuracy matters.'],
-  ['What if WhatsApp goes down?', 'Vendora rides on Meta WhatsApp Cloud API and AI providers. If they have an outage, replies may delay — the bot always fails safe by flagging a human instead of inventing answers. Your catalog and history are untouched.'],
+  ['What if WhatsApp goes down?', 'VeloSales AI rides on Meta WhatsApp Cloud API and AI providers. If they have an outage, replies may delay — the bot always fails safe by flagging a human instead of inventing answers. Your catalog and history are untouched.'],
   ['Is my data private?', 'Your catalog and chats only reply to your customers. No data sales, no advertising profiles, no training of public models on your content. Export or delete anytime from Help. Full details in Privacy.'],
   ['How do I reach support?', 'Fastest: the Help page inside your dashboard — it arrives with your account attached. Include your business name, number, and a screenshot; that combination resolves 90% of issues in one reply.'],
 ];
@@ -38,7 +38,7 @@ function useReveal() { // CUSTOM HOOK: fade .reveal elements in on scroll (Inter
 export default function Faq() {
   const [open, setOpen] = useState(0); // open accordion index (0 = first open on load shows the pattern; -1 = all closed)
   const [query, setQuery] = useState(''); // live search text (controlled input below)
-  useEffect(() => { document.title = 'Vendora — FAQ'; }, []); // tab title
+  useEffect(() => { document.title = 'VeloSales AI — FAQ'; }, []); // tab title
   useReveal(); // scroll-reveal wiring (hooks are just functions — top-level call, stable order)
   const shown = useMemo(() => { // filtered list, recomputed ONLY when query changes (useMemo caches otherwise)…
     const q = query.trim().toLowerCase(); // normalize once (trim + lowercase = case-insensitive match)
@@ -48,7 +48,7 @@ export default function Faq() {
   return (
     <div className="faq-page"> {/* light airy theme (own scope — readable in both app themes via CSS vars!) */}
       <header className="landing-nav"><div className="landing-inner">
-        <Link className="landing-brand" to="/"><img src="/logo.png" alt="Vendora" />VENDORA</Link> {/* brand links HOME */}
+        <Link className="landing-brand" to="/"><img src="/logo.png" alt="VeloSales AI" />VELOSALES AI</Link> {/* brand links HOME */}
         <span><Link className="btn ghost sm" to="/login">Sign in</Link>{' '}<Link className="btn sm" to="/login">Start free trial</Link></span> {/* {' '} = explicit space (JSX collapses whitespace!) */}
       </div></header>
       <section className="landing-inner faq-hero"> {/* centered hero: pill + headline + search */}

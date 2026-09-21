@@ -1,4 +1,4 @@
-// ── frontend/src/pages/VendoraAI.jsx ─────────────────────────────
+// ── frontend/src/pages/VeloSalesAI.jsx ─────────────────────────────
 // WHAT: Gemini-style general assistant — greeting hero + suggestion chips +
 // thread + pill input + custom model picker (grouped, styled, mobile sheet).
 // UNLIKE Playground: NOT catalog-grounded (free-form brain), WITH history,
@@ -97,7 +97,7 @@ function ModelPicker({ models, model, onPick, onLocked }) {
   );
 }
 
-export default function VendoraAI({ biz }) {
+export default function VeloSalesAI({ biz }) {
   const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -207,7 +207,7 @@ export default function VendoraAI({ biz }) {
         ]);
         setUpsell(true);
       } else {
-        setMsgs((m) => [...m, { from: 'ai', text: data.error || 'Vendora AI is resting — try again in a moment.' }]);
+        setMsgs((m) => [...m, { from: 'ai', text: data.error || 'VeloSales AI is resting — try again in a moment.' }]);
         toast(data.error || 'Ask failed', 'err');
       }
     } catch {
@@ -236,9 +236,9 @@ export default function VendoraAI({ biz }) {
       </div>
       {msgs.length === 0 ? (
         <div className="vai-hero">
-          <img src="/logo.png" alt="Vendora AI" className="vai-logo" />
+          <img src="/logo.png" alt="VeloSales AI" className="vai-logo" />
           <h1>Hello, {first}.</h1>
-          <p>Ask Vendora AI anything — research, writing, ideas, advice. Not just your catalog.</p>
+          <p>Ask VeloSales AI anything — research, writing, ideas, advice. Not just your catalog.</p>
           <div className="vai-chips">
             {chipsFor(biz?.business_niche).map((s) => ( // niche chips (freelancer → gigs, baker → orders; generic when unset!)
               <button key={s} className="vai-chip" onClick={() => send(s)}>{s}</button>
@@ -272,7 +272,7 @@ export default function VendoraAI({ biz }) {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask Vendora AI…"
+            placeholder="Ask VeloSales AI…"
             maxLength={2000}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) send(); }}
           />
@@ -280,7 +280,7 @@ export default function VendoraAI({ biz }) {
             <Ic n="send" s={17} />
           </button>
         </div>
-        <p className="hint" style={{ textAlign: 'center', marginTop: 8 }}>Vendora AI can make mistakes — double-check important facts. Chats aren't saved.</p>
+        <p className="hint" style={{ textAlign: 'center', marginTop: 8 }}>VeloSales AI can make mistakes — double-check important facts. Chats aren't saved.</p>
       </div>
     </div>
   );

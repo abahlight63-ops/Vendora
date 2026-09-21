@@ -56,7 +56,7 @@ export default function AdSlot() {
         </div>
       ) : (
         <div className="adslot-card">
-          <span className="sponsor-tag">Vendora</span>
+          <span className="sponsor-tag">VeloSales AI</span>
           <div className="adslot-body">
             <b>Sell faster with Pro</b>
             <span className="hint">Profile sync, product photos in replies and priority support.</span>

@@ -1,4 +1,4 @@
-/* ══ Vendora v5 stylesheet — HOW TO READ THIS FILE ═══════════════════
+/* ══ VeloSales AI v5 stylesheet — HOW TO READ THIS FILE ═══════════════════
    One global CSS file (imported once in main.jsx — Vite bundles it).
    PATTERNS YOU'LL SEE:
    · :root { --green: … } → CSS VARIABLES (custom properties). Change ONE value,
@@ -9,7 +9,7 @@
      their sections + a big mobile block at "footer + mobile").
    · @keyframes → named animations referenced by `animation:` elsewhere.
    SECTIONS: tokens → layout → cards/stats → controls → pills/tables → chat →
-   lists → skeletons → auth → toast/pop → vendora-ai → ads/guide/pricing →
+   lists → skeletons → auth → toast/pop → velosales-ai → ads/guide/pricing →
    drawer → responsive → landing → dashboard → welcome → theme → splash/motion.
    NOTE: stylesheets get SECTION banners (not per-line notes) — per-line CSS
    comments would triple the file; the class names + these banners tell the story.
@@ -147,7 +147,7 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 
 /* ── CHAT: .bubble-in (left, customer) vs .bubble-out (right, green AI).
    align-self inside a flex COLUMN pushes left/right (the classic chat trick!).
-   .thread = the column container. Same classes reused by Playground/Chats/VendoraAI. */
+   .thread = the column container. Same classes reused by Playground/Chats/VeloSalesAI. */
 .thread { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
 .bubble-in, .bubble-out { max-width: 78%; padding: 10px 13px; border-radius: 14px; font-size: 14px; line-height: 1.5; margin: 4px 0; }
 .bubble-in { align-self: flex-start; background: #fff; border: 1px solid var(--line); border-top-left-radius: 4px; }
@@ -295,7 +295,7 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .pop-confetti i:nth-child(6) { background: #7ab8ff; --x: 92px; --r: -80deg; }
 @keyframes confetti { 0% { opacity: 1; transform: translate(0, 0) rotate(0); } 100% { opacity: 0; transform: translate(var(--x), 70px) rotate(var(--r)); } }
 
-/* ---------- Vendora AI (Gemini-style chat) ---------- */
+/* ---------- VeloSales AI (Gemini-style chat) ---------- */
 .vai { display: flex; flex-direction: column; min-height: calc(100vh - 140px); max-width: 760px; margin: 0 auto; width: 100%; }
 .vai-hero { margin: auto; text-align: center; padding: 30px 16px; animation: fadeSlide 0.45s ease both; }
 .vai-logo { width: 64px; height: 64px; border-radius: 18px; background: #fff; box-shadow: 0 10px 30px rgba(37,211,102,0.3); animation: logoFloat 3s ease-in-out infinite alternate; }
@@ -326,7 +326,7 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .vai-send:hover:not(:disabled) { background: var(--green-dark); transform: scale(1.06); }
 .vai-send:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* vendora ai model picker — custom button + grouped popover (touch-friendly) */
+/* velosalesai ai model picker — custom button + grouped popover (touch-friendly) */
 .vai-modelbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
 .mpick { position: relative; flex: 0 1 auto; min-width: 0; }
 .mpick-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--card); color: var(--text-1); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; max-width: 100%; transition: border-color var(--t), box-shadow var(--t); }
@@ -523,7 +523,7 @@ tbody tr.rowlink:hover { background: #f6fef9; }
   /* iOS Safari auto-zooms on focus when inputs are under 16px — keep 16px on touch */
   input, textarea, select { font-size: 16px; }
   .landing-nav .btn { padding: 7px 10px; font-size: 12.5px; }
-  /* Vendora AI picker + thread fit small screens */
+  /* VeloSales AI picker + thread fit small screens */
   .vai { min-height: calc(100vh - 180px); }
   .vai-modelbar { gap: 8px; }
   .mpick { flex: 1 1 100%; }

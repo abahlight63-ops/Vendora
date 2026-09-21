@@ -13,7 +13,7 @@ const STEPS = [ // the script: selector (where to point) + title + teaching text
   { sel: '.sidebar nav a[href="/catalog"], .mobile-bar a[href="/catalog"]', title: '1 · Add what you sell', text: 'Your catalog is the brain. Add products here — or teach from WhatsApp with LEARN: Blue gown ₦45,000. The AI never quotes anything outside it.' }, // attribute selector a[href="…"] = link to that route
   { sel: '.sidebar nav a[href="/playground"], .mobile-bar a[href="/playground"]', title: '2 · Test like a customer', text: 'Pretend to be a buyer: ask prices, stock, hours — then something you don\'t sell, and watch the bot hand off instead of guessing.' }, // \' escapes the apostrophe inside a single-quoted string
   { sel: '.sidebar nav a[href="/chats"], .mobile-bar a[href="/chats"]', title: '3 · Your inbox', text: 'Every WhatsApp chat lands here. Green = AI handled. Gold = needs your human touch. Tap any chat to read the full thread.' },
-  { sel: '.sidebar nav a[href="/vendora-ai"]', title: '4 · Vendora AI', text: 'Your personal assistant for everything else — captions, pricing ideas, replies to difficult customers. Pick from 7 AIs in the dropdown.' }, // desktop-only link (mobile bar lacks it → falls back to card mode there)
+  { sel: '.sidebar nav a[href="/velosales-ai"]', title: '4 · VeloSales AI', text: 'Your personal assistant for everything else — captions, pricing ideas, replies to difficult customers. Pick from 7 AIs in the dropdown.' }, // desktop-only link (mobile bar lacks it → falls back to card mode there)
   { sel: '.sidebar nav a[href="/billing"], .mobile-bar a[href="/billing"]', title: '5 · Free vs Pro', text: 'Manual catalog is free forever. Pro adds profile sync, premium AIs and zero ads. Your 7-day Pro trial is already running.' },
 ];
 

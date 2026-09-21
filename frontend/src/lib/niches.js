@@ -1,6 +1,6 @@
 // ── frontend/src/lib/niches.js ─────────────────────────────────────
 // WHAT: the welcome-picker data, shared by Welcome.jsx (picker) +
-// VendoraAI.jsx (niche suggestion chips). Labels are the canonical niche
+// VeloSalesAI.jsx (niche suggestion chips). Labels are the canonical niche
 // strings — the backend stores them verbatim (free text ≤80 chars, so custom
 // "Other" entries never need a deploy here!).
 
@@ -39,9 +39,9 @@ export const HEARD_FROM = [
   'Other',
 ];
 
-// Per-niche Vendora AI starter chips (freelancer sees gigs, baker sees
+// Per-niche VeloSales AI starter chips (freelancer sees gigs, baker sees
 // orders — never generic "blue gown" examples for the wrong hustle!).
-// Unknown/custom niches fall back to DEFAULT_CHIPS (VendoraAI handles it).
+// Unknown/custom niches fall back to DEFAULT_CHIPS (VeloSalesAI handles it).
 const NICHE_CHIPS = {
   'Clothing, Fashion & Accessories': [
     'Write a sales caption for my new drop',

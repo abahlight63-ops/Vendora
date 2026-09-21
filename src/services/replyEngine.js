@@ -4,7 +4,7 @@
 // Two jobs:
 //   1. generateReply() — WhatsApp customer replies, STRICTLY grounded in the
 //      shop's catalog (never invents prices; NEED_HUMAN flag when unsure).
-//   2. askGeneral() — Vendora AI page: free-form assistant, no grounding.
+//   2. askGeneral() — VeloSales AI page: free-form assistant, no grounding.
 // MODULES: ./productService (catalog), ./ai/client (transport).
 
 const productService = require('./productService');
@@ -95,7 +95,7 @@ async function callChoice(entry, model, system, user, image, opts) {
   throw new Error('All configured AIs failed — check keys and restart the server');
 }
 
-// Niche seeds: 2-3 example topics per niche so Vendora AI answers with
+// Niche seeds: 2-3 example topics per niche so VeloSales AI answers with
 // the owner's hustle in mind (freelancer → clients/gigs, baker → orders…).
 // Keys match the welcome picker labels; unknown niches fall back to DEFAULT.
 const NICHE_SEEDS = {
@@ -122,7 +122,7 @@ const NICHE_SEEDS = {
 };
 
 /**
- * General-purpose chat (Vendora AI page) — NOT grounded in any catalog.
+ * General-purpose chat (VeloSales AI page) — NOT grounded in any catalog.
  * Smart + thorough: full explanations with examples, not one-liners.
  * choiceId comes from the dropdown and is validated against the tier.
  * niche tailors examples + follow-ups to the owner's hustle (empty = generic).
@@ -155,7 +155,7 @@ async function askGeneral(message, history, choiceId, tier, bizName, niche, shop
     if (shopCtx.catalog) bits.push(`SHOP CATALOG (single source of truth — quote these exact names/prices, never invent siblings):\n${shopCtx.catalog}`);
     if (bits.length) shopLine = `\nSHOP FACTS (answer shop questions ONLY from these — "${shop}" means THIS shop):\n${bits.join('\n')}`;
   }
-  const system = `You are Vendora AI, a smart, warm general-purpose assistant inside the Vendora app.${nicheLine}${todayLine}${shopLine}
+  const system = `You are VeloSales AI, a smart, warm general-purpose assistant inside the VeloSales AI app.${nicheLine}${todayLine}${shopLine}
 
 PERSONALITY: knowledgeable friend + sharp business coach. Friendly, respectful, encouraging. Greet warmly, always offer a concrete next step.
 
@@ -165,13 +165,13 @@ RESPECT (non-negotiable — this protects the business legally and commercially)
 
 EMOJI: none in replies — plain words only (chat bubbles render raw characters, and plain text reads professional).
 
-SMALL TALK ("how are you?", "who are you?", "what can you do?"): answer warmly, say you are Vendora AI inside Vendora, list 4-5 real capabilities (write sales captions, business name ideas, pricing strategy, difficult-customer replies, product descriptions, marketing plans), end with one question to keep helping.
+SMALL TALK ("how are you?", "who are you?", "what can you do?"): answer warmly, say you are VeloSales AI inside VeloSales AI, list 4-5 real capabilities (write sales captions, business name ideas, pricing strategy, difficult-customer replies, product descriptions, marketing plans), end with one question to keep helping.
 
 DEPTH (the important part — NEVER give one-liners to real questions): a how/what/why/strategy/writing question ALWAYS gets a complete answer. Explain the why, give ordered steps, and include at least one concrete example with real numbers/names suited to a small Nigerian business where it fits. A pricing question gets a mini-framework PLUS an example calculation. A caption/description/customer-reply request gets 3 ready-to-copy options, NOT advice about writing. Structure with short headings or numbered steps so long answers stay scannable. Length guide: greetings/small-talk = 2-4 sentences; substantive questions = 150-450 words of real content, never padded with fluff. Every substantive answer ends with ONE concrete next step or follow-up question.
 
 FORMATTING: PLAIN TEXT ONLY — never type #, *, underscores, backticks, ~, | or [text](url). The chat shows RAW characters, so ### and ** appear as ugly junk to the reader. Structure with plain numbered steps (1. 2. 3.), simple dash lines for bullets, short paragraphs, one idea per line. Each step/option on its OWN line (line breaks are preserved in the bubble). No markdown tables (they break in chat bubbles).
 
-VENDORA FACTS: Vendora is a WhatsApp AI sales assistant for small businesses (answers customers in English + Pidgin, 24/7, learns the catalog, hands off to a human when unsure).`;
+VELOSALES AI FACTS: VeloSales AI is a WhatsApp AI sales assistant for small businesses (answers customers in English + Pidgin, 24/7, learns the catalog, hands off to a human when unsure).`;
   // Drop a trailing duplicate of the current message (the frontend used to send
   // history INCLUDING the just-typed message — dedupe here so no provider pays
   // for, or gets confused by, the question twice).
@@ -185,7 +185,7 @@ VENDORA FACTS: Vendora is a WhatsApp AI sales assistant for small businesses (an
     hist = hist.slice(0, -1);
   }
   const transcript = hist
-    .map((m) => `${m.from === 'you' ? 'User' : 'Vendora AI'}: ${m.text}`)
+    .map((m) => `${m.from === 'you' ? 'User' : 'VeloSales AI'}: ${m.text}`)
     .join('\n');
   const user = transcript ? `${transcript}\nUser: ${message}` : message;
   // Warmer sampling for personality + roomy token budget so answers finish
@@ -309,7 +309,7 @@ ${image ? '12. The customer also sent a PHOTO. Look at it, describe briefly what
   const userPrompt = `Customer message: "${customerMessage}"${image ? '\n(A photo is attached — analyze it.)' : ''}\n\nRespond per your rules.`;
 
   // Per-shop brain pick (Connect page → whatsapp_model): the SAME catalog the
-  // VendoraAI dropdown offers, tier-gated the same way. Downgraded/locked picks
+  // VeloSalesAI dropdown offers, tier-gated the same way. Downgraded/locked picks
   // fall back to the free default (customers NEVER see a paywall — the SHOP does!).
   const aiModels = require('./aiModels');
   const shopTier = planService.effectiveTier(business);

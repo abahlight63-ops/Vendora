@@ -115,7 +115,7 @@ class GlassBackground extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
     // Brand glow: primary green melted toward web teal (same liquid family!).
-    final glow = Color.lerp(scheme.primary, VendoraTheme.accentTeal, 0.35) ?? scheme.primary;
+    final glow = Color.lerp(scheme.primary, VeloSalesTheme.accentTeal, 0.35) ?? scheme.primary;
     return Stack(children: [
       Positioned.fill(
           child: ColoredBox(color: scheme.surfaceContainerLowest)),

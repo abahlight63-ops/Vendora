@@ -1,6 +1,6 @@
 {
-    "name": "vendora",
-    "short_name": "vendora",
+    "name": "velosalesai",
+    "short_name": "velosalesai",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

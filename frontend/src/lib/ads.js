@@ -165,7 +165,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       '<div class="pop-card sponsor vgate">' +
       '<span class="sponsor-tag">Sponsored · offer</span>' +
       '<h3></h3>' +
-      '<p class="hint">Tap Visit to open the offer — it keeps Vendora free.</p>' +
+      '<p class="hint">Tap Visit to open the offer — it keeps VeloSales AI free.</p>' +
       '<button class="btn sm vgate-visit">Visit sponsor</button>' +
       '<button class="sponsor-skip">Skip →</button>' +
       '</div>';
@@ -271,7 +271,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
 
 // Per-CLICK: sponsored interstitial, max once/day, clearly labeled, one-tap close.
 // Call after high-attention free-tier moments (product add, AI limit hit).
-export async function maybeShowSponsor() { // called by Catalog + VendoraAI + Dashboard (exported for those)
+export async function maybeShowSponsor() { // called by Catalog + VeloSalesAI + Dashboard (exported for those)
   const ads = await getAds(); // tier-resolved config…
   const sp = ads?.sponsor; // ?. = null-safe (ads null → sp undefined, no crash)
   if (!sp || seenToday()) return false; // no sponsor configured OR already shown today → skip (return value tells caller)

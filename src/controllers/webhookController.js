@@ -78,7 +78,7 @@ async function handleInbound(req, res) {
     // builds the catalog from it. Manual LEARN: stays free for everyone.
     if (Body.trim().toUpperCase().startsWith(SYNC_PREFIX) && business.owner_number && From === business.owner_number) { // same owner-only guards as LEARN
       if (!planService.isPro(business)) { // PAYWALL: free users get the pitch, not the feature
-        await reply(From, 'Profile sync is a Pro feature — it checks products against your WhatsApp Business profile automatically.\n\nManual teaching is always free: just send LEARN: followed by your products.\n\nUpgrade to Pro in your Vendora dashboard to unlock sync.');
+        await reply(From, 'Profile sync is a Pro feature — it checks products against your WhatsApp Business profile automatically.\n\nManual teaching is always free: just send LEARN: followed by your products.\n\nUpgrade to Pro in your VeloSales AI dashboard to unlock sync.');
         return res.status(200).send('');
       }
       const profileText = Body.trim().slice(SYNC_PREFIX.length).trim(); // strip "SYNC:" (5 chars) → profile text
@@ -167,7 +167,7 @@ async function handleInbound(req, res) {
         const registry = require('../services/actions/registry'); // lazy require (registry loads handlers on demand!)
         const gate = registry.canRun(business, 'update_inventory'); // Pro check (trial counts — planService decides!)
         if (!gate.ok) { // free tier → pitch (one line + LEARN reminder — never silent!)
-          await reply(From, 'Stock updates are a Pro feature — I can edit inventory from your messages automatically.\n\nManual catalog stays free: use LEARN: any time.\n\nUpgrade to Pro in your Vendora dashboard to unlock it.');
+          await reply(From, 'Stock updates are a Pro feature — I can edit inventory from your messages automatically.\n\nManual catalog stays free: use LEARN: any time.\n\nUpgrade to Pro in your VeloSales AI dashboard to unlock it.');
           return res.status(200).send('');
         }
         const done = await gate.action.run(business.id, intent.item, intent.quantity, intent.operation, Body); // THE TOOL CALL (transactional + audited inside!)
@@ -299,7 +299,7 @@ async function handleInbound(req, res) {
     // Free tier keeps working from the manual catalog — only Pro unlocks
     // profile verification. Nothing is ever paused for non-payment.
     // Paid-model guard: a shop that picked Kimi/Claude/GPT for WhatsApp spends
-    // API money per reply — cap it DAILY (same 50 as the VendoraAI page). Over
+    // API money per reply — cap it DAILY (same 50 as the VeloSalesAI page). Over
     // the cap? The reply still goes out, just answered by the free default
     // (customers NEVER see paywalls — the shop sees the cap in Insights!).
     const PAID_WA_PER_DAY = Number(process.env.PAID_AI_PER_DAY || 50); // shared paid-model budget (one number for page + WhatsApp!)
@@ -331,7 +331,7 @@ async function handleInbound(req, res) {
       }
       await reply(From, result.reply, photoUrl); // send to customer (From = customer number here)
       await conversationService.logMessage(customerId, 'out', result.reply, photoUrl); // store our reply (+ photo URL so the inbox shows what was sent!)
-      if (result.paidModel) { // paid brain answered → count it (same daily budget as the VendoraAI page!)
+      if (result.paidModel) { // paid brain answered → count it (same daily budget as the VeloSalesAI page!)
         try {
           await db.query(
             `INSERT INTO ai_usage (business_id, day, paid_count) VALUES ($1, CURRENT_DATE, 1)

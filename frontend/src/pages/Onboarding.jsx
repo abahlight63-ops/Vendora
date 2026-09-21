@@ -13,8 +13,8 @@ import Ic from '../components/icons.jsx'; // slide art + row icons
 // (800×600). Missing files fall back to the icon slot automatically.
 const SLIDES = [ // slide SCRIPT: data, not JSX (add a slide = add an object!). icon = fallback art; img = BASE path (SlideImg tries extensions).
   {
-    k: 'welcome', icon: 'store', img: '/welcome-1', eyebrow: 'Welcome to Vendora', title: 'Never miss a customer again.', // k = stable key (dot buttons + animation key); eyebrow = small caps kicker
-    body: 'Your WhatsApp becomes a 24/7 shop assistant. Customers ask, Vendora answers from YOUR catalog — even at 2am.',
+    k: 'welcome', icon: 'store', img: '/welcome-1', eyebrow: 'Welcome to VeloSales AI', title: 'Never miss a customer again.', // k = stable key (dot buttons + animation key); eyebrow = small caps kicker
+    body: 'Your WhatsApp becomes a 24/7 shop assistant. Customers ask, VeloSales AI answers from YOUR catalog — even at 2am.',
     points: [['chat', 'Replies in seconds'], ['spark', 'English or Pidgin'], ['shield', 'Never invents prices']], // [icon, text] chips row
     cta: 'See how it works', // Next-button label for THIS slide (each slide sells the next!)
   },
@@ -62,7 +62,7 @@ function SlideImg({ src, icon, alt }) { // src = BASE ('/welcome-1'); tries each
 }
 
 export default function Onboarding() {
-  useEffect(() => { document.title = 'Vendora — Welcome'; }, []); // tab title (mount-only)
+  useEffect(() => { document.title = 'VeloSales AI — Welcome'; }, []); // tab title (mount-only)
   const nav = useNavigate(); // Skip intro + final CTA navigation
   const [step, setStep] = useState(0); // current slide index (0–5)
   const [dir, setDir] = useState(1); // slide direction: +1 forward / -1 back (drives fwd/back CSS animation!)
@@ -77,7 +77,7 @@ export default function Onboarding() {
     <div className="welcome neu-bg"> {/* fullscreen stage + neumorphic background tint */}
       <div className="welcome-inner"> {/* centered column (max-width) */}
         <div className="welcome-top">
-          <span className="landing-brand"><img src="/logo.png" alt="Vendora" />VENDORA</span> {/* brand lockup (logo + letterspaced name) */}
+          <span className="landing-brand"><img src="/logo.png" alt="VeloSales AI" />VELOSALES AI</span> {/* brand lockup (logo + letterspaced name) */}
           <button className="skip" onClick={() => nav('/welcome')}>Skip intro</button> {/* link-styled skip (impatient users convert too — still lands on niche setup!) */}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}> {/* counter + dots row */}

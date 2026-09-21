@@ -32,7 +32,7 @@ const Help = lazy(() => import('./pages/Help.jsx'));
 const ReferEarn = lazy(() => import('./pages/ReferEarn.jsx')); // full Refer & Earn page (code + rewards + history + leaders!)
 const Notifications = lazy(() => import('./pages/Notifications.jsx')); // full inbox page (bell previews, this shows all!)
 const Admin = lazy(() => import('./pages/Admin.jsx')); // admin console (rarely opened — must NOT weigh first paint!)
-const VendoraAI = lazy(() => import('./pages/VendoraAI.jsx')); // general AI chat + model dropdown
+const VeloSalesAI = lazy(() => import('./pages/VeloSalesAI.jsx')); // general AI chat + model dropdown
 const Privacy = lazy(() => import('./pages/Privacy.jsx')); // public legal (no login needed)
 const Terms = lazy(() => import('./pages/Terms.jsx')); // public legal
 const Faq = lazy(() => import('./pages/Faq.jsx')); // public FAQ marketing page
@@ -93,7 +93,7 @@ export default function App() { // ROOT component (main.jsx renders this)
       <Route path="/notifications" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Notifications /></Guard>} /> {/* full inbox (bell previews, tap → here!) */}
       <Route path="/notifications/:id" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Notifications /></Guard>} /> {/* one notice fully (photo/video + long body!) */}
       <Route path="/refer-earn" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><ReferEarn /></Guard>} /> {/* full Refer & Earn page (Dashboard card teasers it!) */}
-      <Route path="/vendora-ai" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><VendoraAI biz={me} /></Guard>} />
+      <Route path="/velosales-ai" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><VeloSalesAI biz={me} /></Guard>} />
       <Route path="/" element={loading ? <div className="page"><div className="card"><p className="hint">Loading…</p></div></div> : me ? <Navigate to="/dashboard" replace /> : <Landing theme={theme} onToggleTheme={toggleTheme} />} /> {/* / = smart root: loading→placeholder, logged-in→dashboard, guest→marketing landing (ternary chain) */}
       <Route path="*" element={<div className="page"><div className="card"><h2>Page not found</h2><p className="hint">That link doesn't exist.</p><p style={{ marginTop: 12 }}><a href="/dashboard">Back to overview</a></p></div></div>} /> {/* path="*" = catch-all 404 (MUST be last — Routes picks first match!) */}
     </Routes></Suspense>

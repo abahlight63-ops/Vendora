@@ -128,7 +128,7 @@ async function login(req, res) {
     return res.status(401).json({ error: 'Invalid email or password' }); // 401 = bad credentials
   }
   if (!user.verified) { // correct password but email unconfirmed → block with a resend hint…
-    return res.status(403).json({ error: 'Please verify your email first — check your inbox for the Vendora link.', needsVerification: true, email: user.email }); // frontend shows "Resend email" on needsVerification
+    return res.status(403).json({ error: 'Please verify your email first — check your inbox for the VeloSales AI link.', needsVerification: true, email: user.email }); // frontend shows "Resend email" on needsVerification
   }
   req.session.userId = user.id; // LOGIN: stamp the session…
   req.session.businessId = user.business_id; // …business id rides along from the JOIN
@@ -174,7 +174,7 @@ async function google(req, res) {
       const fresh = await authService.findUserByEmail(email); // refetch (business_name for the response!)
       return res.json({ user: { id: fresh.id, email: fresh.email, business_name: fresh.business_name }, businessId: fresh.business_id });
     }
-    return res.status(404).json({ error: 'No Vendora account uses that Google email — create one first.', needsSignup: true, email, name: info.name || '' }); // NO account → frontend offers one-tap business creation (see googleSignup below — never auto-create blindly: we need their WhatsApp number!)
+    return res.status(404).json({ error: 'No VeloSales AI account uses that Google email — create one first.', needsSignup: true, email, name: info.name || '' }); // NO account → frontend offers one-tap business creation (see googleSignup below — never auto-create blindly: we need their WhatsApp number!)
   } catch (e) {
     console.error('google auth error:', e.message);
     res.status(502).json({ error: 'Could not reach Google — try again.' }); // network to Google failed (our side reachable, theirs not!)

@@ -1,4 +1,4 @@
-package com.vendora.vendora
+package com.velosalesai.app
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -118,7 +118,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _Step(waLive || tgOn, 'Connect your channels',
           'WhatsApp + Telegram — TEST to LIVE', 3),
       _Step(_convos.isNotEmpty, 'Test like a customer',
-          'Ask prices in Vendora AI', 4),
+          'Ask prices in VeloSales AI', 4),
       _Step(
           '${biz['hours'] ?? ''}'.isNotEmpty &&
               '${biz['owner_number'] ?? ''}'.isNotEmpty,
@@ -432,7 +432,7 @@ class _ReferCardState extends State<_ReferCard> {
     final code = '${r['code'] ?? ''}';
     final link = 'https://vendorabot.vercel.app/login?ref=$code';
     final text =
-        'I use Vendora — my WhatsApp shop answers customers 24/7. Start free with my code $code (connect + use it and we BOTH get 14 Pro days free): $link';
+        'I use VeloSales AI — my WhatsApp shop answers customers 24/7. Start free with my code $code (connect + use it and we BOTH get 14 Pro days free): $link';
     List<dynamic> history = [];
     List<dynamic> leaders = [];
     try {
@@ -516,7 +516,7 @@ class _ReferCardState extends State<_ReferCard> {
     final pct = (paying % every) / every;
     final link = 'https://vendorabot.vercel.app/login?ref=$code'; // web login prefills + validates!
     final text =
-        'I use Vendora — my WhatsApp shop answers customers 24/7. Start free with my code $code (connect + use it and we BOTH get 14 Pro days free): $link';
+        'I use VeloSales AI — my WhatsApp shop answers customers 24/7. Start free with my code $code (connect + use it and we BOTH get 14 Pro days free): $link';
     return FadeSlideIn(
       child: GlassCard(
         onTap: _openReferPage, // full page (history + leaderboard + big share!)

@@ -419,7 +419,6 @@ async function callAI(system, user, image) {
 // Ping every configured provider with a ~5-token "OK" (parallel, each guarded).
 // Returns [{provider, ok, ms, error?}] — never key values, only short errors.
 // Used by the owner "Test my AIs" button AND the Admin AI-health card.
-//stop greeting before function {get element by 2 {id }}
 async function pingAll() {
   const has = configuredProviders();
   const tiny = { temperature: 0, maxTokens: 5 }; // cheapest possible ping

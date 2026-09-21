@@ -1173,6 +1173,31 @@ tbody td { border-bottom-color: rgba(255,255,255,.08) !important; }
   body::before, .hub-wave path, .hub-bars i { animation: none; }
 }
 
+/* ── forex charts (Insights: line, spark, bars — theme-safe via vars) ── */
+:root { --fx-line: #0b6b38; }
+[data-theme="dark"] { --fx-line: #5eead4; }
+.fx-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+.fx-pair { font-size: 11.5px; font-weight: 800; letter-spacing: 1.5px; color: var(--text-2); }
+.fx-big { font-size: 34px; font-weight: 800; letter-spacing: -0.8px; line-height: 1.1; }
+.fx-big small { font-size: 13px; font-weight: 500; color: var(--text-2); letter-spacing: 0; }
+.fx-line { fill: none; stroke: var(--fx-line); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+[data-theme="dark"] .fx-line { filter: drop-shadow(0 0 8px rgba(94,234,212,.5)); }
+.fx-grid { stroke: rgba(125,140,150,.28); stroke-width: 1; }
+.fx-txt { fill: var(--text-3); font-size: 11px; font-family: var(--font); }
+.fx-dot { fill: var(--fx-line); }
+.fx-halo { fill: var(--fx-line); opacity: 0.22; }
+.pbars { display: flex; align-items: flex-end; gap: 4px; height: 92px; }
+.pbars i { flex: 1; min-height: 3px; border-radius: 4px 4px 2px 2px; background: linear-gradient(180deg, #25d366, #0b6b38); }
+[data-theme="dark"] .pbars i { background: linear-gradient(180deg, #7ef0c0, #22d3ee); box-shadow: 0 0 8px rgba(94,234,212,.35); }
+.hbars { display: grid; gap: 12px; }
+.hbar { display: grid; grid-template-columns: minmax(120px, 220px) 1fr 34px; gap: 10px; align-items: center; font-size: 13.5px; }
+.hbar span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-1); }
+.hbar-track { height: 10px; border-radius: 99px; background: var(--bg-secondary); border: 1px solid var(--border); overflow: hidden; }
+.hbar-track i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--green), #7ef0c0); }
+[data-theme="dark"] .hbar-track i { box-shadow: 0 0 10px rgba(94,234,212,.45); }
+.hbar b { text-align: right; }
+@media (max-width: 640px) { .hbar { grid-template-columns: 1fr 34px; } .hbar-track { grid-column: 1 / -1; order: 3; } }
+
 /* ── invisible scrollbars (scroll still works, bars just never show) ── */
 html, body { scrollbar-width: none; -ms-overflow-style: none; }
 html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; height: 0; }

@@ -91,7 +91,7 @@ export default function Welcome() {
     <div className="welcome neu-bg">
       <div className="welcome-inner">
         <div className="welcome-top">
-          <span className="landing-brand"><img src="/logo.png?v=3" alt="VeloSales Ai" />VELOSALES AI</span>
+          <span className="landing-brand"><img src="/logo.png?v=4" alt="VeloSales Ai" />VELOSALES AI</span>
           <span className="hint">Step {step + 1} of 5</span> {/* progress counter (Onboarding-style!) */}
         </div>
         <div className="quiz-prog"><i style={{ width: `${((step + 1) / 5) * 100}%` }} /></div> {/* progress fill (inline width = dynamic, CSS can't compute!) */}

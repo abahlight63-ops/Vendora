@@ -77,7 +77,7 @@ export default function Onboarding() {
     <div className="welcome neu-bg"> {/* fullscreen stage + neumorphic background tint */}
       <div className="welcome-inner"> {/* centered column (max-width) */}
         <div className="welcome-top">
-          <span className="landing-brand"><img src="/logo.png?v=3" alt="VeloSales Ai" />VELOSALES AI</span> {/* brand lockup (logo + letterspaced name) */}
+          <span className="landing-brand"><img src="/logo.png?v=4" alt="VeloSales Ai" />VELOSALES AI</span> {/* brand lockup (logo + letterspaced name) */}
           <button className="skip" onClick={() => nav('/welcome')}>Skip intro</button> {/* link-styled skip (impatient users convert too — still lands on niche setup!) */}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}> {/* counter + dots row */}

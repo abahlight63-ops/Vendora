@@ -12,7 +12,7 @@ export default function Terms() {
   return (
     <div className="landing">
       <header className="landing-nav"><div className="landing-inner">
-        <Link className="landing-brand" to="/"><img src="/logo.png?v=3" alt="VeloSales Ai" />VELOSALES AI</Link>
+        <Link className="landing-brand" to="/"><img src="/logo.png?v=4" alt="VeloSales Ai" />VELOSALES AI</Link>
         <span><Link className="btn ghost sm" to="/login">Sign in</Link></span>
       </div></header>
       <section className="landing-inner" style={{ padding: '48px 24px 64px' }}>

@@ -18,7 +18,7 @@ export default defineConfig({ // export the config object (Vite CLI imports this
     proxy: { // PROXY = dev convenience: frontend calls /api/… on :5173, Vite FORWARDS to Express :3000 (no CORS setup needed locally! production needs none either — same origin via Express static!)
       '/api': 'http://localhost:3000', // any /api/* request → Express backend…
       '/webhook': 'http://localhost:3000', // …same for webhooks (playground testing)…
-      '/logo.png?v=3': 'http://localhost:3000', // …and the logo (served by Express public/ in prod)
+      '/logo.png?v=4': 'http://localhost:3000', // …and the logo (served by Express public/ in prod)
     },
   },
   build: { outDir: '../dist', emptyOutDir: true }, // `npm run build` output: ../dist (repo root! Express serves it). emptyOutDir = wipe stale files first (no ghost assets from old builds!)

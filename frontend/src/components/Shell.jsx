@@ -8,7 +8,6 @@ import { useEffect, useState } from 'react'; // useState = drawer open flag; use
 import Logo from './Logo.jsx'; // theme-aware brand mark (blue dark / green light!)
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'; // NavLink (active-aware link), useLocation (current path), useNavigate (code navigation)
 import { api, toast } from '../lib/api.js'; // api() for the logout call (+ version check below)
-import ThemeToggle from './ThemeToggle.jsx'; // sun/moon button (topbar)
 import Notifications from './Notifications.jsx'; // bell (payment + update alerts)
 import AdSlot from './AdSlot.jsx'; // visible free-tier ad slot (Pro renders null — mounted once here = on every page)
 import Tour from './Tour.jsx'; // first-run coachmarks (mounted once here = available everywhere)
@@ -113,8 +112,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
             </div>
             <div className="top-right">
               <span className="live-dot"><i />AI online</span> {/* pulsing status pill (<i> = the dot, CSS) */}
-              <Notifications /> {/* bell sits before theme toggle (thumb-side on mobile) */}
-              <ThemeToggle theme={theme} onToggle={onToggleTheme} /> {/* sun/moon switch */}
+              <Notifications /> {/* bell sits where the theme switch was (single dark theme now!) */}
               <div className="avatar" title={safeName}>{initial}</div> {/* title = hover tooltip */}
               <button className="btn ghost sm signout-btn" onClick={logout}>Sign out</button> {/* ghost = outline style; sm = small; .signout-btn hides on phones (drawer carries sign-out instead) */}
             </div>

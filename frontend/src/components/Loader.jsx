@@ -3,11 +3,8 @@
 // orbit (mint dot + gold dot). Minimal at 16px, hero at 88px.
 // Props: size (px), withLogo (splash: logo mark rides inside the orbit).
 // No npm modules — inline SVG + one CSS keyframe (.orbit-loader).
-import { useTheme } from '../lib/theme.js';
-
 export default function Loader({ size = 40, withLogo = false }) {
-  const [theme] = useTheme(); // logo mark follows the theme too (blue dark / green light!)
-  const mark = theme === 'light' ? '/logo-green.png?v=1' : '/logo-blue.png?v=1';
+  const mark = '/logo-green.png?v=2'; // signature green, always
   return (
     <span className="orbit-loader" style={{ width: size, height: size }} role="status" aria-label="Loading">
       <svg viewBox="0 0 120 120" width={size} height={size} aria-hidden="true">

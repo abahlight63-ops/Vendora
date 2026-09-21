@@ -3,7 +3,6 @@
 // arrange loop). 4×4 clipped tiles of /logo.png fly out with rotation +
 // fade, then snap back together. Deterministic scatter (seeded per tile —
 // same dance every loop, no hydration wobble). Used by Splash.
-import { useTheme } from '../lib/theme.js';
 function seed(i, salt) { // tiny deterministic pseudo-random (0..1, stable per tile!)
   let h = (i + 1) * 2654435761 + salt * 40503;
   h = (h ^ (h >> 13)) * 1274126177;
@@ -13,8 +12,7 @@ function seed(i, salt) { // tiny deterministic pseudo-random (0..1, stable per t
 const N = 4; // 4×4 tiles (16 pieces — chunky enough to read, light enough to animate!)
 
 export default function ScatterLogo({ size = 120, src }) {
-  const [theme] = useTheme(); // scattered mark follows the theme (blue dark / green light!)
-  const mark = src || (theme === 'light' ? '/logo-green.png?v=1' : '/logo-blue.png?v=1');
+  const mark = src || '/logo-green.png?v=2'; // signature green, always
   const cells = [];
   for (let y = 0; y < N; y++) {
     for (let x = 0; x < N; x++) {

@@ -68,9 +68,7 @@ class _SplashViewState extends State<SplashView>
                       ),
                     ),
                     Image.asset(
-                      Theme.of(context).brightness == Brightness.light
-                          ? 'assets/logo-green.png'
-                          : 'assets/logo-blue.png',
+                      'assets/logo-green.png', // signature green, always
                       width: 64,
                       height: 64,
                     ),

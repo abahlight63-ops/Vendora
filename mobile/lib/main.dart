@@ -36,7 +36,7 @@ class VeloSalesApp extends StatefulWidget {
 class _VeloSalesAppState extends State<VeloSalesApp> {
   bool? _authed; // null = checking
   bool _needsSetup = false; // true = logged in but no niche yet (setup screen!)
-  ThemeMode _mode = ThemeMode.system;
+  ThemeMode get _mode => ThemeMode.dark; // single premium dark theme (light removed!)
 
   @override
   void initState() {
@@ -49,14 +49,12 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
     final wait = Future.delayed(const Duration(milliseconds: 1500));
     final results = await Future.wait([
       wait,
-      VeloSalesTheme.loadMode(),
       _checkAuth(),
     ]);
     if (!mounted) return;
     setState(() {
-      _mode = results[1] as ThemeMode;
-      _authed = (results[2] as List)[0] as bool;
-      _needsSetup = (results[2] as List)[1] as bool;
+      _authed = (results[1] as List)[0] as bool;
+      _needsSetup = (results[1] as List)[1] as bool;
     });
   }
 
@@ -85,8 +83,7 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
   }
 
   Future<void> _setMode(ThemeMode m) async {
-    await VeloSalesTheme.saveMode(m);
-    if (mounted) setState(() => _mode = m);
+    // No-op: single dark theme (kept so settings callers don't break).
   }
 
   @override
@@ -324,7 +321,6 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_tab]),
@@ -361,13 +357,6 @@ class _HomeShellState extends State<HomeShell> {
                 ),
               ),
           ]),
-          // Same dark/light switch as the web nav (ThemeToggle).
-          IconButton(
-            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
-            tooltip: 'Toggle theme',
-            onPressed: () => widget.onMode(
-                isDark ? ThemeMode.light : ThemeMode.dark),
-          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sign out',

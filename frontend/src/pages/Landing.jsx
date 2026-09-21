@@ -4,16 +4,15 @@
 // Guests only (App routes logged-in users to /dashboard instead).
 // Also: scroll-reveal via IntersectionObserver (no animation library!).
 import { useEffect } from 'react'; // useEffect ×1: title + reveal observer setup
-import Logo from '../components/Logo.jsx'; // theme-aware brand mark (blue dark / green light!)
+import Logo from '../components/Logo.jsx'; // signature green brand mark
 import { Link } from 'react-router-dom'; // Links (client-side nav, no reloads)
-import ThemeToggle from '../components/ThemeToggle.jsx'; // theme switch in the nav (guests get dark mode too!)
 import { useCurrency } from '../lib/locale.js'; // location → 'NGN' | 'USD' (single-currency pricing!)
 
 // WEBSITE_URL: the Netlify marketing site (full videos + story). Empty string =
 // link hidden (set once Netlify is live, e.g. https://vendorabot.netlify.app).
 const WEBSITE_URL = '';
 
-export default function Landing({ theme = 'light', onToggleTheme = () => {} }) { // theme props from App (defaults = safe standalone render)
+export default function Landing() { // single premium dark theme (no props — App still passes theme, harmlessly ignored!)
   const cur = useCurrency(); // visitor currency (NGN default → corrected after IP/timezone detection, auto re-render!)
   useEffect(() => { // mount: title + scroll-reveal wiring…
     document.title = 'VeloSales Ai — Your WhatsApp shop, open 24/7'; // tab title (SEO-ish + tabs)
@@ -27,8 +26,7 @@ export default function Landing({ theme = 'light', onToggleTheme = () => {} }) {
       <header className="landing-nav"> {/* sticky top nav (CSS) */}
         <div className="landing-inner"> {/* centered max-width container (reused per section!) */}
           <span className="landing-brand"><Logo alt="VeloSales Ai" />VELOSALES AI</span> {/* brand lockup (span, not link — already home) */}
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}> {/* right cluster: toggle + two CTAs (inline-flex rows them up) */}
-            <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}> {/* right cluster: two CTAs (inline-flex rows them up) */}
             <Link className="btn ghost sm" to="/login">Sign in</Link>{' '} {/* {' '} = explicit space between inline elements (JSX collapses whitespace!) */}
             <Link className="btn sm" to="/login">Start free trial</Link> {/* primary CTA (same destination — choice of words, not paths!) */}
           </span>

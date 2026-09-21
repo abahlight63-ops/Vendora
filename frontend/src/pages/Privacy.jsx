@@ -9,18 +9,18 @@ import { useEffect } from 'react'; // useEffect = tab title on mount
 import { Link } from 'react-router-dom'; // brand/login/faq/terms links + footer
 
 export default function Privacy() {
-  useEffect(() => { document.title = 'VeloSales AI — Privacy Policy'; }, []); // tab title (mount-only)
+  useEffect(() => { document.title = 'VeloSales Ai — Privacy Policy'; }, []); // tab title (mount-only)
   return (
     <div className="landing">
       <header className="landing-nav"><div className="landing-inner">
-        <Link className="landing-brand" to="/"><img src="/logo.png" alt="VeloSales AI" />VELOSALES AI</Link>
+        <Link className="landing-brand" to="/"><img src="/logo.png?v=2" alt="VeloSales Ai" />VELOSALES AI</Link>
         <span><Link className="btn ghost sm" to="/login">Sign in</Link></span>
       </div></header>
       <section className="landing-inner" style={{ padding: '48px 24px 64px' }}>
         <div className="card legal reveal vis">
           <p className="hint">Last updated: September 2026</p>
           <h1>Privacy Policy</h1>
-          <p>VeloSales AI ("we", "us", "our") operates an AI-powered WhatsApp customer support platform (the "Service"). This Privacy Policy describes the categories of personal data we collect, the purposes for which such data is processed, the parties with whom it is shared, and the rights available to you under applicable data protection law, including the Nigeria Data Protection Regulation (NDPR). In this Policy, "business owner" means a registered VeloSales AI account holder, and "customers" means individuals who communicate with a business owner through the Service.</p>
+          <p>VeloSales Ai ("we", "us", "our") operates an AI-powered WhatsApp customer support platform (the "Service"). This Privacy Policy describes the categories of personal data we collect, the purposes for which such data is processed, the parties with whom it is shared, and the rights available to you under applicable data protection law, including the Nigeria Data Protection Regulation (NDPR). In this Policy, "business owner" means a registered VeloSales Ai account holder, and "customers" means individuals who communicate with a business owner through the Service.</p>
 
           <h3>1. Summary</h3>
           <ul>

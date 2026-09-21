@@ -1,5 +1,5 @@
 // ── lib/theme.dart ───────────────────────────────────────────────
-// WHAT: VeloSales AI web tokens as Flutter themes — 1:1 with
+// WHAT: VeloSales Ai web tokens as Flutter themes — 1:1 with
 // frontend/src/styles.css. Light = :root tokens (the web DEFAULT),
 // dark = [data-theme="dark"] overrides. Same Inter, same 12px radius,
 // same 180ms motion feel. ThemeMode persists (SharedPreferences).

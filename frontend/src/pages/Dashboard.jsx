@@ -162,7 +162,7 @@ function ReferCard() { // REFER & EARN: your code + share buttons + live funnel 
   if (!r || !r.code) return null; // loading/error → render NOTHING (card pops in when ready — no skeleton flash for a bonus card! full /refer-earn page owns the error UI!)
   const every = Number(r.milestoneEvery) > 0 ? Number(r.milestoneEvery) : 5;
   const link = window.location.origin + '/login?ref=' + encodeURIComponent(r.code); // share link (Login prefills + validates the code!)
-  const text = `I use VeloSales AI — my WhatsApp shop answers customers 24/7, even at 2am. Start free with my code ${r.code} (we BOTH get 14 Pro days free): ${link}`;
+  const text = `I use VeloSales Ai — my WhatsApp shop answers customers 24/7, even at 2am. Start free with my code ${r.code} (we BOTH get 14 Pro days free): ${link}`;
   async function copy() { // clipboard with fallback (older browsers / permissions!)
     try { await navigator.clipboard.writeText(r.code); }
     catch { const ta = document.createElement('textarea'); ta.value = r.code; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch {} ta.remove(); }

@@ -147,7 +147,7 @@ async function flutterwaveInit(req, res) {
         redirect_url: `${baseUrl}/billing`, // landing page after payment
         customer: { email }, // shorthand receipt address
         meta: { business_id: req.session.businessId, kind: planKey, days: plan.days, currency: 'USD' }, // webhook reads these back (WHO paid FOR WHAT!)
-        customizations: { title: 'VeloSales AI Pro', description: plan.label },
+        customizations: { title: 'VeloSales Ai Pro', description: plan.label },
       }),
     });
     const data = await r.json();

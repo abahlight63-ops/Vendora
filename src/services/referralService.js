@@ -353,7 +353,7 @@ async function markAirtimeSent(payoutId) {
   const notify = require('./notifyService');
   notify.notify(rows[0].referrer_business_id, {
     title: 'Your ₦500 airtime is on its way!',
-    body: 'Champion reward sent — check your line. Thank you for growing VeloSales AI!',
+    body: 'Champion reward sent — check your line. Thank you for growing VeloSales Ai!',
     link: '/dashboard',
   }).catch(() => {});
   return true;

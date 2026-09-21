@@ -181,7 +181,7 @@ function Broadcast({ act, seed }) { // APP UPDATES: one broadcast → every owne
       <h2><Ic n="mega" s={18} /> Broadcast app update</h2>
       <p className="desc">Long message + optional photo/video → lands in every owner's bell instantly. {'{name}'} becomes each shop's name. Pick a template above or write freehand.</p>
       <label>Title</label>
-      <input value={t} onChange={(e) => setT(e.target.value)} placeholder="e.g. Smarter VeloSales AI is live" maxLength={120} />
+      <input value={t} onChange={(e) => setT(e.target.value)} placeholder="e.g. Smarter VeloSales Ai is live" maxLength={120} />
       <label>Message (long is fine — the bell previews, the page shows all)</label>
       <textarea value={b} onChange={(e) => setB(e.target.value)} rows="6" placeholder="Write the full story here…" maxLength={4000} />
       <p className="hint">{b.length}/4000</p>

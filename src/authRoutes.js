@@ -55,7 +55,7 @@ router.get('/verify', async (req, res) => { // GET because it comes from an emai
   const user = await auth.verifyByToken(req.query.token || ''); // req.query = ?key=value params; || '' guards missing
   if (user) {
     // inline HTML success page (backtick template string = multi-line HTML in JS):
-    res.send(`<body style="font-family:Segoe UI,sans-serif;background:#050807;color:#ecfff6;display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center"><img src="/logo.png" alt="" style="width:60px;border-radius:14px;background:#fff;padding:4px"/><h1 style="color:#7ef0c0;">✓ Email verified!</h1><p style="color:#8fb8ac;">Your AI sales assistant is activated. You can sign in now.</p><a href="/login" style="display:inline-block;margin-top:14px;background:#25D366;color:#04120c;padding:13px 28px;border-radius:12px;text-decoration:none;font-weight:700;">Go to sign in</a></div></body>`);
+    res.send(`<body style="font-family:Segoe UI,sans-serif;background:#050807;color:#ecfff6;display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center"><img src="/logo.png?v=2" alt="" style="width:60px;border-radius:14px;background:#fff;padding:4px"/><h1 style="color:#7ef0c0;">✓ Email verified!</h1><p style="color:#8fb8ac;">Your AI sales assistant is activated. You can sign in now.</p><a href="/login" style="display:inline-block;margin-top:14px;background:#25D366;color:#04120c;padding:13px 28px;border-radius:12px;text-decoration:none;font-weight:700;">Go to sign in</a></div></body>`);
   } else {
     // same idea, red error variant for bad/used tokens:
     res.status(400).send(`<body style="font-family:Segoe UI,sans-serif;background:#050807;color:#ecfff6;display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center"><h1 style="color:#ff9d8a;">Link invalid or expired</h1><p style="color:#8fb8ac;">Request a new verification email from the sign-in page.</p><a href="/login" style="color:#25D366;">Back to sign in</a></div></body>`);
@@ -82,7 +82,7 @@ router.post('/login', async (req, res) => {
     return res.status(401).json({ error: 'Invalid email or password' }); // 401 = bad credentials
   }
   if (!user.verified) { // email not confirmed yet → block with a helpful flag
-    return res.status(403).json({ error: 'Please verify your email first — check your inbox for the VeloSales AI link.', needsVerification: true, email: user.email }); // frontend shows "resend" button on needsVerification
+    return res.status(403).json({ error: 'Please verify your email first — check your inbox for the VeloSales Ai link.', needsVerification: true, email: user.email }); // frontend shows "resend" button on needsVerification
   }
   req.session.userId = user.id; // login = write ids into the session…
   req.session.businessId = user.business_id; // …business comes from the JOIN in findUserByEmail

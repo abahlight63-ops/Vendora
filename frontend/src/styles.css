@@ -1,4 +1,4 @@
-/* ══ VeloSales AI v5 stylesheet — HOW TO READ THIS FILE ═══════════════════
+/* ══ VeloSales Ai v5 stylesheet — HOW TO READ THIS FILE ═══════════════════
    One global CSS file (imported once in main.jsx — Vite bundles it).
    PATTERNS YOU'LL SEE:
    · :root { --green: … } → CSS VARIABLES (custom properties). Change ONE value,
@@ -295,7 +295,7 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .pop-confetti i:nth-child(6) { background: #7ab8ff; --x: 92px; --r: -80deg; }
 @keyframes confetti { 0% { opacity: 1; transform: translate(0, 0) rotate(0); } 100% { opacity: 0; transform: translate(var(--x), 70px) rotate(var(--r)); } }
 
-/* ---------- VeloSales AI (Gemini-style chat) ---------- */
+/* ---------- VeloSales Ai (Gemini-style chat) ---------- */
 .vai { display: flex; flex-direction: column; min-height: calc(100vh - 140px); max-width: 760px; margin: 0 auto; width: 100%; }
 .vai-hero { margin: auto; text-align: center; padding: 30px 16px; animation: fadeSlide 0.45s ease both; }
 .vai-logo { width: 64px; height: 64px; border-radius: 18px; background: #fff; box-shadow: 0 10px 30px rgba(37,211,102,0.3); animation: logoFloat 3s ease-in-out infinite alternate; }
@@ -523,7 +523,7 @@ tbody tr.rowlink:hover { background: #f6fef9; }
   /* iOS Safari auto-zooms on focus when inputs are under 16px — keep 16px on touch */
   input, textarea, select { font-size: 16px; }
   .landing-nav .btn { padding: 7px 10px; font-size: 12.5px; }
-  /* VeloSales AI picker + thread fit small screens */
+  /* VeloSales Ai picker + thread fit small screens */
   .vai { min-height: calc(100vh - 180px); }
   .vai-modelbar { gap: 8px; }
   .mpick { flex: 1 1 100%; }

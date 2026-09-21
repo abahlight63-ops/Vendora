@@ -26,7 +26,7 @@ router.post('/me/playground', ownerController.playground); // test-bot endpoint 
 router.put('/me/settings', ownerController.updateSettings); // SmartDeal discount guardrails
 router.get('/me/profile-sync', ownerController.getProfileSync); // has the owner synced? when?
 router.post('/me/profile-sync', ownerController.profileSync); // Pro: scaffold catalog from profile text
-router.post('/me/ask', ownerController.ask); // VeloSales AI chat (tier + caps enforced)
+router.post('/me/ask', ownerController.ask); // VeloSales Ai chat (tier + caps enforced)
 router.get('/me/ai-models', ownerController.aiModels); // dropdown list with locked flags
 router.get('/me/ai-status', ownerController.aiStatus); // one-tap health ping per provider (owner diagnosis)
 router.post('/me/ads/click', ownerController.adClick);

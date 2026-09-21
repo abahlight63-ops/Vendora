@@ -109,7 +109,7 @@ ALTER TABLE businesses ADD COLUMN IF NOT EXISTS min_order_naira INTEGER NOT NULL
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS profile_snapshot TEXT NOT NULL DEFAULT ''; -- pasted profile text (Pro grounding)
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS profile_synced_at TIMESTAMPTZ; -- when it was synced (shown in Catalog)
 
--- VeloSales AI daily usage caps (free tier + paid-model guard)
+-- VeloSales Ai daily usage caps (free tier + paid-model guard)
 CREATE TABLE IF NOT EXISTS ai_usage ( -- one row per business per day; PRIMARY KEY(a,b) = composite key
   business_id INTEGER NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
   day DATE NOT NULL DEFAULT CURRENT_DATE, -- DATE (no time) groups today's usage
@@ -219,7 +219,7 @@ CREATE INDEX IF NOT EXISTS idx_payouts_referrer ON referral_payouts(referrer_bus
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS plan_tier TEXT NOT NULL DEFAULT 'pro';
 
 -- Welcome setup: what the shop sells + where they found us (niche drives
--- VeloSales AI suggestions + WhatsApp reply context; heard_from is analytics).
+-- VeloSales Ai suggestions + WhatsApp reply context; heard_from is analytics).
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS business_niche TEXT NOT NULL DEFAULT '';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS heard_from TEXT NOT NULL DEFAULT '';
 

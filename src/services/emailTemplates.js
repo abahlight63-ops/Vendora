@@ -1,5 +1,5 @@
 // ── src/services/emailTemplates.js ───────────────────────────────
-// WHAT: every email VeloSales AI sends, in ONE branded place. All templates share
+// WHAT: every email VeloSales Ai sends, in ONE branded place. All templates share
 // the same header (logo + name), button style and footer (support contact +
 // app link), so the inbox always looks professional — no plain-text surprises.
 // SENDING: Gmail SMTP first (no domain needed!), Resend second (needs a
@@ -16,7 +16,7 @@ function supportEmail() {
 }
 
 function fromAddress() {
-  return process.env.EMAIL_FROM || 'VeloSales AI <onboarding@resend.dev>'; // Resend free sandbox default
+  return process.env.EMAIL_FROM || 'VeloSales Ai <onboarding@resend.dev>'; // Resend free sandbox default
 }
 
 // Shared shell: logo header, content, footer with contact. Inline styles only
@@ -27,7 +27,7 @@ function layout({ title, intro, body, ctaLabel, ctaLink, foot }) {
   return `
     <div style="font-family:Segoe UI,Arial,sans-serif;max-width:520px;margin:auto;background:#f6faf8;border-radius:14px;overflow:hidden;">
       <div style="background:#075E54;padding:20px 24px;text-align:center;">
-        <img src="${base}/logo.png" alt="VeloSales AI" width="44" style="border-radius:10px;background:#fff;padding:3px;" />
+        <img src="${base}/logo.png?v=2" alt="VeloSales Ai" width="44" style="border-radius:10px;background:#fff;padding:3px;" />
         <div style="color:#ffffff;font-weight:800;letter-spacing:2px;font-size:15px;margin-top:8px;">VELOSALES AI</div>
         <div style="color:#b9e8d2;font-size:12px;">Your WhatsApp shop, open 24/7</div>
       </div>
@@ -40,7 +40,7 @@ function layout({ title, intro, body, ctaLabel, ctaLink, foot }) {
       </div>
       <div style="background:#eef4f1;padding:14px 24px;text-align:center;color:#777;font-size:.78rem;line-height:1.7;">
         Need help? Write to <a href="mailto:${contact}" style="color:#075E54;">${contact}</a><br>
-        <a href="${base}/login" style="color:#075E54;">Open VeloSales AI</a> · <a href="${base}/help" style="color:#075E54;">Help center</a>
+        <a href="${base}/login" style="color:#075E54;">Open VeloSales Ai</a> · <a href="${base}/help" style="color:#075E54;">Help center</a>
       </div>
     </div>`;
 }
@@ -80,7 +80,7 @@ async function sendVerificationEmail(email, token) {
   const link = `${baseUrl()}/api/auth/verify?token=${token}`; // the click-target: our own /verify route
   return sendEmail({
     to: email,
-    subject: 'Confirm your email — VeloSales AI',
+    subject: 'Confirm your email — VeloSales Ai',
     html: layout({
       title: 'Confirm your email',
       intro: 'Welcome aboard! One tap below verifies your email and activates your AI sales assistant.',
@@ -94,9 +94,9 @@ async function sendVerificationEmail(email, token) {
 async function sendOTPEmail(email, code) {
   return sendEmail({
     to: email,
-    subject: `${code} — your VeloSales AI code`,
+    subject: `${code} — your VeloSales Ai code`,
     html: layout({
-      title: 'Your VeloSales AI code',
+      title: 'Your VeloSales Ai code',
       intro: 'Enter this code to verify your email:',
       body: `<div style="text-align:center;font-size:42px;font-weight:800;letter-spacing:12px;color:#0d1f16;margin:18px 0;">${code}</div>`,
       foot: 'Expires in 10 minutes. Didn\'t ask for this? Ignore it.',
@@ -109,7 +109,7 @@ async function sendResetEmail(email, token) {
   const link = `${baseUrl()}/reset?token=${token}`; // the reset page route (frontend Reset.jsx reads ?token=)
   return sendEmail({
     to: email,
-    subject: 'Reset your VeloSales AI password',
+    subject: 'Reset your VeloSales Ai password',
     intro: 'Someone asked to reset this password — click below within 1 hour to set a new one.',
     ctaLabel: 'Set a new password', ctaLink: link,
     title: 'Reset your password',
@@ -122,7 +122,7 @@ async function sendWelcomeEmail(email, name) {
   const first = String(name || '').split(' ')[0] || 'there';
   return sendEmail({
     to: email,
-    subject: 'Welcome to VeloSales AI — your shop never sleeps',
+    subject: 'Welcome to VeloSales Ai — your shop never sleeps',
     html: layout({
       title: `Welcome, ${first}!`,
       intro: 'Your email is confirmed and your 7-day Pro trial is running. Three quick wins for tonight:',
@@ -145,7 +145,7 @@ async function sendInactiveEmail(email, name) {
     subject: `${first}, your customers are still messaging…`,
     html: layout({
       title: 'We miss you (your customers do too)',
-      intro: `It's been a while since you opened VeloSales AI, ${first}. Your catalog and settings are exactly where you left them — pick up in seconds:`,
+      intro: `It's been a while since you opened VeloSales Ai, ${first}. Your catalog and settings are exactly where you left them — pick up in seconds:`,
       body: `<ul style="color:#333;line-height:1.9;margin:0 0 6px;padding-left:20px;">
         <li><b>Unread chats</b> may be waiting in your inbox right now.</li>
         <li><b>One LEARN: message</b> from WhatsApp teaches the bot your newest stock.</li>

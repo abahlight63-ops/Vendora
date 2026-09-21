@@ -41,7 +41,7 @@ export default function Profile({ biz }) { // biz prop = business from App's use
           <div><label>Opening hours</label><input value={f.hours} onChange={set('hours')} placeholder="Mon–Sat, 9am–7pm" /></div>
           <div><label>Billing currency</label><select value={f.currency} onChange={set('currency')}><option value="NGN">Naira (₦)</option><option value="USD">US Dollar ($)</option></select><span className="hint">Auto-set from your number — change anytime.</span></div> {/* <select> dropdown: value mirrors state, <option value> = stored codes */}
           <div><label>Timezone</label><input value={f.timezone} onChange={set('timezone')} placeholder="Africa/Lagos" spellCheck="false" /><span className="hint">Used for open/closed replies. e.g. America/New_York, Europe/London.</span></div> {/* spellCheck off for technical strings */}
-          <div><label>What you sell</label><select value={f.niche} onChange={set('niche')}>{nicheOpts.map((n) => (<option key={n} value={n}>{n}</option>))}</select><span className="hint">Your lane — catalog shelves + AI suggestions follow it.</span></div> {/* lane switch (catalog categories + VeloSales AI chips reshape on save!) */}
+          <div><label>What you sell</label><select value={f.niche} onChange={set('niche')}>{nicheOpts.map((n) => (<option key={n} value={n}>{n}</option>))}</select><span className="hint">Your lane — catalog shelves + AI suggestions follow it.</span></div> {/* lane switch (catalog categories + VeloSales Ai chips reshape on save!) */}
         </div>
         <label>How should the AI sound?</label> {/* tone = personality prompt (free text → system prompt!) */}
         <input value={f.tone} onChange={set('tone')} placeholder="warm, short, a little Pidgin when they use Pidgin" />

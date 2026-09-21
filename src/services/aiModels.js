@@ -1,5 +1,5 @@
 // ── src/services/aiModels.js ─────────────────────────────────────
-// WHAT: the VeloSales AI dropdown menu, as DATA (not code branches). Each entry:
+// WHAT: the VeloSales Ai dropdown menu, as DATA (not code branches). Each entry:
 // id (stable key the frontend sends), label (pretty name), provider (which
 // replyEngine caller runs it), tier (free = $0 quotas / paid = billed to YOUR
 // key → Pro-gated), badge (Fast/Smart/Reasoning/Premium grouping for the UI).
@@ -7,7 +7,7 @@
 // a deploy. No npm modules — pure data + two functions.
 
 /**
- * AI model catalog for the VeloSales AI dropdown.
+ * AI model catalog for the VeloSales Ai dropdown.
  * - tier 'free': costs the owner nothing (free-tier provider quotas).
  * - tier 'paid': billed per reply to the OWNER's key — gated server-side by
  *   minTier ('pro' = any paid plan incl. trial? NO — trial counts as pro, so
@@ -27,9 +27,9 @@ const CATALOG = [
     model: () => process.env.GROQ_OSS_MODEL || 'openai/gpt-oss-20b' },
   { id: 'llama-70b', label: 'Meta 70B', provider: 'groq', tier: 'free', badge: 'Smart', desc: 'Meta · 70B brain · top free quality', // Groq model 2 of 2
     model: () => process.env.GROQ_LLAMA_MODEL || 'llama-3.3-70b-versatile' },
-  { id: 'tokenrouter-free', label: 'VeloSales AI Fast', provider: 'tokenrouter', tier: 'free', badge: 'Fast', desc: 'Built-in speed · quick answers', // TokenRouter model 1 of 2 (ONE free key, TWO models)
+  { id: 'tokenrouter-free', label: 'VeloSales Ai Fast', provider: 'tokenrouter', tier: 'free', badge: 'Fast', desc: 'Built-in speed · quick answers', // TokenRouter model 1 of 2 (ONE free key, TWO models)
     model: () => (process.env.TOKENROUTER_MODEL || 'deepseek-v4-flash').trim() },
-  { id: 'tokenrouter-free-2', label: 'VeloSales AI Smart', provider: 'tokenrouter', tier: 'free', badge: 'Smart', desc: 'Built-in brains · deeper answers', // TokenRouter model 2 of 2 (set names from your dashboard model list)
+  { id: 'tokenrouter-free-2', label: 'VeloSales Ai Smart', provider: 'tokenrouter', tier: 'free', badge: 'Smart', desc: 'Built-in brains · deeper answers', // TokenRouter model 2 of 2 (set names from your dashboard model list)
     model: () => (process.env.TOKENROUTER_MODEL_2 || 'kimi-k2p6').trim() },
   { id: 'sambanova-70b', label: 'Meta 70B XL', provider: 'sambanova', tier: 'free', badge: 'Smart', desc: 'Meta · largest brain · deep answers', // SambaNova model 1 of 2 (ONE free key, TWO models)
     model: () => (process.env.SAMBANOVA_MODEL || 'Meta-Llama-3.3-70B-Instruct').trim() },

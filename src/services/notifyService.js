@@ -4,7 +4,7 @@
 //      Paystack charge success → the affected owner gets told, no polling
 //      WhatsApp needed.
 //   2. App updates (manual): admin posts ONE broadcast → every business gets
-//      a copy ("New: smarter VeloSales AI answers — see what's new").
+//      a copy ("New: smarter VeloSales Ai answers — see what's new").
 // Shape: one row per business (fan-out on broadcast). Frontend polls
 // GET /api/me/notifications (cheap indexed query, 60s interval).
 const db = require('../db');

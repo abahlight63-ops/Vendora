@@ -92,7 +92,7 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'VeloSales AI',
+      title: 'VeloSales Ai',
       theme: VeloSalesTheme.light,
       darkTheme: VeloSalesTheme.dark,
       themeMode: _mode,
@@ -144,7 +144,7 @@ class _HomeShellState extends State<HomeShell> {
     'Chats',
     'Catalog',
     'Connect',
-    'VeloSales AI',
+    'VeloSales Ai',
     'Billing'
   ];
 
@@ -154,7 +154,7 @@ class _HomeShellState extends State<HomeShell> {
     _bootExtras();
   }
 
-  /// Shell parity: bell unread count + "VeloSales AI updated" toast when the
+  /// Shell parity: bell unread count + "VeloSales Ai updated" toast when the
   /// backend version changed since last visit (Shell.jsx does both).
   /// Both calls fly in PARALLEL (one wait, not two — faster cold start!).
   Future<void> _bootExtras() async {
@@ -176,7 +176,7 @@ class _HomeShellState extends State<HomeShell> {
       final last = prefs.getString('vendora-version');
       await prefs.setString('vendora-version', cur);
       if (mounted && last != null && last != cur) {
-        showToast(context, 'VeloSales AI updated to v$cur — open the notification bell to see what changed');
+        showToast(context, 'VeloSales Ai updated to v$cur — open the notification bell to see what changed');
         _refreshBell();
       }
     } catch (_) {}

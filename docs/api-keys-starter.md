@@ -90,7 +90,7 @@ No `.env` key needed — each shop pastes its own 2 values on the Connect page
 
 ### Gmail SMTP — verification + OTP emails (free: ~500/day, NO domain)
 1. Google Account → **Security** → 2-Step Verification **ON** → **App passwords**
-   → Generate (name it "VeloSales AI") → copy the 16-character code.
+   → Generate (name it "VeloSales Ai") → copy the 16-character code.
 2. Paste as `EMAIL_SMTP_USER=you@gmail.com` + `EMAIL_SMTP_PASS=xxxx xxxx xxxx xxxx`
    (spaces don't matter) + `EMAIL_SMTP_HOST=smtp.gmail.com`.
 3. Signup → real 6-digit codes land in REAL inboxes today. No domain, no card.
@@ -98,7 +98,7 @@ No `.env` key needed — each shop pastes its own 2 values on the Connect page
 
 ### Resend — verification + OTP emails (free: 100/day, needs YOUR domain later)
 1. Sign up at https://resend.com → **API Keys** → Create → `RESEND_API_KEY`.
-2. `EMAIL_FROM=VeloSales AI <onboarding@resend.dev>` works for testing **only to your own inbox**
+2. `EMAIL_FROM=VeloSales Ai <onboarding@resend.dev>` works for testing **only to your own inbox**
    (sandbox rule!) — verify your own domain at resend.com → Domains for real users.
 3. SMTP wins when both are set. Either set = codes deliver.
 
@@ -132,7 +132,7 @@ Render's disk is wiped on every deploy — product + notice photos die with it.
 
 1. Sign up at https://uptimerobot.com (free: 50 monitors, 5-min checks).
 2. Add monitor 1: `https://YOUR-BACKEND/health` (keyword: `ok`).
-3. Add monitor 2: your Vercel login page URL (keyword: `VeloSales AI`).
+3. Add monitor 2: your Vercel login page URL (keyword: `VeloSales Ai`).
 4. Alerts → your email/WhatsApp. Also switch Render off the Free plan (sleeping
    instances = 50s cold starts that look like outages) — Starter or higher.
 

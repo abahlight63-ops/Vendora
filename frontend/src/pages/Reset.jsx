@@ -16,7 +16,7 @@ export default function Reset() {
   const [busy, setBusy] = useState(false); // submit lock (double-submit protection!)
   const [done, setDone] = useState(false); // success → swap form for "go sign in" (no dead form lingering!)
   const token = new URLSearchParams(window.location.search).get('token') || ''; // URLSearchParams parses ?token=… (?token missing → '' → backend 400s with the vague message!)
-  useEffect(() => { document.title = 'VeloSales AI — Reset password'; }, []); // tab title
+  useEffect(() => { document.title = 'VeloSales Ai — Reset password'; }, []); // tab title
   async function submit() { // validate locally, then consume the token…
     if (pw1.length < 8) { setMsg('Password must be at least 8 characters.'); setErr(true); return; } // client mirror of server rule (fail fast!)
     if (pw1 !== pw2) { setMsg('Passwords do not match — retype both.'); setErr(true); return; } // match check BEFORE any request (typo'd passwords lock users out!)
@@ -26,7 +26,7 @@ export default function Reset() {
       setBusy(false);
       if (ok) { setDone(true); setMsg(''); setErr(false); return; } // token burned server-side → show success panel (form hidden below!)
       setMsg(data.error || 'Reset failed — request a fresh link.'); setErr(true); // vague backend message covers bad/expired/weak (secure AND human!)
-    } catch { setBusy(false); setMsg("Can't reach the VeloSales AI server. Check your internet connection and try again."); setErr(true); } // unreachable guard (same habit as Login!)
+    } catch { setBusy(false); setMsg("Can't reach the VeloSales Ai server. Check your internet connection and try again."); setErr(true); } // unreachable guard (same habit as Login!)
   }
   return (
     <div className="auth-wrap"> {/* same stage as Login (visual continuity — users trust familiar screens!) */}

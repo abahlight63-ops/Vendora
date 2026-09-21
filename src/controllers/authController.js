@@ -104,7 +104,7 @@ async function verify(req, res) {
   const user = await authService.verifyByToken(req.query.token || ''); // req.query = ?token=… from the email link; || '' guards missing
   if (user) {
     authService.findUserByEmail(user.email).then((full) => welcomeNewUser(user.email, full && full.business_name)).catch(() => {}); // welcome mail (name looked up for the greeting — async, never blocks the page!)
-    res.send(`<body style="font-family:Segoe UI,sans-serif;background:#050807;color:#ecfff6;display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center"><img src="/logo.png" alt="" style="width:60px;border-radius:14px;background:#fff;padding:4px"/><h1 style="color:#7ef0c0;">✓ Email verified!</h1><p style="color:#8fb8ac;">Your AI sales assistant is activated. You can sign in now.</p><a href="/login" style="display:inline-block;margin-top:14px;background:#25D366;color:#04120c;padding:13px 28px;border-radius:12px;text-decoration:none;font-weight:700;">Go to sign in</a></div></body>`); // inline success page (emails link here; styles inline because it's a standalone page)
+    res.send(`<body style="font-family:Segoe UI,sans-serif;background:#050807;color:#ecfff6;display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center"><img src="/logo.png?v=2" alt="" style="width:60px;border-radius:14px;background:#fff;padding:4px"/><h1 style="color:#7ef0c0;">✓ Email verified!</h1><p style="color:#8fb8ac;">Your AI sales assistant is activated. You can sign in now.</p><a href="/login" style="display:inline-block;margin-top:14px;background:#25D366;color:#04120c;padding:13px 28px;border-radius:12px;text-decoration:none;font-weight:700;">Go to sign in</a></div></body>`); // inline success page (emails link here; styles inline because it's a standalone page)
   } else {
     res.status(400).send(`<body style="font-family:Segoe UI,sans-serif;background:#050807;color:#ecfff6;display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center"><h1 style="color:#ff9d8a;">Link invalid or expired</h1><p style="color:#8fb8ac;">Request a new verification email from the sign-in page.</p><a href="/login" style="color:#25D366;">Back to sign in</a></div></body>`); // bad/used/expired token
   }
@@ -128,7 +128,7 @@ async function login(req, res) {
     return res.status(401).json({ error: 'Invalid email or password' }); // 401 = bad credentials
   }
   if (!user.verified) { // correct password but email unconfirmed → block with a resend hint…
-    return res.status(403).json({ error: 'Please verify your email first — check your inbox for the VeloSales AI link.', needsVerification: true, email: user.email }); // frontend shows "Resend email" on needsVerification
+    return res.status(403).json({ error: 'Please verify your email first — check your inbox for the VeloSales Ai link.', needsVerification: true, email: user.email }); // frontend shows "Resend email" on needsVerification
   }
   req.session.userId = user.id; // LOGIN: stamp the session…
   req.session.businessId = user.business_id; // …business id rides along from the JOIN
@@ -174,7 +174,7 @@ async function google(req, res) {
       const fresh = await authService.findUserByEmail(email); // refetch (business_name for the response!)
       return res.json({ user: { id: fresh.id, email: fresh.email, business_name: fresh.business_name }, businessId: fresh.business_id });
     }
-    return res.status(404).json({ error: 'No VeloSales AI account uses that Google email — create one first.', needsSignup: true, email, name: info.name || '' }); // NO account → frontend offers one-tap business creation (see googleSignup below — never auto-create blindly: we need their WhatsApp number!)
+    return res.status(404).json({ error: 'No VeloSales Ai account uses that Google email — create one first.', needsSignup: true, email, name: info.name || '' }); // NO account → frontend offers one-tap business creation (see googleSignup below — never auto-create blindly: we need their WhatsApp number!)
   } catch (e) {
     console.error('google auth error:', e.message);
     res.status(502).json({ error: 'Could not reach Google — try again.' }); // network to Google failed (our side reachable, theirs not!)

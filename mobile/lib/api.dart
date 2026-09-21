@@ -248,7 +248,7 @@ class ApiClient {
       (await post('/api/me/playground', {'message': message}) as Map)
           .cast<String, dynamic>();
 
-  /// VeloSales AI chat → { reply, via, model, fallback }.
+  /// VeloSales Ai chat → { reply, via, model, fallback }.
   /// history = prior bubbles oldest-first [{from: 'you'|'ai', text}…],
   /// EXCLUDING the current message (web parity: context without duplication).
   Future<Map<String, dynamic>> ask(

@@ -207,7 +207,7 @@ export default function VeloSalesAI({ biz }) {
         ]);
         setUpsell(true);
       } else {
-        setMsgs((m) => [...m, { from: 'ai', text: data.error || 'VeloSales AI is resting — try again in a moment.' }]);
+        setMsgs((m) => [...m, { from: 'ai', text: data.error || 'Velo is resting — try again in a moment.' }]);
         toast(data.error || 'Ask failed', 'err');
       }
     } catch {
@@ -236,9 +236,9 @@ export default function VeloSalesAI({ biz }) {
       </div>
       {msgs.length === 0 ? (
         <div className="vai-hero">
-          <img src="/logo.png" alt="VeloSales AI" className="vai-logo" />
-          <h1>Hello, {first}.</h1>
-          <p>Ask VeloSales AI anything — research, writing, ideas, advice. Not just your catalog.</p>
+          <img src="/logo.png?v=2" alt="Velo" className="vai-logo" />
+          <h1>Chat with Velo.</h1>
+          <p>Ask Velo anything — research, writing, ideas, advice. Not just your catalog.</p>
           <div className="vai-chips">
             {chipsFor(biz?.business_niche).map((s) => ( // niche chips (freelancer → gigs, baker → orders; generic when unset!)
               <button key={s} className="vai-chip" onClick={() => send(s)}>{s}</button>
@@ -249,7 +249,7 @@ export default function VeloSalesAI({ biz }) {
         <div className="vai-thread" ref={threadRef} onScroll={onThreadScroll}>
           {msgs.map((m, i) => (
             <div key={i} className={m.from === 'you' ? 'vai-you' : 'vai-ai'}>
-              {m.from === 'ai' && <img src="/logo.png" alt="" className="vai-mini" />}
+              {m.from === 'ai' && <img src="/logo.png?v=2" alt="" className="vai-mini" />}
               <div>
                 <div className="vai-bubble">{m.text}</div>
                 {m.via && <div className="vai-via">answered by {m.via}</div>}
@@ -258,7 +258,7 @@ export default function VeloSalesAI({ biz }) {
           ))}
           {busy && (
             <div className="vai-ai">
-              <img src="/logo.png" alt="" className="vai-mini" />
+              <img src="/logo.png?v=2" alt="" className="vai-mini" />
               <div className="vai-bubble typing"><span /><span /><span /></div>
             </div>
           )}
@@ -272,7 +272,7 @@ export default function VeloSalesAI({ biz }) {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask VeloSales AI…"
+            placeholder="Ask Velo…"
             maxLength={2000}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) send(); }}
           />
@@ -280,7 +280,7 @@ export default function VeloSalesAI({ biz }) {
             <Ic n="send" s={17} />
           </button>
         </div>
-        <p className="hint" style={{ textAlign: 'center', marginTop: 8 }}>VeloSales AI can make mistakes — double-check important facts. Chats aren't saved.</p>
+        <p className="hint" style={{ textAlign: 'center', marginTop: 8 }}>VeloSales Ai can make mistakes — double-check important facts. Chats aren't saved.</p>
       </div>
     </div>
   );

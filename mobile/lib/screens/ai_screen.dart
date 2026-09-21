@@ -1,5 +1,5 @@
 // ── lib/screens/ai_screen.dart ─────────────────────────────────────
-// WHAT: VeloSales AI chat (POST /api/me/ask {message, model?} →
+// WHAT: Velo chat (POST /api/me/ask {message, model?} →
 // {reply, via, model, fallback}) + model picker (GET /api/me/ai-models).
 // 402 = locked premium model, 429 = daily cap — both shown, never crash.
 import 'dart:async';
@@ -66,7 +66,7 @@ class _AiScreenState extends State<AiScreen> {
   // Server resolves null → Lite, so we pin full explicitly like the web app.
   String? _model = 'gemini-flash-full';
   bool _busy = false;
-  bool _testBot = false; // false = VeloSales AI (/ask), true = shop test-bot (/playground)
+  bool _testBot = false; // false = VeloSales Ai (/ask), true = shop test-bot (/playground)
   Timer? _reveal; // typewriter ticker (web parity: answers write small-small)
   List<String> _chips = _defaultChips; // niche starters (loaded below!)
 
@@ -271,7 +271,7 @@ class _AiScreenState extends State<AiScreen> {
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
         child: SegmentedButton<bool>(
           segments: const [
-            ButtonSegment(value: false, label: Text('VeloSales AI')),
+            ButtonSegment(value: false, label: Text('Velo')),
             ButtonSegment(value: true, label: Text('Test bot')),
           ],
           selected: {_testBot},
@@ -423,7 +423,7 @@ class _AiScreenState extends State<AiScreen> {
               minLines: 1,
               maxLines: 4,
               decoration:
-                  const InputDecoration(hintText: 'Ask VeloSales AI…'),
+                  const InputDecoration(hintText: 'Ask Velo…'),
               onSubmitted: (_) => _send(),
             ),
           ),

@@ -258,7 +258,7 @@ class _BillingScreenState extends State<BillingScreen> {
                   FilledButton.tonalIcon(
                     onPressed: () => launchUrl(
                         Uri.parse(
-                            'mailto:$salesEmail?subject=${Uri.encodeComponent('VeloSales AI Enterprise enquiry')}&body=${Uri.encodeComponent('Hello VeloSales AI team,\n\nShop name:\nNumber of branches:\nWhatsApp numbers to connect:\n\nThanks!')}')),
+                            'mailto:$salesEmail?subject=${Uri.encodeComponent('VeloSales Ai Enterprise enquiry')}&body=${Uri.encodeComponent('Hello VeloSales Ai team,\n\nShop name:\nNumber of branches:\nWhatsApp numbers to connect:\n\nThanks!')}')),
                     icon: const Icon(Icons.email_outlined),
                     label: Text('Contact sales — $salesEmail'),
                   ),

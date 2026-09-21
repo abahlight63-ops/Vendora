@@ -165,7 +165,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       '<div class="pop-card sponsor vgate">' +
       '<span class="sponsor-tag">Sponsored · offer</span>' +
       '<h3></h3>' +
-      '<p class="hint">Tap Visit to open the offer — it keeps VeloSales AI free.</p>' +
+      '<p class="hint">Tap Visit to open the offer — it keeps VeloSales Ai free.</p>' +
       '<button class="btn sm vgate-visit">Visit sponsor</button>' +
       '<button class="sponsor-skip">Skip →</button>' +
       '</div>';

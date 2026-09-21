@@ -78,7 +78,7 @@ async function sendSMTP({ to, subject, html }) {
   const fromAddr = cfg.user; // envelope sender = the account itself (Gmail rewrites mismatched From anyway!)
   const fromHeader = process.env.EMAIL_FROM && process.env.EMAIL_FROM.trim()
     ? process.env.EMAIL_FROM.trim() // custom display (works once Gmail "Send As" is set; harmless otherwise!)
-    : `VeloSales AI <${cfg.user}>`;
+    : `VeloSales Ai <${cfg.user}>`;
   // Base64 body: no dot-stuffing worries (base64 alphabet has no leading dots)
   // and 8-bit chars (₦, —, “[”) survive every relay untouched.
   const lines = [

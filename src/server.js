@@ -76,7 +76,7 @@ app.use(
 app.get('/health', (req, res) => res.json({ status: 'ok' })); // GET /health → {"status":"ok"}
 
 // Version — the Shell checks this on load: version changed since last visit
-// → "VeloSales AI updated" toast + bell badge. Bump src/version.js per release.
+// → "VeloSales Ai updated" toast + bell badge. Bump src/version.js per release.
 app.get('/api/version', (req, res) => {
   const { APP_VERSION, WHATS_NEW } = require('./version');
   res.json({ version: APP_VERSION, whatsNew: WHATS_NEW });

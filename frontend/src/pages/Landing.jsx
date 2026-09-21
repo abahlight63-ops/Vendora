@@ -15,7 +15,7 @@ const WEBSITE_URL = '';
 export default function Landing({ theme = 'light', onToggleTheme = () => {} }) { // theme props from App (defaults = safe standalone render)
   const cur = useCurrency(); // visitor currency (NGN default → corrected after IP/timezone detection, auto re-render!)
   useEffect(() => { // mount: title + scroll-reveal wiring…
-    document.title = 'VeloSales AI — Your WhatsApp shop, open 24/7'; // tab title (SEO-ish + tabs)
+    document.title = 'VeloSales Ai — Your WhatsApp shop, open 24/7'; // tab title (SEO-ish + tabs)
     const els = document.querySelectorAll('.reveal'); // grab ALL reveal elements (cards below)…
     const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) e.target.classList.add('vis'); }), { threshold: 0.12 }); // IntersectionObserver = browser API: fires when element enters viewport (12% visible → add .vis → CSS transitions opacity/position. No scroll listeners = buttery + battery-friendly!)
     els.forEach((el) => io.observe(el)); // watch each…
@@ -25,7 +25,7 @@ export default function Landing({ theme = 'light', onToggleTheme = () => {} }) {
     <div className="landing"> {/* dark-green marketing theme (own CSS section — separate from app theme!) */}
       <header className="landing-nav"> {/* sticky top nav (CSS) */}
         <div className="landing-inner"> {/* centered max-width container (reused per section!) */}
-          <span className="landing-brand"><img src="/logo.png" alt="VeloSales AI" />VELOSALES AI</span> {/* brand lockup (span, not link — already home) */}
+          <span className="landing-brand"><img src="/logo.png?v=2" alt="VeloSales Ai" />VELOSALES AI</span> {/* brand lockup (span, not link — already home) */}
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}> {/* right cluster: toggle + two CTAs (inline-flex rows them up) */}
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
             <Link className="btn ghost sm" to="/login">Sign in</Link>{' '} {/* {' '} = explicit space between inline elements (JSX collapses whitespace!) */}
@@ -38,7 +38,7 @@ export default function Landing({ theme = 'light', onToggleTheme = () => {} }) {
         <div> {/* left: copy + CTAs */}
           <span className="pill ok">AI sales assistant for WhatsApp</span> {/* eyebrow pill */}
           <h1>Your WhatsApp shop, open 24/7.</h1> {/* the ONE promise (biggest type on page) */}
-          <p>Customers message you at midnight. VeloSales AI answers in seconds — prices, stock, hours — in English or Pidgin. You only step in when a human touch truly matters.</p>
+          <p>Customers message you at midnight. VeloSales Ai answers in seconds — prices, stock, hours — in English or Pidgin. You only step in when a human touch truly matters.</p>
           <div style={{ display: 'flex', gap: 10, marginTop: 18, flexWrap: 'wrap' }}> {/* CTA row (wraps on phones) */}
             <Link className="btn" to="/login">Start free — 7 days Pro</Link>
             <a className="btn ghost" href="#how">See how it works</a> {/* plain <a href="#how"> = in-page ANCHOR jump (no router involved — scrolls to id="how" below!) */}
@@ -79,13 +79,13 @@ export default function Landing({ theme = 'light', onToggleTheme = () => {} }) {
         <div className="card hover-lift reveal">
           <h2>Pay once</h2>
           <p className="desc">One payment, lifetime access — handled personally by sales.</p>
-          <a className="btn ghost sm" href="mailto:vendorabot26@gmail.com?subject=VeloSales AI%20pay-once%20plan">Contact sales</a>
+          <a className="btn ghost sm" href="mailto:vendorabot26@gmail.com?subject=VeloSales Ai%20pay-once%20plan">Contact sales</a>
         </div>
       </section>
 
       <section className="landing-inner reveal"> {/* PRO spotlight: the bot that does real work (your premium-tier positioning!) */}
         <div className="card hover-lift" style={{ borderColor: '#25d366' }}>
-          <span className="pill ok">VeloSales AI Pro</span>
+          <span className="pill ok">VeloSales Ai Pro</span>
           <h2 style={{ marginTop: 10 }}>Your AI Assistant That Actually Works For You.</h2>
           <p className="desc">Answering questions was just the interview. Pro rolls up its sleeves: tell it <b>"sold 3 bags of rice"</b> and your stock updates itself — before and after confirmed, every change logged and undoable. Supplier reorder drafts and auto-invoicing are on the way, same tier. No spreadsheets. No stock-taking Sundays. No "I thought we had more."</p>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -107,7 +107,7 @@ export default function Landing({ theme = 'light', onToggleTheme = () => {} }) {
       <footer className="foot-links landing-inner"> {/* <footer> semantic landmark: legal links + copyright */}
         <Link to="/faq">FAQ</Link><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link> {/* Router Links (client-side) */}
         {WEBSITE_URL && <a href={WEBSITE_URL} target="_blank" rel="noreferrer">Full website ↗</a>} {/* marketing site (hidden until WEBSITE_URL set!) */}
-        <span className="hint">© 2026 VeloSales AI · Made for shops that never sleep</span>
+        <span className="hint">© 2026 VeloSales Ai · Made for shops that never sleep</span>
       </footer>
     </div>
   );

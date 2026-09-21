@@ -5,7 +5,7 @@
 // dashboard (never nag twice!). Only Q1 is required — the rest are skippable
 // (empty = skipped, backend stores NULL).
 // WHY IT MATTERS: answers DRIVE the app — niche reshapes catalog shelves +
-// VeloSales AI suggestions, size shapes the dashboard checklist, channels
+// VeloSales Ai suggestions, size shapes the dashboard checklist, channels
 // highlight Connect, volume guides the plan hint on Billing.
 // React patterns: step state, per-step drafts, progress bar, key-remount
 // step transitions (fresh entrance animation every step!), encouraging cheer
@@ -34,7 +34,7 @@ const CHANNELS = [ // Q3: where do customers message? (multi-pick — drives Con
 ];
 const VOLUMES = [ // Q4: chats per day? (drives the honest plan hint on Billing!)
   { v: 'few', t: 'Just a few', sub: 'Quiet and cozy — Free plan covers you for ages.', cheer: 'Cozy pace — Free will carry you far.' },
-  { v: '10-50', t: '10 – 50', sub: 'Healthy flow — right in Free\'s sweet spot, Pro waiting.', cheer: 'Healthy flow — you are exactly who VeloSales AI was built for.' },
+  { v: '10-50', t: '10 – 50', sub: 'Healthy flow — right in Free\'s sweet spot, Pro waiting.', cheer: 'Healthy flow — you are exactly who VeloSales Ai was built for.' },
   { v: '50-plus', t: '50+', sub: 'Big energy — we will point you at the plan that keeps up.', cheer: 'Big energy — your shop is about to feel unstoppable.' },
 ];
 
@@ -64,7 +64,7 @@ export default function Welcome() {
   }
 
   async function save() { // FINAL save: one write for all five answers (step 4 → dashboard!)
-    if (!finalNiche) { setStep(0); return pop('err', 'Pick one first', 'Tell us what you sell so VeloSales AI speaks your hustle.'); } // safety net (Q1 is the ONE required answer!)
+    if (!finalNiche) { setStep(0); return pop('err', 'Pick one first', 'Tell us what you sell so VeloSales Ai speaks your hustle.'); } // safety net (Q1 is the ONE required answer!)
     setBusy(true); // lock (slow networks + double-taps!)
     const { ok, data } = await api('/api/me/setup', {
       method: 'POST',
@@ -76,7 +76,7 @@ export default function Welcome() {
   }
 
   function next() { // advance (Q1 gates — the rest skip freely!)
-    if (step === 0 && !finalNiche) return pop('err', 'Pick one first', 'Tell us what you sell so VeloSales AI speaks your hustle.');
+    if (step === 0 && !finalNiche) return pop('err', 'Pick one first', 'Tell us what you sell so VeloSales Ai speaks your hustle.');
     if (step >= 4) return save(); // last step → SAVE (single write!)
     setStep(step + 1); // forward (key={step} below replays the entrance animation!)
   }
@@ -91,7 +91,7 @@ export default function Welcome() {
     <div className="welcome neu-bg">
       <div className="welcome-inner">
         <div className="welcome-top">
-          <span className="landing-brand"><img src="/logo.png" alt="VeloSales AI" />VELOSALES AI</span>
+          <span className="landing-brand"><img src="/logo.png?v=2" alt="VeloSales Ai" />VELOSALES AI</span>
           <span className="hint">Step {step + 1} of 5</span> {/* progress counter (Onboarding-style!) */}
         </div>
         <div className="quiz-prog"><i style={{ width: `${((step + 1) / 5) * 100}%` }} /></div> {/* progress fill (inline width = dynamic, CSS can't compute!) */}
@@ -99,8 +99,8 @@ export default function Welcome() {
         <div key={step} className="quiz-step"> {/* key={step} = remount per step → entrance animation replays EVERY time! */}
           {step === 0 && ( // Q1 — the niche grid (drives catalog shelves + AI suggestions!)
             <>
-              <h1>What will you use VeloSales AI for?</h1>
-              <p className="lede">Pick your hustle — VeloSales AI learns your lane, so suggestions and answers fit YOUR business (no more blue-gown examples for freelancers!).</p>
+              <h1>What will you use VeloSales Ai for?</h1>
+              <p className="lede">Pick your hustle — VeloSales Ai learns your lane, so suggestions and answers fit YOUR business (no more blue-gown examples for freelancers!).</p>
               <div className="niche-grid"> {/* CSS grid → 2 cols desktop, 1 col phones */}
                 {NICHES.map((n, i) => (
                   <button key={n} type="button" className={'niche quiz-pop' + (niche === n ? ' sel' : '')} style={{ animationDelay: `${Math.min(i * 35, 400)}ms` }} onClick={() => setNiche(n)}>
@@ -147,7 +147,7 @@ export default function Welcome() {
                   </button>
                 ))}
               </div>
-              {channels.length > 0 ? <p className="quiz-cheer quiz-pop"><Ic n="checkCircle" s={15} /> {channels.length === 1 ? 'One channel — we will make it shine.' : `${channels.length} channels — VeloSales AI covers every one.`}</p> : null}
+              {channels.length > 0 ? <p className="quiz-cheer quiz-pop"><Ic n="checkCircle" s={15} /> {channels.length === 1 ? 'One channel — we will make it shine.' : `${channels.length} channels — VeloSales Ai covers every one.`}</p> : null}
             </>
           )}
 

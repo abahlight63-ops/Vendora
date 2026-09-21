@@ -112,7 +112,7 @@ router.post('/telegram/shared', async (req, res) => {
       await tg.sendText(sharedToken, parsed.chatId, `Connected to ${rows[0].name} — send your questions! (Pro shops: smarter models + voice included.)`);
       return res.status(200).send('');
     }
-    await tg.sendText(sharedToken, parsed.chatId, 'Welcome to VeloSales AI! Ask your shop for their link code — it looks like BIZ7X2K. (Shops: find yours in Profile → Telegram.)');
+    await tg.sendText(sharedToken, parsed.chatId, 'Welcome to VeloSales Ai! Ask your shop for their link code — it looks like BIZ7X2K. (Shops: find yours in Profile → Telegram.)');
     return res.status(200).send('');
   }
   const { rows } = await db.query('SELECT b.* FROM telegram_links l JOIN businesses b ON b.id = l.business_id WHERE l.telegram_id = $1 LIMIT 1', [parsed.fromId]); // route by binding (no code needed after first tap!)

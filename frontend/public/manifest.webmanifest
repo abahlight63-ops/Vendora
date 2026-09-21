@@ -1,6 +1,6 @@
 {
-  "name": "VeloSales AI — AI WhatsApp Sales Assistant",
-  "short_name": "VeloSales AI",
+  "name": "VeloSales Ai — AI WhatsApp Sales Assistant",
+  "short_name": "VeloSales Ai",
   "description": "Your WhatsApp shop, open 24/7. Instant AI answers in English or Pidgin, straight from your catalog.",
   "start_url": "/",
   "scope": "/",
@@ -10,13 +10,13 @@
   "theme_color": "#0d1f16",
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "/logo.png?v=2",
       "sizes": "any",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/logo.png",
+      "src": "/logo.png?v=2",
       "sizes": "any",
       "type": "image/png",
       "purpose": "maskable"

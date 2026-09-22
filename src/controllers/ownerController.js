@@ -526,13 +526,26 @@ async function telegramToken(req, res) {
       return res.status(400).json({ error: 'Could not reach Telegram — check your connection and try again.' });
     }
   }
+  const prev = await db.query('SELECT telegram_bot_token FROM businesses WHERE id = $1', [req.session.businessId]); // pre-read (disconnect needs the OLD token to unhook!)
+  const oldToken = (prev.rows[0] && prev.rows[0].telegram_bot_token) || '';
   const { rows } = await db.query(
     'UPDATE businesses SET telegram_bot_token = $1, owner_telegram_id = CASE WHEN $1 = $2 THEN owner_telegram_id ELSE $3 END WHERE id = $4 RETURNING telegram_bot_token <> $2 AS connected',
     [clean, '', null, req.session.businessId]
   ); // CASE: empty token keeps the owner link; a NEW token wipes it (stale owner id on a different bot = wrong human with owner powers — security!)
+  const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '') || `${req.protocol}://${req.get('host')}`; // explicit host wins (prod!); else this request's host (local dev!)
   if (rows[0] && rows[0].connected) { // bot just linked → referral reward check (first real use!)
     require('../services/referralService').onFirstActive(req.session.businessId)
       .catch((e) => console.error('referral reward error:', e.message));
+  }
+  if (clean) { // token saved → AUTO-register the webhook (previously a manual step shops never found — bots stayed silent!).
+    const secret = (process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();
+    fetch(`https://api.telegram.org/bot${clean}/setWebhook`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ url: `${base}/webhook/telegram/${req.session.businessId}`, ...(secret ? { secret_token: secret } : {}), drop_pending_updates: true }),
+    }).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok || d.ok !== true) console.error('telegram setWebhook failed:', JSON.stringify(d).slice(0, 150)); })
+      .catch((e) => console.error('telegram setWebhook error:', e.message)); // fire-and-forget (connect succeeds even if Telegram hiccups — retry by re-saving!)
+  } else if (oldToken) { // disconnected → best-effort unhook (stale hooks 200-ignore anyway — this just stops the knocking!)
+    fetch(`https://api.telegram.org/bot${oldToken}/deleteWebhook`, { method: 'POST' }).catch(() => {});
   }
   res.json({ connected: rows[0] ? rows[0].connected : false }); // boolean for the UI toggle state
 }

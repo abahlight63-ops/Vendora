@@ -62,7 +62,6 @@ flutter:
 
   assets:
     - assets/logo.png
-    - assets/logo-blue.png
     - assets/logo-green.png
 
   # Inter variable font (same family as the web app's Google Fonts import).

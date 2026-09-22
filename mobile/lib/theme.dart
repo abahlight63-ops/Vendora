@@ -43,15 +43,20 @@ class VeloSalesTheme {
   static TextTheme _text(TextTheme base, Color body, Color muted) =>
       base.apply(bodyColor: body, displayColor: body, fontFamily: 'Inter');
 
+  // ── eye-friendly light blue (matches the web light theme) ──
+  static const lightBlue = Color(0xFF1F6FEB);
+  static const lightBlueBg = Color(0xFFE3EEFE);
+
   static ThemeData get light {
-    const ink = Color(0xFF101828);
-    const muted = Color(0xFF667085);
-    const line = Color(0xFFE5E7EB);
-    const bg = Color(0xFFF4F6F5);
+    const ink = Color(0xFF10233A);
+    const muted = Color(0xFF4A6A8A);
+    const line = Color(0xFFDBE7F5);
+    const bg = Color(0xFFF8FAFC);
     const card = Color(0xFFFFFFFF);
     const scheme = ColorScheme.light(
-      primary: lightGreen,
+      primary: lightBlue,
       onPrimary: Colors.white,
+      primaryContainer: lightBlueBg,
       surface: card,
       onSurface: ink,
       surfaceContainerLowest: bg,

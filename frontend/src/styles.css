@@ -104,7 +104,7 @@ a:hover { text-decoration: underline; }
    Inputs share one look; :focus ring uses box-shadow (never outline:none alone —
    keyboard users need SOME visible focus! :focus-visible further down refines it). */
 /* buttons — 3 variants (primary/ghost/danger), heights sm 36 / md 40 / lg 48, radius 12 */
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: var(--fs-sm); min-height: 40px; padding: 0 20px; border-radius: var(--r); border: 1px solid transparent; cursor: pointer; background: var(--accent); color: #fff; font-family: var(--font); transition: background var(--t), opacity var(--t), transform var(--t), border-color var(--t); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: var(--fs-sm); min-height: 40px; padding: 0 20px; border-radius: var(--r); border: 1px solid transparent; cursor: pointer; background: var(--accent); color: #000000; font-family: var(--font); transition: background var(--t), opacity var(--t), transform var(--t), border-color var(--t); }
 .btn:hover { background: var(--accent-hover); }
 .btn:active { transform: scale(0.98); }
 .btn.ghost { background: var(--surface); color: var(--text-1); border-color: var(--border); }
@@ -1467,5 +1467,62 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
 /* ── popover restore (dead last on purpose: glass gave .nbell-pop
    position:relative + overflow:hidden, which yanked the dropdown inline
    and scattered the topbar) ── */
+.nbell-pop { position: absolute !important; overflow-y: auto !important; overflow-x: hidden !important; }
+@media (max-width: 960px) { .nbell-pop { position: fixed !important; } }
+
+/* ══ LIGHT v4 calm — de-shouted: ink numerals, deep quiet blue, pale neon
+   recolored to readable greens, neon artwork back on dark tiles ══ */
+[data-theme="light"] { --fx-line: #2456a6; }
+[data-theme="light"] .btn { background: #2456a6 !important; box-shadow: 0 2px 8px rgba(36,86,166,.25) !important; }
+[data-theme="light"] .btn:hover { background: #1b4484 !important; }
+[data-theme="light"] a, [data-theme="light"] .mini-link { color: #2456a6 !important; }
+[data-theme="light"] .stat .num, [data-theme="light"] .hub-big, [data-theme="light"] .fx-big {
+  background: none !important; color: #16324c !important; -webkit-text-fill-color: #16324c !important;
+}
+[data-theme="light"] .pill.ok { background: #e9f0fb !important; color: #2456a6 !important; border-color: #c3d6ef !important; }
+[data-theme="light"] .live-dot { background: #e9f0fb !important; border-color: #c3d6ef !important; color: #2456a6 !important; }
+[data-theme="light"] .live-dot i { background: #2456a6 !important; }
+[data-theme="light"] .stat-ic { background: #e9f0fb !important; color: #2456a6 !important; }
+[data-theme="light"] .qa-num { background: #2456a6 !important; }
+[data-theme="light"] .plan-badge { background: #2456a6 !important; }
+[data-theme="light"] .plan-save { color: #2456a6 !important; background: #e9f0fb !important; border-color: #c3d6ef !important; }
+[data-theme="light"] .trial-badge { background: #2456a6 !important; }
+[data-theme="light"] .hub-deploy { background: #2456a6 !important; border-color: #2456a6 !important; }
+[data-theme="light"] .vai-send { background: #2456a6 !important; }
+[data-theme="light"] .faq-item.open .faq-plus { background: #2456a6 !important; }
+[data-theme="light"] .sdot.on, [data-theme="light"] .slide-dots .sdot.on { background: #2456a6 !important; }
+[data-theme="light"] .niche.sel, [data-theme="light"] .qa.sel { border-color: #2456a6 !important; box-shadow: 0 0 0 1px #2456a6 !important; }
+[data-theme="light"] .plan-feats svg, [data-theme="light"] .tick svg, [data-theme="light"] .ok-line svg,
+[data-theme="light"] .empty-ic, [data-theme="light"] .ok-line { color: #2456a6 !important; }
+[data-theme="light"] .faq-num { color: #2456a6 !important; }
+[data-theme="light"] .hub-tile b, [data-theme="light"] .hub-uptime { color: #2456a6 !important; }
+[data-theme="light"] .hub-threat svg { color: #2456a6 !important; }
+[data-theme="light"] .hub-feed i { color: #2456a6 !important; }
+[data-theme="light"] .nbell-btn.has-unread .nbell-ic { color: #2456a6 !important; }
+[data-theme="light"] .nbell-btn.has-unread { border-color: #2456a6 !important; }
+[data-theme="light"] .auth-card.glass .auth-toggle a, [data-theme="light"] .auth-card.glass .auth-message { color: #2456a6 !important; }
+[data-theme="light"] .slide-points span { background: #e9f0fb !important; color: #2456a6 !important; border-color: #c3d6ef !important; }
+[data-theme="light"] input:focus, [data-theme="light"] textarea:focus, [data-theme="light"] select:focus,
+[data-theme="light"] .vai-input:focus-within { border-color: #2456a6 !important; box-shadow: 0 0 0 3px rgba(36,86,166,.13) !important; }
+[data-theme="light"] :focus-visible { outline-color: #2456a6 !important; }
+[data-theme="light"] .pbars i, [data-theme="light"] .hub-bars i { background: linear-gradient(180deg, #5b8fd6, #2456a6) !important; }
+[data-theme="light"] .hbar-track i { background: linear-gradient(90deg, #5b8fd6, #2456a6) !important; }
+[data-theme="light"] .guide-bar i { background: linear-gradient(90deg, #5b8fd6, #2456a6) !important; }
+[data-theme="light"] .quiz-prog i { background: linear-gradient(90deg, #5b8fd6, #2456a6) !important; }
+/* readable-on-white fixes: pale neon → deep greens, faint text lifted */
+[data-theme="light"] .hub-wave path { stroke: #128c4a !important; }
+[data-theme="light"] .hub-wave circle { fill: #fff !important; stroke: #128c4a !important; }
+[data-theme="light"] .fx-txt { fill: #4a6a8a !important; }
+[data-theme="light"] .fx-grid { stroke: rgba(90,110,140,.35) !important; }
+[data-theme="light"] .hub-dots { color: #7d99b8 !important; }
+[data-theme="light"] .stat .sub { color: #4a6a8a !important; }
+[data-theme="light"] .orb-stop-a { stop-color: #128c4a !important; }
+[data-theme="light"] .orb-stop-b { stop-color: #2456a6 !important; }
+[data-theme="light"] .orb-dot-mint { fill: #128c4a !important; }
+[data-theme="light"] .sidebar .logo img, [data-theme="light"] .brand-chip img, [data-theme="light"] .landing-brand img,
+[data-theme="light"] .vai-logo, [data-theme="light"] .vai-mini, [data-theme="light"] .splash-logo {
+  background: #0d1f16 !important; border-color: rgba(18,140,74,.4) !important; box-shadow: none !important; }
+
+/* popover restore (absolute last: beats glass position/overflow) */
 .nbell-pop { position: absolute !important; overflow-y: auto !important; overflow-x: hidden !important; }
 @media (max-width: 960px) { .nbell-pop { position: fixed !important; } }

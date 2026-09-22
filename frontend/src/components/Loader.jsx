@@ -10,12 +10,12 @@ export default function Loader({ size = 40, withLogo = false }) {
       <svg viewBox="0 0 120 120" width={size} height={size} aria-hidden="true">
         <defs>
           <linearGradient id="orbit-g" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#7ef0c0" /><stop offset="1" stopColor="#22d3ee" />
+            <stop offset="0" className="orb-stop-a" stopColor="#7ef0c0" /><stop offset="1" className="orb-stop-b" stopColor="#22d3ee" />
           </linearGradient>
         </defs>
         <g className="orbit-spin">
           <circle cx="60" cy="60" r="44" fill="none" stroke="url(#orbit-g)" strokeWidth="4" strokeDasharray="42 26" strokeLinecap="round" />
-          <circle cx="60" cy="16" r="6" fill="#7ef0c0" />
+          <circle cx="60" cy="16" r="6" className="orb-dot-mint" fill="#7ef0c0" />
           <circle cx="60" cy="104" r="5" fill="#ffcf5c" />
         </g>
         {withLogo

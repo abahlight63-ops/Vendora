@@ -168,10 +168,34 @@ async function maybeBroadcastRelease() {
     console.error('Release broadcast skipped:', e.message); // log + boot anyway (bell is a nicety, not the app!)
   }
 }
+// Boot-time env audit: print WHICH keys are missing (names only — values
+// NEVER hit logs!). Saves the classic "Connect silently half-works" mystery:
+// no META_APP_ID → no Embedded Signup popup; no TELEGRAM_WEBHOOK_SECRET →
+// unauthenticated bot doors; no PUBLIC_BASE_URL → flaky webhook/media URLs.
+function envAudit() {
+  const need = {
+    META_APP_ID: 'WhatsApp Embedded Signup popup',
+    META_CONFIGURATION_ID: 'WhatsApp Embedded Signup flow',
+    META_APP_SECRET: 'WhatsApp signup code exchange (manual paste still works)',
+    PUBLIC_BASE_URL: 'webhook URLs + product-photo links',
+    FRONTEND_URL: 'split-deploy login cookies (Vercel frontend)',
+    TELEGRAM_WEBHOOK_SECRET: 'Telegram webhook authentication',
+    PAYSTACK_SECRET_KEY: 'NGN card checkout',
+    FLW_SECRET_KEY: 'USD card checkout',
+    GOOGLE_CLIENT_ID: 'Google sign-in button',
+  };
+  for (const [key, why] of Object.entries(need)) {
+    if (!String(process.env[key] || '').trim()) {
+      console.warn(`ENV MISSING: ${key} — ${why} is off until this is set (Render → Environment → redeploy).`);
+    }
+  }
+}
+
 // Self-migrating boot: new columns apply on EVERY deploy automatically
 // (all statements are IF NOT EXISTS — safe to re-run, never destroys data).
 // Without this, production misses columns until someone runs db:init by hand!
 require('./services/configService').ensureSchema()
+  .then(() => { envAudit(); }) // shout missing keys into the Render log (names only!)
   .then(() => maybeBroadcastRelease()) // one broadcast per APP_VERSION (bell for every owner!)
   .then(() => app.listen(port, () => { // START listening — the callback runs once the socket is open
     console.log(`WhatsApp AI support server running on port ${port}`);

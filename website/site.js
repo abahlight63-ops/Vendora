@@ -1,6 +1,6 @@
 // VeloSales Ai welcome site v2 — preloader, 3D tilt, live chat sim, tabs,
 // LEARN playground, pricing toggles, FAQ search, reveals, counters.
-const APP_URL = 'https://velosalesai.vercel.app';
+const APP_URL = 'https://app.velosalesai.com.ng';
 
 /* ── preloader + progress + year (fast dismiss: never block first paint!) ── */
 const killLoader = () => document.getElementById('loader').classList.add('done');

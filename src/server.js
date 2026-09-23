@@ -50,7 +50,7 @@ app.use( // parse JSON bodies…
 // CORS — split deploy only: lets the Vercel frontend (different origin) call
 // this API WITH cookies. Skipped when FRONTEND_URL is unset (same-origin mode).
 // MODULE: `cors` (npm i cors) — sets Access-Control-Allow-Origin/credentials headers.
-const FRONTEND_URL = (process.env.FRONTEND_URL || '').replace(/\/$/, ''); // e.g. https://velosalesai.vercel.app (no trailing slash!)
+const FRONTEND_URL = (process.env.FRONTEND_URL || '').replace(/\/$/, ''); // e.g. https://app.velosalesai.com.ng (no trailing slash!)
 if (FRONTEND_URL) {
   const cors = require('cors'); // lazy require (only needed for split deploy)
   app.use(cors({ origin: FRONTEND_URL, credentials: true })); // origin = exact Vercel URL (browsers reject '*' + credentials!); credentials:true = allow session cookie cross-site

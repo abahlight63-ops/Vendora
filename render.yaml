@@ -62,7 +62,7 @@ services:
       - key: RESEND_API_KEY
         sync: false
       - key: EMAIL_FROM
-        value: VeloSales Ai <onboarding@resend.dev>
+        value: VeloSales Ai <hello@mail.velosalesai.com.ng>
       - key: SUPPORT_EMAIL
         sync: false
       - key: STATICFORMS_KEY

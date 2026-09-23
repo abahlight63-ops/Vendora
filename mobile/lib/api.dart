@@ -27,7 +27,7 @@ class ApiClient {
 
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://vendora-fsse.onrender.com',
+    defaultValue: 'https://api.velosalesai.com.ng',
   );
 
   static const _cookieKey = 'velosalesai_session_cookie';

@@ -140,7 +140,7 @@ Render's disk is wiped on every deploy — product + notice photos die with it.
 
 - **Trial countdown + expiry bells** — built in, checked on every app load. No cron, no key.
 - **In-app notification bell** — built in (the app polls every 60s).
-- **Pay-once sales** — just create `vendorabot26@gmail.com` and set `SALES_EMAIL` to it.
+- **Pay-once sales** — just create `velosales63@gmail.com` and set `SALES_EMAIL` to it.
 - **Admin console** — set `ADMIN_PASSWORD` (long random string, password manager!).
 
 ## 6. Going live checklist

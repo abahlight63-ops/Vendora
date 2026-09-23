@@ -82,7 +82,7 @@ export default function Landing() { // single premium dark theme (no props — A
         <div className="card hover-lift reveal">
           <h2>Pay once</h2>
           <p className="desc">One payment, lifetime access — handled personally by sales.</p>
-          <a className="btn ghost sm" href="mailto:vendorabot26@gmail.com?subject=VeloSales Ai%20pay-once%20plan">Contact sales</a>
+          <a className="btn ghost sm" href="mailto:velosales63@gmail.com?subject=VeloSales Ai%20pay-once%20plan">Contact sales</a>
         </div>
       </section>
 

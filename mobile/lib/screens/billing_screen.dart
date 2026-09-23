@@ -14,7 +14,7 @@ import '../glass.dart';
 import '../motion.dart';
 
 const _webBilling = 'https://vendorabot.vercel.app/billing';
-const _fallbackSalesEmail = 'vendorabot26@gmail.com';
+const _fallbackSalesEmail = 'velosales63@gmail.com';
 
 // Pro tier: the full salesperson (same list as the web Billing page).
 const _proFeats = [

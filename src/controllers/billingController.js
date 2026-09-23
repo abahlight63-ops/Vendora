@@ -9,7 +9,7 @@ const crypto = require('crypto'); // Node built-in: HMAC-SHA512 webhook verifica
 const db = require('../db'); // shared pool
 
 // Pay-once plans are handled personally — no self-serve lifetime checkout.
-const SALES_EMAIL = process.env.SALES_EMAIL || 'vendorabot26@gmail.com';
+const SALES_EMAIL = process.env.SALES_EMAIL || 'velosales63@gmail.com';
 
 // Plans: amounts are server-side — the client only sends the plan key.
 // Two tiers × two periods. Dual currency: NGN for +234 businesses, USD for

@@ -12,7 +12,7 @@ function baseUrl() {
 }
 
 function supportEmail() {
-  return process.env.SUPPORT_EMAIL || process.env.SALES_EMAIL || 'vendorabot26@gmail.com'; // dedicated support inbox → sales fallback → default
+  return process.env.SUPPORT_EMAIL || process.env.SALES_EMAIL || 'velosales63@gmail.com'; // dedicated support inbox → sales fallback → default
 }
 
 function fromAddress() {

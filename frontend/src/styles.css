@@ -912,16 +912,14 @@ tbody tr.rowlink:hover { background: #f6fef9; }
    ambient backdrop BEHIND everything, (2) makes cards genuinely TRANSLUCENT so
    the backdrop bleeds through the blur. No backdrop = no glass, ever! */
 .admin-liquid { position: relative; z-index: 0; }
-.admin-liquid::before { /* ambient aurora blobs (animated, accent-tinted — the "liquid" behind the glass!) */
+.admin-liquid::before { /* ambient aurora blobs, STATIC (motion removed for calm eyes!) */
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background:
     radial-gradient(600px 420px at 12% 8%, rgba(37,211,102,.20), transparent 65%),
     radial-gradient(700px 500px at 88% 20%, rgba(77,163,255,.16), transparent 65%),
     radial-gradient(650px 500px at 50% 100%, rgba(255,207,92,.14), transparent 65%),
     radial-gradient(500px 400px at 85% 85%, rgba(179,136,255,.14), transparent 65%);
-  animation: adminAurora 16s ease-in-out infinite alternate;
 }
-@keyframes adminAurora { to { transform: translateY(-40px) scale(1.06); filter: hue-rotate(18deg); } }
 .admin-liquid .card, .admin-liquid .stat { /* SUPER transparent glass (light theme!) */
   position: relative; overflow: hidden;
   background: linear-gradient(150deg, rgba(255,255,255,.68), rgba(255,255,255,.42));
@@ -929,13 +927,6 @@ tbody tr.rowlink:hover { background: #f6fef9; }
   border: 1.5px solid rgba(255,255,255,.65);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.8), inset 0 -1px 0 rgba(18,140,74,.08), 0 24px 60px rgba(13,31,22,.18);
 }
-.admin-liquid .card::before { /* travelling shine sweep (pure CSS luxury!) */
-  content: ""; position: absolute; top: -60%; left: -30%; width: 45%; height: 220%;
-  transform: rotate(18deg); pointer-events: none;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.5), transparent);
-  animation: adminShine 5s ease-in-out infinite;
-}
-@keyframes adminShine { 0% { left: -30%; } 55%, 100% { left: 135%; } }
 .admin-liquid table, .admin-liquid thead th, .admin-liquid tbody tr { background: transparent; } /* tables go see-through (stripes would kill the glass!) */
 .admin-liquid tbody tr { border-bottom: 1px solid rgba(18,140,74,.14); }
 .admin-liquid input, .admin-liquid textarea, .admin-liquid select { background: rgba(255,255,255,.6); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); } /* frosted inputs */
@@ -955,8 +946,8 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 }
 [data-theme="dark"] .admin-liquid table, [data-theme="dark"] .admin-liquid thead th, [data-theme="dark"] .admin-liquid tbody tr { background: transparent; }
 [data-theme="dark"] .admin-liquid input, [data-theme="dark"] .admin-liquid textarea, [data-theme="dark"] .admin-liquid select { background: rgba(14,42,28,.6); }
-.admin-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 9px; animation: adminPulse 1.8s ease-in-out infinite; } /* live console dot (pulses!) */
-@keyframes adminPulse { 50% { opacity: .35; transform: scale(.8); } }
+.admin-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 9px; } /* steady console dot (pulse removed for calm eyes!) */
+.admin-liquid .pill.new { animation: none; } /* NEW pills sit still in the console (no scaling flash!) */
 /* per-tab accents: header dot + active tab + panel top-glow (theme-safe solid colors!) */
 .acc-green { --acc: #25d366; } .acc-blue { --acc: #4da3ff; } .acc-gold { --acc: #ffcf5c; }
 .acc-orange { --acc: #ff9a3d; } .acc-purple { --acc: #b388ff; } .acc-red { --acc: #e5484d; } .acc-teal { --acc: #5eead4; }
@@ -973,7 +964,7 @@ tbody tr.rowlink:hover { background: #f6fef9; }
   .admin-liquid .admin-tabs .btn { width: 100%; min-height: 46px; }
   .admin-liquid .grid2, .admin-liquid .grid3 { grid-template-columns: 1fr; }
 }
-@media (prefers-reduced-motion: reduce) { .admin-panel, .admin-row, .admin-dot, .admin-liquid::before, .admin-liquid .card::before { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .admin-panel, .admin-row { animation: none; } }
 /* ── WELCOME TOUR, DESIGNED FOR PHONES (was desktop-shaped: centered 340px card,
    spotlight math aimed at the sidebar, art panel eating half the screen).
    Phones now get: tour = bottom sheet (thumb-reachable, safe-area aware);

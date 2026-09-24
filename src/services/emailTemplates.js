@@ -8,7 +8,7 @@
 // the live URL on Render — localhost links die in real inboxes!).
 // Logo served from /logo.png.
 function baseUrl() {
-  return (process.env.PUBLIC_BASE_URL || 'http://localhost:3000').replace(/\/$/, ''); // strip trailing slash (double slashes break some clients!)
+  return (process.env.PUBLIC_BASE_URL || process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, ''); // env first (prod!), request host unknown here — never ship localhost links: set PUBLIC_BASE_URL on Render!
 }
 
 function supportEmail() {

@@ -15,7 +15,8 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  // mode: 0 login · 1 signup · 2 otp
+  // mode: 0 login · 1 signup · 2 otp · 3 forgot (reset link via email,
+  // opened in the browser — deep links are phase 2, the email works today!)
   int _mode = 0;
   final _name = TextEditingController();
   final _email = TextEditingController();
@@ -25,6 +26,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _ref = TextEditingController(); // referral/promo code (optional — bonus for both sides!)
   bool _busy = false;
   String? _err;
+  String? _ok; // green confirmation line (link sent, code resent — success needs a voice too!)
   String? _refMsg; // live reward preview ("Reward attached…") or null
   bool _refOk = false; // green (attached!) vs red (unknown code — signup still works!)
 
@@ -63,6 +65,7 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() {
       _busy = true;
       _err = null;
+      _ok = null;
     });
     try {
       await fn();
@@ -102,12 +105,14 @@ class _AuthScreenState extends State<AuthScreen> {
                       ? 'Welcome back — your shop never slept.'
                       : _mode == 1
                           ? 'Open your 24/7 shop in minutes.'
-                          : 'Check your inbox for the 6-digit code.',
+                          : _mode == 3
+                              ? 'Locked out? We all forget things.'
+                              : 'Check your inbox for the 6-digit code.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey[400]),
                 ),
                 const SizedBox(height: 24),
-                if (_mode != 2)
+                if (_mode == 0 || _mode == 1)
                   SegmentedButton<int>(
                     segments: const [
                       ButtonSegment(value: 0, label: Text('Sign in')),
@@ -132,7 +137,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       decoration:
                           const InputDecoration(labelText: 'Email')),
                 if (_mode != 2) const SizedBox(height: 12),
-                if (_mode != 2)
+                if (_mode == 0 || _mode == 1)
                   TextField(
                       controller: _pass,
                       obscureText: true,
@@ -182,10 +187,21 @@ class _AuthScreenState extends State<AuthScreen> {
                           fontWeight: FontWeight.bold),
                       decoration:
                           const InputDecoration(labelText: '6-digit code')),
+                if (_mode == 3)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 6),
+                    child: Text(
+                        'Type your account email — we send a reset link (1 hour). Open it in your browser, set a new password, then sign in here.',
+                        style: TextStyle(fontSize: 12.5)),
+                  ),
                 if (_err != null) ...[
                   const SizedBox(height: 12),
                   Text(_err!,
                       style: const TextStyle(color: Colors.redAccent)),
+                ],
+                if (_ok != null) ...[
+                  const SizedBox(height: 12),
+                  Text(_ok!, style: const TextStyle(color: Colors.green)),
                 ],
                 const SizedBox(height: 20),
                 FilledButton(
@@ -209,6 +225,12 @@ class _AuthScreenState extends State<AuthScreen> {
                               // Dev-mode auto-login (email service off) skips OTP.
                               if (b['auto'] == true) {
                                 widget.onAuthed();
+                              } else if (_mode == 3) {
+                                await ApiClient.instance
+                                    .forgot(_email.text.trim());
+                                if (!mounted) return;
+                                setState(() => _ok =
+                                    'Reset link sent — check your inbox (and spam). Open it, set a password, then sign in here.');
                               } else {
                                 setState(() => _mode = 2);
                               }
@@ -224,9 +246,11 @@ class _AuthScreenState extends State<AuthScreen> {
                           ? 'Sign in'
                           : _mode == 1
                               ? 'Create shop — free trial'
-                              : 'Verify & enter'),
+                              : _mode == 3
+                                  ? 'Send reset link'
+                                  : 'Verify & enter'),
                 ),
-                if (_mode == 2)
+                if (_mode == 2) ...[
                   TextButton(
                     onPressed: _busy
                         ? null
@@ -234,7 +258,30 @@ class _AuthScreenState extends State<AuthScreen> {
                             .resendOtp(_email.text.trim())),
                     child: const Text('Resend code'),
                   ),
-                if (_mode != 2)
+                  TextButton(
+                    onPressed: _busy
+                        ? null
+                        : () => _run(() async {
+                              final r = await ApiClient.instance
+                                  .otpLink(_email.text.trim());
+                              if (!mounted) return;
+                              setState(() => _ok =
+                                  '${r['message'] ?? 'Link sent — check your inbox AND spam folder.'}');
+                            }),
+                    child: const Text('Email didn\'t arrive? Send a link instead'),
+                  ),
+                ],
+                if (_mode == 0)
+                  TextButton(
+                    onPressed: () => setState(() => _mode = 3),
+                    child: const Text('Forgot password?'),
+                  ),
+                if (_mode == 3)
+                  TextButton(
+                    onPressed: () => setState(() => _mode = 0),
+                    child: const Text('Back to sign in'),
+                  ),
+                if (_mode == 0 || _mode == 1)
                   TextButton(
                     onPressed: () =>
                         setState(() => _mode = _mode == 0 ? 1 : 0),

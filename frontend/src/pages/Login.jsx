@@ -44,7 +44,7 @@ function DemoChat() { // self-playing chat preview (NOT a component with props �
   );
 }
 
-function GoogleButton({ busy, setBusy, fail, afterAuth, setMe }) { // "Continue with Google" (GIS button + full flow: session OR one-tap business form). Props drilled from Login (shared busy/fail/afterAuth = consistent UX!).
+function GoogleButton({ busy, setBusy, fail, afterAuth, setMe, setOtpEmail, switchMode, setMsg, setMsgErr }) { // "Continue with Google" (GIS button + full flow: session OR one-tap business form OR OTP screen). Props drilled from Login (shared busy/fail/afterAuth = consistent UX!).
   const [gBusy, setGBusy] = useState(false); // google in-flight (separate from form busy — both lock!)
   const [needBiz, setNeedBiz] = useState(null); // null = no form; {email, name, credential} = Google user WITHOUT VeloSales Ai account (one-tap creation form!)
   const [g, setG] = useState({ name: '', wa: '', hours: '', ref: '' }); // mini business form (name + number + hours + optional referral code — email comes from Google!)
@@ -66,12 +66,16 @@ function GoogleButton({ busy, setBusy, fail, afterAuth, setMe }) { // "Continue 
       await loadGIS(); // 1. GIS library ready (or throw → catch shows message!)
       const clientId = window.__GOOGLE_CLIENT_ID__; // injected below (see bottom: read from backend /api/auth/config — never hardcode secrets… client_id is PUBLIC, but env-driven keeps deploys clean!)
       if (!clientId) { setGBusy(false); return fail('Google sign-in is not switched on yet.'); } // backend has no GOOGLE_CLIENT_ID (honest message, not a dead button!)
-      const credential = await new Promise((resolve, reject) => { // 2. One Tap / popup prompt (Promise-wrapped callback API!)…
-        window.google.accounts.id.initialize({ client_id: clientId, callback: (r) => resolve(r.credential), auto_select: false }); // initialize once per click (idempotent); callback receives {credential: JWT}
-        window.google.accounts.id.prompt((n) => { if (n.isNotDisplayed() || n.isSkippedMoment()) reject(new Error('closed')); }); // prompt() shows the account chooser; closed/skipped → reject (user walked away!)
-      });
-      const { ok, data } = await api('/api/auth/google', { method: 'POST', body: JSON.stringify({ credential }) }); // 3. backend verifies with Google + session OR needsSignup…
+      const credential = await Promise.race([ // 2. One Tap / popup prompt (Promise-wrapped callback API!)…
+        new Promise((resolve, reject) => {
+          window.google.accounts.id.initialize({ client_id: clientId, callback: (r) => resolve(r.credential), auto_select: false }); // initialize once per click (idempotent); callback receives {credential: JWT}
+          window.google.accounts.id.prompt((n) => { if (n.isNotDisplayed() || n.isSkippedMoment()) reject(new Error('closed')); }); // prompt() shows the account chooser; closed/skipped → reject (user walked away!)
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 90000)), // ignored-but-open prompt never settles (mobile suppression!) — 90s cap turns the hang into a message, never a stuck button!
+      ]);
+      const { ok, data } = await api('/api/auth/google', { method: 'POST', body: JSON.stringify({ credential }) }); // 3. backend verifies with Google + session OR needsSignup OR needsOTP…
       setGBusy(false);
+      if (ok && data.needsOTP) { setOtpEmail(data.email || ''); setMsg('Code sent — check your inbox to finish signing in.'); setMsgErr(false); setNeedBiz(null); switchMode('otp'); return; } // unverified Google account → OTP screen (same gate as password signup — NO session yet!)
       if (ok) {
         const me = await api('/api/me'); // confirm the session cookie stuck before leaving (split-deploy CORS/cookie can drop it!)
         if (me.ok && me.data && me.data.business) { setMe(me.data.business); window.location.href = '/dashboard'; return; } // full reload: guarantees fresh App state + cookie
@@ -89,6 +93,7 @@ function GoogleButton({ busy, setBusy, fail, afterAuth, setMe }) { // "Continue 
     try {
       const { ok, data } = await api('/api/auth/google-signup', { method: 'POST', body: JSON.stringify({ credential: needBiz.credential, name: g.name.trim(), whatsapp_number: g.wa.trim(), owner_number: g.wa.trim(), hours: g.hours.trim(), ...(g.ref && g.ref.trim() ? { referral_code: g.ref.trim() } : {}) }) }); // credential RE-VERIFIED server-side (never trust the frontend's claim!); referral code rides along when pasted!
       setGBusy(false);
+      if (ok && data.needsOTP) { setOtpEmail(data.email || ''); setMsg('Code sent — check your inbox to finish creating your shop.'); setMsgErr(false); setNeedBiz(null); switchMode('otp'); return; } // brand-new Google shop → OTP proves the inbox (business already saved — verify screen next, then tour!)
       if (ok && data.user) {
         const me = await api('/api/me'); // confirm session stuck before leaving the page
         if (me.ok && me.data && me.data.business) { setMe(me.data.business); window.location.href = '/onboarding'; return; } // new account → tour (same as password signup!)
@@ -334,7 +339,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
             <div className="pw-meter"><i className={pwScore >= 1 ? 'on' : ''} /><i className={pwScore >= 2 ? 'on' : ''} /><i className={pwScore >= 3 ? 'on' : ''} /><span>{pwScore >= 2 ? 'Strong enough' : 'Keep typing…'}</span></div>
           )}
           <button className="btn login-cta" disabled={busy} onClick={mode === 'login' ? login : signup}>{busy ? <span className="spinner" /> : null}{busy ? 'Please wait…' : mode === 'login' ? 'Sign in →' : 'Start my free trial →'}</button> {/* disabled while busy (double-submit lock); spinner span OR null; label ternary ×2 (busy? then mode?) */}
-          {(mode === 'login' || mode === 'signup') && <GoogleButton busy={busy} setBusy={setBusy} fail={fail} afterAuth={afterAuth} setMe={setMe} />} {/* social login under BOTH forms (one component, both modes!) */}
+          {(mode === 'login' || mode === 'signup') && <GoogleButton busy={busy} setBusy={setBusy} fail={fail} afterAuth={afterAuth} setMe={setMe} setOtpEmail={setOtpEmail} switchMode={switchMode} setMsg={setMsg} setMsgErr={setMsgErr} />} {/* social login under BOTH forms (one component, both modes!) */}
           {needsVerify && (
             <div className="otp-help" style={{ marginTop: 12 }}>
               <b>📧 No verification mail?</b>

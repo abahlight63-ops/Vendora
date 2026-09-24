@@ -166,13 +166,24 @@ async function google(req, res) {
     if (!info.email_verified || info.aud !== clientId) return res.status(401).json({ error: 'Google sign-in failed — try again.' }); // belt & braces: email MUST be verified AND token minted for OUR client id (aud check stops token-reuse across apps!)
     const email = String(info.email).toLowerCase(); // normalize (login consistency with password accounts!)
     let user = await authService.findUserByEmail(email); // existing account (password OR prior Google)?
-    if (user) { // YES → link/enter: mark verified (Google proved the inbox!) + log in (same session stamp!)
-      if (!user.verified) await db.query('UPDATE users SET verified = true, verify_token = NULL WHERE id = $1', [user.id]); // upgrade: Google proof counts as email verification!
-      req.session.userId = user.id;
-      req.session.businessId = user.business_id;
-      if (!(await saveSession(req, res))) return; // persist NOW (else /api/me bounces!)
-      const fresh = await authService.findUserByEmail(email); // refetch (business_name for the response!)
-      return res.json({ user: { id: fresh.id, email: fresh.email, business_name: fresh.business_name }, businessId: fresh.business_id });
+    if (user) { // YES → verified users log straight in; UNVERIFIED users prove the inbox via OTP first (same dance as password signup — Google proof alone never mints a session!)
+      if (user.verified) {
+        req.session.userId = user.id;
+        req.session.businessId = user.business_id;
+        if (!(await saveSession(req, res))) return; // persist NOW (else /api/me bounces!)
+        const fresh = await authService.findUserByEmail(email); // refetch (business_name for the response!)
+        return res.json({ user: { id: fresh.id, email: fresh.email, business_name: fresh.business_name }, businessId: fresh.business_id });
+      }
+      const otp = await authService.issueOTP(email); // unverified → OTP gate (fresh code, burns any older one!)
+      if (otp.auto) { // dev (no mail path): verify silently + log in (local convenience, never production!)
+        await db.query('UPDATE users SET verified = true, verify_token = NULL WHERE id = $1', [user.id]);
+        req.session.userId = user.id;
+        req.session.businessId = user.business_id;
+        if (!(await saveSession(req, res))) return;
+        const fresh = await authService.findUserByEmail(email);
+        return res.json({ user: { id: fresh.id, email: fresh.email, business_name: fresh.business_name }, businessId: fresh.business_id });
+      }
+      return res.json({ needsOTP: true, email }); // NO session yet — frontend shows the OTP screen (only safe fields!)
     }
     return res.status(404).json({ error: 'No VeloSales Ai account uses that Google email — create one first.', needsSignup: true, email, name: info.name || '' }); // NO account → frontend offers one-tap business creation (see googleSignup below — never auto-create blindly: we need their WhatsApp number!)
   } catch (e) {
@@ -195,11 +206,22 @@ async function googleSignup(req, res) {
     if (!info.email_verified || info.aud !== clientId) return res.status(401).json({ error: 'Google sign-in failed — try again.' });
     const email = String(info.email).toLowerCase();
     const existing = await authService.findUserByEmail(email); // race: account created between google() and here?…
-    if (existing) { // …then just log in (idempotent — double-submit safe!)
-      req.session.userId = existing.id;
-      req.session.businessId = existing.business_id;
-      if (!(await saveSession(req, res))) return; // persist NOW (else /api/me bounces!)
-      return res.json({ user: { id: existing.id, email: existing.email } });
+    if (existing) { // …then verified users log in, unverified users take the OTP gate (same rule as google() — no bypass via double-submit!)
+      if (existing.verified) {
+        req.session.userId = existing.id;
+        req.session.businessId = existing.business_id;
+        if (!(await saveSession(req, res))) return; // persist NOW (else /api/me bounces!)
+        return res.json({ user: { id: existing.id, email: existing.email } });
+      }
+      const raceOtp = await authService.issueOTP(email);
+      if (raceOtp.auto) { // dev: verify silently + log in (local convenience!)
+        await db.query('UPDATE users SET verified = true, verify_token = NULL WHERE id = $1', [existing.id]);
+        req.session.userId = existing.id;
+        req.session.businessId = existing.business_id;
+        if (!(await saveSession(req, res))) return;
+        return res.json({ user: { id: existing.id, email: existing.email } });
+      }
+      return res.json({ needsOTP: true, email: existing.email }); // NO session yet — OTP screen next!
     }
     if (!name || typeof name !== 'string') return res.status(400).json({ error: 'Business name required.' }); // business still needs a NAME + NUMBER (Google gives neither!)
     const number = normalizePhone(numberRaw); // same normalizer as password signup (one rule everywhere!)
@@ -229,18 +251,23 @@ async function googleSignup(req, res) {
         }
       }
     }
-    const { rows: uRows } = await db.query( // …but user row WITHOUT password (password_hash empty = "Google-only account"; login blocks empty hashes — verifyPassword on '' fails safely!)
+    const { rows: uRows } = await db.query( // …but user row WITHOUT password (password_hash empty = "Google-only account"; login blocks empty hashes — verifyPassword on '' fails safely!) and UNVERIFIED (OTP proves the inbox — same gate as password signup, Google proof alone never mints a session!)
       `INSERT INTO users (business_id, email, password_hash, verified, verify_token)
-       VALUES ($1, $2, $3, true, NULL)
+       VALUES ($1, $2, $3, false, NULL)
        RETURNING id, email, business_id`,
       [business.id, email, '']
     );
-    const user = uRows[0]; // verified=true immediately (Google proved the inbox — no OTP dance needed!)
-    welcomeNewUser(email, business.name); // Google signup → welcome mail straight away (inbox already proven!)
-    req.session.userId = user.id; // log straight in (same stamp!)
-    req.session.businessId = business.id;
-    if (!(await saveSession(req, res))) return; // persist NOW (else /api/me bounces!)
-    res.status(201).json({ user: { id: user.id, email: user.email }, business }); // 201 + business (frontend routes to /onboarding like password signup!)
+    const user = uRows[0]; // inbox NOT proven yet (OTP screen next — welcome mail fires on first verification, like password signup!)
+    const otp = await authService.issueOTP(email); // fresh OTP code (burns nothing — first issue!)
+    if (otp.auto) { // dev: no mail path → verify silently + log straight in (local convenience, never production!)
+      await db.query('UPDATE users SET verified = true WHERE id = $1', [user.id]);
+      welcomeNewUser(email, business.name); // dev auto-verify → welcome mail straight away (mirrors the old behavior!)
+      req.session.userId = user.id; // log straight in (same stamp!)
+      req.session.businessId = business.id;
+      if (!(await saveSession(req, res))) return; // persist NOW (else /api/me bounces!)
+      return res.status(201).json({ user: { id: user.id, email: user.email }, business }); // 201 + business (frontend routes to /onboarding like password signup!)
+    }
+    res.status(201).json({ needsOTP: true, email: user.email }); // NO session yet — frontend shows the OTP screen (only safe fields — NEVER password_hash!)
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ error: 'That WhatsApp number or email is already registered — try signing in.' }); // UNIQUE race (number or email taken between checks!)
     console.error('google signup error:', err);

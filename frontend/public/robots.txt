@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /faq
+Allow: /privacy
+Allow: /terms
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /api/
+Sitemap: https://app.velosalesai.com.ng/sitemap.xml

@@ -15,7 +15,9 @@ router.post('/otp-resend', authLimiter, authController.otpResend); // { email } 
 router.post('/otp-link', authLimiter, authController.otpLink); // { email } → "send a LINK instead" fallback (reuses token flow!)
 router.post('/resend', authLimiter, authController.resendVerification); // legacy "didn't get the email" button (kept working!)
 router.post('/forgot', authLimiter, authController.forgot); // { email } → reset link emailed (always "sent" — enumeration-safe!)
+router.post('/forgot-otp', authLimiter, authController.forgotOtp); // { email } → 6-digit reset CODE emailed (option 2 — no link-clicking!)
 router.post('/reset', authLimiter, authController.reset); // { token, password } → consume link, set new password
+router.post('/reset-otp', authLimiter, authController.resetOtp); // { email, code, password } → consume code, set new password
 router.post('/login', authLimiter, authController.login); // email + password → session
 router.post('/logout', authController.logout); // destroy session
 router.get('/config', authController.authConfig); // public knobs (Google client id) — no auth needed (it's PUBLIC by design!)

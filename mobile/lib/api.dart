@@ -161,6 +161,19 @@ class ApiClient {
     await post('/api/auth/otp-resend', {'email': email});
   }
 
+  /// Forgot-password via CODE (option 2 next to the reset link).
+  Future<Map<String, dynamic>> forgotOtp(String email) async =>
+      ((await post('/api/auth/forgot-otp', {'email': email})) as Map)
+          .cast<String, dynamic>();
+
+  /// Consume a forgot-OTP code + set the new password in ONE call.
+  Future<Map<String, dynamic>> resetOtp(
+          String email, String code, String password) async =>
+      ((await post('/api/auth/reset-otp',
+                  {'email': email, 'code': code, 'password': password}))
+              as Map)
+          .cast<String, dynamic>();
+
   /// OTP fallback: "email didn't arrive? send a LINK instead" (same inbox,
   /// token flow — works even when codes land in spam).
   Future<Map<String, dynamic>> otpLink(String email) async =>

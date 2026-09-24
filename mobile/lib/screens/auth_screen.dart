@@ -24,6 +24,9 @@ class _AuthScreenState extends State<AuthScreen> {
   final _phone = TextEditingController();
   final _code = TextEditingController();
   final _ref = TextEditingController(); // referral/promo code (optional — bonus for both sides!)
+  final _newPass = TextEditingController(); // forgot-code path: new password (8+ chars!)
+  final _newPass2 = TextEditingController(); // forgot-code path: repeat (must match!)
+  bool _forReset = false; // true = OTP screen is proving inbox for a PASSWORD RESET (submit sets password, no login!)
   bool _busy = false;
   String? _err;
   String? _ok; // green confirmation line (link sent, code resent — success needs a voice too!)
@@ -37,6 +40,8 @@ class _AuthScreenState extends State<AuthScreen> {
     _pass.dispose();
     _phone.dispose();
     _code.dispose();
+    _newPass.dispose();
+    _newPass2.dispose();
     _ref.dispose();
     super.dispose();
   }
@@ -187,6 +192,20 @@ class _AuthScreenState extends State<AuthScreen> {
                           fontWeight: FontWeight.bold),
                       decoration:
                           const InputDecoration(labelText: '6-digit code')),
+                if (_mode == 2 && _forReset) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                      controller: _newPass,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                          labelText: 'New password (min 8 chars)')),
+                  const SizedBox(height: 12),
+                  TextField(
+                      controller: _newPass2,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                          labelText: 'Repeat new password')),
+                ],
                 if (_mode == 3)
                   const Padding(
                     padding: EdgeInsets.only(top: 6),
@@ -231,6 +250,35 @@ class _AuthScreenState extends State<AuthScreen> {
                                 if (!mounted) return;
                                 setState(() => _ok =
                                     'Reset link sent — check your inbox (and spam). Open it, set a password, then sign in here.');
+                            } else if (_mode == 3) {
+                                await ApiClient.instance
+                                    .forgot(_email.text.trim());
+                                if (!mounted) return;
+                                setState(() => _ok =
+                                    'Reset link sent — check your inbox (and spam). Open it, set a password, then sign in here.');
+                              } else if (_forReset) {
+                                // FORGOT-CODE path: code + NEW password in one call (no login — back to sign in!).
+                                if (_newPass.text.length < 8) {
+                                  setState(() => _err =
+                                      'New password must be at least 8 characters.');
+                                  return;
+                                }
+                                if (_newPass.text != _newPass2.text) {
+                                  setState(() => _err =
+                                      'Passwords don’t match — retype both.');
+                                  return;
+                                }
+                                await ApiClient.instance.resetOtp(
+                                    _email.text.trim(),
+                                    _code.text.trim(),
+                                    _newPass.text);
+                                if (!mounted) return;
+                                setState(() {
+                                  _forReset = false;
+                                  _mode = 0;
+                                  _ok =
+                                      'Password set — sign in with the new one.';
+                                });
                               } else {
                                 setState(() => _mode = 2);
                               }
@@ -254,8 +302,15 @@ class _AuthScreenState extends State<AuthScreen> {
                   TextButton(
                     onPressed: _busy
                         ? null
-                        : () => _run(() => ApiClient.instance
-                            .resendOtp(_email.text.trim())),
+                        : () => _run(() async {
+                              if (_forReset) {
+                                await ApiClient.instance
+                                    .forgotOtp(_email.text.trim());
+                              } else {
+                                await ApiClient.instance
+                                    .resendOtp(_email.text.trim());
+                              }
+                            }),
                     child: const Text('Resend code'),
                   ),
                   TextButton(
@@ -273,14 +328,32 @@ class _AuthScreenState extends State<AuthScreen> {
                 ],
                 if (_mode == 0)
                   TextButton(
-                    onPressed: () => setState(() => _mode = 3),
+                    onPressed: () => setState(() {
+                      _mode = 3;
+                      _forReset = false;
+                    }),
                     child: const Text('Forgot password?'),
                   ),
-                if (_mode == 3)
+                if (_mode == 3) ...[
+                  TextButton(
+                    onPressed: _busy
+                        ? null
+                        : () => _run(() async {
+                              await ApiClient.instance
+                                  .forgotOtp(_email.text.trim());
+                              if (!mounted) return;
+                              setState(() {
+                                _forReset = true;
+                                _mode = 2;
+                              });
+                            }),
+                    child: const Text('Send a code instead'),
+                  ),
                   TextButton(
                     onPressed: () => setState(() => _mode = 0),
                     child: const Text('Back to sign in'),
                   ),
+                ],
                 if (_mode == 0 || _mode == 1)
                   TextButton(
                     onPressed: () =>

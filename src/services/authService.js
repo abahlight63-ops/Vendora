@@ -94,10 +94,11 @@ async function sendOTPEmail(email, code) { // pretty code email (SMTP/Resend —
   return mail.sendOTPEmail(email, code); // branded template (big digits + logo header)
 }
 
-async function issueOTP(email) { // create + send a fresh code (invalidates any previous one!)…
+async function issueOTP(email, opts) { // create + send a fresh code (invalidates any previous one!)…
   const user = await findUserByEmail(email);
   if (!user) return { sent: false, reason: 'nouser' }; // unknown email (controller 404s — no enumeration beyond what signup already leaks)
-  if (user.verified) return { sent: true, already: true }; // verified? nothing to do (idempotent!)
+  const force = !!(opts && opts.force); // forgot-password flow: verified users NEED a code too (normal path short-circuits them!)
+  if (user.verified && !force) return { sent: true, already: true }; // verified? nothing to do (idempotent!)
   const code = makeOTP(); // the plain code (lives ONLY in this function + the email — never stored!)
   const sent = await sendOTPEmail(email, code);
   await db.query( // store HASH + 10-min expiry + reset attempts (even if email FAILED — auto rules below decide)…

@@ -331,6 +331,40 @@ async function forgot(req, res) {
   res.json({ sent: true, ...(result.devToken ? { devToken: result.devToken } : {}) }); // spread devToken ONLY in dev (real users just see "sent"!)
 }
 
+// POST /api/auth/forgot-otp { email } — forgot-password via 6-digit CODE
+// (option 2 next to the reset link — same inbox, no link-clicking needed!).
+// Always { sent: true }: unknown emails get the same answer (no enumeration!).
+async function forgotOtp(req, res) {
+  const { email } = req.body || {};
+  if (!email) return res.status(400).json({ error: 'Email required.' });
+  const user = await authService.findUserByEmail(email);
+  if (user) await authService.issueOTP(email, { force: true }); // force: verified users need a code here (normal path would short-circuit!)
+  res.json({ sent: true }); // unknown emails get the identical answer (enumeration-safe by design!)
+}
+
+// POST /api/auth/reset-otp { email, code, password } — consume a forgot-OTP
+// code + set the new password in ONE call (mobile-friendly: no link, no token
+// paste!). Attempt guards ride on the OTP itself (5 tries → burned).
+async function resetOtp(req, res) {
+  const { email, code, password } = req.body || {};
+  if (!email || !code) return res.status(400).json({ error: 'Email and code required.' });
+  if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+  const result = await authService.verifyOTP(email, String(code)); // same verify machinery (expiry, attempts, burn-on-success…)
+  if (result.already) {
+    // Code already burned by an earlier success (double-submit): the inbox is
+    // proven — set the password idempotently instead of erroring.
+  } else if (!result.ok) { // wrong/expired/locked → same specific messages as the OTP screen!
+    if (result.expired) return res.status(400).json({ error: 'Code expired — request a new one.', expired: true });
+    if (result.locked) return res.status(400).json({ error: 'Too many wrong tries — request a new code.', locked: true });
+    if (typeof result.left === 'number') return res.status(400).json({ error: `Wrong code — ${result.left} ${result.left === 1 ? 'try' : 'tries'} left.`, left: result.left });
+    return res.status(400).json({ error: 'Wrong code — try again.' });
+  }
+  const user = result.user || await authService.findUserByEmail(email); // verified user (fresh object or refetch for the already-branch!)
+  if (!user) return res.status(400).json({ error: 'Wrong code — try again.' }); // unknown email (verifyOTP said !ok above — belt & braces, same message!)
+  await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [authService.hashPassword(password), user.id]); // code-burn already happened inside verifyOTP (single-use!)
+  res.json({ ok: true }); // frontend routes to /login ("password set — sign in!")
+}
+
 // POST /api/auth/reset { token, password } — consume reset link, set new password.
 async function reset(req, res) {
   const { token, password } = req.body || {};
@@ -339,4 +373,4 @@ async function reset(req, res) {
   res.json({ ok: true }); // frontend routes to /login ("password set — sign in!")
 }
 
-module.exports = { signup, verify, resendVerification, login, logout, verifyOtp, otpResend, otpLink, forgot, reset, google, googleSignup, authConfig, checkReferral }; // routes/authRoutes.js wires these (checkReferral = public code preview!)
+module.exports = { signup, verify, resendVerification, login, logout, verifyOtp, otpResend, otpLink, forgot, forgotOtp, reset, resetOtp, google, googleSignup, authConfig, checkReferral }; // routes/authRoutes.js wires these (checkReferral = public code preview!)

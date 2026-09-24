@@ -140,6 +140,64 @@ const spa = (req, res) => {
 // All app routes → React SPA
 ['/', '/login', '/reset', '/onboarding', '/welcome', '/dashboard', '/profile', '/catalog', '/connect', '/chats', '/billing', '/contact-sales', '/playground', '/insights', '/velosales-ai', '/settings', '/help', '/privacy', '/terms', '/faq', '/admin'].forEach((r) => app.get(r, spa)); // register each page → same handler
 
+// Keep-alive: free hosts nap after ~15 idle minutes (first reply then takes
+// ~60s — "instant answers" arriving in a minute lose sales!). A 9-minute
+// self-ping keeps the dyno warm. Fire-and-log — never throws, never blocks.
+function startKeepAlive() {
+  const port = process.env.PORT || 3000;
+  const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '') || `http://localhost:${port}`;
+  const ping = () => {
+    fetch(`${base}/health`).catch(() => {}); // outcome irrelevant (the request IS the warmth!)
+  };
+  setInterval(ping, 9 * 60 * 1000);
+}
+
+// Channel watchdog: once a day, probe every CONNECTED shop; bell owners
+// whose lifeline died (expired Meta temp token, wiped webhook). Only shops
+// active in the last 30 days get rung — abandoned shops stay silent (no spam!).
+function startChannelWatchdog() {
+  const check = async () => {
+    try {
+      const db = require('./db');
+      const health = require('./services/channelHealth');
+      const notify = require('./services/notifyService');
+      const { rows } = await db.query(
+        `SELECT id, meta_phone_number_id, meta_token, telegram_bot_token,
+                whatsapp_last_inbound_at
+         FROM businesses
+         WHERE (meta_phone_number_id <> '' OR telegram_bot_token <> '')
+           AND (whatsapp_last_inbound_at IS NOT NULL
+                AND whatsapp_last_inbound_at >= now() - make_interval(days => 30)
+                OR EXISTS (SELECT 1 FROM conversations c WHERE c.business_id = businesses.id AND c.updated_at >= now() - make_interval(days => 30)))`
+      );
+      for (const s of rows) {
+        try {
+          if (s.meta_phone_number_id) {
+            const m = await health.metaHealth(s.meta_phone_number_id, s.meta_token);
+            if (!m.ok) {
+              await notify.notify(s.id, {
+                title: 'Your WhatsApp channel needs attention',
+                body: 'We could not reach your connected number (expired token is the usual cause — paste a fresh permanent token in Connect). Your bot is paused until then.',
+                link: '/connect',
+              });
+            }
+          }
+          if (s.telegram_bot_token) {
+            const t = await health.telegramHealth(s.telegram_bot_token);
+            if (!t.ok) {
+              await notify.notify(s.id, {
+                title: 'Your Telegram channel needs attention',
+                body: 'Your bot token stopped working (revoked or regenerated?). Re-save it in Connect → Telegram and message the bot to verify.',
+                link: '/connect',
+              });
+            }
+          }
+        } catch (e) { console.error('channel watchdog shop error:', e.message); } // one bad shop never stops the round!
+      }
+    } catch (e) { console.error('channel watchdog error:', e.message); }
+  };
+  setInterval(check, 24 * 60 * 60 * 1000); // daily rounds (first round 24h after boot — fresh deploys never spam!)
+}
 const port = process.env.PORT || 3000; // hosts (Render) inject PORT; locally default 3000
 // Release broadcast: when APP_VERSION changes, push WHATS_NEW into every
 // owner's bell ONCE (dedupe key in app_meta). Fire-and-log — a broadcast must
@@ -197,6 +255,7 @@ function envAudit() {
 require('./services/configService').ensureSchema()
   .then(() => { envAudit(); }) // shout missing keys into the Render log (names only!)
   .then(() => maybeBroadcastRelease()) // one broadcast per APP_VERSION (bell for every owner!)
+  .then(() => { startKeepAlive(); startChannelWatchdog(); }) // lifelines: self-ping + dead-channel bells
   .then(() => app.listen(port, () => { // START listening — the callback runs once the socket is open
     console.log(`WhatsApp AI support server running on port ${port}`);
     console.log(`Signup/login: http://localhost:${port}/login`);

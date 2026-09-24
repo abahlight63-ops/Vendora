@@ -12,7 +12,7 @@ import Ic from '../components/icons.jsx';
 import Loader from '../components/Loader.jsx'; // Orbit V while the gate checks
 import { adsStatus, clearSponsorSeen, clearVideoSeen, maybeShowSponsor, maybeShowVideoAd } from '../lib/ads.js'; // sponsor + video previews (this browser's tier/tags, daily caps bypassed)
 
-const TABS = [['stats', 'Overview', 'chart', 'green'], ['users', 'Users', 'profile', 'blue'], ['revenue', 'Revenue', 'card', 'gold'], ['transfers', 'Transfers', 'send', 'orange'], ['referrals', 'Referrals', 'gift', 'purple'], ['complaints', 'Complaints', 'help', 'red']]; // [key, label, icon, accent] quads (accent = per-tab color identity!)
+const TABS = [['stats', 'Overview', 'chart', 'green'], ['users', 'Users', 'profile', 'blue'], ['revenue', 'Revenue', 'card', 'gold'], ['transfers', 'Transfers', 'send', 'orange'], ['referrals', 'Referrals', 'gift', 'purple'], ['channels', 'Channels', 'plug', 'teal'], ['complaints', 'Complaints', 'help', 'red']]; // [key, label, icon, accent] quads (accent = per-tab color identity!)
 
 function isFresh(ts) { // "NEW" pill window: created within the last 24h (new users, fresh transfers, new referrals light up!)
   const t = new Date(ts).getTime();
@@ -50,7 +50,7 @@ export default function Admin() {
       if (o.ok && p.ok && l.ok) { setD({ overview: o.data.rows || [], pending: p.data.rows || [], leaders: l.data.rows || [] }); return; }
       toast('Could not load referrals', 'err'); return;
     }
-    const urls = { stats: '/api/admin/stats', users: '/api/admin/users', revenue: '/api/admin/stats', transfers: '/api/admin/transfers', complaints: '/api/admin/complaints' }; // tab → endpoint map (revenue reuses stats + payments list below? stats covers totals; transfers tab shows the money ACTIONS)
+    const urls = { stats: '/api/admin/stats', users: '/api/admin/users', revenue: '/api/admin/stats', transfers: '/api/admin/transfers', channels: '/api/admin/channels', complaints: '/api/admin/complaints' }; // tab → endpoint map (revenue reuses stats + payments list below? stats covers totals; transfers tab shows the money ACTIONS)
     const { ok, status, data } = await api(urls[t]); // fetch…
     if (ok) setD(data); // …store (array or object — panels branch on tab, not shape!)
     else if (status === 401) { setGate('locked'); toast('Admin session expired — sign in again', 'err'); } // idle 30 min → password again (tight by design!)
@@ -87,7 +87,7 @@ export default function Admin() {
   const accent = (TABS.find(([k]) => k === tab) || [, , , 'green'])[3]; // active tab's color (drives header dot + panel tint!)
   return ( // CONSOLE (gate open)…
     <div className="admin-liquid">
-      <div className="page-head"><div className="row" style={{ width: '100%' }}><div><h1><span className={'admin-dot acc-' + accent} />Admin console</h1><p>Private — users, revenue, transfers, referrals, complaints. No owner ever sees this page.</p></div><button className="btn ghost sm" onClick={async () => { await api('/api/admin/logout', { method: 'POST' }); setGate('locked'); }}>Sign out</button></div></div>
+      <div className="page-head"><div className="row" style={{ width: '100%' }}><div><h1><span className={'admin-dot acc-' + accent} />Admin console</h1><p>Private — users, revenue, transfers, referrals, channels, complaints. No owner ever sees this page.</p></div><button className="btn ghost sm" onClick={async () => { await api('/api/admin/logout', { method: 'POST' }); setGate('locked'); }}>Sign out</button></div></div>
       <div className="card admin-tabs"> {/* tab bar (icons at 16px + labels, active solid / rest ghost) */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {TABS.map(([k, l, ic, ac]) => ( // destructure quads; icon + label per tab…
@@ -101,6 +101,7 @@ export default function Admin() {
         : tab === 'revenue' ? <Revenue d={d} />
         : tab === 'transfers' ? <Transfers rows={d} act={act} />
         : tab === 'referrals' ? <Referrals d={d} act={act} refresh={() => load('referrals')} />
+        : tab === 'channels' ? <Channels rows={(d && d.rows) || []} refresh={() => load('channels')} />
         : <Complaints rows={d} act={act} />}
       </div>
       <Templates onBroadcast={(t) => setBlastSeed({ ...t, n: Date.now() })} onWarn={(t) => setWarnSeed({ ...t, n: Date.now() })} /> {/* gallery + builder (Use-buttons prefill the forms below!) */}
@@ -547,6 +548,32 @@ function Transfers({ rows, act }) { // TRANSFERS: FIFO approval queue (empty = c
           ))}
         </tbody>
       </table></div>
+    </div>
+  );
+}
+
+function Channels({ rows, refresh }) { // LIFELINES: live-probed per load (green = a message right now would arrive!)
+  const pill = (ok) => ok === null ? <span className="pill">—</span> : ok ? <span className="pill ok">live</span> : <span className="pill off">dead</span>; // null = not connected (no pill color earned!)
+  const dead = rows.filter((r) => (r.meta_on && r.meta_ok === false) || (r.tg_on && r.tg_ok === false));
+  return (
+    <div className="card">
+      <div className="card-head"><h2>Channel lifelines</h2><span className="hint">{rows.length} shops · {dead.length} need you</span><button className="btn ghost sm" onClick={refresh}>Re-probe</button></div>
+      <p className="desc">Probed live on every load (Telegram hook + Meta token, 8s cap each). Dead rows already got an owner bell if the shop was active in the last 30 days.</p>
+      {rows.length === 0 ? <div className="empty"><b>All quiet</b>No shop has connected a channel yet.</div> : (
+        <div className="table-wrap"><table>
+          <thead><tr><th>Shop</th><th>WhatsApp</th><th>Telegram</th><th>Meta token</th></tr></thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={r.id} className="admin-row" style={{ animationDelay: `${Math.min(i * 40, 400)}ms` }}>
+                <td><b>{r.name || '—'}</b><br /><span className="hint">{r.whatsapp_number || ''}</span></td>
+                <td>{r.wa_live ? <span className="pill ok">live</span> : <span className="pill flag">never</span>}<br /><span className="hint">{r.wa_last ? fmtDate(r.wa_last) : 'no inbound yet'}</span></td>
+                <td>{!r.tg_on ? <span className="pill">off</span> : <>{pill(r.tg_ok)}{r.tg_pending > 0 && <><br /><span className="hint">{r.tg_pending} queued</span></>}{r.tg_err && <><br /><span className="hint">{r.tg_err.slice(0, 60)}</span></>}</>}</td>
+                <td>{!r.meta_on ? <span className="pill">off</span> : <>{pill(r.meta_ok)}{r.meta_ok === false && r.meta_reason && <><br /><span className="hint">{r.meta_reason === 'token-dead' ? 'token dead (24h temp?)' : r.meta_reason}</span></>}</>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table></div>
+      )}
     </div>
   );
 }

@@ -578,6 +578,43 @@ async function chartData(req, res) {
   }
 }
 
+// ---- Channels: every shop's lifeline (WhatsApp LIVE? Telegram hook ok?
+// Meta token alive?). Live-probed per load — a green row means a message
+// sent RIGHT NOW would actually arrive. Tokens never leave the server
+// (booleans only — same rule as AI health + ad status!).
+async function channelOverview(req, res) {
+  try {
+    const health = require('../services/channelHealth');
+    const { rows: shops } = await db.query(
+      `SELECT id, name, whatsapp_number, whatsapp_last_inbound_at,
+              meta_phone_number_id <> '' AS meta_on, meta_phone_number_id, meta_token,
+              telegram_bot_token <> '' AS tg_on, telegram_bot_token
+       FROM businesses
+       WHERE meta_phone_number_id <> '' OR telegram_bot_token <> ''
+          OR whatsapp_last_inbound_at IS NOT NULL
+       ORDER BY id DESC LIMIT 40` // 40-shop cap (8s probes × parallel = bounded latency!)
+    );
+    const rows = await Promise.all(shops.map(async (s) => {
+      const [tg, meta] = await Promise.all([
+        s.tg_on ? health.telegramHealth(s.telegram_bot_token) : null,
+        s.meta_on ? health.metaHealth(s.meta_phone_number_id, s.meta_token) : null,
+      ]);
+      return {
+        id: s.id, name: s.name, whatsapp_number: s.whatsapp_number,
+        wa_live: !!s.whatsapp_last_inbound_at, wa_last: s.whatsapp_last_inbound_at,
+        tg_on: !!s.tg_on, tg_ok: tg ? !!tg.ok : null,
+        tg_pending: (tg && tg.pending) || 0, tg_err: (tg && tg.lastError) || '',
+        meta_on: !!s.meta_on, meta_ok: meta ? !!meta.ok : null,
+        meta_reason: (meta && !meta.ok && meta.reason) || '',
+      };
+    }));
+    res.json({ rows });
+  } catch (e) {
+    console.error('channel overview error:', e.message);
+    res.status(500).json({ error: 'Could not load channels' });
+  }
+}
+
 module.exports = {
   listBusinesses,
   getBusiness,
@@ -613,4 +650,5 @@ module.exports = {
   templateDelete,
   uploadMedia,
   chartData,
+  channelOverview,
 }; // routes/adminRoutes.js wires these (behind x-admin-key in server.js)

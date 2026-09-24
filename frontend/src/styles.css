@@ -959,8 +959,8 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 @keyframes adminPulse { 50% { opacity: .35; transform: scale(.8); } }
 /* per-tab accents: header dot + active tab + panel top-glow (theme-safe solid colors!) */
 .acc-green { --acc: #25d366; } .acc-blue { --acc: #4da3ff; } .acc-gold { --acc: #ffcf5c; }
-.acc-orange { --acc: #ff9a3d; } .acc-purple { --acc: #b388ff; } .acc-red { --acc: #e5484d; }
-.admin-dot.acc-green, .admin-dot.acc-blue, .admin-dot.acc-gold, .admin-dot.acc-orange, .admin-dot.acc-purple, .admin-dot.acc-red { background: var(--acc); box-shadow: 0 0 12px var(--acc); }
+.acc-orange { --acc: #ff9a3d; } .acc-purple { --acc: #b388ff; } .acc-red { --acc: #e5484d; } .acc-teal { --acc: #5eead4; }
+.admin-dot.acc-green, .admin-dot.acc-blue, .admin-dot.acc-gold, .admin-dot.acc-orange, .admin-dot.acc-purple, .admin-dot.acc-red, .admin-dot.acc-teal { background: var(--acc); box-shadow: 0 0 12px var(--acc); }
 .admin-liquid .btn.sm[class*="acc-"] { background: var(--acc); border-color: transparent; color: #04120c; box-shadow: 0 6px 22px rgba(0,0,0,.35); } /* active tab = solid accent (instant identity!) */
 .admin-panel { animation: adminIn 0.35s cubic-bezier(0.2, 0.9, 0.25, 1.1) both; border-top: 3px solid var(--acc, #25d366); border-radius: 6px; padding-top: 4px; } /* remounts per tab (key={tab}) — entrance replays + accent spine! */
 @keyframes adminIn { from { opacity: 0; transform: translateY(14px) scale(0.99); } }

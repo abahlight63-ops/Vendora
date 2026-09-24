@@ -247,6 +247,11 @@ function envAudit() {
       console.warn(`ENV MISSING: ${key} — ${why} is off until this is set (Render → Environment → redeploy).`);
     }
   }
+  if (process.env.ADS_VIDEO_ONLY === '1') { // video-only mode self-check (misconfig here = silent gates — shout instead!)
+    const tag = String(process.env.ADS_VIDEO_HILLTOPADS || '').trim();
+    if (!tag) console.warn('ENV MISSING: ADS_VIDEO_ONLY=1 but ADS_VIDEO_HILLTOPADS is empty — gates will silently skip (that is safe, just no revenue).');
+    else if (!/\.js(\?|#|$)/i.test(tag)) console.warn('ENV WRONG: ADS_VIDEO_HILLTOPADS is not a .js player tag (looks like an offer link) — refused as video, gates will skip. Paste the Hilltop zone tag URL.');
+  }
 }
 
 // Self-migrating boot: new columns apply on EVERY deploy automatically

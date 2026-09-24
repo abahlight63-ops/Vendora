@@ -1,8 +1,12 @@
-# Ads — parked until the custom domain lands (Hilltop video-type ONLY)
+# Ads — Hilltop video-only is LIVE in code (careful mode), sponsor next
 
-Status: **OFF**. `ADS_ENABLED` is `0`/unset → backend sends `ads: null` →
-frontend shows zero ads (no tags, no gates, no interstitials, no redirects).
-Pro never sees ads either way. Nothing was deleted — re-arming is one env var.
+Status: backend ships three modes (see `getMe` in ownerController.js):
+- everything unset/`0` → `ads: null` → zero ads (current state).
+- `ADS_VIDEO_ONLY=1` + `ADS_VIDEO_HILLTOPADS=<.js tag>` → Hilltop gated
+  video ONLY: no tags injected, no interstitials, no popunders, no
+  Smartlinks. Unconfigured/misconfigured tag → gates silently skip
+  (buttons work exactly as today) + boot log warns.
+- `ADS_ENABLED=1` → full menu (networks + sponsor + full waterfall).
 
 ## The decision (owner's call, locked)
 
@@ -13,24 +17,37 @@ Pro never sees ads either way. Nothing was deleted — re-arming is one env var.
 - Start serving only **after** the custom domain + Hilltop account are live
   (ad networks approve real domains; localhost/Render subdomains get junk).
 
-## Re-enable checklist (when ready)
+## Hilltop-only turn-on checklist (careful path)
 
 1. HilltopAds account → create a **video/VAST zone** (NOT popunder, NOT
-   Smartlink) → copy the tag URL (must contain `.js` — the app refuses
-   non-`.js` URLs as players and degrades them to link-cards).
-2. Render dashboard → set:
-   - `ADS_ENABLED=1`
+   Smartlink) → copy the tag URL (must contain `.js`).
+2. Render dashboard → set ONLY:
+   - `ADS_VIDEO_ONLY=1`
    - `ADS_VIDEO_HILLTOPADS=<the .js tag URL>`
-   - `ADS_VIDEO_ORDER=hilltopads` (video-only waterfall; keep sponsor first
-     only if you also set `SPONSOR_VIDEO_URL` + `SPONSOR_LINK` for your own mp4)
    - `SPONSOR_RATE_PER_VIEW=5` (your ₦ per completed view for invoicing)
-3. Redeploy backend (Node reads env at boot).
+3. Redeploy backend (Node reads env at boot). Boot log must show NO
+   `ADS_VIDEO_ONLY` warnings (a warning means the tag is missing/not-a-player
+   and gates will skip — safe, just no revenue).
 4. Verify as a **free-tier** account with no ad-blocker: open Inbox → a 30s
    gated player with countdown + skip-at-5s appears (once/day/action).
-   Check `/admin` → AdsStatus shows videoHilltopads: Yes, and completions
-   land in `/api/ads/stats` (the sponsor invoice source).
-5. Never set: `ADS_POPUNDER_URL`, `ADS_VIDEO_FALLBACK` (Smartlink),
-   `ADS_SCRIPT_URL*` (banner tags) — these are the hijack formats.
+   Kill test: with ad-blocker on, the gate must vanish to a working button
+   (5s empty-frame guard) — never a dead timer.
+5. Admin → AdsStatus preview ("Only HilltopAds" button) fires the isolated
+   layer; completions land in `/api/ads/stats` (the invoice source).
+6. Never set in this mode: `ADS_ENABLED`, `ADS_POPUNDER_URL`,
+   `ADS_VIDEO_FALLBACK`, `ADS_SCRIPT_URL*`, `SPONSOR_*` — the server ignores
+   networks/sponsor layers in video-only mode anyway (belt + braces).
+
+## Sponsor interstitials (later, same careful rules)
+
+1. Set `ADS_ENABLED=1` (full mode) + ONLY `SPONSOR_TITLE`, `SPONSOR_LINK`
+   (+ optional `SPONSOR_TEXT/IMAGE/VIDEO_URL`); leave every network/video key
+   empty so tags and gates stay dark.
+2. Behavior contract (already in code, verify on a free account): labeled
+   "Sponsored" card, max once/day, Visit opens a NEW tab, dismiss always
+   free, Pro sees nothing, completions bill per click in `/api/ads/stats`.
+3. Kill switch: delete `SPONSOR_LINK` (or set `ADS_ENABLED=0`) → cards vanish
+   on next login. No deploy-time code change ever needed.
 
 ## How the code enforces it
 

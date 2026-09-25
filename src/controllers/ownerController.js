@@ -533,18 +533,32 @@ async function complaintMine(req, res) {
 // rejected with a friendly error instead of silently storing a dead token.
 async function telegramToken(req, res) {
   const { token } = req.body || {}; // BotFather token string (or '' to disconnect!)
-  if (token !== undefined && token !== '' && !/^[\w:-]{20,}$/.test(String(token))) return res.status(400).json({ error: 'That does not look like a Telegram bot token (BotFather gives like 123456:ABC-DEF…).' }); // shape check (Bot tokens are long alnum+colon+dash — catches pasted usernames/links!)
-  const clean = String(token || '').trim(); // '' = disconnect (normalized once!)
-  if (clean) { // live check: ask Telegram whose bot this is (10s cap — never hang the request!)
-    try {
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 10000);
-      const r = await fetch(`https://api.telegram.org/bot${clean}/getMe`, { signal: ctrl.signal }).finally(() => clearTimeout(t));
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok || !d || d.ok !== true) return res.status(400).json({ error: 'Telegram rejected that token — re-copy it from @BotFather and try again.' });
-    } catch (e) {
-      return res.status(400).json({ error: 'Could not reach Telegram — check your connection and try again.' });
+  // Sanitize FIRST: phone copy-paste sneaks in spaces, newlines, zero-width
+  // and RTL marks that make a REAL token fail validation ("rejected" for a
+  // perfect token — the #1 support ticket!). Telegram tokens are digits,
+  // colon, letters, digits, dashes and underscores — nothing else survives.
+  const raw = String(token === undefined ? '' : token).replace(/[\u200B-\u200F\u2028-\u202F\uFEFF]/g, '').trim();
+  if (raw !== '' && !/^[\w:-]{20,}$/.test(raw)) return res.status(400).json({ error: 'That does not look like a Telegram bot token (BotFather gives like 123456:ABC-DEF…). Copy it again with /token — no spaces before or after.' }); // shape check (Bot tokens are long alnum+colon+dash — catches pasted usernames/links!)
+  const clean = raw || ''; // '' = disconnect (normalized once!)
+  if (clean) { // live check: ask Telegram whose bot this is (2 attempts × 15s — cold networks deserve a second chance, never a false "rejected"!)
+    let d = null, ok = false;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 15000);
+        const r = await fetch(`https://api.telegram.org/bot${clean}/getMe`, { signal: ctrl.signal }).finally(() => clearTimeout(t));
+        d = await r.json().catch(() => ({}));
+        if (r.ok && d && d.ok === true) { ok = true; break; } // accepted (username captured below for the success proof!)
+        if (r.status === 401 || r.status === 404) break; // Telegram says NO SUCH BOT (revoked/deleted/typo) — retrying won't help, stop fast!
+      } catch (e) {
+        if (attempt === 2) return res.status(400).json({ error: 'Could not reach Telegram — check your connection and try again.' });
+      }
     }
+    if (!ok) {
+      const why = d && d.description ? String(d.description).slice(0, 120) : '';
+      return res.status(400).json({ error: `Telegram rejected that token — re-copy it from @BotFather with /token and try again.${why ? ` (Telegram says: ${why})` : ''}` });
+    }
+    var botUsername = (d.result && d.result.username) ? '@' + d.result.username : '';
   }
   const prev = await db.query('SELECT telegram_bot_token FROM businesses WHERE id = $1', [req.session.businessId]); // pre-read (disconnect needs the OLD token to unhook!)
   const oldToken = (prev.rows[0] && prev.rows[0].telegram_bot_token) || '';
@@ -567,7 +581,7 @@ async function telegramToken(req, res) {
   } else if (oldToken) { // disconnected → best-effort unhook (stale hooks 200-ignore anyway — this just stops the knocking!)
     fetch(`https://api.telegram.org/bot${oldToken}/deleteWebhook`, { method: 'POST' }).catch(() => {});
   }
-  res.json({ connected: rows[0] ? rows[0].connected : false }); // boolean for the UI toggle state
+  res.json({ connected: rows[0] ? rows[0].connected : false, botUsername: (typeof botUsername === 'string' && botUsername) || null }); // boolean for the UI toggle + @username proof (users SEE which bot linked — wrong-bot pastes get caught by eye!)
 }
 
 // Generate a fresh Telegram link code (Profile "Link Telegram" button).

@@ -158,7 +158,7 @@ export default function Connect() {
     setBusy(true);
     const { ok, data } = await api('/api/me/telegram/token', { method: 'POST', body: JSON.stringify({ token: tgToken.trim() }) });
     setBusy(false);
-    if (ok && data.connected) { setTgToken(''); setStep(2); load(); pop('ok', 'Telegram connected!', 'Send your bot any message to test it.'); }
+    if (ok && data.connected) { setTgToken(''); setStep(2); load(); pop('ok', 'Telegram connected' + (data.botUsername ? ' as ' + data.botUsername : '') + '!', 'Send your bot any message to test it.'); }
     else pop('err', 'Token rejected', data.error || 'Check the token from BotFather.');
   }
   async function tgLinkGen() {

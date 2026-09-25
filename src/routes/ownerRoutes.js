@@ -36,6 +36,7 @@ router.post('/me/conversations/:id/takeover', ownerController.chatTakeover);
 router.get('/me/telegram', ownerController.telegramStatus);
 router.post('/me/telegram/token', ownerController.telegramToken);
 router.post('/me/telegram/link', ownerController.telegramLink);
+router.post('/me/telegram/shared', ownerController.telegramShared); // Pro shared-bot road (no BotFather paste!)
 router.get('/me/channels', ownerController.channelsStatus); // Connect page: WhatsApp LIVE/OFF + channel + model (secrets never returned!)
 router.put('/me/whatsapp-model', ownerController.whatsappModel); // per-shop WhatsApp brain pick (tier-gated!)
 router.post('/me/channels/meta', ownerController.metaConnect); // Embedded Signup result OR manual paste → validate + arm Meta door

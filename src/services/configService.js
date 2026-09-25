@@ -233,6 +233,7 @@ ALTER TABLE conversations ADD COLUMN IF NOT EXISTS channel TEXT NOT NULL DEFAULT
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS telegram_bot_token TEXT NOT NULL DEFAULT ''; -- per-shop BotFather token (empty = Telegram off for this shop)
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS telegram_link_code TEXT NOT NULL DEFAULT ''; -- customer link code (t.me/SharedBot?start=CODE) + owner-link nonce (regenerated per tap!)
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS owner_telegram_id TEXT NOT NULL DEFAULT ''; -- linked owner chat id (owner commands work from here!)
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS telegram_shared_on BOOLEAN NOT NULL DEFAULT false; -- Pro shared-bot mode (own token empty + routed via telegram_links!)
 CREATE TABLE IF NOT EXISTS telegram_links ( -- shared-bot routing: telegram user id → business (bound on /start CODE, forever!)
   telegram_id TEXT NOT NULL PRIMARY KEY, -- Telegram chat/user id (stable per user — the identity!)
   business_id INTEGER NOT NULL REFERENCES businesses(id) ON DELETE CASCADE, -- bound shop (CASCADE: shop gone = links gone!)

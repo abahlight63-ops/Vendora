@@ -56,6 +56,7 @@ export default function Connect() {
   // Telegram drafts
   const [tgToken, setTgToken] = useState('');
   const [tgLink, setTgLink] = useState(null);
+  const [tgShared, setTgShared] = useState(null); // shared-bot result {code, botName, deepLink, note} (Pro road!)
   // Brain + upsell
   const [brain, setBrain] = useState('');
   const [upsell, setUpsell] = useState(false);
@@ -135,7 +136,7 @@ export default function Connect() {
     if (step > 1) setStep(step - 1);
     else { setRoad(null); setStep(1); }
   }
-  function openRoad(r) { setRoad(r); setStep(1); setMetaProof(null); setTgLink(null); setShowManual(false); } // fresh drafts per road!
+  function openRoad(r) { setRoad(r); setStep(1); setMetaProof(null); setTgLink(null); setTgShared(null); setShowManual(false); } // fresh drafts per road!
 
   // ---- Meta manual fallback (popup unavailable) ----
   async function metaConnect() {
@@ -181,6 +182,32 @@ export default function Connect() {
       setBusy(false);
     }
   }
+  // ---- Shared-bot road (Pro only, no BotFather!) ----
+  async function tgSharedConnect() {
+    setBusy(true);
+    try {
+      const { ok, status, data } = await api('/api/me/telegram/shared', { method: 'POST', body: '{}' });
+      if (ok && data.connected) { setTgShared(data); setStep(2); load(); pop('ok', 'Shared bot connected!', 'Give customers your link below — they chat, the AI answers.'); }
+      else if (status === 402) setUpsell(true); // free tier → upgrade card (never a dead error!)
+      else if (status === 401) pop('err', 'Signed out', 'Your session expired — sign in again, then retry.');
+      else pop('err', 'Shared bot unavailable', (data && data.error) || 'Try your own bot below instead.');
+    } catch (e) {
+      pop('err', 'Server unreachable', 'Our server is waking up or offline (free-plan sleep takes ~1 min). Wait a minute and retry.');
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function tgSharedOff() {
+    setBusy(true);
+    try {
+      await api('/api/me/telegram/shared', { method: 'POST', body: JSON.stringify({ off: true }) });
+      setTgShared(null); setStep(1); load(); toast('Shared bot switched off.');
+    } catch (e) {
+      toast('Server unreachable — wait a minute and retry', 'err');
+    } finally {
+      setBusy(false);
+    }
+  }
   // ---- Brain pick ----
   async function saveBrain(id) {
     const m = models.find((x) => x.id === id);
@@ -203,6 +230,8 @@ export default function Connect() {
 
   const wa = st && st.whatsapp;
   const tgOn = !!st?.telegram?.connected;
+  const tgSharedCard = tgShared || null; // fresh shared result (code travels only on explicit generate!)
+  const tgSharedOrOn = !!(tgShared || st?.telegram?.shared); // shared mode active (fresh tap OR earlier session!)
 
   return (
     <>
@@ -214,7 +243,7 @@ export default function Connect() {
             {!st ? 'Checking…' : `WhatsApp: ${wa.live ? 'LIVE' : 'OFF'}`} {/* LIVE = inbound seen (TEST passed!) */}
           </span>
           <span className={'pill ' + (!st ? 'off' : tgOn ? 'ok' : 'flag')} style={{ fontSize: 13 }}>
-            {!st ? 'Checking…' : `Telegram: ${tgOn ? 'LIVE' : 'OFF'}`}
+            {!st ? 'Checking…' : `Telegram: ${tgOn ? (st.telegram.shared ? 'LIVE · shared' : 'LIVE') : 'OFF'}`}
           </span>
           {wa && wa.number && <span className="hint">Shop number: {wa.number}</span>}
           {wa && wa.metaConnected && <span className="hint">Meta linked — no credentials needed from you.</span>}
@@ -319,8 +348,27 @@ export default function Connect() {
               <button className="btn sm" disabled={busy} onClick={tgConnect}>{busy ? 'Checking…' : 'Connect bot'}</button>
             </div>
             <p className="hint" style={{ marginTop: 8 }}>We check the token with Telegram instantly — a wrong or expired token is rejected right here.</p>
+            <div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+              <h2>Or skip BotFather — shared bot <span className="pill ok">PRO</span></h2>
+              <p className="desc">Pro shops ride our house bot: one tap, no tokens, nothing to revoke. Customers open your link once, then chat normally.</p>
+              <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                <button className="btn sm" disabled={busy} onClick={tgSharedConnect}>{busy ? 'Connecting…' : 'Connect shared bot'}</button>
+              </div>
+              <p className="hint" style={{ marginTop: 8 }}>Free plan? This button opens the upgrade card instead — your own bot above stays free forever.</p>
+            </div>
           </>)}
-          {step === 2 && (<>
+          {step === 2 && tgSharedOrOn && (<>
+            <h2>Shared bot is live — give customers this link</h2>
+            <p className="desc">Anyone who opens it once is bound to your shop forever. Owner commands (LEARN:, PAUSE) stay in your dashboard.</p>
+            {tgSharedCard && <div className="learn-box light" style={{ marginTop: 10 }}><b>Customer link: {tgSharedCard.deepLink || ('t.me/' + tgSharedCard.botName)}</b><br />Your code: <b>{tgSharedCard.code}</b><br />{tgSharedCard.note}<br /><span className="hint">New code invalidates the old one — regenerate any time.</span></div>}
+            {!tgSharedCard && st?.telegram?.sharedBot && <div className="learn-box light" style={{ marginTop: 10 }}><b>Connected via @{st.telegram.sharedBot}</b><br /><span className="hint">Generate a fresh customer link below.</span></div>}
+            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+              <button className="btn ghost sm" onClick={back}>Back</button>
+              <button className="btn sm" disabled={busy} onClick={tgSharedConnect}>{busy ? 'Working…' : 'Get customer link'}</button>
+              <button className="btn ghost sm" disabled={busy} onClick={tgSharedOff}>Switch off</button>
+            </div>
+          </>)}
+          {step === 2 && !tgSharedOrOn && (<>
             <h2>Telegram is live — link yourself (optional)</h2>
             <p className="desc">Customers just message your bot. This step links YOUR Telegram so owner commands (LEARN:, PAUSE) work from your phone.</p>
             <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>

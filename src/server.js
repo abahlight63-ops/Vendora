@@ -255,10 +255,39 @@ function envAudit() {
       console.warn('MAIL CHECK: no mail path (no SMTP, no RESEND_API_KEY) — accounts auto-verify and OTPs only work in dev. Set Gmail SMTP or Resend before launch.');
     }
   } catch {}
+  { // shared-bot half-config check (token without name = Pro road 503s!)
+    const t = (process.env.TELEGRAM_SHARED_BOT_TOKEN || '').trim();
+    const n = (process.env.TELEGRAM_SHARED_BOT_NAME || '').trim();
+    if ((t && !n) || (!t && n)) console.warn('TELEGRAM CHECK: set BOTH TELEGRAM_SHARED_BOT_TOKEN and TELEGRAM_SHARED_BOT_NAME (or neither) — half-configured shared road refuses Pro connects.');
+  }
   if (process.env.ADS_VIDEO_ONLY === '1') { // video-only mode self-check (misconfig here = silent gates — shout instead!)
     const tag = String(process.env.ADS_VIDEO_HILLTOPADS || '').trim();
     if (!tag) console.warn('ENV MISSING: ADS_VIDEO_ONLY=1 but ADS_VIDEO_HILLTOPADS is empty — gates will silently skip (that is safe, just no revenue).');
   }
+}
+
+// Shared-bot webhook registration (Pro road!). Per-shop bots self-register on
+// token save; the ONE house bot has no save moment, so boot owns it: every
+// deploy re-asserts setWebhook (secret rotations + redeploys self-heal!).
+// Fire-and-log — a Telegram hiccup must never block boot.
+async function registerSharedWebhook() {
+  const token = (process.env.TELEGRAM_SHARED_BOT_TOKEN || '').trim();
+  const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
+  if (!token || !base) {
+    if (!token) return; // shared road off (per-shop bots unaffected — silence is correct!)
+    console.warn('TELEGRAM CHECK: shared token set but PUBLIC_BASE_URL missing — shared webhook NOT registered (set it + redeploy).');
+    return;
+  }
+  try {
+    const secret = (process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();
+    const r = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ url: `${base}/webhook/telegram/shared`, ...(secret ? { secret_token: secret } : {}), drop_pending_updates: true }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d.ok === true) console.log('Telegram shared webhook registered.');
+    else console.error('Telegram shared setWebhook failed:', JSON.stringify(d).slice(0, 150));
+  } catch (e) { console.error('Telegram shared setWebhook error:', e.message); }
 }
 
 // Self-migrating boot: new columns apply on EVERY deploy automatically
@@ -266,6 +295,7 @@ function envAudit() {
 // Without this, production misses columns until someone runs db:init by hand!
 require('./services/configService').ensureSchema()
   .then(() => { envAudit(); }) // shout missing keys into the Render log (names only!)
+  .then(() => registerSharedWebhook()) // house bot webhook (re-asserted every deploy!)
   .then(() => maybeBroadcastRelease()) // one broadcast per APP_VERSION (bell for every owner!)
   .then(() => { startKeepAlive(); startChannelWatchdog(); }) // lifelines: self-ping + dead-channel bells
   .then(() => app.listen(port, () => { // START listening — the callback runs once the socket is open

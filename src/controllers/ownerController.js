@@ -586,9 +586,13 @@ async function telegramToken(req, res) {
   try {
     prev = await db.query('SELECT telegram_bot_token FROM businesses WHERE id = $1', [req.session.businessId]); // pre-read (disconnect needs the OLD token to unhook!)
     const upd = await db.query(
-      'UPDATE businesses SET telegram_bot_token = $1, owner_telegram_id = CASE WHEN $1 = $2 THEN owner_telegram_id ELSE $3 END WHERE id = $4 RETURNING telegram_bot_token <> $2 AS connected',
+      `UPDATE businesses
+       SET telegram_bot_token = $1,
+           telegram_shared_on = CASE WHEN $1 <> $2 THEN false ELSE telegram_shared_on END,
+           owner_telegram_id = CASE WHEN $1 = $2 THEN owner_telegram_id ELSE $3 END
+       WHERE id = $4 RETURNING telegram_bot_token <> $2 AS connected`,
       [clean, '', null, req.session.businessId]
-    ); // CASE: empty token keeps the owner link; a NEW token wipes it (stale owner id on a different bot = wrong human with owner powers — security!)
+    ); // shared_off: own bot wins (shared mode ends the moment THEIR bot links!); empty token leaves shared mode untouched (shared disconnect has its own endpoint!)
     rows = upd.rows;
   } catch (e) {
     console.error('telegram token save failed:', e.message); // DB hiccup → JSON 500, NEVER an unhandled rejection (those crash the whole Render service!)
@@ -631,11 +635,47 @@ async function telegramLink(req, res) {
 // Telegram connection status (Profile status line + Help docs).
 async function telegramStatus(req, res) {
   try {
-    const { rows } = await db.query('SELECT telegram_bot_token <> $1 AS connected, owner_telegram_id <> $1 AS owner_linked, telegram_link_code FROM businesses WHERE id = $2', ['', req.session.businessId]);
+    const { rows } = await db.query('SELECT telegram_bot_token <> $1 AS connected, telegram_shared_on AS shared, owner_telegram_id <> $1 AS owner_linked, telegram_link_code FROM businesses WHERE id = $2', ['', req.session.businessId]);
     if (!rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json({ connected: rows[0].connected, ownerLinked: rows[0].owner_linked, hasCode: !!(rows[0].telegram_link_code) }); // hasCode (not the code — codes only travel on explicit generate!)
+    res.json({ connected: !!(rows[0].connected || rows[0].shared), shared: !!rows[0].shared, ownerLinked: rows[0].owner_linked, hasCode: !!(rows[0].telegram_link_code) }); // hasCode (not the code — codes only travel on explicit generate!)
   } catch (e) {
     console.error('telegram status failed:', e.message); // JSON 500, never a process crash (see telegramToken note!)
+    res.status(500).json({ error: 'Something went wrong — try again.' });
+  }
+}
+
+// Shared-bot connect (Pro ONLY — the no-BotFather road!). The shop rides the
+// house @bot: customers bind via t.me/<bot>?start=<CODE>, routed by
+// telegram_links. No token paste, nothing to revoke. Tier-gated EXACTLY like
+// the brain picker (locked → 402, frontend opens the upgrade card!).
+async function telegramShared(req, res) {
+  try {
+    const botToken = (process.env.TELEGRAM_SHARED_BOT_TOKEN || '').trim();
+    const botName = (process.env.TELEGRAM_SHARED_BOT_NAME || '').trim().replace(/^@/, '');
+    if (!botToken || !botName) return res.status(503).json({ error: 'Shared Telegram bot is not set up yet — use your own bot below instead.' }); // owner never configured it (env missing!)
+    if (req.body && req.body.off) { // switch shared mode OFF (own-token road untouched!)
+      await db.query('UPDATE businesses SET telegram_shared_on = false WHERE id = $1', [req.session.businessId]);
+      return res.json({ connected: false, shared: false });
+    }
+    const { rows: b } = await db.query(
+      'SELECT subscription_status, subscription_expires, trial_started_at, plan_tier FROM businesses WHERE id = $1',
+      [req.session.businessId]
+    );
+    if (!b.length) return res.status(404).json({ error: 'Not found' });
+    const tier = require('../services/planService').effectiveTier({ // 'free' | 'pro' | 'plus' (trial counts as pro — same philosophy as every gate!)
+      subscription_status: b[0].subscription_status, subscription_expires: b[0].subscription_expires,
+      trial_started_at: b[0].trial_started_at, plan_tier: b[0].plan_tier,
+    });
+    if (tier === 'free') return res.status(402).json({ error: 'Shared Telegram bot is a Pro feature — upgrade to connect in one tap, no BotFather needed.' });
+    const code = 'BIZ' + require('crypto').randomBytes(3).toString('hex').toUpperCase(); // fresh code (each tap INVALIDATES the old — leaked links die!)
+    await db.query('UPDATE businesses SET telegram_link_code = $1, telegram_shared_on = true WHERE id = $2', [code, req.session.businessId]);
+    res.json({ // code travels ONLY on explicit generate (status endpoints never leak it!)
+      connected: true, shared: true, code, botName,
+      deepLink: `https://t.me/${botName}?start=${code}`,
+      note: `Customers open t.me/${botName}?start=${code} once — then chat normally. Owner commands stay in your dashboard.`,
+    });
+  } catch (e) {
+    console.error('telegram shared failed:', e.message); // JSON 500, never a process crash (see telegramToken note!)
     res.status(500).json({ error: 'Something went wrong — try again.' });
   }
 }
@@ -652,7 +692,7 @@ function webhookUrl(req) {
 async function channelsStatus(req, res) {
   const { rows } = await db.query(
     `SELECT whatsapp_number, wa_channel, whatsapp_model, whatsapp_last_inbound_at,
-            meta_waba_id, telegram_bot_token <> '' AS telegram_on,
+            meta_waba_id, telegram_bot_token <> '' AS telegram_on, telegram_shared_on AS telegram_shared,
             meta_phone_number_id <> '' AS meta_on,
             subscription_status, subscription_expires, trial_started_at, plan_tier
      FROM businesses WHERE id = $1`,
@@ -687,7 +727,7 @@ async function channelsStatus(req, res) {
       dailyUnlimited: waUnlimited, // explicit flag (null dailyLimit alone is ambiguous!)
       dailyUsed: waUsed, // replies sent today (resets midnight!)
     },
-    telegram: { connected: !!b.telegram_on }, // full Telegram detail lives on GET /api/me/telegram!
+    telegram: { connected: !!(b.telegram_on || b.telegram_shared), shared: !!b.telegram_shared, sharedBot: (b.telegram_shared && !(b.telegram_on) ? (process.env.TELEGRAM_SHARED_BOT_NAME || '').trim().replace(/^@/, '') || null : null) }, // full Telegram detail lives on GET /api/me/telegram! (sharedBot username is public — safe for browsers!)
     webhookUrl: webhookUrl(req), // exact URL to paste into Meta (verify step copies it!)
     metaAppId: (process.env.META_APP_ID || '').trim(), // PUBLIC (Meta design — safe for browsers!)
     metaConfigId: (process.env.META_CONFIGURATION_ID || '').trim(), // PUBLIC (Embedded Signup flow id!)
@@ -1021,6 +1061,7 @@ module.exports = { // every handler the routes file wires up (miss one here = ro
   telegramToken,
   telegramLink,
   telegramStatus,
+  telegramShared,
   channelsStatus,
   whatsappModel,
   metaConnect,

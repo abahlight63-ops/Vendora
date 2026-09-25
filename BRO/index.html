@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Smart Yunusa | Social Media Manager · Videographer · Video Editor · Content Creator</title>
+
+    <meta name="description" content="Smart Yunusa is a professional Social Media Manager, Videographer, Video Editor, and Content Creator crafting compelling visual stories that inspire, educate, and make lasting impact." />
+    <meta name="keywords" content="Smart Yunusa, Social Media Manager, Videographer, Video Editor, Content Creator, Abuja, Nigeria, EPN, Eden Prayer Network" />
+    <meta name="theme-color" content="#050505" />
+    <meta name="author" content="Smart Yunusa" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Smart Yunusa | Social Media Manager · Videographer · Video Editor · Content Creator" />
+    <meta property="og:description" content="Creating compelling visual stories that inspire, educate, and make lasting impact." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=1600&q=80" />
+    <meta property="og:url" content="https://smartyunusa.com" />
+
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23030303'/%3E%3Ccircle cx='32' cy='32' r='25' fill='%23d7ad54'/%3E%3Ctext x='32' y='40' text-anchor='middle' font-size='24' font-family='monospace' font-weight='bold' fill='%23030303'%3ESY%3C/text%3E%3C/svg%3E" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link rel="stylesheet" href="styles.css" />
+
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "ProfessionalService",
+            "name": "Smart Yunusa",
+            "image": "https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=1600&q=80",
+            "telephone": "+2349044971123",
+            "url": "https://smartyunusa.com",
+            "address": {
+                "@type": "PostalAddress",
+                "addressLocality": "Abuja",
+                "addressRegion": "FCT",
+                "addressCountry": "Nigeria"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <!-- Preloader -->
+    <div class="preloader" id="preloader" aria-label="Loading systems">
+        <div class="preloader__ring"></div>
+        <div class="preloader__logo">Smart Yunusa</div>
+        <p>VISUAL STORYTELLER ACTIVE</p>
+    </div>
+
+    <!-- Floating action buttons -->
+    <div class="floating-actions" aria-label="Quick contact links">
+        <a class="float-btn whatsapp-btn" id="whatsappButton" href="https://wa.me/2349044971123" target="_blank" rel="noopener" aria-label="Chat on WhatsApp">
+            <i class="fab fa-whatsapp"></i>
+        </a>
+        <a class="float-btn call-btn" href="tel:+2349044971123" aria-label="Call Smart Yunusa">
+            <i class="fa-solid fa-phone"></i>
+        </a>
+    </div>
+
+    <!-- Project Scope Builder Drawer (repurposed as service inquiry builder) -->
+    <aside class="cart-drawer" id="cartDrawer" aria-label="Service inquiry builder">
+        <div class="cart-drawer__header">
+            <div>
+                <span class="eyebrow">Service Selector</span>
+                <h3>Inquiry Cart</h3>
+            </div>
+            <button class="icon-btn" id="closeCart" aria-label="Close inquiry cart"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="cart-items" id="cartItems"></div>
+
+        <div class="cart-summary">
+            <div><span>Base Service</span><strong id="cartSubtotal">₦0</strong></div>
+            <div><span>Consultation Fee</span><strong id="cartDelivery">₦25,000</strong></div>
+            <div class="cart-summary__total"><span>Est. Project Total</span><strong id="cartTotal">₦0</strong></div>
+        </div>
+        <button class="btn btn--gold btn--full" id="checkoutButton">Submit Inquiry Brief</button>
+        <button class="btn btn--ghost btn--full" id="whatsappOrderButton">Send Estimate via WhatsApp</button>
+    </aside>
+
+    <div class="page-overlay" id="pageOverlay"></div>
+
+    <!-- Reusable modal -->
+    <div class="modal" id="siteModal" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="modal__content" id="modalContent"></div>
+    </div>
+
+    <!-- Glassmorphism Navbar -->
+    <header class="navbar" id="navbar">
+        <a href="#home" class="logo" aria-label="Smart Yunusa Home">
+            <span>SY</span>SmartYunusa
+        </a>
+        <nav class="nav-links" id="navLinks" aria-label="Primary site navigation">
+            <a href="#home">Home</a>
+            <a href="#about">About</a>
+            <a href="#menu">Services</a>
+            <a href="#gallery">Portfolio</a>
+            <a href="#reviews">Testimonials</a>
+            <a href="#reservations">Book a Session</a>
+            <a href="#contact">Contact</a>
+        </nav>
+        <div class="nav-actions">
+            <button class="btn btn--small btn--gold" data-scroll-target="#ordering">Service Builder</button>
+            <button class="cart-toggle" id="openCart" aria-label="Open service builder">
+                <i class="fa-solid fa-layer-group"></i>
+                <span id="cartCount">0</span>
+            </button>
+            <button class="hamburger" id="hamburger" aria-label="Open mobile menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <!-- Hero Section -->
+        <section class="hero section" id="home">
+            <div class="hero__particles" id="particleCanvas" aria-hidden="true"></div>
+            <div class="hero__media" aria-hidden="true"></div>
+            <div class="hero__orb hero__orb--one"></div>
+            <div class="hero__orb hero__orb--two"></div>
+
+            <!-- Floating visuals representing creative media -->
+            <img class="floating-dish dish-one" src="https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=600&q=80" alt="Video production and storytelling" />
+            <img class="floating-dish dish-two" src="https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=600&q=80" alt="Social media content creation" />
+            <img class="floating-dish dish-three" src="https://images.unsplash.com/photo-1536240478700-b869070f9279?auto=format&fit=crop&w=600&q=80" alt="Video editing workspace" />
+
+            <div class="hero__content reveal">
+                <span class="eyebrow">Social Media Manager · Videographer · Video Editor · Content Creator</span>
+                <h1>Smart Yunusa</h1>
+                <p>Creating compelling visual stories that inspire, educate, and make lasting impact.</p>
+                <div class="hero__buttons">
+                    <a class="btn btn--gold" href="#gallery">View My Work</a>
+                    <a class="btn btn--glass" href="#reservations">Hire Me</a>
+                    <a class="btn btn--glass" href="#contact">Contact Me</a>
+                </div>
+            </div>
+            <a class="scroll-indicator" href="#about" aria-label="Scroll to about">
+                <span></span>
+            </a>
+        </section>
+
+        <!-- About Section -->
+        <section class="about section" id="about">
+            <div class="section-heading reveal">
+                <span class="eyebrow">// About Me</span>
+                <h2>Visual Storyteller &amp; Digital Media Professional</h2>
+            </div>
+            <div class="about__grid">
+                <div class="about__copy reveal">
+                    <p>I am a passionate videographer, video editor, and social media manager dedicated to creating high-quality visual content that connects with audiences.</p>
+                    <p>I currently serve as the <strong>Social Media Manager and Content Creator</strong> for Eden Prayer Network (EPN), where I plan, shoot, edit, and publish engaging ministry content across multiple social media platforms.</p>
+                    <p>Beyond content creation, I enjoy learning new creative techniques, storytelling through video, and helping brands and organizations communicate their message with excellence. I believe every video should inspire, educate, and leave a lasting impact.</p>
+                    <div class="stats">
+                        <div class="stat glass-card"><strong data-counter="50">0</strong><span>Projects Completed</span></div>
+                        <div class="stat glass-card"><strong data-counter="20">0</strong><span>Happy Clients</span></div>
+                        <div class="stat glass-card"><strong data-counter="10">0</strong><span>Platforms Managed</span></div>
+                        <div class="stat glass-card"><strong>EPN</strong><span>Current Role</span></div>
+                    </div>
+                </div>
+                <div class="about__cards reveal">
+                    <article class="image-card image-card--large">
+                        <img src="https://images.unsplash.com/photo-1536240478700-b869070f9279?auto=format&fit=crop&w=900&q=80" alt="Video editing and content creation" />
+                        <span>Video Editing</span>
+                    </article>
+                    <article class="image-card image-card--small">
+                        <img src="https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=900&q=80" alt="Social media management" />
+                        <span>Content Strategy</span>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- What I Do / Services Grid -->
+        <section class="menu section" id="menu">
+            <div class="section-heading reveal">
+                <span class="eyebrow">// What I Do</span>
+                <h2>My Creative Services</h2>
+            </div>
+            <div class="filter-bar reveal" id="menuFilters">
+                <button class="filter-btn active" data-filter="all">All Services</button>
+                <button class="filter-btn" data-filter="starters">Videography</button>
+                <button class="filter-btn" data-filter="main">Video Editing</button>
+                <button class="filter-btn" data-filter="vegetarian">Social Media Management</button>
+                <button class="filter-btn" data-filter="desserts">Content Creation</button>
+                <button class="filter-btn" data-filter="drinks">Consulting</button>
+            </div>
+            <div class="menu-grid" id="menuGrid"></div>
+        </section>
+
+        <!-- Featured Projects (formerly Signatures) -->
+        <section class="signatures section" id="signatures">
+            <div class="section-heading reveal">
+                <span class="eyebrow">// Featured Projects</span>
+                <h2>My Recent Work</h2>
+            </div>
+            <div class="signature-track reveal" id="signatureTrack"></div>
+        </section>
+
+        <!-- Service Packages (formerly Offers) -->
+        <section class="offers section" id="offers">
+            <div class="section-heading reveal">
+                <span class="eyebrow">// Service Packages</span>
+                <h2>Tailored Creative Solutions</h2>
+            </div>
+            <div class="offer-grid">
+                <article class="offer-card reveal">
+                    <i class="fa-solid fa-church"></i>
+                    <h3>Ministry Media Package</h3>
+                    <p>Complete video production and social media management for churches, ministries, and faith-based organizations. Includes sermon highlights, event coverage, and promotional content.</p>
+                    <strong>From ₦300,000</strong>
+                </article>
+                <article class="offer-card reveal">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <h3>Social Media Growth Package</h3>
+                    <p>Strategic content planning, platform management, audience engagement, and analytics reporting to grow your brand's online presence across all major social platforms.</p>
+                    <strong>From ₦250,000 / month</strong>
+                </article>
+                <article class="offer-card reveal">
+                    <i class="fa-solid fa-film"></i>
+                    <h3>Video Production Package</h3>
+                    <p>End-to-end video production from concept development to final edit. Includes scripting, shooting, editing, sound design, and color grading for professional-quality videos.</p>
+                    <strong>From ₦400,000</strong>
+                </article>
+            </div>
+        </section>
+
+        <!-- Vision / Why Work With Me (formerly Chef's Rec) -->
+        <section class="chef section" id="chef">
+            <div class="chef__panel reveal">
+                <div>
+                    <span class="eyebrow">// My Vision</span>
+                    <h2>Becoming One of Africa's Leading Visual Storytellers</h2>
+                    <p>My vision is to become one of Africa's leading visual storytellers and digital media professionals, creating impactful content that transforms lives, builds brands, and reaches audiences across the world.</p>
+                    <p>I am continuously improving my skills in videography, filmmaking, social media strategy, and digital storytelling while pursuing opportunities to work with organizations, ministries, businesses, and international brands.</p>
+                    <a class="btn btn--gold" href="#reservations">Let's Work Together</a>
+                </div>
+                <img src="https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=1000&q=80" alt="Creative vision and storytelling" />
+            </div>
+        </section>
+
+        <!-- Service Configurator (formerly Ordering) -->
+        <section class="ordering section" id="ordering">
+            <div class="section-heading reveal">
+                <span class="eyebrow">// Service Calculator</span>
+                <h2>Select Services &amp; Send Directly to WhatsApp</h2>
+            </div>
+            <div class="ordering-layout">
+                <div class="delivery-panel glass-card reveal">
+                    <h3>Local &amp; Global Rates</h3>
+                    <p>Creative services priced transparently based on your location and project needs.</p>
+                    <div class="delivery-zones font-mono text-xs">
+                        <span>₦250k - ₦1M (Nigeria)</span>
+                        <span>$300 - $2,500 (Global)</span>
+                        <span>Support: 30-Day Included</span>
+                    </div>
+                    <p class="muted">Standard video production and social media management packages start at ₦250,000 / $300. Use this interactive system to calculate your custom service estimate.</p>
+                </div>
+                <div class="order-grid reveal" id="orderGrid"></div>
+            </div>
+        </section>
+
+        <!-- My Process (formerly Tracking) -->
+        <section class="tracking section" id="tracking">
+            <div class="section-heading reveal">
+                <span class="eyebrow">// My Process</span>
+                <h2>How I Bring Your Vision to Life</h2>
+            </div>
+            <div class="tracking-steps reveal">
+                <div class="track-step active"><i class="fa-solid fa-lightbulb"></i><span>1. Discovery &amp; Strategy</span></div>
+                <div class="track-step"><i class="fa-solid fa-pen-ruler"></i><span>2. Planning &amp; Scripting</span></div>
+                <div class="track-step"><i class="fa-solid fa-video"></i><span>3. Production &amp; Editing</span></div>
+                <div class="track-step"><i class="fa-solid fa-rocket"></i><span>4. Delivery &amp; Optimization</span></div>
+            </div>
+        </section>
+
+        <!-- Portfolio Gallery -->
+        <section class="gallery section" id="gallery">
+            <div class="section-heading reveal">
+                <span class="eyebrow">// Portfolio</span>
+                <h2>Visual Work &amp; Creative Projects</h2>
+            </div>
+            <div class="masonry reveal" id="galleryGrid">
+                <img src="https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=900&q=80" alt="Video production on location" />
+                <img src="https://images.unsplash.com/photo-1536240478700-b869070f9279?auto=format&fit=crop&w=900&q=80" alt="Video editing workspace" />
+                <img src="https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=900&q=80" alt="Social media content creation" />
+                <img src="https://images.unsplash.com/photo-1590650153855-d9e808231d41?auto=format&fit=crop&w=900&q=80" alt="Ministry event coverage" />
+                <img src="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=900&q=80" alt="Camera equipment and setup" />
+            </div>
+        </section>
+
+        <!-- Testimonials -->
+        <section class="reviews section" id="reviews">
+            <div class="section-heading reveal">
+                <span class="eyebrow">// Testimonials</span>
+                <h2>What Clients &amp; Collaborators Say</h2>
+            </div>
+            <div class="review-slider reveal" id="reviewSlider"></div>
+            <div class="slider-dots" id="reviewDots"></div>
+        </section>
+
+        <!-- Booking / Consultation Form (formerly Reservations) -->
+        <section class="reservations section" id="reservations">
+            <div class="section-heading reveal">
+                <span class="eyebrow">// Book a Session</span>
+                <h2>Schedule a Creative Strategy Session</h2>
+            </div>
+            <form class="reservation-form reveal" id="reservationForm" novalidate>
+                <div class="form-grid">
+                    <label>Full Name<input type="text" name="name" placeholder="Your full name" required /></label>
+                    <label>WhatsApp / Phone<input type="tel" name="phone" placeholder="0904 497 1123" required /></label>
+                    <label>Email Address<input type="email" name="email" placeholder="client@domain.com" required /></label>
+                    <label>Service Interested In<select name="guests" required><option value="">Select Service</option><option>Videography</option><option>Video Editing</option><option>Social Media Management</option><option>Content Creation</option><option>Ministry Media</option></select></label>
+                    <label>Preferred Start Date<input type="date" name="date" required /></label>
+                    <label>Preferred Time Slot<input type="time" name="time" required /></label>
+                    <label>Meeting Platform<select name="seating" required><option value="">Choose Platform</option><option>Google Meet</option><option>Zoom Meeting</option><option>WhatsApp Voice Call</option><option>In-Person (Abuja)</option></select></label>
+                    <label>Client Location<select name="mode" required><option value="">Choose Region</option><option>Nigerian Client (Naira Rates)</option><option>Global Client (USD Rates)</option></select></label>
+                </div>
+                <label>Project Details or Requirements<textarea name="message" rows="4" placeholder="Share details about your project, vision, or what you'd like to create together..."></textarea></label>
+                <button class="btn btn--gold btn--full" type="submit">Submit Booking Request</button>
+                <p class="email-template">
+                    Your inquiry will be logged. I will respond directly from <strong>smartyunusa8@gmail.com</strong> within 24 hours.
+                </p>
+            </form>
+        </section>
+
+        <!-- Skills & Tools Dashboard -->
+        <section class="dashboard section" id="dashboard">
+            <div class="section-heading reveal">
+                <span class="eyebrow">// Skills &amp; Tools</span>
+                <h2>Creative Toolkit &amp; Expertise</h2>
+            </div>
+            <div class="dashboard-grid reveal">
+                <article class="dashboard-card"><h3>Video Editing</h3><p>CapCut · Benime · Sound Design · Color Correction · Motion Graphics · Short-form &amp; Long-form Editing</p><span>Pro Level</span></article>
+                <article class="dashboard-card"><h3>Videography</h3><p>Event Coverage · Church Productions · Interviews · Promotional Videos · Documentary Style</p><span>Pro Level</span></article>
+                <article class="dashboard-card"><h3>Social Media Management</h3><p>Content Strategy · Platform Management · Audience Growth · Community Engagement · Analytics</p><span>Expert Level</span></article>
+                <article class="dashboard-card"><h3>Content Creation</h3><p>Script Writing · Storytelling · Creative Direction · Thumbnail Design · Campaign Planning</p><span>Expert Level</span></article>
+            </div>
+        </section>
+
+        <!-- Software & Tools Panel (formerly Admin) -->
+        <section class="admin section" id="admin">
+            <div class="section-heading reveal">
+                <span class="eyebrow">// Software &amp; Tools</span>
+                <h2>My Creative Stack</h2>
+            </div>
+            <div class="admin-panel reveal">
+                <button><i class="fa-solid fa-video"></i> CapCut</button>
+                <button><i class="fa-solid fa-palette"></i> Canva</button>
+                <button><i class="fa-solid fa-film"></i> Benime</button>
+                <button><i class="fa-solid fa-chart-simple"></i> Meta Business Suite</button>
+            </div>
+        </section>
+
+        <!-- FAQs -->
+        <section class="faq section" id="faq">
+            <div class="section-heading reveal">
+                <span class="eyebrow">// FAQs</span>
+                <h2>Common Questions About My Services</h2>
+            </div>
+            <div class="accordion reveal" id="faqAccordion">
+                <article><button>What types of videos do you produce?<i class="fa-solid fa-plus"></i></button><p>I produce a wide range of videos including event coverage, church and ministry productions, interviews, promotional videos, documentary-style content, and short-form content for social media platforms.</p></article>
+                <article><button>How do you manage social media accounts?<i class="fa-solid fa-plus"></i></button><p>I develop a tailored content strategy, create a content calendar, manage multiple platforms, engage with audiences, track analytics, and continuously optimize for growth and engagement.</p></article>
+                <article><button>Can you work with my existing brand guidelines?<i class="fa-solid fa-plus"></i></button><p>Absolutely. I work closely with clients to ensure all content aligns with their brand identity, voice, and visual guidelines. I also provide creative direction when needed.</p></article>
+                <article><button>What is your typical turnaround time?<i class="fa-solid fa-plus"></i></button><p>Turnaround times vary by project scope. Short-form social media content is typically delivered within 24-48 hours. Larger video production projects range from 3-14 days depending on complexity.</p></article>
+            </div>
+        </section>
+
+        <!-- Newsletter -->
+        <section class="newsletter section" id="newsletter">
+            <div class="newsletter__box reveal">
+                <span class="eyebrow">// Creative Insights</span>
+                <h2>Subscribe to receive video tips, social media strategies, and creative inspiration.</h2>
+                <form id="newsletterForm">
+                    <input type="email" placeholder="Your email address" required />
+                    <button class="btn btn--gold" type="submit">Subscribe</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- Contact -->
+        <section class="contact section" id="contact">
+            <div class="section-heading reveal">
+                <span class="eyebrow">// Contact</span>
+                <h2>Let's Create Something Amazing</h2>
+            </div>
+            <div class="contact-grid reveal">
+                <article>
+                    <h3>Call / WhatsApp</h3>
+                    <a href="tel:+2349044971123">0904 497 1123</a>
+                </article>
+                <article>
+                    <h3>Email</h3>
+                    <a href="mailto:smartyunusa8@gmail.com">smartyunusa8@gmail.com</a>
+                </article>
+                <article>
+                    <h3>Available For</h3>
+                    <p>Videography · Video Editing · Social Media Management · Content Creation · Ministry Media · Brand Promotion</p>
+                </article>
+                <article>
+                    <h3>Location</h3>
+                    <p>Abuja, Nigeria<br />Available for local &amp; global projects</p>
+                </article>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-grid">
+            <div>
+                <a href="#home" class="logo"><span>SY</span>SmartYunusa</a>
+                <p>Creating visuals that inspire, communicate, and leave a lasting impact.</p>
+            </div>
+            <div>
+                <h4>Quick Links</h4>
+                <a href="#about">About</a>
+                <a href="#menu">Services</a>
+                <a href="#gallery">Portfolio</a>
+                <a href="#reservations">Book a Session</a>
+            </div>
+            <div>
+                <h4>Connect</h4>
+                <a href="tel:+2349044971123">0904 497 1123</a>
+                <a href="mailto:smartyunusa8@gmail.com">smartyunusa8@gmail.com</a>
+                <p>Abuja, Nigeria</p>
+            </div>
+            <div>
+                <h4>Follow Me</h4>
+                <div class="socials">
+                    <a href="#" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+                    <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="#" aria-label="Threads"><i class="fa-brands fa-threads"></i></a>
+                    <a href="#" aria-label="TikTok"><i class="fab fa-tiktok"></i></a>
+                    <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+                </div>
+            </div>
+        </div>
+        <p class="copyright">© 2026 Smart Yunusa. All Rights Reserved.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

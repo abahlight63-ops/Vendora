@@ -19,11 +19,16 @@ Status: backend ships three modes (see `getMe` in ownerController.js):
 
 ## Hilltop-only turn-on checklist (careful path)
 
-1. HilltopAds account → create a **video/VAST zone** (NOT popunder, NOT
-   Smartlink) → copy the tag URL (must contain `.js`).
+1. HilltopAds account → your **video zone** → **HTML code** dialog → keep
+   **VAST** selected (NOT "VAST for Google Ad Manager" — that's for GAM
+   publishers; our gate brings its own IMA player!) → **COPY CODE** → paste
+   that URL as `ADS_VIDEO_HILLTOPADS` (zone #7458485-style VAST document
+   URLs AND classic `.js` player tags both play — `.js` script-injects,
+   anything else is fetched as VAST XML by the on-demand IMA player,
+   never executed, never navigated).
 2. Render dashboard → set ONLY:
    - `ADS_VIDEO_ONLY=1`
-   - `ADS_VIDEO_HILLTOPADS=<the .js tag URL>`
+   - `ADS_VIDEO_HILLTOPADS=<that URL>`
    - `SPONSOR_RATE_PER_VIEW=5` (your ₦ per completed view for invoicing)
 3. Redeploy backend (Node reads env at boot). Boot log must show NO
    `ADS_VIDEO_ONLY` warnings (a warning means the tag is missing/not-a-player

@@ -110,8 +110,28 @@ function isScriptTag(url) {
   return /\.js(\?|#|$)/i.test(String(url || '')); // offer/direct links (no .js) are NOT players!
 }
 
+// Google IMA SDK (plays VAST documents like Hilltop's). Loaded ONCE per
+// session, ONLY when a VAST gate actually fires — never a global tag, so
+// pages carry zero third-party JS. Failure → reject (caller degrades!).
+let _imaPromise = null;
+function loadImaSdk() {
+  if (typeof document === 'undefined') return Promise.reject(new Error('no-dom'));
+  if (window.google && window.google.ima) return Promise.resolve();
+  if (_imaPromise) return _imaPromise;
+  _imaPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.async = true;
+    s.dataset.ima = 'sdk'; // marker (never re-inject!)
+    s.src = 'https://imasdk.googleapis.com/js/sdkloader/ima3.js';
+    const kill = setTimeout(() => { s.remove(); _imaPromise = null; reject(new Error('ima-timeout')); }, 10000);
+    s.onload = () => { clearTimeout(kill); (window.google && window.google.ima) ? resolve() : (_imaPromise = null, reject(new Error('ima-bad'))); };
+    s.onerror = () => { clearTimeout(kill); s.remove(); _imaPromise = null; reject(new Error('ima-fail')); };
+    document.head.appendChild(s);
+  });
+  return _imaPromise;
+}
 // GATED 30s VIDEO (page entries, free tier only): sponsor mp4 >
-// HilltopAds > Monetag > Adsterra Smartlink fallback.
+// HilltopAds VAST (via IMA) > Monetag > Adsterra Smartlink fallback.
 // Countdown + progress bar + skip-at-5s. Resolves when the flow ends —
 // callers ALWAYS proceed afterwards (the gate delays, never blocks!).
 // force = Admin preview (bypasses the daily cap, never marks it!).
@@ -135,7 +155,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
   if (!force) markVideoSeen(slot);
   for (const pick of candidates) { // try each layer in turn (dead layer → next, never a dead timer!)
     const tagUrl = tagUrlOf[pick];
-    if (pick === 'adsterra' || (tagUrl && !isScriptTag(tagUrl))) { // exit traffic (Smartlink OR offer-style URL with no .js — the /drm/… lesson!)
+    if (pick === 'adsterra' || (pick !== 'hilltopads' && tagUrl && !isScriptTag(tagUrl))) { // exit traffic (Smartlink OR offer-style URL with no .js — the /drm/… lesson! Hilltop VAST docs are exempt: they play INLINE via IMA below, never as new tabs!)
       const url = pick === 'adsterra' ? v.adsterra : tagUrl;
       const direct = window.open(url, '_blank', 'noopener'); // click-gesture flows open instantly (button gates!)
       if (direct) { logVideo(slot, pick, 'click'); return pick + '-click'; }
@@ -192,6 +212,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       if (done) return; done = true;
       clearInterval(tick); clearTimeout(watchdog); clearTimeout(emptyCheck);
       try { tagScript && tagScript.remove(); } catch {} // network tag yanked (no orphan players phoning home!)
+      try { extraCleanup && extraCleanup(); } catch {} // IMA manager destroy (same hygiene!)
       ov.classList.add('out'); setTimeout(() => ov.remove(), 250); // fade, then gone
       resolve(outcome);
     };
@@ -227,9 +248,10 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
     }, 250);
     const watchdog = setTimeout(() => { log('complete'); finish('completed'); }, VIDEO_LEN * 1000 + 1500); // 30s + grace (hung players can't trap users!)
     skipBtn.onclick = () => { log('skip'); finish('skipped'); }; // skip = logged + out (no upsell on skips — politeness!)
-    // ── the playable: own mp4 OR network tag in our frame ──
+    // ── the playable: own mp4, Hilltop VAST doc, OR network tag in our frame ──
     let tagScript = null;
     let emptyCheck = null; // 5s blank-frame watchdog (network path only!)
+    let extraCleanup = null; // VAST path stashes its teardown here (manager destroy + load timer!)
     if (pick === 'sponsor') { // own mp4: full gated player (countdown meters it, completion invoices it!)
       const video = document.createElement('video');
       video.src = v.sponsorVideo; video.muted = true; video.playsInline = true; video.preload = 'auto'; // muted autoplay (browser POLICY — sound needs a tap!); playsInline (no iOS takeover!)
@@ -246,7 +268,40 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
         toast('Pro removes all ads — see Billing'); // gentle upgrade pill (toast auto-dismisses, never blocks — the polite upsell!)
         finish('visited');
       };
-    } else { // network zone (HilltopAds / Monetag self-rendering .js tag): renders INSIDE our frame…
+    } else if (pick === 'hilltopads' && !isScriptTag(v.hilltopads)) { // Hilltop VAST *document* (XML, not a .js tag): played via Google IMA inside our frame (muted inline — same house rules as the mp4 path!)
+      const video = document.createElement('video');
+      video.muted = true; video.playsInline = true; video.preload = 'auto'; // muted inline (browser autoplay policy + no iOS takeover!)
+      video.setAttribute('disablepictureinpicture', ''); // keep it in the card!
+      video.style.cssText = 'width:100%;border-radius:12px;background:#000;max-height:300px;display:block;margin-top:8px;';
+      body.appendChild(video);
+      let mgr = null; // IMA ads manager (destroyed on every exit — no orphan audio ever!)
+      let loadTimer = setTimeout(() => finish('layer-empty'), 8000); // VAST/network/IMA all dead or hanging? → NEXT layer (never a dead timer!)
+      extraCleanup = () => { clearTimeout(loadTimer); try { mgr && mgr.destroy(); } catch {} };
+      loadImaSdk().then(() => {
+        if (done) return; // user already skipped (race lost — destroy nothing, exit took over!)
+        try {
+          const adDisplay = new window.google.ima.AdDisplayContainer(body, video);
+          const adsLoader = new window.google.ima.AdsLoader(adDisplay);
+          adsLoader.addEventListener(window.google.ima.AdsManagerLoadedEvent.Type.ADS_MANAGER_LOADED, (e) => {
+            if (done) return;
+            try {
+              mgr = e.getAdsManager(video);
+              mgr.addEventListener(window.google.ima.AdEvent.Type.ALL_ADS_COMPLETED, () => { log('complete'); finish('completed'); }); // creative finished (< 30s = early complete, fair!)
+              mgr.addEventListener(window.google.ima.AdErrorEvent.Type.AD_ERROR, () => finish('layer-empty')); // bad creative → NEXT layer (never embarrass us!)
+              adDisplay.initialize();
+              mgr.init(640, 360, window.google.ima.ViewMode.NORMAL);
+              mgr.start();
+            } catch { finish('layer-empty'); } // init threw (weird creative) → next layer
+          });
+          adsLoader.addEventListener(window.google.ima.AdErrorEvent.Type.AD_ERROR, () => finish('layer-empty')); // VAST fetch/parse failed → next layer
+          const req = new window.google.ima.AdsRequest();
+          req.adTagUrl = String(v.hilltopads);
+          req.linearAdSlotWidth = 640; req.linearAdSlotHeight = 360;
+          req.setAdWillPlayMuted(true); // muted = autoplay-legal everywhere (sound needs a tap — IMA policy!)
+          adsLoader.requestAds(req);
+        } catch { finish('layer-empty'); } // IMA API shape changed upstream → next layer, never a crash
+      }).catch(() => finish('layer-empty')); // SDK itself unreachable (blocked/offline) → next layer
+    } else { // network zone (self-rendering .js tag: Monetag rewarded, or a .js Hilltop tag): renders INSIDE our frame…
       const holder = document.createElement('div');
       holder.style.cssText = 'margin-top:8px;min-height:120px;';
       holder.innerHTML = '<p class="hint" data-vgate-ph>Loading video…</p>'; // placeholder (slow networks show intent, not blank!)

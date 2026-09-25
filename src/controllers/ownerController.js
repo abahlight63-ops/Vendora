@@ -66,7 +66,14 @@ async function getMe(req, res) {
     const videoOrder = String(process.env.ADS_VIDEO_ORDER || 'sponsor,hilltopads,monetag,adsterra') // waterfall order (reorder without a deploy!)
       .split(',').map((s) => s.trim().toLowerCase()).filter((s) => ['sponsor', 'hilltopads', 'monetag', 'adsterra'].includes(s));
     const hillTag = (process.env.ADS_VIDEO_HILLTOPADS || '').trim() || null;
-    const hillPlayable = hillTag && /\.js(\?|#|$)/i.test(hillTag) ? hillTag : null; // playable = .js tag ONLY (offer/direct links are exit traffic — serving one as "video" caused the /drm/… incident, never again!)
+    // Video-only mode passes the configured URL straight through (the owner
+    // pastes it deliberately from their own Hilltop zone panel — zone #7458485
+    // serves VAST *documents*, not .js). Safety lives in the PLAYER, not the
+    // URL: .js tags script-inject, everything else is FETCHED as VAST XML by
+    // the on-demand IMA player (never executed, never navigated — the /drm/…
+    // danger was auto-injected tags + same-tab exits, neither applies here!).
+    // Any failure at any step degrades to a working button (never a trap!).
+    const hillPlayable = hillTag;
     const video = videoOnly // video-only: Hilltop tag or nothing (monetag/adsterra/sponsor layers forcibly off!)
       ? { order: ['hilltopads'], sponsorVideo: null, sponsorLink: null, sponsorTitle: null, hilltopads: hillPlayable, monetag: null, adsterra: null }
       : { // 30s gated player on Connect (free tier): sponsor mp4 > HilltopAds VAST > Monetag rewarded > Adsterra Smartlink

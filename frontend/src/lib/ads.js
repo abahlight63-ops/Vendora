@@ -294,7 +294,12 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
             if (done) return;
             try {
               mgr = e.getAdsManager(video);
-              mgr.addEventListener(window.google.ima.AdEvent.Type.ALL_ADS_COMPLETED, () => { log('complete'); finish('completed'); }); // creative finished (< 30s = early complete, fair!)
+              let adStarted = false; // no-fill guard: fresh/pending zones serve EMPTY VAST yet IMA still fires ALL_ADS_COMPLETED (an unwatched "complete" would fake revenue + invoice a sponsor for nothing!)
+              mgr.addEventListener(window.google.ima.AdEvent.Type.STARTED, () => { adStarted = true; }); // a real creative actually playing (silent flag — no new funnel event, backend whitelist untouched!)
+              mgr.addEventListener(window.google.ima.AdEvent.Type.ALL_ADS_COMPLETED, () => { // finished…
+                if (adStarted) { log('complete'); finish('completed'); } // …watched (< 30s = early complete, fair!)…
+                else finish('layer-empty'); // …nothing ever played → NEXT layer (empty zone, never a fake complete!)
+              });
               mgr.addEventListener(window.google.ima.AdErrorEvent.Type.AD_ERROR, () => finish('layer-empty')); // bad creative → NEXT layer (never embarrass us!)
               adDisplay.initialize();
               mgr.init(640, 360, window.google.ima.ViewMode.NORMAL);

@@ -175,7 +175,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
     if (outcome !== 'layer-empty') return done(outcome); // empty frame → NEXT layer (a broken tag never embarrasses us!)
     logVideo(slot, pick, 'tag-failed');
   }
-  return done('skipped-empty'); // every layer dead → straight through (buttons always work!)
+  return done(candidates.length ? 'failed-all' : 'skipped-empty'); // configured-but-dead vs nothing-configured (DIFFERENT problems: wrong URL shape / pending zone / ad-blocker vs empty env — Admin preview explains each!)
 
   // ── exit-traffic mini-card (page-entry gates): visible offer card with
   // Visit (user tap = real gesture, popup opens!) + instant Skip. NEVER silent —

@@ -368,7 +368,11 @@ function AdsStatus() { // AD KEYS LIVE? booleans only — key VALUES never leave
     const st = await adsStatus(); // Pro session? video config present?
     if (st.state === 'pro') { setPreviewMsg('No preview: THIS browser session is Pro/trial — video gates serve free-tier owners only. Log in as a free shop to preview.'); return; }
     const out = await maybeShowVideoAd({ slot: 'preview', force: true, only: only || null }); // only = fire ONE layer alone (isolated debugging!)
-    setPreviewMsg(out === 'skipped-empty' ? 'No preview: nothing configured — set SPONSOR_VIDEO_URL or a network video zone, then restart.' : `Preview done (${out}). Events logged under slot=preview.`);
+    setPreviewMsg(out === 'skipped-empty'
+      ? 'No preview: nothing configured — set SPONSOR_VIDEO_URL or a network video zone, then restart.'
+      : out === 'failed-all'
+        ? 'Configured BUT dead: wrong URL shape (offer link pasted where a VAST/.js tag belongs?), zone still pending approval, or YOUR ad-blocker killed the player. Open devtools console → window.__lastVideoGate, then retest in Incognito with extensions off.'
+        : `Preview done (${out}). Events logged under slot=preview.`);
   }
   return (
     <div className="card">

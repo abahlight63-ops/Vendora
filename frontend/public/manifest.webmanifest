@@ -10,14 +10,20 @@
   "theme_color": "#0d1f16",
   "icons": [
     {
-      "src": "/logo-green.png?v=2",
-      "sizes": "any",
+      "src": "/favicon-192x192.png",
+      "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/logo-green.png?v=2",
-      "sizes": "any",
+      "src": "/favicon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon-512x512.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     }

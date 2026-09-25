@@ -24,3 +24,5 @@ mobile/*.iml
 *.keystore
 # Owner-uploaded product photos (runtime files, never committed)
 public/uploads/
+# Unrelated side projects dropped in the folder (kept on disk, never shipped)
+BRO/

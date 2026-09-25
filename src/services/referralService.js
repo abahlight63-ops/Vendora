@@ -127,6 +127,13 @@ async function onFirstActive(referredBusinessId) {
     body: `You joined with ${rfirst}'s code — 14 Pro days are on your shop. Enjoy!`,
     link: '/dashboard',
   }).catch(() => {});
+  { // reward emails (best-effort: days already granted — mail failing changes nothing!)
+    const mail = require('./emailTemplates');
+    mail.ownerContact(shop.referred_by).then((c) => {
+      if (!c) return null;
+      return mail.sendReferralEarned(c.email, c.name, { days: QUIZ_DAYS, friend: shop.name });
+    }).catch(() => {});
+  }
   return { referrerId: shop.referred_by, days: QUIZ_DAYS };
 }
 

@@ -166,6 +166,10 @@ async function checkTrialLifecycle(businessId, b) {
         body: 'Your 7-day Pro trial is over. Your bot keeps replying from your manual catalog, free forever. Upgrade on Billing to switch Pro back on.',
         link: '/billing',
       });
+      require('../services/emailTemplates').ownerContact(businessId).then((c) => { // trial-ended email (best-effort: bell already sent — mail failing changes nothing!)
+        if (!c) return null;
+        return require('../services/emailTemplates').sendTrialEnded(c.email, c.name);
+      }).catch((e) => console.error('trial-ended email error:', e.message));
     } else if (left <= 2 && left > 0 && !b.trial_warned) { // last 2 days → warn (once!)
       await db.query('UPDATE businesses SET trial_warned = true WHERE id = $1', [businessId]);
       await notify.notify(businessId, {
@@ -173,6 +177,10 @@ async function checkTrialLifecycle(businessId, b) {
         body: 'Your Pro trial ends soon. Pick Pro or Pro Plus on Billing to keep profile sync, photos + premium AIs — or stay free, your catalog stays yours.',
         link: '/billing',
       });
+      require('../services/emailTemplates').ownerContact(businessId).then((c) => { // trial-ending email (best-effort!)
+        if (!c) return null;
+        return require('../services/emailTemplates').sendTrialEnding(c.email, c.name, left);
+      }).catch((e) => console.error('trial-warn email error:', e.message));
     }
   } catch (e) { console.error('trial watchdog error:', e.message); } // log only (getMe continues — degraded watchdog beats dead dashboard!)
 }
@@ -480,6 +488,13 @@ async function feedbackCreate(req, res) {
     [req.session.businessId, `[${label}] ${String(subject || 'Message from owner').slice(0, 100)}`, body.trim().slice(0, 2000)]
   );
   const ticket = rows[0];
+  { // acknowledgement email (best-effort: ticket already stored — mail failing changes nothing!)
+    const mail = require('../services/emailTemplates');
+    mail.ownerContact(req.session.businessId).then((c) => {
+      if (!c) return null;
+      return mail.sendSupportReceived(c.email, c.name, ticket.subject);
+    }).catch((e) => console.error('ticket ack email error:', e.message));
+  }
   const key = (process.env.STATICFORMS_KEY || '').trim(); // staticforms.xyz → Forms → API key (server-side only!)
   if (key) { // forward a copy to your inbox (fire-and-log: a mail hiccup must never fail the ticket!)
     try {
@@ -516,6 +531,13 @@ async function complaintCreate(req, res) {
      RETURNING id, subject, body, status, reply, created_at`,
     [req.session.businessId, String(subject || 'Support request').slice(0, 120), body.trim()] // String()+slice caps subject (DB hygiene, same habit as adClick!)
   );
+  { // acknowledgement email (best-effort!)
+    const mail = require('../services/emailTemplates');
+    mail.ownerContact(req.session.businessId).then((c) => {
+      if (!c) return null;
+      return mail.sendSupportReceived(c.email, c.name, rows[0].subject);
+    }).catch((e) => console.error('complaint ack email error:', e.message));
+  }
   res.status(201).json(rows[0]); // 201 + ticket (Help history updates without reload!)
 }
 

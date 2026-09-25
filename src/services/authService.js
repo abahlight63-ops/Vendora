@@ -148,6 +148,12 @@ async function resetPassword(token, password) { // consume a reset token + set n
   const { rows } = await db.query('SELECT id FROM users WHERE reset_token = $1 AND reset_expires > now() LIMIT 1', [token]); // token must exist AND be unexpired (SQL-side expiry = no timezone bugs!)
   if (rows.length === 0) return { ok: false }; // bad/expired/used (all look identical — no enumeration!)
   await db.query('UPDATE users SET password_hash = $1, reset_token = NULL, reset_expires = NULL WHERE id = $2', [hashPassword(password), rows[0].id]); // new hash + BURN token (one-time use — replay attacks dead!)
+  { // security notice (best-effort: password already changed — mail failing changes nothing!)
+    const uid = rows[0].id;
+    db.query('SELECT u.email, b.name FROM users u JOIN businesses b ON b.id = u.business_id WHERE u.id = $1 LIMIT 1', [uid])
+      .then(({ rows: r }) => (r[0] && r[0].email ? mail.sendPasswordChanged(r[0].email, r[0].name) : null))
+      .catch((e) => console.error('password-changed email error:', e.message));
+  }
   return { ok: true };
 }
 

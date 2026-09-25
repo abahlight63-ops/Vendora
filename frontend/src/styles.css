@@ -440,7 +440,7 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .lock-btn span { font-size: 11px; font-weight: 800; }
 .card h2 svg { vertical-align: -3px; margin-right: 2px; }
 .vai-regen svg { vertical-align: -2px; margin-right: 4px; }
-.btn.glass-cta { width: 100%; background: linear-gradient(135deg, #e07b1f, #b54708); background-size: 200% 200%; animation: ctaShimmer 2.8s ease infinite; font-size: 15px; padding: 13px 18px; margin-bottom: 6px; }
+.btn.glass-cta { width: 100%; background: linear-gradient(135deg, #e07b1f, #b54708); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.35); background-size: 200% 200%; animation: ctaShimmer 2.8s ease infinite; font-size: 15px; padding: 13px 18px; margin-bottom: 6px; }
 .btn.glass-cta:hover { filter: brightness(1.08); }
 @keyframes ctaShimmer { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
 
@@ -953,6 +953,7 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .acc-orange { --acc: #ff9a3d; } .acc-purple { --acc: #b388ff; } .acc-red { --acc: #e5484d; } .acc-teal { --acc: #5eead4; }
 .admin-dot.acc-green, .admin-dot.acc-blue, .admin-dot.acc-gold, .admin-dot.acc-orange, .admin-dot.acc-purple, .admin-dot.acc-red, .admin-dot.acc-teal { background: var(--acc); box-shadow: 0 0 12px var(--acc); }
 .admin-liquid .btn.sm[class*="acc-"] { background: var(--acc); border-color: transparent; color: #04120c; box-shadow: 0 6px 22px rgba(0,0,0,.35); } /* active tab = solid accent (instant identity!) */
+.admin-liquid .btn.sm.acc-red { color: #fff; } /* dark-on-mid-red fails contrast — white text on #e5484d */
 .admin-panel { animation: adminIn 0.35s cubic-bezier(0.2, 0.9, 0.25, 1.1) both; border-top: 3px solid var(--acc, #25d366); border-radius: 6px; padding-top: 4px; } /* remounts per tab (key={tab}) — entrance replays + accent spine! */
 @keyframes adminIn { from { opacity: 0; transform: translateY(14px) scale(0.99); } }
 .admin-row { animation: fadeSlide 0.35s ease both; } /* staggered via inline animationDelay (capped in JSX!) */
@@ -1336,8 +1337,8 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
   background: none !important; color: #1f6feb !important; filter: none !important; -webkit-text-fill-color: #1f6feb !important;
 }
 [data-theme="light"] .stat.warn .num { color: #b54708 !important; -webkit-text-fill-color: #b54708 !important; }
-[data-theme="light"] .btn { background: #1f6feb !important; box-shadow: 0 2px 8px rgba(31,111,235,.3) !important; }
-[data-theme="light"] .btn:hover { background: #1a5fd0 !important; }
+[data-theme="light"] .btn { background: #1f6feb !important; color: #fff !important; box-shadow: 0 2px 8px rgba(31,111,235,.3) !important; }
+[data-theme="light"] .btn:hover { background: #1a5fd0 !important; color: #fff !important; }
 [data-theme="light"] .btn.ghost { background: #fff !important; border-color: #bcd6f7 !important; color: #1f6feb !important; box-shadow: none !important; }
 [data-theme="light"] .btn.danger { background: #fff !important; color: #d92d20 !important; border-color: #fecdca !important; }
 [data-theme="light"] .stat-ic { background: #e3eefe !important; color: #1f6feb !important; border: none !important; box-shadow: none !important; }
@@ -1464,8 +1465,8 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
 /* ══ LIGHT v4 calm — de-shouted: ink numerals, deep quiet blue, pale neon
    recolored to readable greens, neon artwork back on dark tiles ══ */
 [data-theme="light"] { --fx-line: #2456a6; }
-[data-theme="light"] .btn { background: #2456a6 !important; box-shadow: 0 2px 8px rgba(36,86,166,.25) !important; }
-[data-theme="light"] .btn:hover { background: #1b4484 !important; }
+[data-theme="light"] .btn { background: #2456a6 !important; color: #fff !important; box-shadow: 0 2px 8px rgba(36,86,166,.25) !important; }
+[data-theme="light"] .btn:hover { background: #1b4484 !important; color: #fff !important; }
 [data-theme="light"] a, [data-theme="light"] .mini-link { color: #2456a6 !important; }
 [data-theme="light"] .stat .num, [data-theme="light"] .hub-big, [data-theme="light"] .fx-big {
   background: none !important; color: #16324c !important; -webkit-text-fill-color: #16324c !important;

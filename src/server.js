@@ -247,6 +247,14 @@ function envAudit() {
       console.warn(`ENV MISSING: ${key} — ${why} is off until this is set (Render → Environment → redeploy).`);
     }
   }
+  try { // mail deliverability self-check (the #1 "OTP never arrives" cause: FROM-domain ≠ verified Resend domain!)
+    const m = require('./services/emailTemplates');
+    if (process.env.RESEND_API_KEY && !require('./services/smtpMailer').isSmtpConfigured()) {
+      console.warn(`MAIL CHECK: Resend path active, sending as domain "${m.mailFromDomain()}" — this must equal a domain verified in your Resend dashboard (subdomains need their own verification), or Resend 403s every mail. Full error text lands in the log line starting "Resend send failed".`);
+    } else if (!m.isMailConfigured()) {
+      console.warn('MAIL CHECK: no mail path (no SMTP, no RESEND_API_KEY) — accounts auto-verify and OTPs only work in dev. Set Gmail SMTP or Resend before launch.');
+    }
+  } catch {}
   if (process.env.ADS_VIDEO_ONLY === '1') { // video-only mode self-check (misconfig here = silent gates — shout instead!)
     const tag = String(process.env.ADS_VIDEO_HILLTOPADS || '').trim();
     if (!tag) console.warn('ENV MISSING: ADS_VIDEO_ONLY=1 but ADS_VIDEO_HILLTOPADS is empty — gates will silently skip (that is safe, just no revenue).');

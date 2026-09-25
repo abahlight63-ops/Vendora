@@ -186,6 +186,14 @@ async function activateSubscription(businessId, kind, days, reference, method, a
     body: `Your card payment went through. Enjoy ${days} days of Pro.`,
     link: '/billing',
   });
+  { // receipt email (best-effort: activation already done — mail failing must never break it!)
+    const mail = require('../services/emailTemplates');
+    mail.ownerContact(businessId).then((c) => {
+      if (!c) return null;
+      const label = (PLANS[kind] && PLANS[kind].label) || 'Pro';
+      return mail.sendPaymentSuccess(c.email, c.name, { plan: label, amountMajor: (Number(amountMinor) || 0) / 100, currency, reference, days });
+    }).catch((e) => console.error('payment receipt email error:', e.message));
+  }
   require('../services/referralService').onPaidActivation(Number(businessId)) // milestone check (every 5th paying referral = ₦500 airtime row!)
     .catch((e) => console.error('referral milestone error:', e.message)); // rewards never break payments!
 }
@@ -203,7 +211,18 @@ async function handlePaystackWebhook(req, res) {
   }
 
   const event = req.body; // verified genuine — now trust the JSON
-  if (event.event === 'charge.success') { // only successful charges (failed/pending ignored)
+  if (event.event === 'charge.failed') { // card declined/abandoned → gentle recovery email (no charge was made!)
+    const { business_id, kind } = event.data.metadata || {};
+    if (business_id) {
+      const mail = require('../services/emailTemplates');
+      mail.ownerContact(business_id).then((c) => {
+        if (!c) return null;
+        const label = (PLANS[kind] && PLANS[kind].label) || 'Pro';
+        const reason = event.data.gateway_response || event.data.message || '';
+        return mail.sendPaymentFailed(c.email, c.name, { plan: label, amountMajor: (Number(event.data.amount) || 0) / 100, currency: (event.data.currency || 'NGN').toUpperCase(), reason });
+      }).catch((e) => console.error('payment-failed email error:', e.message));
+    }
+  } else if (event.event === 'charge.success') { // only successful charges (failed/pending ignored)
     const { business_id, kind, days: metaDays } = event.data.metadata || {}; // destructure OUR metadata back out (|| {} guards missing)
     const days = Number(metaDays) || (PLANS[kind] ? PLANS[kind].days : Number(process.env.SUBSCRIPTION_DAYS || 30)); // metadata days → plan table → env default (triple fallback, never NaN-activate)
     if (business_id) { // ONE shared activation (tier stamp + ledger + bell inside!)
@@ -244,6 +263,13 @@ async function handleFlutterwaveWebhook(req, res) {
     const expected = (PLANS[kind] && PLANS[kind].USD) || 0; // USD majors ($5, $47…) — Flutterwave verify returns majors too!
     if (Number(d.amount) < expected || String(d.currency).toUpperCase() !== 'USD') { // underpaid or wrong currency → NO activation (log + ack!)
       console.error(`Flutterwave amount mismatch: got ${d.amount} ${d.currency}, want ${expected} USD for ${kind}`);
+      if (meta.business_id) { // verified buyer known → tell them (best-effort, never blocks the ack!)
+        const mail = require('../services/emailTemplates');
+        mail.ownerContact(meta.business_id).then((c) => {
+          if (!c) return null;
+          return mail.sendPaymentFailed(c.email, c.name, { plan: (PLANS[kind] && PLANS[kind].label) || 'Pro', reason: 'The amount received did not match the plan price.' });
+        }).catch((e) => console.error('payment-failed email error:', e.message));
+      }
       return res.status(200).end();
     }
     if (meta.business_id) { // WHO paid FOR WHAT (from OUR init meta — echoed back!)

@@ -216,6 +216,13 @@ async function transferApprove(req, res) {
   });
   require('../services/referralService').onPaidActivation(Number(pay.business_id)) // milestone check (transfer approvals count as paying too!)
     .catch((e) => console.error('referral milestone error:', e.message));
+  { // approval email (best-effort: activation already done!)
+    const mail = require('../services/emailTemplates');
+    mail.ownerContact(pay.business_id).then((c) => {
+      if (!c) return null;
+      return mail.sendTransferApproved(c.email, c.name, { plan: pay.plan, days });
+    }).catch((e) => console.error('transfer-approved email error:', e.message));
+  }
   res.json({ ok: true, days }); // days echoed (UI confirms "+30 days")
 }
 
@@ -232,6 +239,13 @@ async function transferReject(req, res) {
     body: `We couldn't match your ${pay.plan} transfer (ref ${pay.sender_ref || pay.reference || '—'}) in the statement. Check the reference and try again, or contact support.`,
     link: '/billing',
   });
+  { // rejection email (best-effort!)
+    const mail = require('../services/emailTemplates');
+    mail.ownerContact(pay.business_id).then((c) => {
+      if (!c) return null;
+      return mail.sendTransferRejected(c.email, c.name, `reference ${pay.sender_ref || pay.reference || 'not found'} in the statement`);
+    }).catch((e) => console.error('transfer-rejected email error:', e.message));
+  }
   res.json({ ok: true });
 }
 
@@ -337,6 +351,13 @@ async function complaintResolve(req, res) {
     body: `${rows[0].subject || 'Your message'} — marked resolved. Reply from Help any time if it comes back.`,
     link: '/help',
   });
+  { // resolved email (best-effort!)
+    const mail = require('../services/emailTemplates');
+    mail.ownerContact(rows[0].business_id).then((c) => {
+      if (!c) return null;
+      return mail.sendComplaintResolved(c.email, c.name, rows[0].subject);
+    }).catch((e) => console.error('resolve email error:', e.message));
+  }
   res.json({ ok: true });
 }
 

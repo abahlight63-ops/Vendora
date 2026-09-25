@@ -39,9 +39,9 @@ Status: backend ships three modes (see `getMe` in ownerController.js):
    (5s empty-frame guard) — never a dead timer.
 5. Admin → AdsStatus preview ("Only HilltopAds" button) fires the isolated
    layer; completions land in `/api/ads/stats` (the invoice source).
-6. Never set in this mode: `ADS_ENABLED`, `ADS_POPUNDER_URL`,
-   `ADS_VIDEO_FALLBACK`, `ADS_SCRIPT_URL*`, `SPONSOR_*` — the server ignores
-   networks/sponsor layers in video-only mode anyway (belt + braces).
+6. Never set in this mode: `ADS_ENABLED`, `ADS_SCRIPT_URL`, `SPONSOR_*` —
+   the server ignores networks/sponsor layers in video-only mode anyway
+   (belt + braces).
 
 ## Sponsor interstitials (later, same careful rules)
 
@@ -60,6 +60,7 @@ Status: backend ships three modes (see `getMe` in ownerController.js):
   `ADS_ENABLED === '1'`; popunder entry removed from auto-inject entirely.
 - `frontend/src/lib/ads.js` (`injectTag`): refuses `freq === 'daily'` and any
   `*popunder*` provider even if a stale backend sends one.
-- `isScriptTag()`: non-`.js` URLs can never become inline players.
+- `isScriptTag()`: plain https URLs play as VAST documents via IMA;
+  `.js` URLs script-inject. Both stay inline — no exit traffic anywhere.
 - Video-gate order is env-driven (`ADS_VIDEO_ORDER`) — no redeploy needed to
   reorder, only to add keys.

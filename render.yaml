@@ -45,10 +45,8 @@ services:
         sync: false
       - key: ADS_VIDEO_MONETAG
         sync: false
-      - key: ADS_VIDEO_FALLBACK
-        sync: false
       - key: ADS_VIDEO_ORDER
-        value: sponsor,hilltopads,monetag,adsterra
+        value: sponsor,hilltopads,monetag
       - key: SPONSOR_RATE_PER_VIEW
         value: 5
       - key: ADS_ENABLED

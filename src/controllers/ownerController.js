@@ -29,8 +29,8 @@ async function getMe(req, res) {
     b.subscription_status = 'expired'; // …mirror it in THIS response (UI honest on the very first expired load, no refresh needed!)
   }
   // Ads: free tier only — Pro never sees ads.
-  // provider: any network that gives you a script tag (Adsterra, PropellerAds,
-  // Monetag...). sponsor: YOUR OWN direct deal with a local business (best rates).
+  // provider: the per-view network tag (Monetag MultiTag). sponsor: YOUR OWN
+  // direct deal with a local business (best rates).
   // Free tier ALWAYS gets an object (even when nothing is configured) so the
   // app can show its own house notice — Pro gets null (zero ad pixels).
   const tier = planService.tier(b); // 'pro' | 'free' from subscription + trial clock
@@ -52,19 +52,17 @@ async function getMe(req, res) {
           link: process.env.SPONSOR_LINK, image: process.env.SPONSOR_IMAGE || '',
           video: (process.env.SPONSOR_VIDEO_URL || '').trim() || null } // optional mp4: plays inside the interstitial (video ads without any network!)
       : null; // no sponsor configured (or video-only mode) → null (frontend shows its house notice)
-    // One entry per network (Monetag primary, Adsterra Social Bar secondary…).
-    // Banners/social bars ONLY — popunders are banned from auto-inject (they
-    // hijack the user's next click and drag the whole tab to the offer URL —
-    // the /drm/… lesson!). Offer links open ONLY behind explicit "Visit
-    // sponsor" taps (new tab, user gesture). freq 'session' = inject once per
+    // One entry: the primary per-view network (Monetag MultiTag). Single slot
+    // ONLY — second networks and popunders are unwired (banners/social bars
+    // only; popunders hijack the user's next click and drag the whole tab to
+    // the offer URL — the /drm/… lesson!). freq 'session' = inject once per
     // login; the network itself throttles impressions.
     // Video-only mode sends ZERO networks (no third-party JS on the page!).
     const networks = videoOnly ? [] : [
       { provider: process.env.ADS_PROVIDER || 'custom', scriptUrl: process.env.ADS_SCRIPT_URL || null, freq: 'session' },
-      { provider: process.env.ADS_PROVIDER_2 || 'custom', scriptUrl: process.env.ADS_SCRIPT_URL_2 || null, freq: 'session' },
     ].filter((n) => n.scriptUrl); // .filter keeps only configured networks (unconfigured = no tag = no crash)
-    const videoOrder = String(process.env.ADS_VIDEO_ORDER || 'sponsor,hilltopads,monetag,adsterra') // waterfall order (reorder without a deploy!)
-      .split(',').map((s) => s.trim().toLowerCase()).filter((s) => ['sponsor', 'hilltopads', 'monetag', 'adsterra'].includes(s));
+    const videoOrder = String(process.env.ADS_VIDEO_ORDER || 'sponsor,hilltopads,monetag') // waterfall order (reorder without a deploy!)
+      .split(',').map((s) => s.trim().toLowerCase()).filter((s) => ['sponsor', 'hilltopads', 'monetag'].includes(s));
     const hillTag = (process.env.ADS_VIDEO_HILLTOPADS || '').trim() || null;
     // Video-only mode passes the configured URL straight through (the owner
     // pastes it deliberately from their own Hilltop zone panel — zone #7458485
@@ -74,16 +72,15 @@ async function getMe(req, res) {
     // danger was auto-injected tags + same-tab exits, neither applies here!).
     // Any failure at any step degrades to a working button (never a trap!).
     const hillPlayable = hillTag;
-    const video = videoOnly // video-only: Hilltop tag or nothing (monetag/adsterra/sponsor layers forcibly off!)
-      ? { order: ['hilltopads'], sponsorVideo: null, sponsorLink: null, sponsorTitle: null, hilltopads: hillPlayable, monetag: null, adsterra: null }
-      : { // 30s gated player on Connect (free tier): sponsor mp4 > HilltopAds VAST > Monetag rewarded > Adsterra Smartlink
-        order: videoOrder.length ? videoOrder : ['sponsor', 'hilltopads', 'monetag', 'adsterra'], // empty env = full waterfall (safe default!)
+    const video = videoOnly // video-only: Hilltop tag or nothing (monetag/sponsor layers forcibly off!)
+      ? { order: ['hilltopads'], sponsorVideo: null, sponsorLink: null, sponsorTitle: null, hilltopads: hillPlayable, monetag: null }
+      : { // 30s gated player on Connect (free tier): sponsor mp4 > HilltopAds VAST > Monetag rewarded
+        order: videoOrder.length ? videoOrder : ['sponsor', 'hilltopads', 'monetag'], // empty env = full waterfall (safe default!)
         sponsorVideo: (sponsor && sponsor.video) || null, // own mp4 (first priority, billed per COMPLETE!)
         sponsorLink: (sponsor && sponsor.link) || null,
         sponsorTitle: (sponsor && sponsor.title) || null,
         hilltopads: (process.env.ADS_VIDEO_HILLTOPADS || '').trim() || null, // VAST/video zone tag URL
-        monetag: (process.env.ADS_VIDEO_MONETAG || '').trim() || null, // rewarded/interstitial zone tag URL
-        adsterra: (process.env.ADS_VIDEO_FALLBACK || '').trim() || null, // Smartlink URL (never-empty exit traffic!)
+        monetag: (process.env.ADS_VIDEO_MONETAG || '').trim() || null, // rewarded/interstitial zone tag URL (VAST doc or .js — both play inline!)
       };
     ads = { networks, sponsor, scriptUrl: networks[0]?.scriptUrl || null, provider: networks[0]?.provider || 'custom', video }; // scriptUrl/provider kept for backward-compat with older frontend
   }
@@ -845,7 +842,7 @@ async function adClick(req, res) {
 // quartiles, completes, clicks, skips — completions are the invoice unit!).
 // Whitelisted values only (junk events die with 400, never touch the DB!).
 async function adVideoEvent(req, res) {
-  const SOURCES = ['sponsor', 'hilltopads', 'monetag', 'adsterra'];
+  const SOURCES = ['sponsor', 'hilltopads', 'monetag'];
   const EVENTS = ['start', 'q25', 'q50', 'q75', 'complete', 'click', 'skip'];
   const { slot, source, event } = req.body || {};
   if (!SOURCES.includes(source) || !EVENTS.includes(event)) {

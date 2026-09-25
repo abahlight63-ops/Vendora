@@ -377,8 +377,8 @@ function AdsStatus() { // AD KEYS LIVE? booleans only — key VALUES never leave
   return (
     <div className="card">
       <h2><Ic n="cash" s={18} /> Ad keys live?</h2>
-      <p className="desc">Network 1 ({s.provider1}): {dot(s.network1)} · Network 2 ({s.provider2}): {dot(s.network2)} · Sponsor “{(s.sponsorTitle || '—')}”: {dot(s.sponsor)}{s.sponsor ? <> · Video: {dot(s.sponsorVideo)}</> : null} · Sponsor rate: ₦{s.rateNaira}/click</p>
-      <p className="desc">Video gate — own mp4: {dot(s.sponsorVideo)} · HilltopAds: {dot(s.videoHilltopads)} · Monetag: {dot(s.videoMonetag)} · Smartlink: {dot(s.videoFallback)} · Order: <code>{s.videoOrder}</code> · ₦{s.rateViewNaira}/completed view</p>
+      <p className="desc">Network ({s.provider1}): {dot(s.network1)} · Sponsor “{(s.sponsorTitle || '—')}”: {dot(s.sponsor)}{s.sponsor ? <> · Video: {dot(s.sponsorVideo)}</> : null} · Sponsor rate: ₦{s.rateNaira}/click</p>
+      <p className="desc">Video gate — own mp4: {dot(s.sponsorVideo)} · HilltopAds: {dot(s.videoHilltopads)} · Monetag: {dot(s.videoMonetag)} · Order: <code>{s.videoOrder}</code> · ₦{s.rateViewNaira}/completed view</p>
       <p className="hint">{s.note}</p>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
         <button className="btn ghost sm" onClick={preview}>Preview sponsor card</button>
@@ -387,7 +387,7 @@ function AdsStatus() { // AD KEYS LIVE? booleans only — key VALUES never leave
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
         <span className="hint">Test one layer alone:</span>
-        {[['sponsor', 'Own mp4'], ['hilltopads', 'HilltopAds'], ['monetag', 'Monetag'], ['adsterra', 'Smartlink']].map(([id, label]) => (
+          {[['sponsor', 'Own mp4'], ['hilltopads', 'HilltopAds'], ['monetag', 'Monetag']].map(([id, label]) => (
           <button key={id} className="btn ghost sm" onClick={() => previewVideo(id)}>Only {label}</button>
         ))}
       </div>
@@ -490,7 +490,7 @@ function Stats({ d }) { // CONTROL HUB (docs/image_e1a38d81.jpg): liquid glass, 
         <Stat n={d.today} l="Chats today" />
         <Stat n={d.complaints} l="Open tickets" good={d.complaints === 0} />
       </div>
-      <p className="hint" style={{ marginTop: 16 }}>Collected = active payments only. Per-view ad money lives in your Monetag/Adsterra dashboards; per-click sponsor totals: Admin → Revenue uses /api/ads/stats with x-admin-key.</p>
+      <p className="hint" style={{ marginTop: 16 }}>Collected = active payments only. Per-view ad money lives in your Monetag dashboard; per-click sponsor totals: Admin → Revenue uses /api/ads/stats with x-admin-key.</p>
     </div>
   );
 }
@@ -527,7 +527,7 @@ function Revenue({ d }) { // REVENUE: collected totals + where transfer money si
         <div className="stat good"><div className="num">${(Number(d.usd_cents || 0) / 100).toLocaleString()}</div><div className="lbl">USD collected</div></div>
         <div className="stat"><div className="num">₦{(Number(d.month_all || 0) / 100).toLocaleString()}</div><div className="lbl">This month (all)</div></div>
       </div>
-      <p className="hint" style={{ marginTop: 16 }}>Per-click sponsor earnings: call <b>GET /api/ads/stats</b> with your admin key. Per-view network earnings: Monetag/Adsterra dashboards.</p>
+      <p className="hint" style={{ marginTop: 16 }}>Per-click sponsor earnings: call <b>GET /api/ads/stats</b> with your admin key. Per-view network earnings: Monetag dashboard.</p>
     </div>
   );
 }

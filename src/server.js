@@ -270,9 +270,8 @@ function envAudit() {
       sponsorVideo: !!(process.env.SPONSOR_VIDEO_URL || '').trim(),
       hilltopads: !!(process.env.ADS_VIDEO_HILLTOPADS || '').trim(),
       monetag: !!(process.env.ADS_VIDEO_MONETAG || '').trim(),
-      smartlink: !!(process.env.ADS_VIDEO_FALLBACK || '').trim(),
     };
-    console.log(`VIDEO GATE: mode=${mode} order=${process.env.ADS_VIDEO_ORDER || 'sponsor,hilltopads,monetag,adsterra'} layers=${JSON.stringify(layers)} (gates serve FREE-tier shops only — trial counts as Pro, so test with a free account + no ad-blocker!)`);
+    console.log(`VIDEO GATE: mode=${mode} order=${process.env.ADS_VIDEO_ORDER || 'sponsor,hilltopads,monetag'} layers=${JSON.stringify(layers)} (gates serve FREE-tier shops only — trial counts as Pro, so test with a free account + no ad-blocker!)`);
   }
 }
 

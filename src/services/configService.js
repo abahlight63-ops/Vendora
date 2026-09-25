@@ -141,13 +141,13 @@ CREATE INDEX IF NOT EXISTS idx_ad_clicks_created ON ad_clicks(created_at); -- fa
 
 -- Gated video ads: every start/quartile/complete/click/skip, per source.
 -- Sources: sponsor (own mp4, billed per COMPLETE) > hilltopads (VAST) >
--- monetag (rewarded zone) > adsterra (smartlink fallback). Completions are
+-- monetag (rewarded zone, VAST doc or .js). Completions are
 -- the invoice unit for direct sponsors (5-20x banner CPMs!).
 CREATE TABLE IF NOT EXISTS video_views ( -- one row per event (not per view — completion RATE needs the funnel!)
   id SERIAL PRIMARY KEY,
   business_id INTEGER REFERENCES businesses(id) ON DELETE SET NULL, -- SET NULL: stats survive shop deletion (money memory!)
   slot TEXT NOT NULL DEFAULT 'connect', -- where it played (connect-wa, connect-tg, preview…)
-  source TEXT NOT NULL DEFAULT 'sponsor', -- sponsor | hilltopads | monetag | adsterra
+  source TEXT NOT NULL DEFAULT 'sponsor', -- sponsor | hilltopads | monetag
   event TEXT NOT NULL DEFAULT 'start', -- start | q25 | q50 | q75 | complete | click | skip
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

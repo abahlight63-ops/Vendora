@@ -1,6 +1,6 @@
 // ── frontend/src/components/AdSlot.jsx ─────────────────────────────
 // WHAT: the ONE visible in-app ad slot (free tier only — Pro renders null).
-// WHY it exists: network tags (Monetag/Adsterra) render floating formats with
+// WHY it exists: the Monetag tag renders floating formats with
 // no in-app footprint, so owners thought "no ads". This slot guarantees every
 // free login SEES the free-plan tradeoff: sponsor card when one is configured,
 // otherwise our own house notice + a slim "Free plan · supported by ads" bar

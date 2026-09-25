@@ -2,12 +2,14 @@
 // WHAT: ALL ad logic lives here (single source of truth — no page implements
 // ads itself). Two income streams, both FREE TIER ONLY (backend sends tags to
 // non-Pro; Pro gets null → every function below silently no-ops for Pro):
-//   per-VIEW: network tags (Monetag MultiTag, Adsterra Social Bar) injected once
+//   per-VIEW: the Monetag MultiTag injected once per session (earnings in
+//     their dashboard).
 //   per-CLICK: in-house "Sponsored" interstitial, max once/day, clicks logged
 //     to /api/me/ads/click for per-click sponsor billing (/api/ads/stats).
 //   per-COMPLETE: gated 30s VIDEO on Connect (free tier): own sponsor mp4 >
-//     HilltopAds VAST > Monetag rewarded > Adsterra Smartlink. Completions are
-//     the invoice unit (5-20x banner CPMs!) — logged to /api/me/ads/video.
+//     HilltopAds VAST > Monetag rewarded (VAST doc or .js — both play inline).
+//     Completions are the invoice unit (5-20x banner CPMs!) — logged to
+//     /api/me/ads/video.
 // No npm modules — fetch (api.js) + DOM + localStorage only.
 import { api, toast } from './api.js'; // shared fetch helper (session cookie included) + toast (gentle upgrade pill!)
 
@@ -48,7 +50,7 @@ export async function getAds() {
 // freq 'daily' (popunder) is capped to one injection per browser per day via
 // localStorage — aggressive formats must never overshow. 'session' tags rely
 // on once-per-login injection + the network's own impression throttling.
-function dayKey(provider) { // daily-cap storage key, e.g. 'adfreq:adsterra-popunder:2026-09-16'
+function dayKey(provider) { // daily-cap storage key, e.g. 'adfreq:monetag:2026-09-16'
   return `adfreq:${provider}:` + new Date().toISOString().slice(0, 10); // UTC date (same convention as the sponsor cap)
 }
 function injectTag(provider, url, freq) { // NOT exported: internal helper (only loadNetworkAds uses it)
@@ -106,11 +108,10 @@ async function logVideo(slot, source, event) { // funnel event → backend (fire
 }
 
 // A tag URL is a PLAYABLE script only if it looks like one (.js tag).
-// Offer/direct links (no .js — e.g. a /drm/… URL) are EXIT traffic: opening
-// them as <script> renders nothing (the infamous dead-timer page!). Such URLs
-// auto-degrade to the Smartlink path instead of a blank player. NEVER break!
+// Anything else on an inline-capable layer is treated as a VAST document for
+// the IMA player (never executed, never navigated!). NEVER break!
 function isScriptTag(url) {
-  return /\.js(\?|#|$)/i.test(String(url || '')); // offer/direct links (no .js) are NOT players!
+  return /\.js(\?|#|$)/i.test(String(url || '')); // plain https URLs → VAST path; .js → script-inject path!
 }
 
 // Google IMA SDK (plays VAST documents like Hilltop's). Loaded ONCE per
@@ -134,11 +135,11 @@ function loadImaSdk() {
   return _imaPromise;
 }
 // GATED 30s VIDEO (page entries, free tier only): sponsor mp4 >
-// HilltopAds VAST (via IMA) > Monetag > Adsterra Smartlink fallback.
+// HilltopAds VAST (via IMA) > Monetag rewarded (VAST doc or .js — both inline).
 // Countdown + progress bar + skip-at-5s. Resolves when the flow ends —
 // callers ALWAYS proceed afterwards (the gate delays, never blocks!).
 // force = Admin preview (bypasses the daily cap, never marks it!).
-// only = Admin per-layer test ('sponsor' | 'hilltopads' | 'monetag' | 'adsterra').
+// only = Admin per-layer test ('sponsor' | 'hilltopads' | 'monetag').
 export async function maybeShowVideoAd({ slot = 'connect', force = false, only = null } = {}) {
   const ads = await getAds(); // tier-resolved config (Pro = null → straight through!)
   const v = ads && ads.video;
@@ -149,67 +150,22 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
   };
   if (!v) return done('skipped-empty'); // Pro, logged-out, or backend without video config
   if (!force && videoSeen(slot)) return done('skipped-cap'); // already gated this action today
-  const order = only ? [only] : (Array.isArray(v.order) && v.order.length ? v.order : ['sponsor', 'hilltopads', 'monetag', 'adsterra']);
-  const tagUrlOf = { sponsor: null, hilltopads: v.hilltopads, monetag: v.monetag, adsterra: v.adsterra }; // sponsor plays mp4 (never a tag!)
-  const has = { // what's actually playable right now?
+  const order = only ? [only] : (Array.isArray(v.order) && v.order.length ? v.order : ['sponsor', 'hilltopads', 'monetag']);
+  const has = { // what's actually playable right now? (sponsor mp4 needs video+link; network layers need their zone URL!)
     sponsor: !!(v.sponsorVideo && v.sponsorLink),
     hilltopads: !!v.hilltopads,
     monetag: !!v.monetag,
-    adsterra: !!v.adsterra,
   };
   const candidates = order.filter((s) => has[s]); // available layers, waterfall order (sponsor mp4 wins ties!)
   if (!candidates.length) return done('skipped-empty'); // nothing configured → button works exactly as today (never a dead end!)
   if (typeof document !== 'undefined' && document.querySelector('.pop-card.vgate')) return done('already-open'); // double-tap guard (one gate at a time — second click sails straight through!)
   if (!force) markVideoSeen(slot);
-  for (const pick of candidates) { // try each layer in turn (dead layer → next, never a dead timer!)
-    const tagUrl = tagUrlOf[pick];
-    if (pick === 'adsterra' || (pick !== 'hilltopads' && tagUrl && !isScriptTag(tagUrl))) { // exit traffic (Smartlink OR offer-style URL with no .js — the /drm/… lesson! Hilltop VAST docs are exempt: they play INLINE via IMA below, never as new tabs!)
-      const url = pick === 'adsterra' ? v.adsterra : tagUrl;
-      const direct = window.open(url, '_blank', 'noopener'); // click-gesture flows open instantly (button gates!)
-      if (direct) { logVideo(slot, pick, 'click'); return done(pick + '-click'); }
-      const seen = await playLinkLayer({ slot, pick, url }); // popup blocked (page-entry gates have no gesture!) → VISIBLE mini-card instead (never silent!)
-      if (seen !== 'layer-empty') return done(seen); // visited/skipped → done (skip advances past Smartlink — one layer per gate!)
-      continue;
-    }
+  for (const pick of candidates) { // try each layer in turn (dead layer → next, never a dead timer! Every layer plays INLINE: sponsor mp4, or VAST doc / .js tag via the gated player below!)
     const outcome = await playVideoLayer({ slot, pick, v }); // gated player (resolves completed/skipped/layer-empty!)
     if (outcome !== 'layer-empty') return done(outcome); // empty frame → NEXT layer (a broken tag never embarrasses us!)
     logVideo(slot, pick, 'tag-failed');
   }
   return done(candidates.length ? 'failed-all' : 'skipped-empty'); // configured-but-dead vs nothing-configured (DIFFERENT problems: wrong URL shape / pending zone / ad-blocker vs empty env — Admin preview explains each!)
-
-  // ── exit-traffic mini-card (page-entry gates): visible offer card with
-  // Visit (user tap = real gesture, popup opens!) + instant Skip. NEVER silent —
-  // this is what page visitors see when only link-layers are configured.
-  function playLinkLayer({ slot, pick, url }) { return new Promise((resolve) => {
-    let done = false;
-    const finish = (outcome) => {
-      if (done) return; done = true;
-      ov.classList.add('out'); setTimeout(() => ov.remove(), 250);
-      resolve(outcome);
-    };
-    const ov = document.createElement('div');
-    ov.className = 'pop-overlay';
-    ov.innerHTML =
-      '<div class="pop-card sponsor vgate">' +
-      '<span class="sponsor-tag">Sponsored · offer</span>' +
-      '<h3></h3>' +
-      '<p class="hint">Tap Visit to open the offer — it keeps VeloSales Ai free.</p>' +
-      '<button class="btn sm vgate-visit">Visit sponsor</button>' +
-      '<button class="sponsor-skip">Skip →</button>' +
-      '</div>';
-    ov.querySelector('h3').textContent = pick === 'adsterra' ? 'Sponsored offer' : 'Sponsored video';
-    ov.querySelector('.vgate-visit').onclick = async () => { // VISIT = the money event (tap = gesture, opens!)
-      logVideo(slot, pick, 'click');
-      try { await api('/api/me/ads/click', { method: 'POST', body: JSON.stringify({ slot: 'video-' + slot, target_url: url }) }); } catch {} // click ALSO in ad_clicks (sponsor invoices read both!)
-      window.open(url, '_blank', 'noopener');
-      toast('Pro removes all ads — see Billing'); // gentle pill (auto-dismisses, never blocks!)
-      finish('visited');
-    };
-    ov.querySelector('.sponsor-skip').onclick = () => { logVideo(slot, pick, 'skip'); finish('skipped'); }; // skip = logged + out
-    setTimeout(() => finish('layer-empty'), 60000); // absolute backstop (60s — nothing traps, ever!)
-    logVideo(slot, pick, 'start'); // funnel opens (visible card, counted!)
-    document.body.appendChild(ov);
-  }); }
 
   // ── one gated player attempt (overlay lifetime = this promise!) ──
   function playVideoLayer({ slot, pick, v }) { return new Promise((resolve) => { // overlay lifetime = this promise (close paths ALL resolve it!)
@@ -276,7 +232,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
         toast('Pro removes all ads — see Billing'); // gentle upgrade pill (toast auto-dismisses, never blocks — the polite upsell!)
         finish('visited');
       };
-    } else if (pick === 'hilltopads' && !isScriptTag(v.hilltopads)) { // Hilltop VAST *document* (XML, not a .js tag): played via Google IMA inside our frame (muted inline — same house rules as the mp4 path!)
+    } else if ((pick === 'hilltopads' || pick === 'monetag') && !isScriptTag(pick === 'hilltopads' ? v.hilltopads : v.monetag)) { // VAST *document* (XML, not a .js tag — ANY network: Hilltop, Monetag, ExoClick…): played via Google IMA inside our frame (muted inline — same house rules as the mp4 path!)
       const video = document.createElement('video');
       video.muted = true; video.playsInline = true; video.preload = 'auto'; // muted inline (browser autoplay policy + no iOS takeover!)
       video.setAttribute('disablepictureinpicture', ''); // keep it in the card!
@@ -308,7 +264,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
           });
           adsLoader.addEventListener(window.google.ima.AdErrorEvent.Type.AD_ERROR, () => finish('layer-empty')); // VAST fetch/parse failed → next layer
           const req = new window.google.ima.AdsRequest();
-          req.adTagUrl = String(v.hilltopads);
+          req.adTagUrl = String(pick === 'hilltopads' ? v.hilltopads : v.monetag); // this layer's VAST doc (picked above — never the wrong network's!)
           req.linearAdSlotWidth = 640; req.linearAdSlotHeight = 360;
           req.setAdWillPlayMuted(true); // muted = autoplay-legal everywhere (sound needs a tap — IMA policy!)
           adsLoader.requestAds(req);

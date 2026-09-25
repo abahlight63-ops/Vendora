@@ -15,9 +15,7 @@ not in VeloSales Ai.
    (zone `11798042`, domain `5gvci.com`). If Monetag gives you a NEW zone,
    update those two values in that file.
 3. Add to your backend env (**Render dashboard → Environment**):
-   `ADS_PROVIDER=monetag`, `ADS_SCRIPT_URL=<the tag URL>`.
-   Optional second network (Social-Bar format ONLY — never two popunders):
-   `ADS_PROVIDER_2=adsterra`, `ADS_SCRIPT_URL_2=<url>`.
+   `ADS_PROVIDER=monetag`, `ADS_SCRIPT_URL=<the tag URL>` (single network only).
 4. **Redeploy** (Render → Manual Deploy). Node reads env at boot — keys
    added without a redeploy do nothing. This is cause #1 of "ads don't work".
 5. Check Admin → "Ad keys live?" card: Network 1 must be ✅ (booleans only —
@@ -51,13 +49,13 @@ sees it. Waterfall, first AVAILABLE wins:
    COMPLETED view (`SPONSOR_RATE_PER_VIEW`, default ₦5). Highest pay, always first.
 2. **HilltopAds video** (`ADS_VIDEO_HILLTOPADS` = VAST/video zone tag URL) —
    true video CPMs. Sign up at **hilltopads.com** → add site → video zone.
-3. **Monetag rewarded** (`ADS_VIDEO_MONETAG` = rewarded/interstitial zone tag)
-   — sign up at **monetag.com** → create a rewarded/interstitial zone.
-4. **Adsterra Smartlink** (`ADS_VIDEO_FALLBACK` = offer URL) — never-empty exit
-   traffic. Sign up at **beta.publishers.adsterra.com** → Direct Links.
-5. Reorder without a deploy: `ADS_VIDEO_ORDER=sponsor,hilltopads,monetag,adsterra`.
+   Pick the **VAST for IMA SDK** invocation code; COPY CODE the full tag.
+3. **Monetag rewarded** (`ADS_VIDEO_MONETAG` = rewarded/interstitial zone tag —
+   VAST doc or `.js`, both play inline) — sign up at **monetag.com** →
+   create a rewarded/interstitial zone.
+4. Reorder without a deploy: `ADS_VIDEO_ORDER=sponsor,hilltopads,monetag`.
 
-All three networks: free signup, no traffic minimums, $5–20 minimum payouts
+Both networks: free signup, no traffic minimums ($5–20 minimum payouts
 (Payoneer/Paxum/crypto — skip PayPal for Nigerian receiving). Realistic
 Nigeria CPMs: $0.50–$2 blended (US $10–20 does NOT apply here — geography
 prices ads, 4–10× gap). Nigeria money comes from VOLUME (more shops) +
@@ -68,13 +66,15 @@ table) + `GET /api/admin/ads/stats` (`video` array + monthly invoice
 estimate). A sponsor click inside the player ALSO lands in `ad_clicks`.
 
 ### Self-healing rules (wrong tags can't blank-screen you)
-- Tag URLs are auto-detected: `.js` tags play in the frame; offer-style links
-  (no `.js`, e.g. a `/drm/…` URL) auto-degrade to Smartlink exit traffic.
-  A misplaced URL earns as fallback instead of showing a dead timer.
+- Tag URLs are auto-detected: `.js` tags script-inject in the frame, plain
+  https URLs play as VAST documents via the on-demand IMA player. A dead tag
+  advances to the next waterfall layer automatically (logged as `tag-failed`).
 - 5s empty-frame guard: a tag that loads but paints nothing advances to the
   next waterfall layer automatically (logged as `tag-failed`).
-- Admin preview has per-layer buttons (Only mp4 / HilltopAds / Monetag /
-  Smartlink) — verify each layer in isolation, never by guessing.
+- Admin preview has per-layer buttons (Only mp4 / HilltopAds / Monetag) —
+  verify each layer in isolation, never by guessing. `failed-all` means
+  configured-but-dead (wrong shape / pending zone / ad-blocker); check
+  devtools console → `window.__lastVideoGate`.
 
 Test: Admin → "Preview 30s video gate" (force-plays, logs under slot=preview),
 or connect as a free-tier shop with no ad-blocker.

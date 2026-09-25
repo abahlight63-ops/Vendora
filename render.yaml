@@ -51,6 +51,22 @@ services:
         value: sponsor,hilltopads,monetag,adsterra
       - key: SPONSOR_RATE_PER_VIEW
         value: 5
+      - key: ADS_ENABLED
+        value: 0
+      - key: ADS_VIDEO_ONLY
+        value: 0
+      - key: SPONSOR_TITLE
+        sync: false
+      - key: SPONSOR_TEXT
+        sync: false
+      - key: SPONSOR_LINK
+        sync: false
+      - key: SPONSOR_IMAGE
+        sync: false
+      - key: SPONSOR_VIDEO_URL
+        sync: false
+      - key: SPONSOR_RATE_PER_CLICK
+        value: 50
       - key: OPENAI_API_KEY
         sync: false
       - key: TELEGRAM_WEBHOOK_SECRET

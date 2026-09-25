@@ -551,7 +551,7 @@ async function telegramToken(req, res) {
         if (r.ok && d && d.ok === true) { ok = true; break; } // accepted (username captured below for the success proof!)
         if (r.status === 401 || r.status === 404) break; // Telegram says NO SUCH BOT (revoked/deleted/typo) — retrying won't help, stop fast!
       } catch (e) {
-        if (attempt === 2) return res.status(400).json({ error: 'Could not reach Telegram — check your connection and try again.' });
+        if (attempt === 2) return res.status(502).json({ error: 'Could not reach Telegram — check your connection and try again.' });
       }
     }
     if (!ok) {
@@ -560,12 +560,19 @@ async function telegramToken(req, res) {
     }
     var botUsername = (d.result && d.result.username) ? '@' + d.result.username : '';
   }
-  const prev = await db.query('SELECT telegram_bot_token FROM businesses WHERE id = $1', [req.session.businessId]); // pre-read (disconnect needs the OLD token to unhook!)
+  let prev, rows;
+  try {
+    prev = await db.query('SELECT telegram_bot_token FROM businesses WHERE id = $1', [req.session.businessId]); // pre-read (disconnect needs the OLD token to unhook!)
+    const upd = await db.query(
+      'UPDATE businesses SET telegram_bot_token = $1, owner_telegram_id = CASE WHEN $1 = $2 THEN owner_telegram_id ELSE $3 END WHERE id = $4 RETURNING telegram_bot_token <> $2 AS connected',
+      [clean, '', null, req.session.businessId]
+    ); // CASE: empty token keeps the owner link; a NEW token wipes it (stale owner id on a different bot = wrong human with owner powers — security!)
+    rows = upd.rows;
+  } catch (e) {
+    console.error('telegram token save failed:', e.message); // DB hiccup → JSON 500, NEVER an unhandled rejection (those crash the whole Render service!)
+    return res.status(500).json({ error: 'Something went wrong — try again.' });
+  }
   const oldToken = (prev.rows[0] && prev.rows[0].telegram_bot_token) || '';
-  const { rows } = await db.query(
-    'UPDATE businesses SET telegram_bot_token = $1, owner_telegram_id = CASE WHEN $1 = $2 THEN owner_telegram_id ELSE $3 END WHERE id = $4 RETURNING telegram_bot_token <> $2 AS connected',
-    [clean, '', null, req.session.businessId]
-  ); // CASE: empty token keeps the owner link; a NEW token wipes it (stale owner id on a different bot = wrong human with owner powers — security!)
   const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '') || `${req.protocol}://${req.get('host')}`; // explicit host wins (prod!); else this request's host (local dev!)
   if (rows[0] && rows[0].connected) { // bot just linked → referral reward check (first real use!)
     require('../services/referralService').onFirstActive(req.session.businessId)
@@ -587,18 +594,28 @@ async function telegramToken(req, res) {
 // Generate a fresh Telegram link code (Profile "Link Telegram" button).
 // Returns the code + deep link; owner taps it → bot binds owner_telegram_id.
 async function telegramLink(req, res) {
-  const code = 'BIZ' + require('crypto').randomBytes(3).toString('hex').toUpperCase(); // 6 hex chars (unguessable-ish, typable — same generator as the route file!)
-  await db.query('UPDATE businesses SET telegram_link_code = $1 WHERE id = $2', [code, req.session.businessId]); // overwrite (each tap INVALIDATES the old code — leaked links die!)
-  const { rows } = await db.query('SELECT telegram_bot_token FROM businesses WHERE id = $1', [req.session.businessId]);
-  const botName = (rows[0] && rows[0].telegram_bot_token) ? null : (process.env.TELEGRAM_SHARED_BOT_NAME || null); // per-shop bot: owner opens THEIR bot; shared: needs the shared username (env!)
-  res.json({ code, botName, note: botName ? `Open t.me/${botName}?start=link_${code} from your Telegram` : 'Open your shop bot and send: /start link_' + code });
+  try {
+    const code = 'BIZ' + require('crypto').randomBytes(3).toString('hex').toUpperCase(); // 6 hex chars (unguessable-ish, typable — same generator as the route file!)
+    await db.query('UPDATE businesses SET telegram_link_code = $1 WHERE id = $2', [code, req.session.businessId]); // overwrite (each tap INVALIDATES the old code — leaked links die!)
+    const { rows } = await db.query('SELECT telegram_bot_token FROM businesses WHERE id = $1', [req.session.businessId]);
+    const botName = (rows[0] && rows[0].telegram_bot_token) ? null : (process.env.TELEGRAM_SHARED_BOT_NAME || null); // per-shop bot: owner opens THEIR bot; shared: needs the shared username (env!)
+    res.json({ code, botName, note: botName ? `Open t.me/${botName}?start=link_${code} from your Telegram` : 'Open your shop bot and send: /start link_' + code });
+  } catch (e) {
+    console.error('telegram link failed:', e.message); // JSON 500, never a process crash (see telegramToken note!)
+    res.status(500).json({ error: 'Something went wrong — try again.' });
+  }
 }
 
 // Telegram connection status (Profile status line + Help docs).
 async function telegramStatus(req, res) {
-  const { rows } = await db.query('SELECT telegram_bot_token <> $1 AS connected, owner_telegram_id <> $1 AS owner_linked, telegram_link_code FROM businesses WHERE id = $2', ['', req.session.businessId]);
-  if (!rows.length) return res.status(404).json({ error: 'Not found' });
-  res.json({ connected: rows[0].connected, ownerLinked: rows[0].owner_linked, hasCode: !!(rows[0].telegram_link_code) }); // hasCode (not the code — codes only travel on explicit generate!)
+  try {
+    const { rows } = await db.query('SELECT telegram_bot_token <> $1 AS connected, owner_telegram_id <> $1 AS owner_linked, telegram_link_code FROM businesses WHERE id = $2', ['', req.session.businessId]);
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    res.json({ connected: rows[0].connected, ownerLinked: rows[0].owner_linked, hasCode: !!(rows[0].telegram_link_code) }); // hasCode (not the code — codes only travel on explicit generate!)
+  } catch (e) {
+    console.error('telegram status failed:', e.message); // JSON 500, never a process crash (see telegramToken note!)
+    res.status(500).json({ error: 'Something went wrong — try again.' });
+  }
 }
 
 // ---- Channel connections (Connect page) ----

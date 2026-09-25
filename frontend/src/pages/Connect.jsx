@@ -156,17 +156,30 @@ export default function Connect() {
   async function tgConnect() {
     if (!tgToken.trim()) return toast('Paste your BotFather token first', 'err');
     setBusy(true);
-    const { ok, data } = await api('/api/me/telegram/token', { method: 'POST', body: JSON.stringify({ token: tgToken.trim() }) });
-    setBusy(false);
-    if (ok && data.connected) { setTgToken(''); setStep(2); load(); pop('ok', 'Telegram connected' + (data.botUsername ? ' as ' + data.botUsername : '') + '!', 'Send your bot any message to test it.'); }
-    else pop('err', 'Token rejected', data.error || 'Check the token from BotFather.');
+    try {
+      const { ok, status, data } = await api('/api/me/telegram/token', { method: 'POST', body: JSON.stringify({ token: tgToken.trim() }) });
+      if (ok && data.connected) { setTgToken(''); setStep(2); load(); pop('ok', 'Telegram connected' + (data.botUsername ? ' as ' + data.botUsername : '') + '!', 'Send your bot any message to test it.'); }
+      else if (status === 401) pop('err', 'Signed out', 'Your session expired — sign in again, then retry.');
+      else if (status === 502) pop('err', 'Telegram unreachable', (data && data.error) || 'Our server could not reach Telegram. Wait a minute and retry.');
+      else pop('err', 'Token rejected', (data && data.error) || 'Check the token from BotFather.');
+    } catch (e) {
+      pop('err', 'Server unreachable', 'Our server is waking up or offline (free-plan sleep takes ~1 min). Wait a minute and tap Connect bot again.');
+    } finally {
+      setBusy(false);
+    }
   }
   async function tgLinkGen() {
     setBusy(true);
-    const { ok, data } = await api('/api/me/telegram/link', { method: 'POST', body: '{}' });
-    setBusy(false);
-    if (ok) setTgLink(data);
-    else toast(data.error || 'Could not generate link', 'err');
+    try {
+      const { ok, status, data } = await api('/api/me/telegram/link', { method: 'POST', body: '{}' });
+      if (ok) setTgLink(data);
+      else if (status === 401) toast('Your session expired — sign in again', 'err');
+      else toast((data && data.error) || 'Could not generate link', 'err');
+    } catch (e) {
+      toast('Server unreachable — wait a minute and retry', 'err');
+    } finally {
+      setBusy(false);
+    }
   }
   // ---- Brain pick ----
   async function saveBrain(id) {

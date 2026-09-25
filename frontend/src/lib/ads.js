@@ -11,13 +11,15 @@
 // No npm modules — fetch (api.js) + DOM + localStorage only.
 import { api, toast } from './api.js'; // shared fetch helper (session cookie included) + toast (gentle upgrade pill!)
 
-let cached = null; // module-level cache: ONE /api/me call per page-load (null = not fetched yet; note: null also means "logged out" after a failed fetch)
+let cached = null; // module-level cache: ONE /api/me per page-load window (null = not fetched yet; note: null also means "logged out" after a failed fetch)
 let seeded = false; // true once App.jsx seeds the cache from its own /api/me (avoids a duplicate fetch + race)
+let cachedAt = 0; // timestamp of last fetch (stale tier/tags must EXPIRE — env changes + redeploys otherwise stay invisible until re-login: the classic "I pasted the key, still nothing"!)
+const ADS_TTL_MS = 10 * 60 * 1000; // 10-minute cache (fresh enough for tier flips, cheap enough per page — /api/me is one indexed read!)
 
 // Seed the cache from App.jsx's /api/me response (same shape: data.ads).
 // Call on login-load; call resetAdsCache() on logout so the next user refetches.
-export function setAdsCache(ads) { cached = ads || null; seeded = true; }
-export function resetAdsCache() { cached = null; seeded = false; }
+export function setAdsCache(ads) { cached = ads || null; seeded = true; cachedAt = Date.now(); }
+export function resetAdsCache() { cached = null; seeded = false; cachedAt = 0; }
 export function adsSeeded() { return seeded; }
 
 // Fetch (once) what ads this user should see. Backend decides by tier:
@@ -33,11 +35,12 @@ export async function adsStatus() {
 }
 
 export async function getAds() {
-  if (cached !== null || seeded) return cached; // cache hit → no second HTTP call (fast + fewer logs)
+  if ((cached !== null || seeded) && Date.now() - cachedAt < ADS_TTL_MS) return cached; // fresh cache → no HTTP call (fast + fewer logs)
   try {
     const { ok, data } = await api('/api/me'); // getMe response carries .ads alongside .business
     cached = ok ? data.ads || null : null; // ok? use it (|| null if backend sent nothing) : logged-out → null
   } catch { cached = null; } // network error → treat as "no ads" (ads must NEVER break the app)
+  cachedAt = Date.now(); // stamp EVERY fetch (even failures — don't hammer a struggling server!)
   return cached;
 }
 
@@ -139,8 +142,13 @@ function loadImaSdk() {
 export async function maybeShowVideoAd({ slot = 'connect', force = false, only = null } = {}) {
   const ads = await getAds(); // tier-resolved config (Pro = null → straight through!)
   const v = ads && ads.video;
-  if (!v) return 'skipped-empty'; // Pro, logged-out, or backend without video config
-  if (!force && videoSeen(slot)) return 'skipped-cap'; // already gated this action today
+  const done = (o) => { // EVERY exit records its reason (open devtools console → window.__lastVideoGate tells you WHY nothing showed!)
+    try { window.__lastVideoGate = { slot, outcome: o, at: new Date().toISOString() }; } catch {}
+    try { if (typeof console !== 'undefined' && console.debug) console.debug('[ads] video gate:', slot, '→', o); } catch {}
+    return o;
+  };
+  if (!v) return done('skipped-empty'); // Pro, logged-out, or backend without video config
+  if (!force && videoSeen(slot)) return done('skipped-cap'); // already gated this action today
   const order = only ? [only] : (Array.isArray(v.order) && v.order.length ? v.order : ['sponsor', 'hilltopads', 'monetag', 'adsterra']);
   const tagUrlOf = { sponsor: null, hilltopads: v.hilltopads, monetag: v.monetag, adsterra: v.adsterra }; // sponsor plays mp4 (never a tag!)
   const has = { // what's actually playable right now?
@@ -150,24 +158,24 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
     adsterra: !!v.adsterra,
   };
   const candidates = order.filter((s) => has[s]); // available layers, waterfall order (sponsor mp4 wins ties!)
-  if (!candidates.length) return 'skipped-empty'; // nothing configured → button works exactly as today (never a dead end!)
-  if (typeof document !== 'undefined' && document.querySelector('.pop-card.vgate')) return 'already-open'; // double-tap guard (one gate at a time — second click sails straight through!)
+  if (!candidates.length) return done('skipped-empty'); // nothing configured → button works exactly as today (never a dead end!)
+  if (typeof document !== 'undefined' && document.querySelector('.pop-card.vgate')) return done('already-open'); // double-tap guard (one gate at a time — second click sails straight through!)
   if (!force) markVideoSeen(slot);
   for (const pick of candidates) { // try each layer in turn (dead layer → next, never a dead timer!)
     const tagUrl = tagUrlOf[pick];
     if (pick === 'adsterra' || (pick !== 'hilltopads' && tagUrl && !isScriptTag(tagUrl))) { // exit traffic (Smartlink OR offer-style URL with no .js — the /drm/… lesson! Hilltop VAST docs are exempt: they play INLINE via IMA below, never as new tabs!)
       const url = pick === 'adsterra' ? v.adsterra : tagUrl;
       const direct = window.open(url, '_blank', 'noopener'); // click-gesture flows open instantly (button gates!)
-      if (direct) { logVideo(slot, pick, 'click'); return pick + '-click'; }
+      if (direct) { logVideo(slot, pick, 'click'); return done(pick + '-click'); }
       const seen = await playLinkLayer({ slot, pick, url }); // popup blocked (page-entry gates have no gesture!) → VISIBLE mini-card instead (never silent!)
-      if (seen !== 'layer-empty') return seen; // visited/skipped → done (skip advances past Smartlink — one layer per gate!)
+      if (seen !== 'layer-empty') return done(seen); // visited/skipped → done (skip advances past Smartlink — one layer per gate!)
       continue;
     }
     const outcome = await playVideoLayer({ slot, pick, v }); // gated player (resolves completed/skipped/layer-empty!)
-    if (outcome !== 'layer-empty') return outcome; // empty frame → NEXT layer (a broken tag never embarrasses us!)
+    if (outcome !== 'layer-empty') return done(outcome); // empty frame → NEXT layer (a broken tag never embarrasses us!)
     logVideo(slot, pick, 'tag-failed');
   }
-  return 'skipped-empty'; // every layer dead → straight through (buttons always work!)
+  return done('skipped-empty'); // every layer dead → straight through (buttons always work!)
 
   // ── exit-traffic mini-card (page-entry gates): visible offer card with
   // Visit (user tap = real gesture, popup opens!) + instant Skip. NEVER silent —

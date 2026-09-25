@@ -264,6 +264,16 @@ function envAudit() {
     const tag = String(process.env.ADS_VIDEO_HILLTOPADS || '').trim();
     if (!tag) console.warn('ENV MISSING: ADS_VIDEO_ONLY=1 but ADS_VIDEO_HILLTOPADS is empty — gates will silently skip (that is safe, just no revenue).');
   }
+  { // video-gate boot line (booleans only — proves Render picked up the env AFTER redeploy: no more "did my paste apply?" guessing!)
+    const mode = process.env.ADS_VIDEO_ONLY === '1' ? 'video-only' : (process.env.ADS_ENABLED === '1' ? 'full' : 'off');
+    const layers = {
+      sponsorVideo: !!(process.env.SPONSOR_VIDEO_URL || '').trim(),
+      hilltopads: !!(process.env.ADS_VIDEO_HILLTOPADS || '').trim(),
+      monetag: !!(process.env.ADS_VIDEO_MONETAG || '').trim(),
+      smartlink: !!(process.env.ADS_VIDEO_FALLBACK || '').trim(),
+    };
+    console.log(`VIDEO GATE: mode=${mode} order=${process.env.ADS_VIDEO_ORDER || 'sponsor,hilltopads,monetag,adsterra'} layers=${JSON.stringify(layers)} (gates serve FREE-tier shops only — trial counts as Pro, so test with a free account + no ad-blocker!)`);
+  }
 }
 
 // Shared-bot webhook registration (Pro road!). Per-shop bots self-register on

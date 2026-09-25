@@ -2,10 +2,10 @@
 // WHAT: every email VeloSales Ai sends, in ONE branded place. All templates
 // share the same shell (logo header, brand button, copy-friendly code box,
 // Maitama footer), so the inbox always looks like the app — never plain text.
-// SENDING: Gmail SMTP first (no domain needed!), Resend second (FROM address
-// must sit on your VERIFIED Resend domain or Resend 403s — see the hint in
-// the Resend-fail log below). No mail configured → returns false (callers
-// auto-verify in dev). LINKS: built from PUBLIC_BASE_URL (set it to the live
+// SENDING: Resend ONLY (FROM address must sit on your VERIFIED Resend domain
+// or Resend 400/403s — see the hint in the Resend-fail log below). Gmail SMTP
+// is retired (no creds configured → smtpMailer stays dormant). No mail
+// configured → returns false (callers auto-verify in dev). LINKS: built from PUBLIC_BASE_URL (set it to the live
 // URL on Render — localhost links die in real inboxes!). Logo: /logo.png.
 // No npm modules — fetch (Resend API) + local smtpMailer only.
 const db = require('../db'); // owner lookups for lifecycle emails (no cycle: db never requires us!)
@@ -19,7 +19,7 @@ function supportEmail() {
 }
 
 function fromAddress() {
-  return process.env.EMAIL_FROM || 'VeloSales Ai <hello@velosalesai.com.ng>'; // root-domain default (must match a VERIFIED Resend domain — subdomains need their own verification!)
+  return process.env.EMAIL_FROM || 'VeloSales Ai <hello@support.velosalesai.com.ng>'; // verified-subdomain default (must match a VERIFIED Resend domain!)
 }
 
 function mailFromDomain() { // domain part of EMAIL_FROM (for boot logs + mismatch hints — domain only, never the full address!)

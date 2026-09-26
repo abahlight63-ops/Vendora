@@ -621,7 +621,7 @@ async function telegramToken(req, res) {
              telegram_shared_on = CASE WHEN $1 <> $2 THEN false ELSE telegram_shared_on END,
              owner_telegram_id = CASE WHEN $1 = $2 THEN owner_telegram_id ELSE $3 END
          WHERE id = $4 RETURNING telegram_bot_token <> $2 AS connected`,
-      [clean, '', null, req.session.businessId]);
+      [clean, '', '', req.session.businessId]);
     rows = (await sharedAware(runUpdate)).rows; // stale backend? legacy shape still saves (shared flag just stays — redeploy to migrate!)
   } catch (e) {
     console.error('telegram token save failed:', (e && e.code) || '-', e.message); // code logged (42703? 53300?) — user gets the same code as ref below!

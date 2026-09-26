@@ -50,7 +50,12 @@ function isStandaloneBrowser() { // installed PWA (popups lose their return trip
 }
 function isAndroidStandalone() { // installed app ON Android (Chrome-escape hatch applies — same profile, session carries over!)
   try {
-    return isStandaloneBrowser() && /android/i.test(window.navigator.userAgent || '');
+    return isStandaloneBrowser() && isAndroid();
+  } catch { return false; }
+}
+function isAndroid() { // ANY Android browser or installed app (gate the Chrome tools on this — desktops + iPhones never need them!)
+  try {
+    return /android/i.test(window.navigator.userAgent || '');
   } catch { return false; }
 }
 function chromeEscapeUrl() { // intent:// link that opens THIS page in full Chrome (popup machinery works there!)
@@ -452,10 +457,10 @@ export default function Connect() {
               <button className="btn ghost sm" onClick={back}>Back</button>
               <button className="btn sm" disabled={busy} onClick={embeddedConnect}>{busy ? (<><Loader size={15} />Opening Meta…</>) : 'Continue to connect'}</button>
             </div>
-            {isAndroidStandalone() && (
+            {isAndroid() && (
               <div className="learn-box light" style={{ marginTop: 10 }}>
-                <b>On the installed app?</b><br />
-                <span className="hint">Popups can&apos;t complete inside the installed app — open this page in full Chrome instead (same login carries over, nothing to redo):</span>
+                <b>{isStandaloneBrowser() ? 'On the installed app?' : 'Popup misbehaving?'}</b><br />
+                <span className="hint">{isStandaloneBrowser() ? 'Popups can\u2019t complete inside the installed app — open this page in full Chrome instead (same login carries over, nothing to redo):' : 'Open this page fresh in Chrome — same login carries over, and the popup gets a clean window:'}</span>
                 <div style={{ marginTop: 8 }}><button className="btn sm" onClick={() => openInChrome(setShowManual, toast)}>Open in Chrome</button></div>
                 <span className="hint">Pick Chrome from the share list → finish the Meta steps there → return here. Your connection (and TEST) will be waiting. Nothing opens? The manual boxes appear below on their own.</span>
               </div>

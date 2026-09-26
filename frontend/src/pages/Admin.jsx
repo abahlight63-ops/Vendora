@@ -12,7 +12,8 @@ import Ic from '../components/icons.jsx';
 import Loader from '../components/Loader.jsx'; // Orbit V while the gate checks
 import { adsStatus, clearSponsorSeen, clearVideoSeen, maybeShowSponsor, maybeShowVideoAd } from '../lib/ads.js'; // sponsor + video previews (this browser's tier/tags, daily caps bypassed)
 
-const TABS = [['stats', 'Overview', 'chart', 'green'], ['users', 'Users', 'profile', 'blue'], ['revenue', 'Revenue', 'card', 'gold'], ['transfers', 'Transfers', 'send', 'orange'], ['referrals', 'Referrals', 'gift', 'purple'], ['channels', 'Channels', 'plug', 'teal'], ['complaints', 'Complaints', 'help', 'red']]; // [key, label, icon, accent] quads (accent = per-tab color identity!)
+const TABS = [['stats', 'Overview', 'chart', 'green'], ['users', 'Users', 'profile', 'blue'], ['revenue', 'Income', 'cash', 'gold'], ['transfers', 'Transfers', 'send', 'orange'], ['referrals', 'Referrals', 'gift', 'purple'], ['channels', 'Channels', 'plug', 'teal'], ['complaints', 'Complaints', 'help', 'red'], ['templates', 'Templates', 'copy', 'gold'], ['broadcast', 'Broadcast', 'mega', 'orange'], ['warn', 'Warn user', 'warn', 'red'], ['ai', 'AI health', 'spark', 'purple'], ['ads', 'Ads', 'card', 'green']]; // [key, label, icon, accent] quads — EVERY console page is a tab (one page visible at a time, never stacked!)
+const STATIC_TABS = ['templates', 'broadcast', 'warn', 'ai', 'ads']; // self-loading panels (no endpoint — render immediately, no skeleton!)
 
 function isFresh(ts) { // "NEW" pill window: created within the last 24h (new users, fresh transfers, new referrals light up!)
   const t = new Date(ts).getTime();
@@ -42,7 +43,8 @@ export default function Admin() {
     else toast(data.error || 'Wrong password', 'err'); // generic backend message (never leaks config state!)
   }
 
-  async function load(t) { // tab loader: one endpoint per tab (switch re-fetches = always fresh!)…
+  async function load(t) { // tab loader: one endpoint per DATA tab (switch re-fetches = always fresh!)…
+    if (STATIC_TABS.includes(t)) { setTab(t); setD({}); return; } // static page (templates/forms/health load themselves — no endpoint, no skeleton!)
     setTab(t); setD(null); // set tab + null data (null renders skeletons — consistent loading UX!)
     if (t === 'referrals') { // referrals = THREE endpoints at once (overview + airtime queue + leaderboard!)
       const [o, p, l] = await Promise.all([api('/api/admin/referrals'), api('/api/admin/referrals/pending'), api('/api/admin/referrals/leaders')]);
@@ -87,7 +89,7 @@ export default function Admin() {
   const accent = (TABS.find(([k]) => k === tab) || [, , , 'green'])[3]; // active tab's color (drives header dot + panel tint!)
   return ( // CONSOLE (gate open)…
     <div className="admin-liquid">
-      <div className="page-head"><div className="row" style={{ width: '100%' }}><div><h1><span className={'admin-dot acc-' + accent} />Admin console</h1><p>Private — users, revenue, transfers, referrals, channels, complaints. No owner ever sees this page.</p></div><button className="btn ghost sm" onClick={async () => { await api('/api/admin/logout', { method: 'POST' }); setGate('locked'); }}>Sign out</button></div></div>
+      <div className="page-head"><div className="row" style={{ width: '100%' }}><div><h1><span className={'admin-dot acc-' + accent} />Admin console</h1><p>Private — overview, users, income, transfers, referrals, channels, complaints, templates, broadcast, warnings, AI health, ads. One page at a time.</p></div><button className="btn ghost sm" onClick={async () => { await api('/api/admin/logout', { method: 'POST' }); setGate('locked'); }}>Sign out</button></div></div>
       <div className="card admin-tabs"> {/* tab bar (icons at 16px + labels, active solid / rest ghost) */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {TABS.map(([k, l, ic, ac]) => ( // destructure quads; icon + label per tab…
@@ -96,19 +98,19 @@ export default function Admin() {
         </div>
       </div>
       <div key={tab} className={'admin-panel acc-' + accent}> {/* key={tab} = remount per tab → entrance animation replays every switch! */}
-      {!d ? <div className="card"><div className="skel" /></div> : tab === 'stats' ? <Stats d={d} /> // null → skeleton; else panel per tab (ternary chain!)
+      {!d ? <div className="card"><div className="skel" /></div> : tab === 'stats' ? <Stats d={d} /> // null → skeleton; else ONE panel per page (clicking Users never shows Templates — each page owns the screen!)
         : tab === 'users' ? <Users rows={d} refresh={() => load('users')} act={act} />
         : tab === 'revenue' ? <Revenue d={d} />
         : tab === 'transfers' ? <Transfers rows={d} act={act} />
         : tab === 'referrals' ? <Referrals d={d} act={act} refresh={() => load('referrals')} />
         : tab === 'channels' ? <Channels rows={(d && d.rows) || []} refresh={() => load('channels')} />
+        : tab === 'templates' ? <Templates onBroadcast={(t) => { setBlastSeed({ ...t, n: Date.now() }); load('broadcast'); }} onWarn={(t) => { setWarnSeed({ ...t, n: Date.now() }); load('warn'); }} />
+        : tab === 'broadcast' ? <Broadcast act={act} seed={blastSeed} />
+        : tab === 'warn' ? <WarnUser act={act} seed={warnSeed} />
+        : tab === 'ai' ? <AiHealth />
+        : tab === 'ads' ? <AdsStatus />
         : <Complaints rows={d} act={act} />}
       </div>
-      <Templates onBroadcast={(t) => setBlastSeed({ ...t, n: Date.now() })} onWarn={(t) => setWarnSeed({ ...t, n: Date.now() })} /> {/* gallery + builder (Use-buttons prefill the forms below!) */}
-      <Broadcast act={act} seed={blastSeed} /> {/* always mounted: announce updates to every bell */}
-      <WarnUser act={act} seed={warnSeed} /> {/* always mounted: warn ONE user straight to their bell */}
-      <AiHealth /> {/* always mounted: ping every AI key (booleans + short errors only) */}
-      <AdsStatus /> {/* always mounted: are the Render ad keys live? (booleans only) */}
     </div>
   );
 }
@@ -180,7 +182,7 @@ function Broadcast({ act, seed }) { // APP UPDATES: one broadcast → every owne
   return (
     <div className="card" style={{ borderColor: 'var(--gold-line)' }}>
       <h2><Ic n="mega" s={18} /> Broadcast app update</h2>
-      <p className="desc">Long message + optional photo/video → lands in every owner's bell instantly. {'{name}'} becomes each shop's name. Pick a template above or write freehand.</p>
+      <p className="desc">Long message + optional photo/video → lands in every owner's bell instantly. {'{name}'} becomes each shop's name. Pick a template on the Templates page or write freehand.</p>
       <label>Title</label>
       <input value={t} onChange={(e) => setT(e.target.value)} placeholder="e.g. Smarter VeloSales Ai is live" maxLength={120} />
       <label>Message (long is fine — the bell previews, the page shows all)</label>
@@ -276,7 +278,7 @@ function Templates({ onBroadcast, onWarn }) { // GALLERY + BUILDER: 12 built-ins
   return (
     <div className="card" style={{ borderColor: 'var(--gold-line)' }}>
       <h2><Ic n="mega" s={18} /> Notice templates</h2>
-      <p className="desc">12 ready-made long messages + your own. “Use” loads one into Broadcast (or Warn one user) below — review, attach media, send.</p>
+      <p className="desc">12 ready-made long messages + your own. “Use” jumps you to the Broadcast (or Warn user) page with the template loaded — review, attach media, send.</p>
       <label>{editing ? 'Editing your template' : 'Create your own template'}</label>
       <input value={et} onChange={(e) => setEt(e.target.value)} placeholder="Template title" maxLength={120} />
       <textarea value={eb} onChange={(e) => setEb(e.target.value)} rows="6" placeholder="Write the full long message here… {'{name}'} becomes each shop's name at send time." maxLength={4000} style={{ marginTop: 8 }} />

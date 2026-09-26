@@ -10,6 +10,7 @@ import { maybeShowVideoAd } from '../lib/ads.js'; // gated 30s video (free tier 
 import Ic from '../components/icons.jsx'; // drawn glyphs (never emoji!)
 import Loader from '../components/Loader.jsx'; // mini orbit in busy buttons (brand consistency!)
 import GlassUpsell from '../components/GlassUpsell.jsx'; // locked-model upgrade card
+import ModelPicker from '../components/ModelPicker.jsx'; // shared brain picker (same look as VeloSalesAI!)
 
 function CopyBtn({ text, label }) { // one-tap copy (navigator.clipboard + fallback!)
   async function copy() {
@@ -467,14 +468,10 @@ export default function Connect() {
         </div>
       )}
 
-      <div className="card"> {/* the WhatsApp brain pick (same locks as the VeloSalesAI dropdown!) */}
+      <div className="card"> {/* the WhatsApp brain pick (same picker + locks as VeloSalesAI!) */}
         <h2>Which AI answers WhatsApp?</h2>
         <p className="desc">Locked brains need their plan — tap one to see upgrade options.</p>
-        <label>WhatsApp brain</label>
-        <select value={brain} onChange={(e) => saveBrain(e.target.value)}>
-          {models.length === 0 && <option value={brain}>Loading brains…</option>}
-          {models.map((m) => (<option key={m.id} value={m.id}>{m.label}{m.locked ? ' (Locked)' : ''}</option>))}
-        </select>
+        <ModelPicker models={models} model={brain} onPick={saveBrain} onLocked={() => setUpsell(true)} />
         <GlassUpsell show={upsell} onClose={() => setUpsell(false)} />
       </div>
     </>

@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'; // useEffect = load ticket history 
 import { startTour } from '../components/Tour.jsx'; // named import { } (NOT default!) — replay button fires the tour bus
 import { api, fmtDate, pop, toast } from '../lib/api.js'; // api() tickets; fmtDate stamps; pop() filed-confirmation; toast() small errors
 import Loader from '../components/Loader.jsx'; // mini orbit in the send button
+import InstallApp from '../components/InstallApp.jsx'; // install-as-app card (top of Help — the filmable tutorial!)
 
 const FAQS = [ // [question, answer] pairs — content lives HERE, markup below is generic (separation of content & presentation!)
   ['How do I connect my WhatsApp?', 'Open the Connect page and tap "Connect WhatsApp" — a Meta popup opens, you log in with Facebook and pick your business number. We store everything against your account automatically. Then paste our webhook URL + verify code in Meta (shown on screen) and finish with TEST — the page flips to LIVE.'],
@@ -21,6 +22,7 @@ const FAQS = [ // [question, answer] pairs — content lives HERE, markup below 
   ['How do I cancel?', "Just stop paying — you drop to free at period end, nothing deleted. To erase everything, ask us here and it's gone within 14 days."],
   ['Can the AI make mistakes?', 'Rarely, but yes — which is why unsure chats hand off to you instead of guessing. Keep your catalog accurate and review flagged chats daily.'],
   ['Why do I see sponsored messages?', 'The free plan is supported by clearly-labeled sponsor cards (max one a day) plus quiet network ads. Pro removes all of them — see Billing.'],
+  ['How do I install the app?', 'See the Install card at the top of this page — one tap on Android/desktop Chrome (system confirm included), Share → Add to Home Screen on iPhone Safari. Icon on your home screen, full-screen, no app store.'],
   ['How do I connect Telegram?', 'Open the Connect page and pick Telegram: message @BotFather → /newbot → name it → paste the token here. Then get your link code so owner commands work from your phone. Free, about a minute.'],
   ['Do voice notes work?', 'Yes — on Pro. Customers send voice notes on WhatsApp or Telegram, the bot transcribes them with Whisper and answers like normal text. Free tier gets a polite handoff instead.'],
   ['Which AI should I pick?', 'Fast (GPT-OSS 20B, Gemini Lite, VeloSales Ai Fast) for speed, Smart (Meta 70B, Gemini Flash, VeloSales Ai Smart) for quality. Backup AI always works when others are busy. Premium (Kimi K2, Claude, GPT) is Pro-only — tap one to see what you get.'],
@@ -31,6 +33,7 @@ export default function Help() {
   return (
     <>
       <div className="page-head"><div className="row" style={{ width: '100%' }}><div><h1>Help</h1><p>Answers to the questions every owner asks in week one.</p></div><button className="btn sm" onClick={startTour}>Take the guided tour</button></div></div> {/* header row: title left, tour-replay button right (startTour clears flag + fires bus + goes dashboard) */}
+      <InstallApp /> {/* install tutorial FIRST (users film this card + the system dialog!) */}
       <div className="card">
         {FAQS.map(([q, a], i) => ( // map pairs → accordion rows (destructure [q,a]; key={i} fine — static order!)
           <div key={i} style={{ borderBottom: i < FAQS.length - 1 ? '1px solid var(--line-soft)' : 'none', padding: '12px 0' }}> {/* divider under every row EXCEPT last (i < length-1 ternary!) — var(--line-soft) = theme-aware line color */}

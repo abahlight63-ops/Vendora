@@ -67,7 +67,7 @@ function PhoneAlerts() { // Web Push toggle: quota/support/broadcast alerts on t
     (async () => {
       if (!supported()) { setSt('unsupported'); return; }
       try {
-        const reg = await navigator.serviceWorker.getRegistration() || await navigator.serviceWorker.register('/sw-push.js');
+        const reg = await navigator.serviceWorker.getRegistration() || await navigator.serviceWorker.register('/sw-app.js'); // app worker owns push now (sw-push.js merged in — same scope, subscription survives!)
         const sub = await reg.pushManager.getSubscription();
         setSt(sub ? 'on' : 'off');
       } catch { setSt('off'); } // worker blocked (private mode?) → offer the button anyway (tap explains!)
@@ -89,7 +89,7 @@ function PhoneAlerts() { // Web Push toggle: quota/support/broadcast alerts on t
       const { ok, data } = await api('/api/auth/config'); // VAPID public key (backend serves it — public by design!)
       const key = ok && data && data.vapidPublicKey;
       if (!key) { toast('Phone alerts are not switched on yet (server keys missing).'); return; } // backend has no VAPID pair (admin: npm run push:vapid!)
-      const reg = await navigator.serviceWorker.register('/sw-push.js'); // our worker (NOT the ad tag sw.js!)
+      const reg = await navigator.serviceWorker.register('/sw-app.js'); // app worker (push handlers live inside it now!)
       const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToU8(key) });
       const put = await api('/api/me/push/subscribe', { method: 'POST', body: JSON.stringify(sub.toJSON()) }); // {endpoint, keys:{p256dh, auth}} → stored per business!
       if (put.ok) { setSt('on'); toast('Phone alerts on — quota and support news will find you.'); }

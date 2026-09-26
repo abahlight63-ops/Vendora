@@ -1,6 +1,7 @@
 {
   "name": "VeloSales Ai — AI WhatsApp Sales Assistant",
   "short_name": "VeloSales Ai",
+  "id": "/",
   "description": "Your WhatsApp shop, open 24/7. Instant AI answers in English or Pidgin, straight from your catalog.",
   "start_url": "/",
   "scope": "/",

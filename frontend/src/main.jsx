@@ -11,6 +11,9 @@ import { createRoot } from 'react-dom/client'; // createRoot = React 18+ mountin
 import { BrowserRouter } from 'react-router-dom'; // Router using real URLs (/dashboard) via History API (needs server SPA fallback!)
 import App from './App.jsx'; // our route table + providers (default import)
 import './styles.css'; // importing CSS in JS = Vite bundles + injects it (one global stylesheet)
+import { initInstall } from './lib/install.js'; // install-as-app plumbing (worker + Chrome prompt capture — once per load!)
+
+initInstall(); // register /sw-app.js + catch beforeinstallprompt (idempotent — StrictMode-safe!)
 
 // Find <div id="root"> in frontend/index.html and take it over:
 createRoot(document.getElementById('root')).render( // document.getElementById = raw DOM lookup; .render() paints React inside

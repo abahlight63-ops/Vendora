@@ -21,17 +21,21 @@ function verifySecret(req) {
 // Send a plain-text message (Markdown-free: Telegram parses *bold* by default
 // in some modes — we send WITHOUT parse_mode so catalog prices with _underscores_
 // and *stars* arrive VERBATIM, never mangled!).
+// Returns true = delivered, false = failed (callers that need proof check it;
+// fire-and-forget callers ignore it — same as before!).
 async function sendText(token, chatId, text) {
-  if (!token || !chatId || !text) return; // guards (empty token = shop never connected Telegram!)
+  if (!token || !chatId || !text) return false; // guards (empty token = shop never connected Telegram!)
   try {
     const res = await fetch(`${api(token)}/sendMessage`, { // Bot API sendMessage (POST JSON!)
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ chat_id: chatId, text: String(text).slice(0, 4000) }), // slice 4096-limit guard (Telegram caps ~4096 chars — truncate, never fail!)
     });
-    if (!res.ok) console.error(`Telegram send failed: ${res.status} ${(await res.text()).slice(0, 150)}`); // log short reason (blocked bot? deleted chat? — common + harmless!)
+    if (!res.ok) { console.error(`Telegram send failed: ${res.status} ${(await res.text()).slice(0, 150)}`); return false; } // log short reason (blocked bot? deleted chat? — common + harmless!)
+    return true;
   } catch (e) {
     console.error('Telegram send error:', e.message); // network down → log only (webhook must never crash!)
+    return false;
   }
 }
 

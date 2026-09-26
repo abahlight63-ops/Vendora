@@ -5,25 +5,41 @@
 // STATE: convos (null = loading → skeletons), filter, thread, msgs.
 // React pattern: CONDITIONAL early-return — `if (thread) return (…thread…)`
 // renders a totally different screen from the same component.
-import { useEffect, useState } from 'react'; // useState ×4; useEffect = load inbox on mount
-import { api, fmtTime, toast } from '../lib/api.js'; // api() fetches; fmtTime stamps
+import { useEffect, useState } from 'react'; // useState ×5; useEffect = load inbox on mount
+import { api, fmtTime, toast } from '../lib/api.js'; // api() fetches; fmtTime stamps; toast() send errors
 import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 30s video gate (free tier, once/day — inbox pays too!)
 import Ic from '../components/icons.jsx'; // back-arrow icon
+import Loader from '../components/Loader.jsx'; // mini orbit in the Send button
 
 export default function Chats() {
   const [convos, setConvos] = useState(null); // null = loading (skeleton rows); [] = loaded, empty inbox
   const [filter, setFilter] = useState('all'); // 'all' | 'needs' | 'handled' (tab state)
   const [thread, setThread] = useState(null); // null = LIST screen; conversation object = THREAD screen
   const [msgs, setMsgs] = useState(null); // thread messages (null = loading thread → bubble skeletons)
+  const [draft, setDraft] = useState(''); // reply draft (controlled input!)
+  const [sending, setSending] = useState(false); // send in flight (button locks — no double-sends!)
   async function load() { const { data } = await api('/api/me/conversations'); setConvos(data || []); } // reusable reload (called on mount + back-from-thread to refresh flags)
   useEffect(() => { load(); maybeShowVideoAd({ slot: 'page-chats' }); }, []); // [] = mount-only fetch + video gate (fire-and-forget: inbox loads UNDER the overlay!)
-  async function open(c) { setThread(c); setMsgs(null); const { data } = await api('/api/me/conversations/' + c.id + '/messages'); setMsgs(data || []); } // open thread: show screen instantly (thread set) + spinner messages (msgs null) → fill when fetch lands. c.id in URL (backend ownership-checks it!)
+  async function open(c) { setThread(c); setMsgs(null); setDraft(''); const { data } = await api('/api/me/conversations/' + c.id + '/messages'); setMsgs(data || []); } // open thread: show screen instantly (thread set) + spinner messages (msgs null) → fill when fetch lands. c.id in URL (backend ownership-checks it!)
   const list = (convos || []).filter((c) => filter === 'all' ? true : filter === 'needs' ? c.needs_human : !c.needs_human); // nested ternary filter: all→everything; needs→flagged; handled→rest ((convos||[]) guards loading)
 
   async function takeover(paused) { // flip THIS chat's bot: true = you talk (bot silent), false = AI resumes. POSTs to the takeover endpoint, then refreshes local state so the badge flips instantly.
     const { ok } = await api('/api/me/conversations/' + thread.id + '/takeover', { method: 'POST', body: JSON.stringify({ paused }) });
     if (ok) { setThread({ ...thread, bot_paused: paused }); load(); } // spread-copy with new flag (immutable update!) + reload list (badges there too)
     else toast('Could not update takeover', 'err'); // failure toast (button stays — retry possible)
+  }
+  async function send() { // owner reply: sends through the chat's OWN channel (WhatsApp/Telegram), clears the gold flag + pauses the bot (you're talking now!)
+    const text = draft.trim();
+    if (!text || sending || !thread) return; // empty/double-tap/no-thread guards
+    setSending(true);
+    const { ok, data } = await api('/api/me/conversations/' + thread.id + '/reply', { method: 'POST', body: JSON.stringify({ text: text.slice(0, 2000) }) });
+    setSending(false);
+    if (ok) {
+      setMsgs((msgs || []).concat([{ direction: 'out', body: text.slice(0, 2000), created_at: new Date().toISOString() }])); // optimistic append (bubble appears instantly — server already stored it!)
+      setDraft(''); // clear the box
+      setThread({ ...thread, needs_human: false, bot_paused: true }); // flag cleared + you-talk-now (Hand back to AI appears!)
+      load(); // list badges refresh underneath
+    } else toast((data && data.error) || 'Could not send — try again', 'err'); // honest backend reason (not connected? blocked chat? — retriable!)
   }
   if (thread) { // THREAD SCREEN (early return — completely different JSX below list screen)
     return (
@@ -41,6 +57,11 @@ export default function Chats() {
           {msgs === null ? (<div className="skel-grid"><div className="skel" style={{ width: '70%', height: 44, borderRadius: 14 }} /><div className="skel" style={{ width: '60%', height: 44, borderRadius: 14, justifySelf: 'end' }} /><div className="skel" style={{ width: '50%', height: 44, borderRadius: 14 }} /></div>) : msgs.length === 0 ? <p className="hint">No messages.</p> : // trilogy: loading bubbles (left/right/left mimic chat!) → empty → messages
             msgs.map((m, i) => (<div key={i} className={m.direction === 'in' ? 'bubble-in' : 'bubble-out'}>{m.media_url && <img src={m.media_url} alt="" />}{m.body}<div className="ts">{fmtTime(m.created_at)}</div></div>))} {/* key={i} index OK here (messages never reorder); bubble-in (customer, left) vs bubble-out (bot, right/green); {m.media_url && <img>} = photo only when present; .ts = tiny timestamp */}
         </div>
+        <div className="row-input" style={{ marginTop: 10 }}> {/* reply composer: type + Send (Enter works too!) */}
+          <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={thread.needs_human ? 'Answer them here — sending pauses the bot…' : 'Reply as yourself…'} maxLength={2000} disabled={sending} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }} /> {/* Enter sends (Shift+Enter would newline in a textarea — input keeps it one-line simple!) */}
+          <button className="btn sm" disabled={sending || !draft.trim()} onClick={send}>{sending ? (<><Loader size={15} />Sending…</>) : 'Send'}</button>
+        </div>
+        {!thread.bot_paused && <p className="hint" style={{ marginTop: 6 }}>Sending pauses the bot on this chat (no double answers) — Hand back to AI when you&apos;re done.</p>} {/* auto-takeover explainer (only when bot still active!) */}
       </div>
     );
   }

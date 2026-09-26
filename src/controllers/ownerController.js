@@ -495,6 +495,55 @@ async function chatTakeover(req, res) {
   res.json({ bot_paused: paused });
 }
 
+// Owner replies INSIDE the app (the inbox "needs you" answer box!). Sends through
+// the chat's own channel (WhatsApp via Meta, Telegram via the shop's bot — or the
+// shared house bot for shared-mode shops), logs it like any bot reply, clears the
+// gold flag AND pauses the bot (you're talking now — hand back explicitly when done!).
+// { text } → { ok, paused: true }. Failures are honest (400/502), never silent.
+async function chatReply(req, res) {
+  try {
+    const text = String((req.body && req.body.text) || '').trim();
+    if (!text) return res.status(400).json({ error: 'Write your reply first.' });
+    if (text.length > 2000) return res.status(400).json({ error: 'Keep it under 2000 characters.' });
+    const { rows: c } = await db.query( // ownership FIRST (IDOR: no answering others' chats!)
+      'SELECT id, customer_number FROM conversations WHERE id = $1 AND business_id = $2',
+      [req.params.id, req.session.businessId]
+    );
+    if (!c.length) return res.status(404).json({ error: 'Not found' }); // 404 hides existence (same pattern as takeover)
+    const { rows: b } = await db.query(
+      'SELECT meta_token, meta_phone_number_id, telegram_bot_token, telegram_shared_on FROM businesses WHERE id = $1',
+      [req.session.businessId]
+    );
+    if (!b.length) return res.status(404).json({ error: 'Not found' });
+    const biz = b[0];
+    const dest = String(c[0].customer_number || '');
+    let sent = false;
+    if (dest.startsWith('telegram:')) { // Telegram door: chat id after the prefix (see telegramRoutes From builder!)
+      const chatId = dest.slice('telegram:'.length);
+      const token = (biz.telegram_bot_token || '').trim()
+        || ((biz.telegram_shared_on ? (process.env.TELEGRAM_SHARED_BOT_TOKEN || '').trim() : '')); // shared-mode shops ride the house bot!
+      if (!token) return res.status(400).json({ error: 'Telegram is not connected — connect it on the Connect page first.' });
+      sent = await require('../services/channels/telegram').sendText(token, chatId, text);
+      if (!sent) return res.status(502).json({ error: 'Telegram refused the send (blocked bot or deleted chat?) — try again.' });
+    } else { // WhatsApp door: digits only (numbers arrive as whatsapp:+234…!)
+      const to = dest.replace(/\D/g, '');
+      if (!biz.meta_token || !biz.meta_phone_number_id || !to) return res.status(400).json({ error: 'WhatsApp is not connected — connect it on the Connect page first.' });
+      sent = await require('../services/channels/meta').sendText(biz.meta_token, biz.meta_phone_number_id, to, text);
+      if (!sent) return res.status(502).json({ error: 'Meta refused the send (expired token?) — reconnect on the Connect page.' });
+    }
+    const conversationService = require('../services/conversationService');
+    await conversationService.logMessage(Number(req.params.id), 'out', text); // logged like a bot reply (history stays complete!)
+    await db.query( // answered + you-talk-now: flag cleared, bot paused (hand back explicitly when done — no double answers!)
+      'UPDATE conversations SET last_reply = $1, needs_human = false, flag_reason = NULL, bot_paused = true, updated_at = now() WHERE id = $2',
+      [text.slice(0, 500), req.params.id]
+    );
+    res.json({ ok: true, paused: true });
+  } catch (e) {
+    console.error('chat reply error:', e.message); // never crash, never leak driver text!
+    res.status(500).json({ error: 'Could not send — try again.' });
+  }
+}
+
 // File feedback (Help form → admin queue + StaticForms email copy).
 // Categories keep the inbox triageable: feedback | complaint | feature | bug.
 // The ticket is ALWAYS stored locally (admin console + user history work with
@@ -1143,6 +1192,7 @@ module.exports = { // every handler the routes file wires up (miss one here = ro
   adVideoEvent,
   botToggle,
   chatTakeover,
+  chatReply,
   complaintCreate,
   complaintMine,
   feedbackCreate,

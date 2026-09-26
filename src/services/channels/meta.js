@@ -38,8 +38,10 @@ async function checkCredentials(phoneIdRaw, tokenRaw) {
 
 // Send a WhatsApp reply through Meta (text, or photo-by-public-link + caption).
 // Fire-and-log sender: failures log, never throw (a failed send must not crash the webhook around it).
+// Returns true = delivered, false = failed (callers that need proof check it;
+// fire-and-forget callers ignore it — same as before!).
 async function sendText(token, phoneId, to, message, mediaUrl) {
-  if (!token || !phoneId || !to || !message) return;
+  if (!token || !phoneId || !to || !message) return false;
   const body = mediaUrl // photo variant: Meta sends images BY LINK (our /uploads/ URLs are public in prod!)
     ? { messaging_product: 'whatsapp', to, type: 'image', image: { link: mediaUrl, caption: String(message).slice(0, 1000) } }
     : { messaging_product: 'whatsapp', to, type: 'text', text: { body: String(message) } };
@@ -57,11 +59,15 @@ async function sendText(token, phoneId, to, message, mediaUrl) {
           headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
           body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: String(message) } }),
         });
-        if (!retry.ok) console.error('Meta text retry failed:', retry.status, (await retry.text()).slice(0, 200));
+        if (!retry.ok) { console.error('Meta text retry failed:', retry.status, (await retry.text()).slice(0, 200)); return false; }
+        return true;
       }
+      return false;
     }
+    return true;
   } catch (e) {
     console.error('Meta send error:', e.message);
+    return false;
   }
 }
 

@@ -33,6 +33,7 @@ router.post('/me/ads/click', ownerController.adClick);
 router.post('/me/ads/video', ownerController.adVideoEvent); // gated video funnel events (starts → completes!)
 router.post('/me/bot', ownerController.botToggle);
 router.post('/me/conversations/:id/takeover', ownerController.chatTakeover);
+router.post('/me/conversations/:id/reply', ownerController.chatReply); // in-app owner reply (sends via the chat's own channel!)
 router.get('/me/telegram', ownerController.telegramStatus);
 router.get('/me/telegram/health', ownerController.telegramHealthCheck); // Connect "Verify" button (webhook really registered? Telegram's last error?)
 router.post('/me/telegram/token', ownerController.telegramToken);

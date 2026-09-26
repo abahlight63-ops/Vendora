@@ -58,6 +58,7 @@ export default function Connect() {
   const [tgToken, setTgToken] = useState('');
   const [tgLink, setTgLink] = useState(null);
   const [tgShared, setTgShared] = useState(null); // shared-bot result {code, botName, deepLink, note} (Pro road!)
+  const [tgHealth, setTgHealth] = useState(null); // webhook health verdict (Verify button!)
   // Brain + upsell
   const [brain, setBrain] = useState('');
   const [upsell, setUpsell] = useState(false);
@@ -137,7 +138,7 @@ export default function Connect() {
     if (step > 1) setStep(step - 1);
     else { setRoad(null); setStep(1); }
   }
-  function openRoad(r) { setRoad(r); setStep(1); setMetaProof(null); setTgLink(null); setTgShared(null); setShowManual(false); } // fresh drafts per road!
+  function openRoad(r) { setRoad(r); setStep(1); setMetaProof(null); setTgLink(null); setTgShared(null); setTgHealth(null); setShowManual(false); } // fresh drafts per road!
 
   // ---- Meta manual fallback (popup unavailable) ----
   async function metaConnect() {
@@ -155,15 +156,21 @@ export default function Connect() {
     setMetaProof(null); setStep(1); load(); toast('WhatsApp disconnected.');
   }
   // ---- Telegram actions ----
+  const TG_SHAPE = /^\d+:[\w-]{30,}$/; // BotFather reality: numeric bot id + colon + ~35-char secret (finger-selected pastes that FAIL this are truncated — caught HERE, not at Telegram!)
   async function tgConnect() {
-    if (!tgToken.trim()) return toast('Paste your BotFather token first', 'err');
+    const clean = tgToken.trim();
+    if (!clean) return toast('Paste your BotFather token first', 'err');
+    if (!TG_SHAPE.test(clean)) { pop('err', 'Token looks incomplete', 'BotFather tokens look like 123456789:ABCdefGhIJKlmNoPQRsTuVwxyZ (numbers, a colon, ~35 characters, no spaces). TAP-copy it in BotFather with /token — finger-selecting drops characters. No server key needed: this token IS the key.'); return; }
     setBusy(true);
     try {
-      const { ok, status, data } = await api('/api/me/telegram/token', { method: 'POST', body: JSON.stringify({ token: tgToken.trim() }) });
+      const { ok, status, data } = await api('/api/me/telegram/token', { method: 'POST', body: JSON.stringify({ token: clean }) });
+      const msg = (data && data.error) || '';
       if (ok && data.connected) { setTgToken(''); setStep(2); load(); pop('ok', 'Telegram connected' + (data.botUsername ? ' as ' + data.botUsername : '') + '!', 'Send your bot any message to test it.'); }
       else if (status === 401) pop('err', 'Signed out', 'Your session expired — sign in again, then retry.');
-      else if (status === 502) pop('err', 'Telegram unreachable', (data && data.error) || 'Our server could not reach Telegram. Wait a minute and retry.');
-      else pop('err', 'Token rejected', (data && data.error) || 'Check the token from BotFather.');
+      else if (status === 404) pop('err', 'Shop not found', 'Your login lost its shop — sign out and sign in again, then retry. (NOT your token.)');
+      else if (status === 502) pop('err', 'Telegram unreachable', msg || 'Our server could not reach Telegram. Wait a minute and retry.');
+      else if (status >= 500) pop('err', 'Server error', (msg || 'Our server hiccuped — wait a minute and retry.') + ' (NOT your token.)');
+      else pop('err', 'Token rejected', msg || 'Check the token from BotFather.');
     } catch (e) {
       pop('err', 'Server unreachable', 'Our server is waking up or offline (free-plan sleep takes ~1 min). Wait a minute and tap Connect bot again.');
     } finally {
@@ -209,6 +216,19 @@ export default function Connect() {
       setBusy(false);
     }
   }
+  // ---- Webhook health: asks Telegram directly (hook registered? pointing at us? last error?) ----
+  async function tgHealthCheck() {
+    setBusy(true); setTgHealth(null);
+    try {
+      const { ok, data } = await api('/api/me/telegram/health');
+      if (ok) setTgHealth(data);
+      else toast((data && data.error) || 'Health check failed', 'err');
+    } catch (e) {
+      toast('Server unreachable — wait a minute and retry', 'err');
+    } finally {
+      setBusy(false);
+    }
+  }
   // ---- Brain pick ----
   async function saveBrain(id) {
     const m = models.find((x) => x.id === id);
@@ -228,6 +248,9 @@ export default function Connect() {
     const stop = setTimeout(() => { setTesting(false); toast('Still waiting — check the 3 common mistakes below', 'err'); }, 120000); // 2-min cap (never poll forever!)
     return () => { clearInterval(t); clearTimeout(stop); }; // cleanup on unmount/stop (no leaked timers!)
   }, [testing]);
+  useEffect(() => { // one-tap NOT ready → manual paste opens itself (the working road first, zero extra clicks!)
+    if (road === 'meta' && st && !st.metaEmbeddedReady) setShowManual(true);
+  }, [road, st]);
 
   const wa = st && st.whatsapp;
   const tgOn = !!st?.telegram?.connected;
@@ -251,6 +274,18 @@ export default function Connect() {
           {wa && (wa.dailyUnlimited || wa.dailyLimit) ? <span className="hint">Today: {wa.dailyUsed || 0}/{wa.dailyUnlimited ? 'Unlimited' : wa.dailyLimit} replies ({wa.tier || 'free'} plan)</span> : null}
           {wa && wa.metaConnected && <button className="btn ghost sm" disabled={busy} onClick={metaDisconnect}>Disconnect</button>}
         </div>
+        {tgOn && (
+          <div style={{ marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <button className="btn ghost sm" disabled={busy} onClick={tgHealthCheck}>{busy ? 'Verifying…' : 'Verify Telegram connection'}</button>
+              {tgHealth && tgHealth.configured && tgHealth.ok && <span className="pill ok" style={{ fontSize: 12 }}>Webhook OK{tgHealth.pending ? ` · ${tgHealth.pending} queued` : ''}</span>}
+              {tgHealth && tgHealth.configured && !tgHealth.ok && <span className="pill flag" style={{ fontSize: 12 }}>Needs attention</span>}
+            </div>
+            {tgHealth && !tgHealth.configured && <p className="hint" style={{ marginTop: 6 }}>No bot saved yet — connect below first.</p>}
+            {tgHealth && tgHealth.configured && tgHealth.ok && <p className="hint" style={{ marginTop: 6 }}>Telegram delivers to us correctly. Message the bot — it answers. Customers: nothing to install, just open your bot/link and chat.</p>}
+            {tgHealth && tgHealth.configured && !tgHealth.ok && <p className="hint" style={{ marginTop: 6 }}>{tgHealth.lastError ? `Telegram says: ${tgHealth.lastError}. ` : 'Webhook not registered. '}Fix: re-save your token (own bot) or reconnect shared — saving re-registers the webhook automatically.</p>}
+          </div>
+        )}
       </div>
 
       {!road && ( // ROAD PICKER: WhatsApp (Embedded Signup!) + Telegram
@@ -284,7 +319,10 @@ export default function Connect() {
               <button className="btn sm" disabled={busy} onClick={embeddedConnect}>{busy ? (<><Loader size={15} />Opening Meta…</>) : 'Continue to connect'}</button>
             </div>
             {!st?.metaEmbeddedReady && st && (
-              <p className="hint" style={{ marginTop: 10 }}>One-tap signup is being set up on our side — use the manual paste below for now.</p>
+              <div className="learn-box light" style={{ marginTop: 10 }}>
+                <b>One-tap popup isn&apos;t ready{!st.metaAppId ? ' — META_APP_ID missing on the server' : !st.metaConfigId ? ' — META_CONFIGURATION_ID missing on the server' : ''}.</b><br />
+                <span className="hint">Server keys set but popup still won&apos;t open? Two usual culprits: (1) Meta app dashboard → Facebook Login → Settings → Authorized JavaScript origins must include your app URL; (2) popup/ad-blocker (allow popups + connect.facebook.net). The manual paste below works regardless — it&apos;s the Saturday-safe road and already open for you.</span>
+              </div>
             )}
             {!showManual
               ? <p className="hint" style={{ marginTop: 10 }}>Popup blocked or prefer copy-paste? <button type="button" className="btn ghost sm" onClick={() => setShowManual(true)}>Paste details manually</button></p>

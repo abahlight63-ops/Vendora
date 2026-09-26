@@ -31,7 +31,7 @@ const SIZES = [ // Q2: how many products? (drives dashboard checklist wording!)
 const CHANNELS = [ // Q3: where do customers message? (multi-pick — drives Connect highlights!)
   { v: 'whatsapp', t: 'WhatsApp', sub: 'The main stage — connect it first.' },
   { v: 'telegram', t: 'Telegram', sub: 'Nice — we will highlight the Telegram card.' },
-  { v: 'instagram', t: 'Instagram DMs', sub: 'Post there, sell on WhatsApp — we will show you how.' },
+  { v: 'instagram', t: 'Instagram DMs', soon: true, sub: 'Post there, sell on WhatsApp — direct inbox coming soon.' },
   { v: 'walkin', t: 'Walk-in / market', sub: 'Physical hustle — the bot handles the overflow.' },
 ];
 const VOLUMES = [ // Q4: chats per day? (drives the honest plan hint on Billing!)
@@ -145,7 +145,7 @@ export default function Welcome() {
                 {CHANNELS.map((o, i) => (
                   <button key={o.v} type="button" className={'qa quiz-pop' + (channels.includes(o.v) ? ' sel' : '')} style={{ animationDelay: `${i * 60}ms` }} onClick={() => toggleChannel(o.v)}>
                     <Ic n={channels.includes(o.v) ? 'checkCircle' : 'next'} s={16} />
-                    <div><b>{o.t}</b><span className="hint">{o.sub}</span></div>
+                    <div><b>{o.t} {o.soon ? <span className="pill" style={{ fontSize: 10 }}>Soon</span> : null}</b><span className="hint">{o.sub}</span></div>
                   </button>
                 ))}
               </div>

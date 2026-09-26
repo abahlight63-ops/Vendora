@@ -595,6 +595,7 @@ async function telegramToken(req, res) {
     console.error('telegram token save failed:', e.message); // DB hiccup → JSON 500, NEVER an unhandled rejection (those crash the whole Render service!)
     return res.status(500).json({ error: 'Something went wrong — try again.' });
   }
+  if (!prev.rows.length || !rows.length) return res.status(404).json({ error: 'Shop not found — sign out and sign in again, then retry.' }); // stale session (login without a shop) → HONEST 404, never a fake 200+disconnected that the UI misreads as "rejected"!
   const oldToken = (prev.rows[0] && prev.rows[0].telegram_bot_token) || '';
   const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '') || `${req.protocol}://${req.get('host')}`; // explicit host wins (prod!); else this request's host (local dev!)
   if (rows[0] && rows[0].connected) { // bot just linked → referral reward check (first real use!)
@@ -690,6 +691,30 @@ async function telegramShared(req, res) {
     });
   } catch (e) {
     console.error('telegram shared failed:', e.message); // JSON 500, never a process crash (see telegramToken note!)
+    res.status(500).json({ error: 'Something went wrong — try again.' });
+  }
+}
+
+// Telegram webhook health (Connect page "Verify" button — ends "is it REALLY
+// connected?" forever). Reads the SAVED token (own, else shared house token),
+// asks Telegram for getWebhookInfo: hook URL registered? pointing at us?
+// Telegram-side last error? pending backlog? Secrets never returned.
+async function telegramHealthCheck(req, res) {
+  try {
+    const { rows } = await db.query('SELECT telegram_bot_token, telegram_shared_on FROM businesses WHERE id = $1', [req.session.businessId]);
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    const own = (rows[0].telegram_bot_token || '').trim();
+    const token = own || (rows[0].telegram_shared_on ? (process.env.TELEGRAM_SHARED_BOT_TOKEN || '').trim() : '');
+    if (!token) return res.json({ configured: false });
+    const h = await require('../services/channelHealth').telegramHealth(token);
+    const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
+    res.json({
+      configured: true, shared: !own, ok: !!h.ok,
+      webhookUrl: h.url || '', matches: base ? String(h.url || '').startsWith(base) : null,
+      pending: Number(h.pending) || 0, lastError: h.lastError || h.reason || '',
+    });
+  } catch (e) {
+    console.error('telegram health error:', e.message); // JSON 500, never a process crash (see telegramToken note!)
     res.status(500).json({ error: 'Something went wrong — try again.' });
   }
 }
@@ -1076,6 +1101,7 @@ module.exports = { // every handler the routes file wires up (miss one here = ro
   telegramLink,
   telegramStatus,
   telegramShared,
+  telegramHealthCheck,
   channelsStatus,
   whatsappModel,
   metaConnect,

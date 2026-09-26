@@ -65,7 +65,7 @@ export default function Dashboard({ biz }) { // biz = business object from App (
     : quizSize === '100-plus' || quizSize === '20-100' ? 'Big shelves? Catalog page + Pro SYNC do bulk fast'
     : 'The AI only quotes your catalog'; // checklist speaks THEIR shelf size (quiz payoff!)
   const connectHint = quizChannels.includes('telegram') && !quizChannels.includes('whatsapp') ? 'Telegram first? Connect page links it in a minute'
-    : quizChannels.includes('instagram') ? 'Post on Instagram, sell on WhatsApp — connect both'
+    : quizChannels.includes('instagram') ? 'Post on Instagram, sell on WhatsApp — the bot answers there (DM inbox coming soon)'
     : 'WhatsApp + Telegram — TEST to LIVE in minutes'; // checklist speaks THEIR channels (quiz payoff!)
   const steps = [ // checklist DATA (not JSX): done flags computed from REAL data (self-ticking!)…
     { done: (s?.products || 0) > 0, label: quizSize === 'starting' ? 'Add your first 5 products' : 'Add your first product', hint: firstHint, to: '/catalog' }, // to = where the step links

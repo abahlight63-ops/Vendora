@@ -34,6 +34,7 @@ router.post('/me/ads/video', ownerController.adVideoEvent); // gated video funne
 router.post('/me/bot', ownerController.botToggle);
 router.post('/me/conversations/:id/takeover', ownerController.chatTakeover);
 router.get('/me/telegram', ownerController.telegramStatus);
+router.get('/me/telegram/health', ownerController.telegramHealthCheck); // Connect "Verify" button (webhook really registered? Telegram's last error?)
 router.post('/me/telegram/token', ownerController.telegramToken);
 router.post('/me/telegram/link', ownerController.telegramLink);
 router.post('/me/telegram/shared', ownerController.telegramShared); // Pro shared-bot road (no BotFather paste!)

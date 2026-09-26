@@ -24,6 +24,7 @@ export default function Admin() {
   const [gate, setGate] = useState('checking'); // 'checking' | 'locked' | 'open' (three gate states — never flash the console to strangers!)
   const [pw, setPw] = useState(''); // password draft (controlled input, never stored beyond this submit!)
   const [tab, setTab] = useState('stats'); // active tab key
+  const [navOpen, setNavOpen] = useState(false); // mobile drawer (hamburger → slide-in page list!)
   const [d, setD] = useState(null); // tab data (shape depends on tab — single state, reused!)
   const [blastSeed, setBlastSeed] = useState(null); // template → broadcast prefill ({t,b,link,image,video,n})
   const [warnSeed, setWarnSeed] = useState(null); // template → warn-one prefill (same shape, who stays empty)
@@ -34,6 +35,19 @@ export default function Admin() {
     setGate('locked'); // password gate, every time (working admins re-enter — 10 seconds for real security!)
   }
   useEffect(() => { check(); }, []); // [] = mount-only lockdown
+  useEffect(() => { // drawer ergonomics: Escape closes + body scroll locks while open
+    if (!navOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') setNavOpen(false); };
+    window.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, [navOpen]);
+
+  async function signOut() { // one exit (header + drawer share it — session burned either way!)
+    await api('/api/admin/logout', { method: 'POST' }).catch(() => {});
+    setNavOpen(false); setGate('locked');
+  }
 
   async function login() { // password submit…
     if (!pw) return toast('Enter the admin password', 'err'); // guard: blank submit
@@ -89,14 +103,22 @@ export default function Admin() {
   const accent = (TABS.find(([k]) => k === tab) || [, , , 'green'])[3]; // active tab's color (drives header dot + panel tint!)
   return ( // CONSOLE (gate open)…
     <div className="admin-liquid">
-      <div className="page-head"><div className="row" style={{ width: '100%' }}><div><h1><span className={'admin-dot acc-' + accent} />Admin console</h1><p>Private — overview, users, income, transfers, referrals, channels, complaints, templates, broadcast, warnings, AI health, ads. One page at a time.</p></div><button className="btn ghost sm" onClick={async () => { await api('/api/admin/logout', { method: 'POST' }); setGate('locked'); }}>Sign out</button></div></div>
-      <div className="card admin-tabs"> {/* tab bar (icons at 16px + labels, active solid / rest ghost) */}
+      <div className="page-head"><div className="row" style={{ width: '100%', alignItems: 'center' }}><button className="menu-btn" aria-label="Open admin menu" aria-expanded={navOpen} onClick={() => setNavOpen(true)}><span /><span /><span /></button><div><h1><span className={'admin-dot acc-' + accent} />Admin console</h1><p>Private — overview, users, income, transfers, referrals, channels, complaints, templates, broadcast, warnings, AI health, ads. One page at a time.</p></div><button className="btn ghost sm" onClick={signOut}>Sign out</button></div></div>
+      <div className="card admin-tabs"> {/* tab bar — DESKTOP (phones get the hamburger drawer instead!) */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {TABS.map(([k, l, ic, ac]) => ( // destructure quads; icon + label per tab…
             <button key={k} className={'btn sm ' + (tab === k ? 'acc-' + ac : 'ghost')} onClick={() => load(k)}><Ic n={ic} s={16} />{l}</button>
           ))}
         </div>
       </div>
+      {navOpen && <div className="drawer-backdrop" onClick={() => setNavOpen(false)} />} {/* tap outside closes */}
+      <nav className={'admin-side' + (navOpen ? ' open' : '')} aria-label="Admin pages"> {/* slide-in drawer — PHONES (desktop: display:none!) */}
+        <div className="admin-side-head"><span className={'admin-dot acc-' + accent} /><b>Admin</b><button className="adslot-x" onClick={() => setNavOpen(false)} aria-label="Close menu">✕</button></div>
+        {TABS.map(([k, l, ic, ac]) => (
+          <button key={k} className={'btn sm ' + (tab === k ? 'acc-' + ac : 'ghost')} style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => { setNavOpen(false); load(k); }}><Ic n={ic} s={16} />{l}</button>
+        ))}
+        <button className="btn ghost sm" style={{ width: '100%', marginTop: 8 }} onClick={signOut}>Sign out</button>
+      </nav>
       <div key={tab} className={'admin-panel acc-' + accent}> {/* key={tab} = remount per tab → entrance animation replays every switch! */}
       {!d ? <div className="card"><div className="skel" /></div> : tab === 'stats' ? <Stats d={d} /> // null → skeleton; else ONE panel per page (clicking Users never shows Templates — each page owns the screen!)
         : tab === 'users' ? <Users rows={d} refresh={() => load('users')} act={act} />

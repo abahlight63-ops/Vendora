@@ -965,6 +965,17 @@ tbody tr.rowlink:hover { background: #f6fef9; }
   .admin-liquid .admin-tabs .btn { width: 100%; min-height: 46px; }
   .admin-liquid .grid2, .admin-liquid .grid3 { grid-template-columns: 1fr; }
 }
+/* ── ADMIN SIDEBAR DRAWER (phones ≤960px: hamburger → slide-in page list).
+   Desktop: drawer hidden, tab bar rules. Mirrors the app .sidebar pattern. */
+.admin-side { display: none; } /* desktop: the tab bar does the navigating */
+@media (max-width: 960px) {
+  .admin-tabs { display: none; } /* drawer replaces the tab bar on phones */
+  .admin-side { display: flex; flex-direction: column; gap: 6px; position: fixed; top: 0; left: 0; bottom: 0; z-index: 120; width: min(300px, 84vw); padding: 18px 14px 24px; background: var(--card); border-right: 1px solid var(--line); box-shadow: 20px 0 60px rgba(0,0,0,0.35); transform: translateX(-105%); transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.25, 1); overflow-y: auto; }
+  .admin-side.open { transform: none; }
+  .admin-side-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .admin-side-head b { flex: 1; font-size: 15px; letter-spacing: 0.4px; }
+  .admin-side .btn.sm { min-height: 46px; justify-content: flex-start; } /* thumb-sized rows */
+}
 @media (prefers-reduced-motion: reduce) { .admin-panel, .admin-row { animation: none; } }
 /* ── WELCOME TOUR, DESIGNED FOR PHONES (was desktop-shaped: centered 340px card,
    spotlight math aimed at the sidebar, art panel eating half the screen).

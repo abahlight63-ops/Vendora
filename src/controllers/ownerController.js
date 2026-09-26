@@ -552,11 +552,13 @@ async function complaintMine(req, res) {
 // rejected with a friendly error instead of silently storing a dead token.
 async function telegramToken(req, res) {
   const { token } = req.body || {}; // BotFather token string (or '' to disconnect!)
-  // Sanitize FIRST: phone copy-paste sneaks in spaces, newlines, zero-width
-  // and RTL marks that make a REAL token fail validation ("rejected" for a
-  // perfect token — the #1 support ticket!). Telegram tokens are digits,
-  // colon, letters, digits, dashes and underscores — nothing else survives.
-  const raw = String(token === undefined ? '' : token).replace(/[\u200B-\u200F\u2028-\u202F\uFEFF]/g, '').trim();
+  // Sanitize FIRST: phone copy-paste sneaks in spaces, NEWLINES (wrapped BotFather
+  // messages!), zero-width and RTL marks that make a REAL token fail validation
+  // ("rejected" for a perfect token — the #1 support ticket!). Real tokens are
+  // digits, colon, letters, digits, dashes and underscores — whitespace NEVER
+  // belongs, so every whitespace char dies ANYWHERE in the string (ends AND
+  // middle — a line-wrapped paste joins back together instead of dying!).
+  const raw = String(token === undefined ? '' : token).replace(/[\u200B-\u200F\u2028-\u202F\uFEFF]/g, '').replace(/\s+/g, '');
   if (raw !== '' && !/^[\w:-]{20,}$/.test(raw)) return res.status(400).json({ error: 'That does not look like a Telegram bot token (BotFather gives like 123456:ABC-DEF…). Copy it again with /token — no spaces before or after.' }); // shape check (Bot tokens are long alnum+colon+dash — catches pasted usernames/links!)
   const clean = raw || ''; // '' = disconnect (normalized once!)
   if (clean) { // live check: ask Telegram whose bot this is (2 attempts × 15s — cold networks deserve a second chance, never a false "rejected"!)

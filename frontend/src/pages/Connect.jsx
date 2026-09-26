@@ -158,7 +158,7 @@ export default function Connect() {
   // ---- Telegram actions ----
   const TG_SHAPE = /^\d+:[\w-]{30,}$/; // BotFather reality: numeric bot id + colon + ~35-char secret (finger-selected pastes that FAIL this are truncated — caught HERE, not at Telegram!)
   async function tgConnect() {
-    const clean = tgToken.trim();
+    const clean = tgToken.replace(/[\u200B-\u200F\u2028-\u202F\uFEFF]/g, '').replace(/\s+/g, ''); // strip EVERYTHING invisible first (wrapped BotFather messages paste with line-breaks/spaces inside — rejoined, never rejected!)
     if (!clean) return toast('Paste your BotFather token first', 'err');
     if (!TG_SHAPE.test(clean)) { pop('err', 'Token looks incomplete', 'BotFather tokens look like 123456789:ABCdefGhIJKlmNoPQRsTuVwxyZ (numbers, a colon, ~35 characters, no spaces). TAP-copy it in BotFather with /token — finger-selecting drops characters. No server key needed: this token IS the key.'); return; }
     setBusy(true);

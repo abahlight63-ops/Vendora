@@ -30,6 +30,13 @@ function dbUserMessage(e) { // leak-proof user text for DB failures (error CODES
   if (/timeout|terminat|ECONN|ENOTFOUND|EAI_AGAIN|ECONNRESET|connect|pool|remaining connection/i.test(m)) return 'Database unreachable right now — wait a minute and retry.';
   return 'Something went wrong — try again.';
 }
+function errRef(e) { // 5-char tracer the user reads back to us (pg SQLSTATEs like 42703 are NOT secrets — messages stay hidden!)
+  if (e && e.code && /^[0-9A-Z]{5}$/.test(String(e.code))) return String(e.code); // 42703 = missing column (stale deploy!), 53300 = too many connections…
+  const m = String((e && e.message) || '');
+  if (/timeout|ETIMEDOUT/i.test(m)) return 'db-timeout';
+  if (/terminat|ECONNRESET|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|EPIPE|closed|pool|connect/i.test(m)) return 'db-conn';
+  return 'db-unknown';
+}
 
 async function getMe(req, res) {
   const planService = require('../services/planService'); // lazy require (consistent style in this file)
@@ -617,8 +624,8 @@ async function telegramToken(req, res) {
       [clean, '', null, req.session.businessId]);
     rows = (await sharedAware(runUpdate)).rows; // stale backend? legacy shape still saves (shared flag just stays — redeploy to migrate!)
   } catch (e) {
-    console.error('telegram token save failed:', e.message); // DB hiccup → JSON 500, NEVER an unhandled rejection (those crash the whole Render service!)
-    return res.status(500).json({ error: dbUserMessage(e) });
+    console.error('telegram token save failed:', (e && e.code) || '-', e.message); // code logged (42703? 53300?) — user gets the same code as ref below!
+    return res.status(500).json({ error: dbUserMessage(e), ref: errRef(e) });
   }
   if (!prev.rows.length || !rows.length) return res.status(404).json({ error: 'Shop not found — sign out and sign in again, then retry.' }); // stale session (login without a shop) → HONEST 404, never a fake 200+disconnected that the UI misreads as "rejected"!
   const oldToken = (prev.rows[0] && prev.rows[0].telegram_bot_token) || '';
@@ -650,8 +657,8 @@ async function telegramLink(req, res) {
     const botName = (rows[0] && rows[0].telegram_bot_token) ? null : (process.env.TELEGRAM_SHARED_BOT_NAME || null); // per-shop bot: owner opens THEIR bot; shared: needs the shared username (env!)
     res.json({ code, botName, note: botName ? `Open t.me/${botName}?start=link_${code} from your Telegram` : 'Open your shop bot and send: /start link_' + code });
   } catch (e) {
-    console.error('telegram link failed:', e.message); // JSON 500, never a process crash (see telegramToken note!)
-    res.status(500).json({ error: dbUserMessage(e) });
+    console.error('telegram link failed:', (e && e.code) || '-', e.message); // JSON 500, never a process crash (see telegramToken note!)
+    res.status(500).json({ error: dbUserMessage(e), ref: errRef(e) });
   }
 }
 
@@ -665,8 +672,8 @@ async function telegramStatus(req, res) {
     if (!rows.length) return res.status(404).json({ error: 'Not found' });
     res.json({ connected: !!(rows[0].connected || rows[0].shared), shared: !!rows[0].shared, ownerLinked: rows[0].owner_linked, hasCode: !!(rows[0].telegram_link_code) }); // hasCode (not the code — codes only travel on explicit generate!)
   } catch (e) {
-    console.error('telegram status failed:', e.message); // JSON 500, never a process crash (see telegramToken note!)
-    res.status(500).json({ error: dbUserMessage(e) });
+    console.error('telegram status failed:', (e && e.code) || '-', e.message); // JSON 500, never a process crash (see telegramToken note!)
+    res.status(500).json({ error: dbUserMessage(e), ref: errRef(e) });
   }
 }
 
@@ -718,8 +725,8 @@ async function telegramShared(req, res) {
       note: `Customers open t.me/${botName}?start=${code} once — then chat normally. Owner commands stay in your dashboard.`,
     });
   } catch (e) {
-    console.error('telegram shared failed:', e.message); // JSON 500, never a process crash (see telegramToken note!)
-    res.status(500).json({ error: dbUserMessage(e) });
+    console.error('telegram shared failed:', (e && e.code) || '-', e.message); // JSON 500, never a process crash (see telegramToken note!)
+    res.status(500).json({ error: dbUserMessage(e), ref: errRef(e) });
   }
 }
 
@@ -745,8 +752,8 @@ async function telegramHealthCheck(req, res) {
       pending: Number(h.pending) || 0, lastError: h.lastError || h.reason || '',
     });
   } catch (e) {
-    console.error('telegram health error:', e.message); // JSON 500, never a process crash (see telegramToken note!)
-    res.status(500).json({ error: dbUserMessage(e) });
+    console.error('telegram health error:', (e && e.code) || '-', e.message); // JSON 500, never a process crash (see telegramToken note!)
+    res.status(500).json({ error: dbUserMessage(e), ref: errRef(e) });
   }
 }
 
@@ -776,8 +783,8 @@ async function channelsStatus(req, res) {
   try {
     ({ rows } = await sharedAware(runSelect));
   } catch (e) {
-    console.error('channels status failed:', e.message);
-    return res.status(500).json({ error: dbUserMessage(e) });
+    console.error('channels status failed:', (e && e.code) || '-', e.message);
+    return res.status(500).json({ error: dbUserMessage(e), ref: errRef(e) });
   }
   if (!rows.length) return res.status(404).json({ error: 'Not found' });
   const b = rows[0];

@@ -169,7 +169,7 @@ export default function Connect() {
       else if (status === 401) pop('err', 'Signed out', 'Your session expired — sign in again, then retry.');
       else if (status === 404) pop('err', 'Shop not found', 'Your login lost its shop — sign out and sign in again, then retry. (NOT your token.)');
       else if (status === 502) pop('err', 'Telegram unreachable', msg || 'Our server could not reach Telegram. Wait a minute and retry.');
-      else if (status >= 500) pop('err', 'Server error', (msg || 'Our server hiccuped — wait a minute and retry.') + ' (NOT your token.)');
+      else if (status >= 500) pop('err', 'Server error', (msg || 'Our server hiccuped — wait a minute and retry.') + (data && data.ref ? ` (ref: ${data.ref} — send me this code!)` : '') + ' (NOT your token.)');
       else pop('err', 'Token rejected', msg || 'Check the token from BotFather.');
     } catch (e) {
       pop('err', 'Server unreachable', 'Our server is waking up or offline (free-plan sleep takes ~1 min). Wait a minute and tap Connect bot again.');
@@ -198,7 +198,7 @@ export default function Connect() {
       if (ok && data.connected) { setTgShared(data); setStep(2); load(); pop('ok', 'Shared bot connected!', 'Give customers your link below — they chat, the AI answers.'); }
       else if (status === 402) setUpsell(true); // free tier → upgrade card (never a dead error!)
       else if (status === 401) pop('err', 'Signed out', 'Your session expired — sign in again, then retry.');
-      else pop('err', 'Shared bot unavailable', (data && data.error) || 'Try your own bot below instead.');
+      else pop('err', 'Shared bot unavailable', ((data && data.error) || 'Try your own bot below instead.') + (data && data.ref ? ` (ref: ${data.ref})` : ''));
     } catch (e) {
       pop('err', 'Server unreachable', 'Our server is waking up or offline (free-plan sleep takes ~1 min). Wait a minute and retry.');
     } finally {

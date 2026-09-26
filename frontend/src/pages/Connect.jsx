@@ -58,24 +58,17 @@ function isAndroid() { // ANY Android browser or installed app (gate the Chrome 
     return /android/i.test(window.navigator.userAgent || '');
   } catch { return false; }
 }
-function chromeEscapeUrl() { // package-free intent:// → Android shows the "Open with…" chooser (user picks Chrome!) instead of jumping blind. Full action + browsable category for reliable chooser on all OEM skins.
-  try {
-    const u = new URL(window.location.href);
-    const target = `https://${u.host}/connect`; // land back on the Connect road (fresh state, no stale query!)
-    return `intent://${u.host}/connect#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=${encodeURIComponent(target)};end`;
-  } catch { return ''; }
-}
-async function openInChrome(setShowManual, toast) { // installed PWA → full Chrome. Order: DIRECT googlechrome:// launch (no chooser UI for Transsion skins to swallow!) → share sheet → manual auto-reveal. Same profile everywhere, login carries over!
+async function goChromeConnect(setShowManual, toast) { // installed PWA → full Chrome WITH auto-start (?autoconnect=meta lands → popup opens itself there — ONE tap total, same profile, login carries over!)
   let target = '';
-  try { target = `${new URL(window.location.href).origin}/connect`; } catch {}
+  try { target = `${new URL(window.location.href).origin}/connect?autoconnect=meta`; } catch {}
   if (!target) { setShowManual(true); return; }
-  window.location.href = 'googlechrome://navigate?url=' + encodeURIComponent(target); // straight into Chrome (Infinix/Tecno/Xiaomi-safe — no dialog to lose!)
-  setTimeout(async () => { // still here 2s later? Direct launch died → offer the share sheet once, then manual
+  window.location.href = 'googlechrome://navigate?url=' + encodeURIComponent(target); // straight into Chrome (Transsion-safe — no dialog to lose!)
+  setTimeout(async () => { // still here 2s later? Direct launch died → share sheet once, then manual
     let left = false;
     try { left = document.hidden || !document.hasFocus(); } catch {}
     if (left) return; // gone to Chrome (success — watchdog stands down!)
     if (navigator.share) { // second chance: OS share sheet (user picks Chrome by hand!)
-      try { await navigator.share({ title: 'VeloSales Ai — Connect WhatsApp', text: 'Open in Chrome to connect WhatsApp, then return here.', url: target }); return; }
+      try { await navigator.share({ title: 'VeloSales Ai — Connect WhatsApp', text: 'Open in Chrome to finish connecting, then return here.', url: target }); return; }
       catch (e) { /* dismissed → fall through to manual below */ }
     }
     chromeEscapeArmed(setShowManual, toast); // everything failed → manual road reveals itself (never a dead tap!)
@@ -133,6 +126,8 @@ export default function Connect() {
   const [testing, setTesting] = useState(false);
   // Embedded Signup listener state (popup posts these back!)
   const signup = useRef({ code: '', token: '', wabaId: '', phoneId: '', retried: false, watch: null }); // popup result holder (+ retry flag + stuck-busy watchdog timer!)
+  const autoTried = useRef(false); // ?autoconnect=meta landing handled ONCE (StrictMode double-mount safe!)
+  const autoGo = useRef(false); // popup auto-start armed (fires when status loads!)
 
   async function load() { // refresh status (after every connect/disconnect!)
     const { data } = await api('/api/me/channels');
@@ -147,6 +142,20 @@ export default function Connect() {
     maybeShowVideoAd({ slot: 'page-connect' }); // page gate replaces per-button gates (one video/day here — never stacked!)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  useEffect(() => { // Chrome-handoff landing (?autoconnect=meta): strip param FIRST (refresh-safe!), open the meta road, arm auto-start
+    let q = null;
+    try { q = new URLSearchParams(window.location.search); } catch {}
+    if (!q || q.get('autoconnect') !== 'meta' || autoTried.current) return;
+    autoTried.current = true;
+    autoGo.current = true;
+    try { window.history.replaceState({}, '', window.location.pathname); } catch {}
+    openRoad('meta');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => { // auto-start the popup once (status loaded + road open + idle — the one-tap promise!)
+    if (autoGo.current && st && road === 'meta' && step === 1 && !busy) { autoGo.current = false; embeddedConnect(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [st, road, step, busy]);
 
   // Listen for the Embedded Signup popup result (Meta posts a message with
   // the WABA id + phone number id once the user finishes the flow!).
@@ -208,6 +217,7 @@ export default function Connect() {
 
   // ---- Embedded Signup launch ----
   async function embeddedConnect() {
+    if (isAndroid() && isStandaloneBrowser()) return goChromeConnect(setShowManual, toast); // installed app: popups die here — Continue ITSELF hands to full Chrome (auto-starts there!)
     const appId = st?.metaAppId, configId = st?.metaConfigId;
     if (!appId || !configId) { setShowManual(true); return toast('One-tap signup is not set up yet — talk to support from Help', 'err'); }
     if (!/^\d{5,}$/.test(appId)) { setShowManual(true); return pop('err', 'Server App ID looks wrong', 'The META_APP_ID on Render must be the numeric App ID only (digits, no spaces, no business ID mixed in). Fix it there, redeploy, and retry.'); } // garbage-in guard (Meta answers these with "invalid app id"!)
@@ -464,14 +474,6 @@ export default function Connect() {
               <button className="btn ghost sm" onClick={back}>Back</button>
               <button className="btn sm" disabled={busy} onClick={embeddedConnect}>{busy ? (<><Loader size={15} />Opening Meta…</>) : 'Continue to connect'}</button>
             </div>
-            {isAndroid() && (
-              <div className="learn-box light" style={{ marginTop: 10 }}>
-                <b>{isStandaloneBrowser() ? 'On the installed app?' : 'Popup misbehaving?'}</b><br />
-                <span className="hint">{isStandaloneBrowser() ? 'Popups can\u2019t complete inside the installed app — this jumps straight into full Chrome (same login carries over, nothing to redo):' : 'Open this page fresh in Chrome — same login carries over, and the popup gets a clean window:'}</span>
-                <div style={{ marginTop: 8 }}><button className="btn sm" onClick={() => openInChrome(setShowManual, toast)}>Open in Chrome</button></div>
-                <span className="hint">Finish the Meta steps in Chrome, then return here — your connection (and TEST) will be waiting. If Chrome asks, allow it; if nothing opens, share this page to Chrome by hand (browser ⋮ menu) or use the manual boxes below.</span>
-              </div>
-            )}
             {!st?.metaEmbeddedReady && st && (
               <div className="learn-box light" style={{ marginTop: 10 }}>
                 <b>One-tap popup isn&apos;t ready{!st.metaAppId ? ' — META_APP_ID missing on the server' : !st.metaConfigId ? ' — META_CONFIGURATION_ID missing on the server' : ''}.</b><br />

@@ -663,8 +663,23 @@ async function telegramShared(req, res) {
       subscription_status: b[0].subscription_status, subscription_expires: b[0].subscription_expires,
       trial_started_at: b[0].trial_started_at, plan_tier: b[0].plan_tier,
     });
-    const testers = String(process.env.TELEGRAM_SHARED_TESTERS || '').split(',').map((s) => s.trim()).filter(Boolean); // owner-only test window: comma-separated business IDs (Admin console shows yours!) — everyone else still hits the Pro gate below!
-    const isTester = testers.includes(String(req.session.businessId));
+    const testers = String(process.env.TELEGRAM_SHARED_TESTERS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean); // owner-only test window: login EMAILS and/or business IDs (Admin → Users shows both!) — everyone else still hits the Pro gate below!
+    let isTester = testers.includes(String(req.session.businessId)); // numeric ID match (exact, zero lookups!)
+    if (!isTester && testers.some((t) => t.includes('@'))) { // email entries present → resolve THIS session's email once…
+      try {
+        let email = null;
+        if (req.session.userId) {
+          const { rows: u } = await db.query('SELECT email FROM users WHERE id = $1 LIMIT 1', [req.session.userId]);
+          email = (u[0] && u[0].email) || null;
+        }
+        if (!email) { // session without userId (older logins) → oldest account on the shop…
+          const { rows: u } = await db.query('SELECT email FROM users WHERE business_id = $1 ORDER BY id ASC LIMIT 1', [req.session.businessId]);
+          email = (u[0] && u[0].email) || null;
+        }
+        if (email) isTester = testers.includes(String(email).toLowerCase()); // case-insensitive (caps can't lock you out!)
+      } catch (e) { console.error('tester email lookup error:', e.message); } // lookup failed → NOT a tester (fail closed — paywall never leaks on errors!)
+    }
+    if (isTester && tier === 'free') console.log(`telegram shared tester bypass, business ${req.session.businessId} (remove them from TELEGRAM_SHARED_TESTERS after testing!)`); // Render-log proof the bypass (not a bug) let them in!
     if (tier === 'free' && !isTester) return res.status(402).json({ error: 'Shared Telegram bot is a Pro feature — upgrade to connect in one tap, no BotFather needed.' });
     const code = 'BIZ' + require('crypto').randomBytes(3).toString('hex').toUpperCase(); // fresh code (each tap INVALIDATES the old — leaked links die!)
     await db.query('UPDATE businesses SET telegram_link_code = $1, telegram_shared_on = true WHERE id = $2', [code, req.session.businessId]);

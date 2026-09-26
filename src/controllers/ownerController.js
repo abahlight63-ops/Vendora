@@ -8,6 +8,29 @@ const db = require('../db'); // shared pool
 const productService = require('../services/productService'); // catalog reads/writes (top-level: no cycle here)
 const { normalizePhone } = require('../utils/phone'); // destructure one helper out of the module
 
+// Stale-deploy armor: telegram_shared_on shipped LATER than the token road.
+// If the RUNNING backend predates the migration, any query touching the column
+// throws 42703 — callers below retry the LEGACY shape (own-bot road works on ANY
+// vintage; shared-only features degrade with a clear redeploy message instead
+// of a 500). Fresh deploys never touch the fallback (first attempt wins).
+function isMissingColumn(e) {
+  return !!e && (e.code === '42703' || /does not exist/i.test(String(e.message || '')));
+}
+async function sharedAware(queryFn) { // queryFn(false) = modern SQL, queryFn(true) = legacy SQL without shared_on!
+  try { return await queryFn(false); }
+  catch (e) {
+    if (!isMissingColumn(e)) throw e;
+    console.warn('DB missing telegram_shared_on — legacy fallback (redeploy latest code to migrate!)');
+    return queryFn(true);
+  }
+}
+function dbUserMessage(e) { // leak-proof user text for DB failures (error CODES mapped — driver text NEVER reaches browsers!)
+  const m = String((e && e.message) || '');
+  if (isMissingColumn(e)) return 'Server setup incomplete — redeploy the latest code on Render, then retry.';
+  if (/timeout|terminat|ECONN|ENOTFOUND|EAI_AGAIN|ECONNRESET|connect|pool|remaining connection/i.test(m)) return 'Database unreachable right now — wait a minute and retry.';
+  return 'Something went wrong — try again.';
+}
+
 async function getMe(req, res) {
   const planService = require('../services/planService'); // lazy require (consistent style in this file)
   const { rows } = await db.query( // the owner's own business row + everything the dashboard needs…
@@ -584,18 +607,18 @@ async function telegramToken(req, res) {
   let prev, rows;
   try {
     prev = await db.query('SELECT telegram_bot_token FROM businesses WHERE id = $1', [req.session.businessId]); // pre-read (disconnect needs the OLD token to unhook!)
-    const upd = await db.query(
-      `UPDATE businesses
-       SET telegram_bot_token = $1,
-           telegram_shared_on = CASE WHEN $1 <> $2 THEN false ELSE telegram_shared_on END,
-           owner_telegram_id = CASE WHEN $1 = $2 THEN owner_telegram_id ELSE $3 END
-       WHERE id = $4 RETURNING telegram_bot_token <> $2 AS connected`,
-      [clean, '', null, req.session.businessId]
-    ); // shared_off: own bot wins (shared mode ends the moment THEIR bot links!); empty token leaves shared mode untouched (shared disconnect has its own endpoint!)
-    rows = upd.rows;
+    const runUpdate = (legacy) => db.query(legacy
+      ? 'UPDATE businesses SET telegram_bot_token = $1, owner_telegram_id = CASE WHEN $1 = $2 THEN owner_telegram_id ELSE $3 END WHERE id = $4 RETURNING telegram_bot_token <> $2 AS connected'
+      : `UPDATE businesses
+         SET telegram_bot_token = $1,
+             telegram_shared_on = CASE WHEN $1 <> $2 THEN false ELSE telegram_shared_on END,
+             owner_telegram_id = CASE WHEN $1 = $2 THEN owner_telegram_id ELSE $3 END
+         WHERE id = $4 RETURNING telegram_bot_token <> $2 AS connected`,
+      [clean, '', null, req.session.businessId]);
+    rows = (await sharedAware(runUpdate)).rows; // stale backend? legacy shape still saves (shared flag just stays — redeploy to migrate!)
   } catch (e) {
     console.error('telegram token save failed:', e.message); // DB hiccup → JSON 500, NEVER an unhandled rejection (those crash the whole Render service!)
-    return res.status(500).json({ error: 'Something went wrong — try again.' });
+    return res.status(500).json({ error: dbUserMessage(e) });
   }
   if (!prev.rows.length || !rows.length) return res.status(404).json({ error: 'Shop not found — sign out and sign in again, then retry.' }); // stale session (login without a shop) → HONEST 404, never a fake 200+disconnected that the UI misreads as "rejected"!
   const oldToken = (prev.rows[0] && prev.rows[0].telegram_bot_token) || '';
@@ -628,19 +651,22 @@ async function telegramLink(req, res) {
     res.json({ code, botName, note: botName ? `Open t.me/${botName}?start=link_${code} from your Telegram` : 'Open your shop bot and send: /start link_' + code });
   } catch (e) {
     console.error('telegram link failed:', e.message); // JSON 500, never a process crash (see telegramToken note!)
-    res.status(500).json({ error: 'Something went wrong — try again.' });
+    res.status(500).json({ error: dbUserMessage(e) });
   }
 }
 
 // Telegram connection status (Profile status line + Help docs).
 async function telegramStatus(req, res) {
   try {
-    const { rows } = await db.query('SELECT telegram_bot_token <> $1 AS connected, telegram_shared_on AS shared, owner_telegram_id <> $1 AS owner_linked, telegram_link_code FROM businesses WHERE id = $2', ['', req.session.businessId]);
+    const runSelect = (legacy) => db.query(legacy
+      ? 'SELECT telegram_bot_token <> $1 AS connected, owner_telegram_id <> $1 AS owner_linked, telegram_link_code FROM businesses WHERE id = $2'
+      : 'SELECT telegram_bot_token <> $1 AS connected, telegram_shared_on AS shared, owner_telegram_id <> $1 AS owner_linked, telegram_link_code FROM businesses WHERE id = $2', ['', req.session.businessId]);
+    const { rows } = await sharedAware(runSelect);
     if (!rows.length) return res.status(404).json({ error: 'Not found' });
     res.json({ connected: !!(rows[0].connected || rows[0].shared), shared: !!rows[0].shared, ownerLinked: rows[0].owner_linked, hasCode: !!(rows[0].telegram_link_code) }); // hasCode (not the code — codes only travel on explicit generate!)
   } catch (e) {
     console.error('telegram status failed:', e.message); // JSON 500, never a process crash (see telegramToken note!)
-    res.status(500).json({ error: 'Something went wrong — try again.' });
+    res.status(500).json({ error: dbUserMessage(e) });
   }
 }
 
@@ -693,7 +719,7 @@ async function telegramShared(req, res) {
     });
   } catch (e) {
     console.error('telegram shared failed:', e.message); // JSON 500, never a process crash (see telegramToken note!)
-    res.status(500).json({ error: 'Something went wrong — try again.' });
+    res.status(500).json({ error: dbUserMessage(e) });
   }
 }
 
@@ -703,7 +729,10 @@ async function telegramShared(req, res) {
 // Telegram-side last error? pending backlog? Secrets never returned.
 async function telegramHealthCheck(req, res) {
   try {
-    const { rows } = await db.query('SELECT telegram_bot_token, telegram_shared_on FROM businesses WHERE id = $1', [req.session.businessId]);
+    const runSelect = (legacy) => db.query(legacy
+      ? 'SELECT telegram_bot_token FROM businesses WHERE id = $1'
+      : 'SELECT telegram_bot_token, telegram_shared_on FROM businesses WHERE id = $1', [req.session.businessId]);
+    const { rows } = await sharedAware(runSelect);
     if (!rows.length) return res.status(404).json({ error: 'Not found' });
     const own = (rows[0].telegram_bot_token || '').trim();
     const token = own || (rows[0].telegram_shared_on ? (process.env.TELEGRAM_SHARED_BOT_TOKEN || '').trim() : '');
@@ -717,7 +746,7 @@ async function telegramHealthCheck(req, res) {
     });
   } catch (e) {
     console.error('telegram health error:', e.message); // JSON 500, never a process crash (see telegramToken note!)
-    res.status(500).json({ error: 'Something went wrong — try again.' });
+    res.status(500).json({ error: dbUserMessage(e) });
   }
 }
 
@@ -731,14 +760,25 @@ function webhookUrl(req) {
 }
 
 async function channelsStatus(req, res) {
-  const { rows } = await db.query(
-    `SELECT whatsapp_number, wa_channel, whatsapp_model, whatsapp_last_inbound_at,
-            meta_waba_id, telegram_bot_token <> '' AS telegram_on, telegram_shared_on AS telegram_shared,
-            meta_phone_number_id <> '' AS meta_on,
-            subscription_status, subscription_expires, trial_started_at, plan_tier
-     FROM businesses WHERE id = $1`,
-    [req.session.businessId]
-  );
+  const runSelect = (legacy) => db.query(legacy
+    ? `SELECT whatsapp_number, wa_channel, whatsapp_model, whatsapp_last_inbound_at,
+              meta_waba_id, telegram_bot_token <> '' AS telegram_on,
+              meta_phone_number_id <> '' AS meta_on,
+              subscription_status, subscription_expires, trial_started_at, plan_tier
+       FROM businesses WHERE id = $1`
+    : `SELECT whatsapp_number, wa_channel, whatsapp_model, whatsapp_last_inbound_at,
+              meta_waba_id, telegram_bot_token <> '' AS telegram_on, telegram_shared_on AS telegram_shared,
+              meta_phone_number_id <> '' AS meta_on,
+              subscription_status, subscription_expires, trial_started_at, plan_tier
+       FROM businesses WHERE id = $1`,
+    [req.session.businessId]);
+  let rows;
+  try {
+    ({ rows } = await sharedAware(runSelect));
+  } catch (e) {
+    console.error('channels status failed:', e.message);
+    return res.status(500).json({ error: dbUserMessage(e) });
+  }
   if (!rows.length) return res.status(404).json({ error: 'Not found' });
   const b = rows[0];
   const planService = require('../services/planService');

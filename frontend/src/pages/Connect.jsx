@@ -48,6 +48,18 @@ function isStandaloneBrowser() { // installed PWA (popups lose their return trip
   } catch {}
   return false;
 }
+function isAndroidStandalone() { // installed app ON Android (Chrome-escape hatch applies — same profile, session carries over!)
+  try {
+    return isStandaloneBrowser() && /android/i.test(window.navigator.userAgent || '');
+  } catch { return false; }
+}
+function chromeEscapeUrl() { // intent:// link that opens THIS page in full Chrome (popup machinery works there!)
+  try {
+    const u = new URL(window.location.href);
+    const target = `https://${u.host}/connect`; // land back on the Connect road (fresh state, no stale query!)
+    return `intent://${u.host}/connect#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(target)};end`;
+  } catch { return ''; }
+}
 function loadFbSdk(appId) {
   return new Promise((resolve) => {
     const init = () => { // (re-)init with THIS attempt's App ID (a stale init from an older/wrong ID would poison every retry until reload!)
@@ -421,6 +433,14 @@ export default function Connect() {
               <button className="btn ghost sm" onClick={back}>Back</button>
               <button className="btn sm" disabled={busy} onClick={embeddedConnect}>{busy ? (<><Loader size={15} />Opening Meta…</>) : 'Continue to connect'}</button>
             </div>
+            {isAndroidStandalone() && (
+              <div className="learn-box light" style={{ marginTop: 10 }}>
+                <b>On the installed app?</b><br />
+                <span className="hint">Popups can&apos;t complete inside the installed app — open this page in full Chrome instead (same login carries over, nothing to redo):</span>
+                <div style={{ marginTop: 8 }}><a className="btn sm" href={chromeEscapeUrl()}>Open in Chrome</a></div>
+                <span className="hint">Finish the Meta steps in Chrome, then return here — your connection (and TEST) will be waiting.</span>
+              </div>
+            )}
             {!st?.metaEmbeddedReady && st && (
               <div className="learn-box light" style={{ marginTop: 10 }}>
                 <b>One-tap popup isn&apos;t ready{!st.metaAppId ? ' — META_APP_ID missing on the server' : !st.metaConfigId ? ' — META_CONFIGURATION_ID missing on the server' : ''}.</b><br />

@@ -11,16 +11,26 @@ import Ic from '../components/icons.jsx'; // drawn glyphs (never emoji!)
 import Loader from '../components/Loader.jsx'; // mini orbit in busy buttons (brand consistency!)
 import GlassUpsell from '../components/GlassUpsell.jsx'; // locked-model upgrade card
 import ModelPicker from '../components/ModelPicker.jsx'; // shared brain picker (same look as VeloSalesAI!)
+import GuideSlides from '../components/GuideSlides.jsx'; // visual how-to slides on the road cards (screenshots drop in tonight!)
 
-function CopyBtn({ text, label }) { // one-tap copy (navigator.clipboard + fallback!)
+function CopyRow({ label, value }) { // tap-anywhere copy row: plain selectable text + Copy button (NEVER a link — nothing navigates away, ever!)
   async function copy() {
-    try { await navigator.clipboard.writeText(text); toast('Copied.'); }
-    catch { // clipboard API blocked (old browsers, no HTTPS) → select-and-tell fallback
-      toast('Copy this: ' + text, 'err');
-    }
+    try { await navigator.clipboard.writeText(value); toast('Copied.'); }
+    catch { toast('Copy this: ' + value, 'err'); }
   }
-  return <button type="button" className="btn ghost sm" onClick={copy}><Ic n="copy" s={14} /> {label || 'Copy'}</button>;
+  return (<div><label>{label}</label><div className="copyrow" onClick={copy} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') copy(); }}><span>{value}</span><span className="btn ghost sm"><Ic n="copy" s={14} /> Copy</span></div></div>);
 }
+
+const WA_SLIDES = [ // road-card visuals (/connect/whatsapp-N.png land tonight — placeholders until then!)
+  { img: '/connect/whatsapp-1.png', title: 'Tap Continue', text: 'One tap opens Meta — log in, pick your business number.' },
+  { img: '/connect/whatsapp-2.png', title: 'Paste 2 values', text: 'Webhook URL + verify code into your Meta dashboard.' },
+  { img: '/connect/whatsapp-3.png', title: 'TEST → LIVE', text: 'Send a message — this page flips LIVE instantly.' },
+];
+const TG_SLIDES = [
+  { img: '/connect/telegram-1.png', title: 'Ask @BotFather', text: 'Send /newbot → name it → username ending in bot.' },
+  { img: '/connect/telegram-2.png', title: 'Paste the token', text: 'Tap-copy from BotFather, paste here, connect.' },
+  { img: '/connect/telegram-3.png', title: 'Chat away', text: 'Customers message your bot — the AI answers.' },
+];
 
 function Steps({ n, of }) { // progress dots ("Step 2 of 4" — nobody gets lost!)
   return <p className="hint" style={{ margin: '0 0 10px' }}>Step {n} of {of}</p>;
@@ -51,11 +61,11 @@ export default function Connect() {
   const [road, setRoad] = useState(null); // null = road picker; 'meta' | 'telegram'
   const [step, setStep] = useState(1); // step inside the road (1-based!)
   const [busy, setBusy] = useState(false); // action lock (double-tap protection!)
-  // Meta drafts (manual fallback)
+  // Meta drafts (retired manual inputs — endpoint stays live server-side!)
   const [phoneId, setPhoneId] = useState('');
   const [metaToken, setMetaToken] = useState('');
   const [metaProof, setMetaProof] = useState(null); // {phone, verifyToken} after connect
-  const [showManual, setShowManual] = useState(false); // manual paste = fallback only!
+  const [showManual, setShowManual] = useState(false); // retired (one-tap only!) — state kept so old handlers stay valid, nothing renders it
   // Telegram drafts
   const [tgToken, setTgToken] = useState('');
   const [tgLink, setTgLink] = useState(null);
@@ -129,14 +139,14 @@ export default function Connect() {
       else if (status === 401) pop('err', 'Signed out', 'Your session expired — sign in again, then retry.');
       else if (status === 404) pop('err', 'Shop not found', 'Your login lost its shop — sign out and sign in again, then retry.');
       else if (status >= 500) pop('err', 'Server error', (msg || 'Our server hiccuped — wait a minute and retry.') + (data && data.ref ? ` (ref: ${data.ref})` : ''));
-      else if (msg.includes('did not return a number') && !signup.current.retried) { // IDs lag the code sometimes — ONE auto-retry before surrendering to manual!
+      else if (msg.includes('did not return a number') && !signup.current.retried) { // IDs lag the code sometimes — ONE auto-retry before asking to retry!
         signup.current.retried = true; signup.current.code = code; signup.current.token = token; // restore (late Meta events may have landed meanwhile!)
         toast('Almost — waiting for Meta details…', 'info');
         setTimeout(() => { signup.current.retried = false; finishEmbedded(); }, 4000);
       }
-      else pop('err', 'Signup did not finish', msg || 'Try again or paste your details manually below.');
+      else pop('err', 'Signup did not finish', msg || 'Try again — finish every step inside the popup, especially picking your number.');
     } catch (e) {
-      pop('err', 'Server unreachable', 'Our server is waking up or offline (free-plan sleep takes ~1 min). Wait a minute and retry — or paste manually below.');
+      pop('err', 'Server unreachable', 'Our server is waking up or offline (free-plan sleep takes ~1 min). Wait a minute and retry — or talk to support from Help.');
     } finally {
       setBusy(false);
     }
@@ -145,18 +155,18 @@ export default function Connect() {
   // ---- Embedded Signup launch ----
   async function embeddedConnect() {
     const appId = st?.metaAppId, configId = st?.metaConfigId;
-    if (!appId || !configId) { setShowManual(true); return toast('One-tap signup is not set up yet — paste your details below', 'err'); }
-    if (!/^\d{5,}$/.test(appId)) { setShowManual(true); return pop('err', 'Server App ID looks wrong', 'The META_APP_ID on Render must be the numeric App ID only (digits, no spaces, no business ID mixed in). Fix it there, redeploy, and retry — manual paste below works meanwhile.'); } // garbage-in guard (Meta answers these with "invalid app id"!)
-    if (String(configId).length < 5) { setShowManual(true); return pop('err', 'Server config looks wrong', 'The META_CONFIGURATION_ID on Render looks incomplete — re-copy it from WhatsApp → Embedded Signup, redeploy, and retry. Manual paste below works meanwhile.'); }
+    if (!appId || !configId) { setShowManual(true); return toast('One-tap signup is not set up yet — talk to support from Help', 'err'); }
+    if (!/^\d{5,}$/.test(appId)) { setShowManual(true); return pop('err', 'Server App ID looks wrong', 'The META_APP_ID on Render must be the numeric App ID only (digits, no spaces, no business ID mixed in). Fix it there, redeploy, and retry.'); } // garbage-in guard (Meta answers these with "invalid app id"!)
+    if (String(configId).length < 5) { setShowManual(true); return pop('err', 'Server config looks wrong', 'The META_CONFIGURATION_ID on Render looks incomplete — re-copy it from WhatsApp → Embedded Signup, redeploy, and retry.'); }
     signup.current = { code: '', token: '', wabaId: '', phoneId: '', retried: false, watch: null }; // fresh attempt!
     setBusy(true);
     const ready = await loadFbSdk(appId);
-    if (!ready || !window.FB) { setBusy(false); setShowManual(true); return toast('Popup blocked — paste your details below instead', 'err'); }
+    if (!ready || !window.FB) { setBusy(false); setShowManual(true); return toast('Popup blocked — allow popups and retry', 'err'); }
     try {
       window.FB.login(function (resp) { // the Meta popup (OAuth + phone picker in one!)
         if (signup.current.watch) { clearTimeout(signup.current.watch); signup.current.watch = null; } // answered (any answer!) → watchdog stands down
         setBusy(false);
-        if (resp && resp.error) { setShowManual(true); return pop('err', 'Meta refused the popup', (resp.error.message || resp.error) + ' — usual causes: wrong App ID on Render, or the app URL missing in Meta dashboard → Facebook Login → Authorized JavaScript origins. Manual paste below works meanwhile.'); } // Meta's REAL verdict surfaced (was swallowed as "closed before finishing"!)
+        if (resp && resp.error) { setShowManual(true); return pop('err', 'Meta refused the popup', (resp.error.message || resp.error) + ' — usual causes: wrong App ID on Render, or the app URL missing in Meta dashboard → Facebook Login → Authorized JavaScript origins.'); } // Meta's REAL verdict surfaced (was swallowed as "closed before finishing"!)
         if (resp && resp.authResponse && resp.authResponse.code) {
           signup.current.code = String(resp.authResponse.code); // the server exchanges this for a token!
           // The message listener usually already captured the IDs — give it a beat, then finish anyway (server discovers the number itself!).
@@ -165,11 +175,11 @@ export default function Connect() {
           toast('Signup closed before finishing — try again when ready', 'err'); // user cancelled (no error state stuck!)
         }
       }, { config_id: configId, response_type: 'code', override_default_response_type: true });
-      signup.current.watch = setTimeout(() => { // popup answered NOTHING in 2 min (swallowed callback — blocked third-party cookies do this!) → unstick + manual road
+      signup.current.watch = setTimeout(() => { // popup answered NOTHING in 2 min (swallowed callback — blocked third-party cookies do this!) → unstick + support pointer
         signup.current.watch = null; setBusy(false); setShowManual(true);
-        toast('Popup went quiet — allow popups + third-party cookies for this site and retry, or paste manually below.', 'err');
+        toast('Popup went quiet — allow popups + third-party cookies for this site and retry, or talk to support from Help.', 'err');
       }, 120000); // 2-min cap (matches the TEST-verify patience — never an eternal spinner!)
-    } catch (e) { setBusy(false); setShowManual(true); toast('Popup failed — paste your details below instead', 'err'); }
+    } catch (e) { setBusy(false); setShowManual(true); toast('Popup failed — allow popups and retry', 'err'); }
   }
 
   function back() { // Back button: step back, or road picker at step 1
@@ -178,7 +188,7 @@ export default function Connect() {
   }
   function openRoad(r) { setRoad(r); setStep(1); setMetaProof(null); setTgLink(null); setTgShared(null); setTgHealth(null); setWaHealth(null); setShowManual(false); } // fresh drafts per road!
 
-  // ---- Meta manual fallback (popup unavailable) ----
+  // ---- Meta manual connect (retired UI — one-tap only! Endpoint stays live server-side for emergencies.) ----
   async function metaConnect() {
     if (!phoneId.trim() || !metaToken.trim()) return toast('Paste both values first', 'err');
     setBusy(true);
@@ -313,10 +323,6 @@ export default function Connect() {
     const stop = setTimeout(() => { setTesting(false); toast('Still waiting — check the 3 common mistakes below', 'err'); }, 120000); // 2-min cap (never poll forever!)
     return () => { clearInterval(t); clearTimeout(stop); }; // cleanup on unmount/stop (no leaked timers!)
   }, [testing]);
-  useEffect(() => { // one-tap NOT ready → manual paste opens itself (the working road first, zero extra clicks!)
-    if (road === 'meta' && st && !st.metaEmbeddedReady) setShowManual(true);
-  }, [road, st]);
-
   const wa = st && st.whatsapp;
   const tgOn = !!st?.telegram?.connected;
   const tgSharedCard = tgShared || null; // fresh shared result (code travels only on explicit generate!)
@@ -364,14 +370,16 @@ export default function Connect() {
         )}
       </div>
 
-      {!road && ( // ROAD PICKER: WhatsApp (Embedded Signup!) + Telegram
+      {!road && ( // ROAD PICKER: visual cards (slideshow art up top, tap anywhere to enter!)
         <div className="grid2">
           <button className="card hover-lift" style={{ textAlign: 'left', cursor: 'pointer' }} onClick={() => openRoad('meta')}>
+            <GuideSlides slides={WA_SLIDES} label="How WhatsApp connecting works" />
             <h2>WhatsApp — One-tap connect <span className="pill ok">FREE TO START</span></h2>
             <p className="desc">Tap once, log in with Facebook, pick your business number — we handle the IDs and tokens for you. No copying, no console maze. 1,000 chats/month free.</p>
             <p className="hint">Recommended for everyone. Takes ~2 minutes.</p>
           </button>
           <button className="card hover-lift" style={{ textAlign: 'left', cursor: 'pointer', gridColumn: '1 / -1' }} onClick={() => openRoad('telegram')}>
+            <GuideSlides slides={TG_SLIDES} label="How Telegram connecting works" />
             <h2>Telegram — BotFather <span className="pill ok">FREE · 1 MIN</span></h2>
             <p className="desc">Message @BotFather on Telegram → /newbot → paste the token here. No payment, ever.</p>
           </button>
@@ -398,44 +406,19 @@ export default function Connect() {
             {!st?.metaEmbeddedReady && st && (
               <div className="learn-box light" style={{ marginTop: 10 }}>
                 <b>One-tap popup isn&apos;t ready{!st.metaAppId ? ' — META_APP_ID missing on the server' : !st.metaConfigId ? ' — META_CONFIGURATION_ID missing on the server' : ''}.</b><br />
-                <span className="hint">Server keys set but popup still won&apos;t open? Two usual culprits: (1) Meta app dashboard → Facebook Login → Settings → Authorized JavaScript origins must include your app URL; (2) popup/ad-blocker (allow popups + connect.facebook.net). The manual paste below works regardless — it&apos;s the Saturday-safe road and already open for you.</span>
+                <span className="hint">Server keys set but popup still won&apos;t open? Two usual culprits: (1) Meta app dashboard → Facebook Login → Settings → Authorized JavaScript origins must include your app URL; (2) popup/ad-blocker (allow popups + connect.facebook.net). Still stuck? Talk to support from Help.</span>
               </div>
             )}
-            {!showManual
-              ? <p className="hint" style={{ marginTop: 10 }}>Popup blocked or prefer copy-paste? <button type="button" className="btn ghost sm" onClick={() => setShowManual(true)}>Paste details manually</button></p>
-              : (<div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
-                <h2>Paste 2 values from Meta</h2>
-                <p className="desc">Get them in 2 minutes — free:</p>
-                <ol className="desc" style={{ margin: '8px 0 8px 18px', display: 'grid', gap: 4 }}>
-                  <li>Go to developers.facebook.com → Log in → Create App (type: Business).</li>
-                  <li>In the app dashboard → Add Product → WhatsApp (a free test number appears).</li>
-                  <li>Open WhatsApp → API Setup → copy <b>Phone Number ID</b> (all digits) + the <b>temporary token</b> (lasts 24h — enough to connect + TEST today).</li>
-                </ol>
-                <label>Phone Number ID (all digits)</label>
-                <input value={phoneId} onChange={(e) => setPhoneId(e.target.value)} placeholder="e.g. 123456789012345" inputMode="numeric" spellCheck="false" />
-                <label>Access token (long string)</label>
-                <input value={metaToken} onChange={(e) => setMetaToken(e.target.value)} placeholder="Paste the token from API Setup" spellCheck="false" autoComplete="off" />
-                <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-                  <button className="btn sm" disabled={busy} onClick={metaConnect}>{busy ? (<><Loader size={15} />Checking…</>) : 'Check + continue'}</button>
-                </div>
-              </div>)}
+            <p className="hint">Stuck on the popup? Allow popups for this site and retry — or talk to support from Help.</p>
           </>)}
           {step === 2 && (<>
-            <h2>Link our app to Meta — one paste</h2>
-            <p className="desc">In Meta: WhatsApp → Configuration → paste BOTH below → tap Verify and save.</p>
-            <label>Our webhook URL</label>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <code style={{ flex: 1, minWidth: 200, overflowWrap: 'anywhere' }}>{st?.webhookUrl || ''}</code>
-              <CopyBtn text={st?.webhookUrl || ''} label="Copy URL" />
-            </div>
-            <label style={{ marginTop: 12 }}>Your verify code</label>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <code>{metaProof?.verifyToken || ''}</code>
-              <CopyBtn text={metaProof?.verifyToken || ''} label="Copy code" />
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+            <h2>Link VeloSales Ai in your Meta dashboard</h2>
+            <p className="desc">Open your Meta app dashboard → WhatsApp → Configuration. Paste BOTH values below there, then tap Verify and save. Nothing here navigates away — tap any box to copy it.</p>
+            <CopyRow label="Value 1 — webhook URL" value={st?.webhookUrl || ''} />
+            <div style={{ marginTop: 10 }}><CopyRow label="Value 2 — verify code" value={metaProof?.verifyToken || ''} /></div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
               <button className="btn ghost sm" onClick={back}>Back</button>
-              <button className="btn sm" onClick={() => setStep(3)}>I've pasted in Meta — continue</button>
+              <button className="btn sm" onClick={() => setStep(3)}>I&apos;ve pasted in Meta — continue</button>
             </div>
           </>)}
           {step === 3 && (<TestStep testing={testing} setTesting={setTesting} onBack={back} number={wa?.number} onPull={metaPull} />)}

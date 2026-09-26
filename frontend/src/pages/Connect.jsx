@@ -29,11 +29,12 @@ function Steps({ n, of }) { // progress dots ("Step 2 of 4" — nobody gets lost
 // Load Meta's SDK once (Embedded Signup popup needs window.FB!).
 function loadFbSdk(appId) {
   return new Promise((resolve) => {
-    if (window.FB) return resolve(true); // already loaded (strict-mode double effects!)
-    window.fbAsyncInit = function () {
+    const init = () => { // (re-)init with THIS attempt's App ID (a stale init from an older/wrong ID would poison every retry until reload!)
       try { window.FB.init({ appId, autoLogAppEvents: true, xfbml: true, version: 'v22.0' }); } catch {}
-      resolve(true);
     };
+    if (window.FB) { init(); return resolve(true); } // already loaded (strict-mode double effects!) — re-init fresh, don't trust the old one!
+    window.fbAsyncInit = function () { init(); resolve(true); };
+    if (document.getElementById('facebook-jssdk')) { setTimeout(() => resolve(!!window.FB), 3000); return; } // tag already present (retry attempt!) — don't double-inject, just re-check!
     const s = document.createElement('script'); // official snippet (id-guarded!)
     s.id = 'facebook-jssdk';
     s.src = 'https://connect.facebook.net/en_US/sdk.js';
@@ -127,6 +128,8 @@ export default function Connect() {
   async function embeddedConnect() {
     const appId = st?.metaAppId, configId = st?.metaConfigId;
     if (!appId || !configId) { setShowManual(true); return toast('One-tap signup is not set up yet — paste your details below', 'err'); }
+    if (!/^\d{5,}$/.test(appId)) { setShowManual(true); return pop('err', 'Server App ID looks wrong', 'The META_APP_ID on Render must be the numeric App ID only (digits, no spaces, no business ID mixed in). Fix it there, redeploy, and retry — manual paste below works meanwhile.'); } // garbage-in guard (Meta answers these with "invalid app id"!)
+    if (String(configId).length < 5) { setShowManual(true); return pop('err', 'Server config looks wrong', 'The META_CONFIGURATION_ID on Render looks incomplete — re-copy it from WhatsApp → Embedded Signup, redeploy, and retry. Manual paste below works meanwhile.'); }
     signup.current = { code: '', wabaId: '', phoneId: '' }; // fresh attempt!
     setBusy(true);
     const ready = await loadFbSdk(appId);
@@ -134,6 +137,7 @@ export default function Connect() {
     try {
       window.FB.login(function (resp) { // the Meta popup (OAuth + phone picker in one!)
         setBusy(false);
+        if (resp && resp.error) { setShowManual(true); return pop('err', 'Meta refused the popup', (resp.error.message || resp.error) + ' — usual causes: wrong App ID on Render, or the app URL missing in Meta dashboard → Facebook Login → Authorized JavaScript origins. Manual paste below works meanwhile.'); } // Meta's REAL verdict surfaced (was swallowed as "closed before finishing"!)
         if (resp && resp.authResponse && resp.authResponse.code) {
           signup.current.code = String(resp.authResponse.code); // the server exchanges this for a token!
           // The message listener usually already captured the IDs — give it a beat, then finish anyway (server discovers the number itself!).

@@ -68,7 +68,7 @@ export default function Connect() {
   // TEST-verify
   const [testing, setTesting] = useState(false);
   // Embedded Signup listener state (popup posts these back!)
-  const signup = useRef({ code: '', wabaId: '', phoneId: '' });
+  const signup = useRef({ code: '', token: '', wabaId: '', phoneId: '', retried: false, watch: null }); // popup result holder (+ retry flag + stuck-busy watchdog timer!)
 
   async function load() { // refresh status (after every connect/disconnect!)
     const { data } = await api('/api/me/channels');
@@ -86,6 +86,14 @@ export default function Connect() {
 
   // Listen for the Embedded Signup popup result (Meta posts a message with
   // the WABA id + phone number id once the user finishes the flow!).
+  // Key-variant tolerant: Meta's payload keys differ across SDK versions!
+  function pickKey(o, ...keys) {
+    for (const k of keys) {
+      const v = o ? o[k] : undefined;
+      if (v !== undefined && v !== null && String(v) !== '') return String(v);
+    }
+    return '';
+  }
   useEffect(() => {
     function onMsg(event) {
       if (!/facebook\.com$/.test(String(event.origin || ''))) return; // Meta only (never trust random frames!)
@@ -94,10 +102,15 @@ export default function Connect() {
       if (!d || typeof d !== 'object') return;
       const payload = d.data || d; // Meta wraps in {type, data} (versions differ!)
       if (d.type !== 'WA_EMBEDDED_SIGNUP' && d.event !== 'WA_EMBEDDED_SIGNUP') return;
-      if (payload.waba_id) signup.current.wabaId = String(payload.waba_id);
-      if (payload.phone_number_id) signup.current.phoneId = String(payload.phone_number_id);
-      if (payload.code) signup.current.code = String(payload.code);
-      if (signup.current.code) finishEmbedded(); // have the code → exchange it server-side!
+      const waba = pickKey(payload, 'waba_id', 'wabaID', 'waba_ID', 'wabaId');
+      const ph = pickKey(payload, 'phone_number_id', 'phoneNumberID', 'phone_number_ID', 'phoneId');
+      const cd = pickKey(payload, 'code', 'authCode', 'auth_code');
+      const tok = pickKey(payload, 'access_token', 'accessToken'); // some flows hand the token directly (backend accepts it — no exchange needed!)
+      if (waba) signup.current.wabaId = waba;
+      if (ph) signup.current.phoneId = ph;
+      if (cd) signup.current.code = cd;
+      if (tok) signup.current.token = tok;
+      if (signup.current.code || signup.current.token) finishEmbedded(); // have credentials → exchange server-side!
     }
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
@@ -105,17 +118,22 @@ export default function Connect() {
   }, [st]);
 
   async function finishEmbedded() { // POST the popup result → server validates + stores (tokens never shown!)
-    const { code, wabaId, phoneId: pid } = signup.current;
-    if (!code) return;
-    signup.current.code = ''; // consume once (listener may fire twice!)
+    const { code, token, wabaId, phoneId: pid } = signup.current;
+    if (!code && !token) return;
+    signup.current.code = ''; signup.current.token = ''; // consume once (listener may fire twice!)
     setBusy(true);
     try {
-      const { ok, status, data } = await api('/api/me/channels/meta/embedded', { method: 'POST', body: JSON.stringify({ code, waba_id: wabaId, phone_number_id: pid }) });
+      const { ok, status, data } = await api('/api/me/channels/meta/embedded', { method: 'POST', body: JSON.stringify({ code, token, waba_id: wabaId, phone_number_id: pid }) });
       const msg = (data && data.error) || '';
       if (ok) { setMetaProof(data); setStep(2); load(); pop('ok', 'WhatsApp connected!', `Number ${data.phone || ''} is linked. One paste in Meta, then TEST.`); }
       else if (status === 401) pop('err', 'Signed out', 'Your session expired — sign in again, then retry.');
       else if (status === 404) pop('err', 'Shop not found', 'Your login lost its shop — sign out and sign in again, then retry.');
       else if (status >= 500) pop('err', 'Server error', (msg || 'Our server hiccuped — wait a minute and retry.') + (data && data.ref ? ` (ref: ${data.ref})` : ''));
+      else if (msg.includes('did not return a number') && !signup.current.retried) { // IDs lag the code sometimes — ONE auto-retry before surrendering to manual!
+        signup.current.retried = true; signup.current.code = code; signup.current.token = token; // restore (late Meta events may have landed meanwhile!)
+        toast('Almost — waiting for Meta details…', 'info');
+        setTimeout(() => { signup.current.retried = false; finishEmbedded(); }, 4000);
+      }
       else pop('err', 'Signup did not finish', msg || 'Try again or paste your details manually below.');
     } catch (e) {
       pop('err', 'Server unreachable', 'Our server is waking up or offline (free-plan sleep takes ~1 min). Wait a minute and retry — or paste manually below.');
@@ -130,12 +148,13 @@ export default function Connect() {
     if (!appId || !configId) { setShowManual(true); return toast('One-tap signup is not set up yet — paste your details below', 'err'); }
     if (!/^\d{5,}$/.test(appId)) { setShowManual(true); return pop('err', 'Server App ID looks wrong', 'The META_APP_ID on Render must be the numeric App ID only (digits, no spaces, no business ID mixed in). Fix it there, redeploy, and retry — manual paste below works meanwhile.'); } // garbage-in guard (Meta answers these with "invalid app id"!)
     if (String(configId).length < 5) { setShowManual(true); return pop('err', 'Server config looks wrong', 'The META_CONFIGURATION_ID on Render looks incomplete — re-copy it from WhatsApp → Embedded Signup, redeploy, and retry. Manual paste below works meanwhile.'); }
-    signup.current = { code: '', wabaId: '', phoneId: '' }; // fresh attempt!
+    signup.current = { code: '', token: '', wabaId: '', phoneId: '', retried: false, watch: null }; // fresh attempt!
     setBusy(true);
     const ready = await loadFbSdk(appId);
     if (!ready || !window.FB) { setBusy(false); setShowManual(true); return toast('Popup blocked — paste your details below instead', 'err'); }
     try {
       window.FB.login(function (resp) { // the Meta popup (OAuth + phone picker in one!)
+        if (signup.current.watch) { clearTimeout(signup.current.watch); signup.current.watch = null; } // answered (any answer!) → watchdog stands down
         setBusy(false);
         if (resp && resp.error) { setShowManual(true); return pop('err', 'Meta refused the popup', (resp.error.message || resp.error) + ' — usual causes: wrong App ID on Render, or the app URL missing in Meta dashboard → Facebook Login → Authorized JavaScript origins. Manual paste below works meanwhile.'); } // Meta's REAL verdict surfaced (was swallowed as "closed before finishing"!)
         if (resp && resp.authResponse && resp.authResponse.code) {
@@ -146,6 +165,10 @@ export default function Connect() {
           toast('Signup closed before finishing — try again when ready', 'err'); // user cancelled (no error state stuck!)
         }
       }, { config_id: configId, response_type: 'code', override_default_response_type: true });
+      signup.current.watch = setTimeout(() => { // popup answered NOTHING in 2 min (swallowed callback — blocked third-party cookies do this!) → unstick + manual road
+        signup.current.watch = null; setBusy(false); setShowManual(true);
+        toast('Popup went quiet — allow popups + third-party cookies for this site and retry, or paste manually below.', 'err');
+      }, 120000); // 2-min cap (matches the TEST-verify patience — never an eternal spinner!)
     } catch (e) { setBusy(false); setShowManual(true); toast('Popup failed — paste your details below instead', 'err'); }
   }
 
@@ -367,6 +390,7 @@ export default function Connect() {
               <li>Once confirmed, your account connects automatically — no codes or technical setup needed on your end.</li>
             </ol>
             <p className="hint">We never see or store your Facebook password — this login happens directly and securely through Meta.</p>
+            <div className="learn-box light" style={{ marginTop: 10 }}><b>Before you tap — 30 seconds that prevent 90% of popup failures:</b><br />1. Log into the RIGHT Facebook account in THIS browser (the one tied to your WhatsApp Business — business admin, not staff).<br />2. Allow popups + third-party cookies for this site (address-bar icon).<br />3. Finish EVERY step inside the popup — especially picking your business number, or we get a code with no number.</div>
             <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
               <button className="btn ghost sm" onClick={back}>Back</button>
               <button className="btn sm" disabled={busy} onClick={embeddedConnect}>{busy ? (<><Loader size={15} />Opening Meta…</>) : 'Continue to connect'}</button>

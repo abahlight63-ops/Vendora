@@ -30,7 +30,7 @@ const PHOTO_LINES = [ // upgrade-card bullets for product photos
 
 export default function Catalog() { // no props needed (fetches everything itself)
   const [products, setProducts] = useState(null); // null = loading (skeleton rows); [] = loaded-but-empty (empty state!)
-  const [f, setF] = useState({ name: '', price: '', desc: '', photo: '', qty: '', cat: '' }); // CONTROLLED FORM: inputs mirror this object (value={f.name} + onChange writes back)
+  const [f, setF] = useState({ name: '', price: '', desc: '', photo: '', qty: '', cat: '', delivery: '', location: '', howtobuy: '' }); // CONTROLLED FORM: inputs mirror this object (value={f.name} + onChange writes back)
   const [niche, setNiche] = useState(''); // shop lane (drives category shelves + hint language!)
   const shelves = categoriesFor(niche); // dropdown options for THIS hustle (electronics → Phones…, fashion → Gowns…)
   const [tier, setTier] = useState('free'); // 'free' default → upgrade card flashes first if billing is slow (safe default: never show Pro tools to free users!)
@@ -70,9 +70,12 @@ export default function Catalog() { // no props needed (fetches everything itsel
     const body = { name: f.name.trim(), price: f.price.trim() || null, description: f.desc.trim() || null, available: true }; // trim + empty→null (DB stores NULL, not "")
     if (f.qty.trim() !== '') body.quantity = f.qty.trim(); // stock count ONLY when typed (omitted = keep existing on same-name updates — re-pricing never zeroes stock!)
     if (f.cat) body.category = f.cat; // shelf ONLY when picked (omitted = preserved!)
+    if (f.delivery.trim() !== '') body.delivery_info = f.delivery.trim(); // delivery text ONLY when typed (blank = preserved on re-saves!)
+    if (f.location.trim() !== '') body.location = f.location.trim(); // pickup area ONLY when typed!
+    if (f.howtobuy.trim() !== '') body.how_to_buy = f.howtobuy.trim(); // order steps ONLY when typed!
     if (f.photo.trim()) body.image_url = f.photo.trim(); // photo key ONLY when pasted (omitted = preserve existing on same-name updates — re-adding a price never wipes the photo!)
     const { ok, data } = await api('/api/me/products', { method: 'POST', body: JSON.stringify(body) });
-    if (ok) { pop('ok', 'Product added!', 'The AI can sell it from now on.'); setF({ name: '', price: '', desc: '', photo: '', qty: '', cat: '' }); load(); maybeShowSponsor(); } // success popup + clear form + reload + sponsor hook (fire-and-forget: no await — sponsor must never block!)
+    if (ok) { pop('ok', 'Product added!', 'The AI can sell it from now on.'); setF({ name: '', price: '', desc: '', photo: '', qty: '', cat: '', delivery: '', location: '', howtobuy: '' }); load(); maybeShowSponsor(); } // success popup + clear form + reload + sponsor hook (fire-and-forget: no await — sponsor must never block!)
     else pop('err', 'Could not add product', data.error || 'Please try again.'); // failure popup (data.error from backend validation — includes bad-photo-URL + bad-stock messages!)
   }
   async function uploadMedia(file) { // Upload media: pick from YOUR files → hosted → URL fills the photo field
@@ -129,7 +132,7 @@ export default function Catalog() { // no props needed (fetches everything itsel
               : products.length === 0 ? <tr><td colSpan="6"><div className="empty"><b>No products yet</b>Add your first one below — it takes 10 seconds.</div></td></tr>
               : products.map((p) => (<tr key={p.id}> {/* key={p.id} = stable DB id (rows never shuffle wrongly!) */}
                 <td>{p.image_url ? <img src={p.image_url} alt="" width="40" height="40" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8, display: 'block' }} loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} /> : <span className="hint">—</span>}</td> {/* thumb (onError hides dead links — dashboard never shows broken-image icons!) */}
-                <td><b>{p.name}</b>{p.category ? <span className="pill" style={{ marginLeft: 6, fontSize: 11 }}>{p.category}</span> : null}<br /><span className="hint">{p.description || ''}</span></td> {/* category pill beside the name (<br/> stacks description under name) */}
+                <td><b>{p.name}</b>{p.category ? <span className="pill" style={{ marginLeft: 6, fontSize: 11 }}>{p.category}</span> : null}<br /><span className="hint">{p.description || ''}</span>{(p.delivery_info || p.location || p.how_to_buy) ? <br /> : null}{(p.delivery_info || p.location || p.how_to_buy) ? <span className="hint">Delivery: {[p.delivery_info, p.location, p.how_to_buy].filter(Boolean).join(' · ')}</span> : null}</td> {/* category pill + description + fulfillment line (what the bot quotes!) */}
                 <td>{p.price || '—'}</td> {/* || '—' : null prices show dash, never "null" */}
                 <td><b>{p.quantity ?? 0}</b></td> {/* live stock count (?? 0: legacy rows show 0, never blank — WhatsApp updates land here instantly!) */}
                 <td><button className={'pill ' + (p.available ? 'ok' : 'flag')} style={{ cursor: 'pointer', border: '1px solid' }} onClick={() => toggle(p)} title="Click to toggle stock">{p.available ? 'in stock' : 'out of stock'}</button></td> {/* pill AS button: color shows state, click flips it (title = hover tooltip teaching the trick) */}
@@ -172,6 +175,14 @@ export default function Catalog() { // no props needed (fetches everything itsel
         </div>
         <label style={{ marginTop: 10 }}>Details (optional)</label>
         <input value={f.desc} onChange={(e) => setF({ ...f, desc: e.target.value })} placeholder={detailHintFor(niche)} />
+        <div style={{ marginTop: 12, border: '1px dashed var(--line)', borderRadius: 12, padding: 12 }}> {/* fulfillment box: delivery + pickup + how-to-buy (the bot quotes these VERBATIM!) */}
+          <label style={{ margin: 0 }}>Delivery &amp; how to buy <span className="hint">(optional — the AI answers "how do I get it?" from these lines, never invents)</span></label>
+          <div style={{ marginTop: 8 }}><label>Delivery time</label><input value={f.delivery} onChange={(e) => setF({ ...f, delivery: e.target.value })} placeholder="e.g. Lagos 24–48hrs, nationwide 3–5 days" maxLength={300} /></div>
+          <div className="grid2" style={{ marginTop: 8 }}>
+            <div><label>Pickup location</label><input value={f.location} onChange={(e) => setF({ ...f, location: e.target.value })} placeholder="e.g. Maitama, Abuja" maxLength={300} /></div>
+            <div><label>How to buy</label><input value={f.howtobuy} onChange={(e) => setF({ ...f, howtobuy: e.target.value })} placeholder="e.g. Chat to order, pay on delivery" maxLength={300} /></div>
+          </div>
+        </div>
         <div style={{ marginTop: 12, border: '1px dashed #25D366', borderRadius: 12, padding: 12, background: 'rgba(37,211,102,0.05)' }}> {/* photo box: dashed green = "attachment" affordance */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <label style={{ margin: 0 }}>Product photo {tier !== 'pro' && <LockButton title="Unlock product photos" lines={PHOTO_LINES} />}</label> {/* locked = padlock beside the label (no PRO text!); tap → upgrade card */}

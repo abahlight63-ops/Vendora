@@ -293,11 +293,14 @@ async function catalogMeta(req, res) {
 }
 
 async function upsertProduct(req, res, next) {
-  const { name, price, description, available, quantity, category } = req.body || {}; // single-product add/edit from the dashboard form (+ stock count + shelf category)
+  const { name, price, description, available, quantity, category, delivery_info, location, how_to_buy } = req.body || {}; // single-product add/edit from the dashboard form (+ stock + shelf + delivery trio)
   if (!name || typeof name !== 'string') return res.status(400).json({ error: 'Product name required' }); // the one hard requirement
   const draft = { name, price: price || null, description: description || null, available: available ?? true }; // ?? keeps explicit false (|| would turn false→true!)
   if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'quantity')) draft.quantity = quantity; // stock key PRESENT → validate/write inside the service; ABSENT → preserve (toggles never zero stock!)
   if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'category')) draft.category = category; // same absent-rule (LEARN:/toggles omit it → preserved!)
+  for (const k of ['delivery_info', 'location', 'how_to_buy']) { // delivery trio: PRESENT → set/clear in service; ABSENT → preserved (toggles omit them!)
+    if (req.body && Object.prototype.hasOwnProperty.call(req.body, k)) draft[k] = req.body[k];
+  }
   if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'image_url')) draft.image_url = req.body.image_url; // photo key PRESENT → validate/set/clear inside the service; ABSENT → preserve existing (stock toggles omit it!)
   try {
     const saved = await productService.upsertProducts(req.session.businessId, [draft]); // wrap single object in [array] — service takes arrays

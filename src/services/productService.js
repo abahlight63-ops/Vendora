@@ -12,8 +12,9 @@ const db = require('../db'); // shared pool (../ = up one folder from services/ 
 
 async function getProducts(businessId) {
   const { rows } = await db.query( // simple filtered list, oldest first (stable order for the AI prompt)
-    `SELECT id, name, price, description, available, quantity, category, image_url
-     FROM products WHERE business_id = $1 ORDER BY id`, // quantity included (AI answers "how many left?" + parser grounds names!); category drives niche shelves; image_url drives Pro photo sends
+    `SELECT id, name, price, description, available, quantity, category, image_url,
+            delivery_info, location, how_to_buy
+     FROM products WHERE business_id = $1 ORDER BY id`, // delivery/location/how-to-buy included (AI answers "how do I get it?" from THESE lines only!)
     [businessId] // $1 = safe parameter (SQL injection impossible)
   );
   return rows; // array (possibly empty) — caller decides what "empty" means
@@ -32,6 +33,13 @@ function cleanCategory(raw) {
   if (raw === undefined || raw === null) return null; // absent → caller preserves existing (same rule as photos!)
   const s = String(raw).trim().slice(0, 60); // 60 chars max (dropdown values are short; free text tolerated for custom niches!)
   return s || null; // empty → clear the category
+}
+
+/** Delivery/location/how-to-buy text from any input. Same absent-preserve rule as category (toggles/LEARN omit them → untouched!). Never throws. */
+function cleanText(raw, max) {
+  if (raw === undefined || raw === null) return null; // absent → caller preserves existing
+  const s = String(raw).trim().slice(0, max || 300); // 300 chars max (chat-length facts, not essays!)
+  return s || null; // empty → clear the field
 }
 
 /** Validate a product photo URL. Returns clean https URL, null (clear/leave), or { error }. */
@@ -58,6 +66,10 @@ async function upsertProducts(businessId, products) {
     const qtyTouched = qty !== null; // explicit number → write it; absent → leave the count alone (toggles must never zero stock!)
     const catTouched = p && Object.prototype.hasOwnProperty.call(p, 'category'); // same absent-vs-null rule as photos (toggle omits it → preserved!)
     const cat = catTouched ? cleanCategory(p.category) : undefined; // clean string or null (clear)
+    const touchedText = (key) => p && Object.prototype.hasOwnProperty.call(p, key); // delivery/location/how-to-buy share the absent-preserve rule!
+    const delivery = touchedText('delivery_info') ? cleanText(p.delivery_info) : undefined;
+    const loc = touchedText('location') ? cleanText(p.location) : undefined;
+    const htb = touchedText('how_to_buy') ? cleanText(p.how_to_buy) : undefined;
     let photo = undefined; // undefined = preserve (default when caller omits the key)
     const photoTouched = p && Object.prototype.hasOwnProperty.call(p, 'image_url'); // 'in'-check: explicit null/'' MUST clear, missing MUST preserve (cleanImageUrl alone can't tell them apart!)
     if (photoTouched) {
@@ -76,19 +88,22 @@ async function upsertProducts(businessId, products) {
       if (photoTouched) { sets.push(`image_url = $${sets.length + 1}`); vals.push(photo); } // explicit set/clear only (absent = preserved!)
       if (qtyTouched) { sets.push(`quantity = $${sets.length + 1}`); vals.push(qty); } // explicit stock number only (toggles/LEARN never touch it!)
       if (catTouched) { sets.push(`category = $${sets.length + 1}`); vals.push(cat); } // explicit category only (absent = preserved!)
+      if (delivery !== undefined) { sets.push(`delivery_info = $${sets.length + 1}`); vals.push(delivery); } // delivery text only when sent (toggles/LEARN omit it → preserved!)
+      if (loc !== undefined) { sets.push(`location = $${sets.length + 1}`); vals.push(loc); } // pickup area only when sent!
+      if (htb !== undefined) { sets.push(`how_to_buy = $${sets.length + 1}`); vals.push(htb); } // order steps only when sent!
       vals.push(existing.rows[0].id); // id always last ($N)
       const { rows } = await db.query(
         `UPDATE products SET ${sets.join(', ')}, updated_at = now()
-         WHERE id = $${vals.length} RETURNING id, name, price, description, available, quantity, category, image_url`,
+         WHERE id = $${vals.length} RETURNING id, name, price, description, available, quantity, category, image_url, delivery_info, location, how_to_buy`,
         vals
       );
       saved.push(rows[0]); // push the updated row
     } else { // NOT FOUND → INSERT fresh
       const { rows } = await db.query(
-        `INSERT INTO products (business_id, name, price, description, available, quantity, category, image_url)
-         VALUES ($1, $2, $3, $4, COALESCE($5, true), COALESCE($6, 0), $7, $8)
-         RETURNING id, name, price, description, available, quantity, category, image_url`,
-        [businessId, p.name, p.price || null, p.description || null, p.available ?? true, qtyTouched ? qty : 0, catTouched ? cat : null, photoTouched ? photo : null] // new row: stock 0 unless given; no photo key → NULL (text-only until owner adds one)
+        `INSERT INTO products (business_id, name, price, description, available, quantity, category, image_url, delivery_info, location, how_to_buy)
+         VALUES ($1, $2, $3, $4, COALESCE($5, true), COALESCE($6, 0), $7, $8, $9, $10, $11)
+         RETURNING id, name, price, description, available, quantity, category, image_url, delivery_info, location, how_to_buy`,
+        [businessId, p.name, p.price || null, p.description || null, p.available ?? true, qtyTouched ? qty : 0, catTouched ? cat : null, photoTouched ? photo : null, delivery !== undefined ? delivery : null, loc !== undefined ? loc : null, htb !== undefined ? htb : null] // new row: stock 0 unless given; no photo key → NULL (text-only until owner adds one)
       );
       saved.push(rows[0]); // push the new row
     }
@@ -107,6 +122,9 @@ function formatCatalog(products) {
       if (p.price) bits.push(`  Price: ${p.price}`);
       if (p.description) bits.push(`  Details: ${p.description}`);
       if (Number(p.quantity) > 0) bits.push(`  In stock: ${p.quantity}`); // count line ONLY when above 0 (synced-but-uncounted rows default to 0 — printing "In stock: 0" made the AI tell customers "finished" for shelf-full items! availability flag still governs!)
+      if (p.delivery_info) bits.push(`  Delivery: ${p.delivery_info}`); // delivery facts (AI quotes these VERBATIM — never invents timing/fees!)
+      if (p.location) bits.push(`  Pickup: ${p.location}`); // where to get it
+      if (p.how_to_buy) bits.push(`  How to buy: ${p.how_to_buy}`); // order + payment steps
       return bits.join('\n'); // block lines → one string
     })
     .join('\n'); // blocks → whole catalog text for the system prompt
@@ -133,4 +151,4 @@ async function syncWithReport(businessId, products) {
   return { saved, added, updated, unmentioned };
 }
 
-module.exports = { getProducts, upsertProducts, syncWithReport, formatCatalog, cleanImageUrl, cleanQuantity, cleanCategory }; // the catalog API (+ validators for controllers)
+module.exports = { getProducts, upsertProducts, syncWithReport, formatCatalog, cleanImageUrl, cleanQuantity, cleanCategory, cleanText }; // the catalog API (+ validators for controllers)

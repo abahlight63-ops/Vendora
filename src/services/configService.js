@@ -48,6 +48,9 @@ CREATE TABLE IF NOT EXISTS products ( -- the catalog the AI answers from
   description TEXT,
   available BOOLEAN NOT NULL DEFAULT true, -- false = AI says "out of stock"
   image_url TEXT, -- product photo (public https URL — the bot sends it on WhatsApp for Pro shops)
+  delivery_info TEXT, -- delivery time/options ("Lagos 24-48hrs, nationwide 3-5 days" — NULL = unset, bot never invents it!)
+  location TEXT, -- pickup area/address ("Maitama, Abuja" — NULL = unset!)
+  how_to_buy TEXT, -- how to order + pay ("chat to order, pay on delivery" — NULL = unset!)
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (business_id, name) -- same name twice = update, never duplicate (upsert key)
@@ -163,6 +166,9 @@ ALTER TABLE businesses ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT '
 ALTER TABLE products ADD COLUMN IF NOT EXISTS quantity INTEGER NOT NULL DEFAULT 0; -- integer counts (never floats — stock is whole units!)
 ALTER TABLE products ADD COLUMN IF NOT EXISTS category TEXT; -- niche-driven shelf section (Phones, Gowns… NULL = uncategorized legacy rows)
 ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT; -- product photo URL (Pro shops: bot sends it on WhatsApp; NULL = older product, text-only)
+ALTER TABLE products ADD COLUMN IF NOT EXISTS delivery_info TEXT; -- delivery time/options per product (NULL = unset legacy rows — bot stays quiet, never invents!)
+ALTER TABLE products ADD COLUMN IF NOT EXISTS location TEXT; -- pickup area/address per product (NULL = unset!)
+ALTER TABLE products ADD COLUMN IF NOT EXISTS how_to_buy TEXT; -- order + payment steps per product (NULL = unset!)
 ALTER TABLE products ADD COLUMN IF NOT EXISTS low_threshold INTEGER NOT NULL DEFAULT 5; -- reorder watch level (used later, harmless now)
 
 -- Inventory audit log: EVERY stock change, append-only (never edited, never

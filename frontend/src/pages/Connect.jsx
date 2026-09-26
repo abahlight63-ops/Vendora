@@ -417,7 +417,7 @@ export default function Connect() {
             {!st?.metaEmbeddedReady && st && (
               <div className="learn-box light" style={{ marginTop: 10 }}>
                 <b>One-tap popup isn&apos;t ready{!st.metaAppId ? ' — META_APP_ID missing on the server' : !st.metaConfigId ? ' — META_CONFIGURATION_ID missing on the server' : ''}.</b><br />
-                <span className="hint">Server keys set but popup still won&apos;t open? Two usual culprits: (1) Meta app dashboard → Facebook Login → Settings → Authorized JavaScript origins must include your app URL; (2) popup/ad-blocker (allow popups + connect.facebook.net). Still stuck? Talk to support from Help.</span>
+                <span className="hint">Server keys set but popup still won&apos;t open? Two usual culprits: (1) Meta app dashboard → Facebook Login → Settings → Authorized JavaScript origins must include your app URL{typeof window !== 'undefined' && window.location && window.location.origin ? (<> — yours right now is <b>{window.location.origin}</b> (copy it exactly, https + domain, no trailing slash)</>) : ''}; (2) popup/ad-blocker (allow popups + connect.facebook.net). Still stuck? Talk to support from Help.</span>
               </div>
             )}
             <p className="hint">Stuck on the popup? Allow popups for this site and retry — or talk to support from Help.</p>

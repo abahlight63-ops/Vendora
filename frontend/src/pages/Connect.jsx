@@ -60,6 +60,16 @@ function chromeEscapeUrl() { // intent:// link that opens THIS page in full Chro
     return `intent://${u.host}/connect#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(target)};end`;
   } catch { return ''; }
 }
+function chromeEscapeArmed(setShowManual, toast) { // intent taps die SILENTLY when Chrome is missing (fallback reloads this same page = looks dead!) — watchdog catches it
+  setTimeout(() => {
+    let left = false; // did we actually leave for Chrome? (backgrounded tab = success!)
+    try { left = document.hidden || !document.hasFocus(); } catch {}
+    if (!left) { // still here 2.5s later → escape failed: reveal the manual road + say so (never a dead tap!)
+      setShowManual(true);
+      toast('Chrome didn\u2019t open — enter details manually below (same result, no popup needed).', 'err');
+    }
+  }, 2500);
+}
 function loadFbSdk(appId) {
   return new Promise((resolve) => {
     const init = () => { // (re-)init with THIS attempt's App ID (a stale init from an older/wrong ID would poison every retry until reload!)
@@ -437,8 +447,8 @@ export default function Connect() {
               <div className="learn-box light" style={{ marginTop: 10 }}>
                 <b>On the installed app?</b><br />
                 <span className="hint">Popups can&apos;t complete inside the installed app — open this page in full Chrome instead (same login carries over, nothing to redo):</span>
-                <div style={{ marginTop: 8 }}><a className="btn sm" href={chromeEscapeUrl()}>Open in Chrome</a></div>
-                <span className="hint">Finish the Meta steps in Chrome, then return here — your connection (and TEST) will be waiting.</span>
+                <div style={{ marginTop: 8 }}><a className="btn sm" href={chromeEscapeUrl()} onClick={() => chromeEscapeArmed(setShowManual, toast)}>Open in Chrome</a></div>
+                <span className="hint">Finish the Meta steps in Chrome, then return here — your connection (and TEST) will be waiting. If Chrome doesn&apos;t open, the manual boxes appear below on their own.</span>
               </div>
             )}
             {!st?.metaEmbeddedReady && st && (

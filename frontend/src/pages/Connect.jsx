@@ -166,15 +166,18 @@ export default function Connect() {
       window.FB.login(function (resp) { // the Meta popup (OAuth + phone picker in one!)
         if (signup.current.watch) { clearTimeout(signup.current.watch); signup.current.watch = null; } // answered (any answer!) → watchdog stands down
         setBusy(false);
+        try { if (typeof console !== 'undefined' && console.debug) console.debug('[meta] popup answered, keys:', resp ? Object.keys(resp) : null, 'hasCode:', !!(resp && resp.authResponse && resp.authResponse.code)); } catch {} // KEYS only (never tokens!) — devtools diagnosis without leaking secrets
         if (resp && resp.error) { setShowManual(true); return pop('err', 'Meta refused the popup', (resp.error.message || resp.error) + ' — usual causes: wrong App ID on Render, or the app URL missing in Meta dashboard → Facebook Login → Authorized JavaScript origins.'); } // Meta's REAL verdict surfaced (was swallowed as "closed before finishing"!)
         if (resp && resp.authResponse && resp.authResponse.code) {
           signup.current.code = String(resp.authResponse.code); // the server exchanges this for a token!
           // The message listener usually already captured the IDs — give it a beat, then finish anyway (server discovers the number itself!).
           setTimeout(finishEmbedded, 1500);
+        } else if (resp && resp.authResponse) {
+          pop('err', 'Signup incomplete', 'Meta logged you in but issued no signup code — the business/number steps were likely skipped. Reopen and complete EVERY popup step, especially picking your business number.'); // logged-in-but-codeless (was mislabeled "closed before finishing"!)
         } else {
           toast('Signup closed before finishing — try again when ready', 'err'); // user cancelled (no error state stuck!)
         }
-      }, { config_id: configId, response_type: 'code', override_default_response_type: true });
+      }, { config_id: configId, response_type: 'code', override_default_response_type: true, extras: { setup: {}, featureType: 'whatsapp_business_app_onboarding', sessionInfoVersion: '3' } }); // extras = REQUIRED by Meta (without featureType the popup runs a plain login that never issues a WhatsApp code — the "I did everything!" mystery!)
       signup.current.watch = setTimeout(() => { // popup answered NOTHING in 2 min (swallowed callback — blocked third-party cookies do this!) → unstick + support pointer
         signup.current.watch = null; setBusy(false); setShowManual(true);
         toast('Popup went quiet — allow popups + third-party cookies for this site and retry, or talk to support from Help.', 'err');

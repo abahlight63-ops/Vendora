@@ -502,10 +502,11 @@ function Users({ rows, refresh, act }) { // USERS: search + verify + inspect (20
     <div className="card">
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search email, business, number…" style={{ marginBottom: 12 }} /> {/* live filter input (no button — types-as-you-type!) */}
       <div className="table-wrap"><table>
-        <thead><tr><th>User</th><th>Business</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>ID</th><th>User</th><th>Business</th><th>Status</th><th></th></tr></thead>
         <tbody>
           {list.map((u, i) => ( // key={u.id} stable DB ids…
             <tr key={u.id} className="admin-row" style={{ animationDelay: `${Math.min(i * 40, 400)}ms` }}> {/* staggered entrance (capped — 200 rows never wait long!) */}
+              <td style={{ whiteSpace: 'nowrap' }}><span className="hint">#{u.business_id ?? '—'}</span></td> {/* shop ID (tester lists, notify targeting — backend already sends it!) */}
               <td><b>{u.email}</b> {isFresh(u.created_at) ? <span className="pill new">NEW</span> : null}<br /><span className="hint">{u.verified ? 'verified' : 'UNVERIFIED'} · {fmtDate(u.created_at)}</span></td> {/* NEW = signed up in the last 24h (fresh users pulse at you!) */}
               <td>{u.business_name || '—'}<br /><span className="hint">{u.whatsapp_number || ''} · {u.subscription_status || ''} {u.currency ? `(${u.currency})` : ''}</span></td> {/* shop + number + plan + currency */}
               <td>{!u.verified ? <button className="btn ghost sm" onClick={() => { if (confirm(`Verify ${u.email}?`)) act(`/api/admin/users/${u.id}/verify`, null, `${u.email} verified.`); }}>Verify</button> : <span className="pill ok">ok</span>}</td> {/* unverified → Verify button (confirm() guards mis-taps!); verified → green pill */}

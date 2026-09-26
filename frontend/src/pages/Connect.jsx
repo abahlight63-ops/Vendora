@@ -59,6 +59,7 @@ export default function Connect() {
   const [tgLink, setTgLink] = useState(null);
   const [tgShared, setTgShared] = useState(null); // shared-bot result {code, botName, deepLink, note} (Pro road!)
   const [tgHealth, setTgHealth] = useState(null); // webhook health verdict (Verify button!)
+  const [waHealth, setWaHealth] = useState(null); // Meta token liveness verdict (Verify WhatsApp button!)
   // Brain + upsell
   const [brain, setBrain] = useState('');
   const [upsell, setUpsell] = useState(false);
@@ -106,10 +107,19 @@ export default function Connect() {
     if (!code) return;
     signup.current.code = ''; // consume once (listener may fire twice!)
     setBusy(true);
-    const { ok, data } = await api('/api/me/channels/meta/embedded', { method: 'POST', body: JSON.stringify({ code, waba_id: wabaId, phone_number_id: pid }) });
-    setBusy(false);
-    if (ok) { setMetaProof(data); setStep(2); load(); pop('ok', 'WhatsApp connected!', `Number ${data.phone || ''} is linked. One paste in Meta, then TEST.`); }
-    else pop('err', 'Signup did not finish', data.error || 'Try again or paste your details manually below.');
+    try {
+      const { ok, status, data } = await api('/api/me/channels/meta/embedded', { method: 'POST', body: JSON.stringify({ code, waba_id: wabaId, phone_number_id: pid }) });
+      const msg = (data && data.error) || '';
+      if (ok) { setMetaProof(data); setStep(2); load(); pop('ok', 'WhatsApp connected!', `Number ${data.phone || ''} is linked. One paste in Meta, then TEST.`); }
+      else if (status === 401) pop('err', 'Signed out', 'Your session expired — sign in again, then retry.');
+      else if (status === 404) pop('err', 'Shop not found', 'Your login lost its shop — sign out and sign in again, then retry.');
+      else if (status >= 500) pop('err', 'Server error', (msg || 'Our server hiccuped — wait a minute and retry.') + (data && data.ref ? ` (ref: ${data.ref})` : ''));
+      else pop('err', 'Signup did not finish', msg || 'Try again or paste your details manually below.');
+    } catch (e) {
+      pop('err', 'Server unreachable', 'Our server is waking up or offline (free-plan sleep takes ~1 min). Wait a minute and retry — or paste manually below.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   // ---- Embedded Signup launch ----
@@ -138,22 +148,49 @@ export default function Connect() {
     if (step > 1) setStep(step - 1);
     else { setRoad(null); setStep(1); }
   }
-  function openRoad(r) { setRoad(r); setStep(1); setMetaProof(null); setTgLink(null); setTgShared(null); setTgHealth(null); setShowManual(false); } // fresh drafts per road!
+  function openRoad(r) { setRoad(r); setStep(1); setMetaProof(null); setTgLink(null); setTgShared(null); setTgHealth(null); setWaHealth(null); setShowManual(false); } // fresh drafts per road!
 
   // ---- Meta manual fallback (popup unavailable) ----
   async function metaConnect() {
     if (!phoneId.trim() || !metaToken.trim()) return toast('Paste both values first', 'err');
     setBusy(true);
-    const { ok, data } = await api('/api/me/channels/meta', { method: 'POST', body: JSON.stringify({ phone_number_id: phoneId.trim(), token: metaToken.trim() }) });
-    setBusy(false);
-    if (ok) { setMetaProof(data); setMetaToken(''); setStep(2); load(); } // token cleared from the form (stored server-side only!)
-    else pop('err', 'Meta said no', data.error || 'Check the values and try again.');
+    try {
+      const { ok, status, data } = await api('/api/me/channels/meta', { method: 'POST', body: JSON.stringify({ phone_number_id: phoneId.trim(), token: metaToken.trim() }) });
+      const msg = (data && data.error) || '';
+      if (ok) { setMetaProof(data); setMetaToken(''); setStep(2); load(); } // token cleared from the form (stored server-side only!)
+      else if (status === 401) pop('err', 'Signed out', 'Your session expired — sign in again, then retry.');
+      else if (status === 404) pop('err', 'Shop not found', 'Your login lost its shop — sign out and sign in again, then retry.');
+      else if (status >= 500) pop('err', 'Server error', (msg || 'Our server hiccuped — wait a minute and retry.') + (data && data.ref ? ` (ref: ${data.ref})` : ''));
+      else pop('err', 'Meta said no', msg || 'Check the values and try again.');
+    } catch (e) {
+      pop('err', 'Server unreachable', 'Our server is waking up or offline (free-plan sleep takes ~1 min). Wait a minute and retry.');
+    } finally {
+      setBusy(false);
+    }
   }
   async function metaDisconnect() {
     setBusy(true);
-    await api('/api/me/channels/meta/disconnect', { method: 'POST', body: '{}' });
-    setBusy(false);
-    setMetaProof(null); setStep(1); load(); toast('WhatsApp disconnected.');
+    try {
+      await api('/api/me/channels/meta/disconnect', { method: 'POST', body: '{}' });
+      setMetaProof(null); setStep(1); load(); toast('WhatsApp disconnected.');
+    } catch (e) {
+      toast('Server unreachable — wait a minute and retry', 'err');
+    } finally {
+      setBusy(false);
+    }
+  }
+  // ---- WhatsApp liveness: asks Meta if the stored token still works (dead temp tokens named here!) ----
+  async function waHealthCheck() {
+    setBusy(true); setWaHealth(null);
+    try {
+      const { ok, data } = await api('/api/me/channels/meta/health');
+      if (ok) setWaHealth(data);
+      else toast((data && data.error) || 'Health check failed', 'err');
+    } catch (e) {
+      toast('Server unreachable — wait a minute and retry', 'err');
+    } finally {
+      setBusy(false);
+    }
   }
   // ---- Telegram actions ----
   const TG_SHAPE = /^\d+:[\w-]{30,}$/; // BotFather reality: numeric bot id + colon + ~35-char secret (finger-selected pastes that FAIL this are truncated — caught HERE, not at Telegram!)
@@ -274,6 +311,17 @@ export default function Connect() {
           {wa && (wa.dailyUnlimited || wa.dailyLimit) ? <span className="hint">Today: {wa.dailyUsed || 0}/{wa.dailyUnlimited ? 'Unlimited' : wa.dailyLimit} replies ({wa.tier || 'free'} plan)</span> : null}
           {wa && wa.metaConnected && <button className="btn ghost sm" disabled={busy} onClick={metaDisconnect}>Disconnect</button>}
         </div>
+        {wa && wa.metaConnected && (
+          <div style={{ marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <button className="btn ghost sm" disabled={busy} onClick={waHealthCheck}>{busy ? 'Verifying…' : 'Verify WhatsApp'}</button>
+              {waHealth && waHealth.connected && <span className="pill ok" style={{ fontSize: 12 }}>Token alive{waHealth.phone ? ` · ${waHealth.phone}` : ''}</span>}
+              {waHealth && !waHealth.connected && waHealth.reason && <span className="pill flag" style={{ fontSize: 12 }}>Needs attention</span>}
+            </div>
+            {waHealth && waHealth.connected && <p className="hint" style={{ marginTop: 6 }}>Meta accepts your token. If TEST messages still don&apos;t flip LIVE, the webhook paste in Meta (step 2) is the missing piece — not your credentials.</p>}
+            {waHealth && !waHealth.connected && <p className="hint" style={{ marginTop: 6 }}>{waHealth.reason === 'token-dead' ? 'Your Meta token expired (temp tokens last 24h) — reconnect with a fresh token from Meta API Setup.' : 'Not connected yet — finish step 1 first.'}</p>}
+          </div>
+        )}
         {tgOn && (
           <div style={{ marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -434,11 +482,16 @@ export default function Connect() {
 
   async function metaPull() { // one-tap auto-sync (Pro!): Meta profile → catalog scaffold
     setBusy(true);
-    const { ok, data } = await api('/api/me/channels/meta/pull-profile', { method: 'POST', body: '{}' });
-    setBusy(false);
-    if (ok) pop('ok', 'Profile synced!', `${data.count} verified products added to your catalog.`);
-    else if (data && data.error && String(data.error).toLowerCase().includes('premium')) setUpsell(true); // 402 → upgrade card (never a dead error!)
-    else pop('err', 'Sync failed', (data && data.error) || 'Try again.');
+    try {
+      const { ok, data } = await api('/api/me/channels/meta/pull-profile', { method: 'POST', body: '{}' });
+      if (ok) pop('ok', 'Profile synced!', `${data.count} verified products added to your catalog.`);
+      else if (data && data.error && String(data.error).toLowerCase().includes('premium')) setUpsell(true); // 402 → upgrade card (never a dead error!)
+      else pop('err', 'Sync failed', ((data && data.error) || 'Try again.') + (data && data.ref ? ` (ref: ${data.ref})` : ''));
+    } catch (e) {
+      pop('err', 'Server unreachable', 'Our server is waking up or offline — wait a minute and retry.');
+    } finally {
+      setBusy(false);
+    }
   }
 }
 

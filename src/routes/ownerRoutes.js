@@ -44,6 +44,7 @@ router.put('/me/whatsapp-model', ownerController.whatsappModel); // per-shop Wha
 router.post('/me/channels/meta', ownerController.metaConnect); // Embedded Signup result OR manual paste → validate + arm Meta door
 router.post('/me/channels/meta/embedded', ownerController.metaEmbedded); // Embedded Signup popup callback (code → token exchange server-side!)
 router.post('/me/channels/meta/disconnect', ownerController.metaDisconnect); // forget creds → OFF until reconnected
+router.get('/me/channels/meta/health', ownerController.metaHealthCheck); // Connect "Verify WhatsApp" button (stored token still alive?)
 router.post('/me/channels/meta/pull-profile', ownerController.metaPullProfile); // one-tap auto-sync (Pro!)
 router.get('/me/complaints', ownerController.complaintMine);
 router.post('/me/complaints', ownerController.complaintCreate); // file a support ticket (shows in Admin → Complaints)

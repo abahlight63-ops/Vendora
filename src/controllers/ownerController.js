@@ -878,38 +878,50 @@ async function channelsStatus(req, res) {
 // Per-shop WhatsApp brain pick (Connect page dropdown). Tier-gated EXACTLY like
 // the VeloSalesAI dropdown (locked → 402, frontend opens the upgrade card!).
 async function whatsappModel(req, res) {
-  const planService = require('../services/planService');
-  const aiModels = require('../services/aiModels');
-  const { model } = req.body || {};
-  const { rows } = await db.query(
-    'SELECT subscription_status, subscription_expires, trial_started_at, plan_tier, bonus_pro_until FROM businesses WHERE id = $1',
-    [req.session.businessId]
-  );
-  const resolved = aiModels.resolveChoice(model, planService.effectiveTier(rows[0] || {})); // exists? below-floor? ('' → free default!)
-  if (resolved.error) return res.status(402).json({ error: resolved.error }); // 402 = paywall (locked premium pick!)
-  await db.query('UPDATE businesses SET whatsapp_model = $1 WHERE id = $2', [resolved.entry.id, req.session.businessId]); // store the CATALOG id (stable key, not provider name!)
-  res.json({ model: resolved.entry.id, label: resolved.entry.label }); // echo truth (UI shows what stuck!)
+  try {
+    const planService = require('../services/planService');
+    const aiModels = require('../services/aiModels');
+    const { model } = req.body || {};
+    const { rows } = await db.query(
+      'SELECT subscription_status, subscription_expires, trial_started_at, plan_tier, bonus_pro_until FROM businesses WHERE id = $1',
+      [req.session.businessId]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Shop not found — sign out and sign in again.' });
+    const resolved = aiModels.resolveChoice(model, planService.effectiveTier(rows[0] || {})); // exists? below-floor? ('' → free default!)
+    if (resolved.error) return res.status(402).json({ error: resolved.error }); // 402 = paywall (locked premium pick!)
+    await db.query('UPDATE businesses SET whatsapp_model = $1 WHERE id = $2', [resolved.entry.id, req.session.businessId]); // store the CATALOG id (stable key, not provider name!)
+    res.json({ model: resolved.entry.id, label: resolved.entry.label }); // echo truth (UI shows what stuck!)
+  } catch (e) {
+    console.error('whatsapp model failed:', (e && e.code) || '-', e.message);
+    res.status(500).json({ error: dbUserMessage(e), ref: errRef(e) });
+  }
 }
 
 // Meta step 1+2 in one: validate ID + token, store, arm the channel.
 // Accepts manual paste OR Embedded Signup results (waba_id included).
 async function metaConnect(req, res) {
-  const meta = require('../services/channels/meta');
-  const { phone_number_id, token, waba_id } = req.body || {};
-  const checked = await meta.checkCredentials(phone_number_id, token); // asks Meta whose number this is (invalid → friendly error!)
-  if (checked.error) return res.status(400).json({ error: checked.error });
-  const crypto = require('crypto');
-  const verify = 'VND' + crypto.randomBytes(8).toString('hex').toUpperCase(); // per-shop verify token (Meta echoes it on subscribe — proves ownership!)
-  await db.query(
-    `UPDATE businesses SET meta_token = $1, meta_phone_number_id = $2, meta_waba_id = $3,
-      meta_verify_token = COALESCE(NULLIF(meta_verify_token, ''), $4), wa_channel = 'meta'
-     WHERE id = $5`, // keep an existing verify token (Meta already subscribed? don't break it!)
-    [String(token).trim(), String(phone_number_id).trim(), String(waba_id || '').trim(), verify, req.session.businessId]
-  );
-  const { rows } = await db.query('SELECT meta_verify_token FROM businesses WHERE id = $1', [req.session.businessId]);
-  require('../services/referralService').onFirstActive(req.session.businessId) // channel just went live → referral reward check (referred shops pay out on FIRST REAL USE!)
-    .catch((e) => console.error('referral reward error:', e.message)); // rewards never break connects!
-  res.json({ ok: true, phone: checked.phone, verifyToken: rows[0].meta_verify_token, webhookUrl: webhookUrl(req) });
+  try {
+    const meta = require('../services/channels/meta');
+    const { phone_number_id, token, waba_id } = req.body || {};
+    const checked = await meta.checkCredentials(phone_number_id, token); // asks Meta whose number this is (invalid → friendly error!)
+    if (checked.error) return res.status(400).json({ error: checked.error });
+    const crypto = require('crypto');
+    const verify = 'VND' + crypto.randomBytes(8).toString('hex').toUpperCase(); // per-shop verify token (Meta echoes it on subscribe — proves ownership!)
+    await db.query(
+      `UPDATE businesses SET meta_token = $1, meta_phone_number_id = $2, meta_waba_id = $3,
+        meta_verify_token = COALESCE(NULLIF(meta_verify_token, ''), $4), wa_channel = 'meta'
+       WHERE id = $5`, // keep an existing verify token (Meta already subscribed? don't break it!)
+      [String(token).trim(), String(phone_number_id).trim(), String(waba_id || '').trim(), verify, req.session.businessId]
+    );
+    const { rows } = await db.query('SELECT meta_verify_token FROM businesses WHERE id = $1', [req.session.businessId]);
+    if (!rows.length) return res.status(404).json({ error: 'Shop not found — sign out and sign in again, then retry.' }); // stale session (missing row read as property-of-undefined used to CRASH here!)
+    require('../services/referralService').onFirstActive(req.session.businessId) // channel just went live → referral reward check (referred shops pay out on FIRST REAL USE!)
+      .catch((e) => console.error('referral reward error:', e.message)); // rewards never break connects!
+    res.json({ ok: true, phone: checked.phone, verifyToken: rows[0].meta_verify_token, webhookUrl: webhookUrl(req) });
+  } catch (e) {
+    console.error('meta connect failed:', (e && e.code) || '-', e.message); // JSON 500, never a process crash (see telegramToken note!)
+    res.status(500).json({ error: dbUserMessage(e), ref: errRef(e) });
+  }
 }
 
 // Meta Embedded Signup callback: the popup hands us a WABA id, a phone number
@@ -917,53 +929,86 @@ async function metaConnect(req, res) {
 // with META_APP_SECRET). Credentials are validated against the Graph API then
 // stored against the shop — never shown back to the browser.
 async function metaEmbedded(req, res) {
-  const meta = require('../services/channels/meta');
-  let { waba_id, phone_number_id, token, code } = req.body || {};
-  waba_id = String(waba_id || '').trim();
-  phone_number_id = String(phone_number_id || '').trim();
-  token = String(token || '').trim();
-  code = String(code || '').trim();
-  if (code && !token) { // code road: exchange server-side, then discover the number on the WABA…
-    const ex = await meta.exchangeCode(code);
-    if (ex.error) return res.status(400).json({ error: ex.error });
-    token = ex.token;
-    if (waba_id && !phone_number_id) {
-      const listed = await meta.listWabaNumbers(waba_id, token);
-      if (listed.error) return res.status(400).json({ error: listed.error });
-      if (!listed.numbers.length) return res.status(400).json({ error: 'That WhatsApp Business Account has no phone numbers yet — add one in WhatsApp Manager first.' });
-      phone_number_id = listed.numbers[0].id; // first number wins (owner can swap via manual reconnect!)
+  try {
+    const meta = require('../services/channels/meta');
+    let { waba_id, phone_number_id, token, code } = req.body || {};
+    waba_id = String(waba_id || '').trim();
+    phone_number_id = String(phone_number_id || '').trim();
+    token = String(token || '').trim();
+    code = String(code || '').trim();
+    if (code && !token) { // code road: exchange server-side, then discover the number on the WABA…
+      const ex = await meta.exchangeCode(code);
+      if (ex.error) return res.status(400).json({ error: ex.error });
+      token = ex.token;
+      if (waba_id && !phone_number_id) {
+        const listed = await meta.listWabaNumbers(waba_id, token);
+        if (listed.error) return res.status(400).json({ error: listed.error });
+        if (!listed.numbers.length) return res.status(400).json({ error: 'That WhatsApp Business Account has no phone numbers yet — add one in WhatsApp Manager first.' });
+        phone_number_id = listed.numbers[0].id; // first number wins (owner can swap via manual reconnect!)
+      }
     }
+    if (!phone_number_id || !token) return res.status(400).json({ error: 'Signup did not return a number — try again or paste your details manually.' });
+    req.body = { phone_number_id, token, waba_id }; // reuse the validated manual path (one storage road!)
+    return metaConnect(req, res);
+  } catch (e) {
+    console.error('meta embedded failed:', (e && e.code) || '-', e.message); // JSON 500, never a process crash!
+    res.status(500).json({ error: dbUserMessage(e), ref: errRef(e) });
   }
-  if (!phone_number_id || !token) return res.status(400).json({ error: 'Signup did not return a number — try again or paste your details manually.' });
-  req.body = { phone_number_id, token, waba_id }; // reuse the validated manual path (one storage road!)
-  return metaConnect(req, res);
 }
 
 // Meta disconnect: forget creds (channel stays 'meta' — OFF until reconnected!).
 async function metaDisconnect(req, res) {
-  await db.query("UPDATE businesses SET meta_token = '', meta_phone_number_id = '', meta_waba_id = '', wa_channel = 'meta' WHERE id = $1", [req.session.businessId]);
-  res.json({ ok: true });
+  try {
+    await db.query("UPDATE businesses SET meta_token = '', meta_phone_number_id = '', meta_waba_id = '', wa_channel = 'meta' WHERE id = $1", [req.session.businessId]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('meta disconnect failed:', (e && e.code) || '-', e.message);
+    res.status(500).json({ error: dbUserMessage(e), ref: errRef(e) });
+  }
+}
+
+// WhatsApp liveness check (Connect "Verify WhatsApp" button — mirrors the
+// Telegram verifier!). Asks Meta if the stored token still works (the 24h temp
+// token dying is the #1 WhatsApp killer). Secrets never returned.
+async function metaHealthCheck(req, res) {
+  try {
+    const { rows } = await db.query('SELECT meta_phone_number_id, meta_token, whatsapp_number FROM businesses WHERE id = $1', [req.session.businessId]);
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    const phoneId = (rows[0].meta_phone_number_id || '').trim();
+    const token = (rows[0].meta_token || '').trim();
+    if (!phoneId || !token) return res.json({ connected: false });
+    const h = await require('../services/channelHealth').metaHealth(phoneId, token);
+    res.json({ connected: !!h.ok, phone: h.phone || rows[0].whatsapp_number || '', reason: h.ok ? '' : (h.reason || 'token-dead') });
+  } catch (e) {
+    console.error('meta health error:', (e && e.code) || '-', e.message);
+    res.status(500).json({ error: dbUserMessage(e), ref: errRef(e) });
+  }
 }
 
 // Meta auto-sync: pull the WhatsApp business profile → scaffold catalog.
 // (Pro-gated like SYNC: — same premium, new one-tap road!)
 async function metaPullProfile(req, res) {
-  const planService = require('../services/planService');
-  const replyEngine = require('../services/replyEngine');
-  const productService = require('../services/productService');
-  const meta = require('../services/channels/meta');
-  const { rows } = await db.query('SELECT * FROM businesses WHERE id = $1', [req.session.businessId]);
-  const business = rows[0];
-  if (!business) return res.status(404).json({ error: 'Not found' });
-  if (!planService.isPro(business)) return res.status(402).json({ error: 'Auto-sync is a premium feature. Manual teaching stays free.' });
-  if (!business.meta_token || !business.meta_phone_number_id) return res.status(400).json({ error: 'Connect Meta first.' });
-  const pulled = await meta.fetchBusinessProfile(business.meta_token, business.meta_phone_number_id);
-  if (pulled.error) return res.status(400).json({ error: pulled.error });
-  const { products, ok } = await replyEngine.extractProducts(pulled.profileText, business); // same extractor as LEARN/SYNC!
-  if (!ok || !products.length) return res.status(422).json({ error: 'Your Meta profile has no products listed — add them in WhatsApp Manager, or paste the text manually.' });
-  const { saved, added, updated, unmentioned } = await productService.syncWithReport(business.id, products); // scaffold + DIFF (same report as dashboard sync!)
-  await db.query('UPDATE businesses SET profile_snapshot = $1, profile_synced_at = now() WHERE id = $2', [pulled.profileText.slice(0, 4000), business.id]);
-  res.json({ ok: true, count: saved.length, added, updated, unmentioned, products: saved.map((p) => ({ name: p.name, price: p.price })) });
+  try {
+    const planService = require('../services/planService');
+    const replyEngine = require('../services/replyEngine');
+    const productService = require('../services/productService');
+    const meta = require('../services/channels/meta');
+    const { rows } = await db.query('SELECT * FROM businesses WHERE id = $1', [req.session.businessId]);
+    const business = rows[0];
+    if (!business) return res.status(404).json({ error: 'Business not found' });
+    if (!planService.isPro(business)) return res.status(402).json({ error: 'Auto-sync is a premium feature. Manual teaching stays free.' });
+    if (!business.meta_token || !business.meta_phone_number_id) return res.status(400).json({ error: 'Connect Meta first.' });
+    const pulled = await meta.fetchBusinessProfile(business.meta_token, business.meta_phone_number_id);
+    if (pulled.error) return res.status(400).json({ error: pulled.error });
+    const { products, ok } = await replyEngine.extractProducts(pulled.profileText, business); // same extractor as LEARN/SYNC!
+    if (!ok || !products.length) return res.status(422).json({ error: 'Your Meta profile has no products listed — add them in WhatsApp Manager, or paste the text manually.' });
+    const { saved, added, updated, unmentioned } = await productService.syncWithReport(business.id, products); // scaffold + DIFF (same report as dashboard sync!)
+    await db.query('UPDATE businesses SET profile_snapshot = $1, profile_synced_at = now() WHERE id = $2', [pulled.profileText.slice(0, 4000), business.id]);
+    res.json({ ok: true, count: saved.length, added, updated, unmentioned, products: saved.map((p) => ({ name: p.name, price: p.price })) });
+  } catch (e) {
+    console.error('meta pull failed:', (e && e.code) || '-', e.message); // JSON 500, never a process crash!
+    res.status(500).json({ error: dbUserMessage(e), ref: errRef(e) });
+  }
 }
 
 // Log a sponsor/ad click (per-click billing for direct sponsors).
@@ -1209,6 +1254,7 @@ module.exports = { // every handler the routes file wires up (miss one here = ro
   metaConnect,
   metaEmbedded,
   metaDisconnect,
+  metaHealthCheck,
   metaPullProfile,
   getNotifications,
   readNotifications,

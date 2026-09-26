@@ -356,6 +356,13 @@ async function handleInbound(req, res) {
       await reply(From, handoffMsg);
       await conversationService.logMessage(customerId, 'out', handoffMsg);
       await alertOwner(business, From, ProfileName, Body, result.reason); // …and the owner is paged instantly
+      try { // in-app bell (the owner SEES it: gold-flagged chat waiting in Chats + this bell card linking straight there!)
+        await require('../services/notifyService').notify(business.id, {
+          title: `Customer needs you — ${ProfileName || From}`,
+          body: `"${String(Body || '').slice(0, 140)}" — ${result.reason || 'the AI handed this chat to you'}. Open Chats to reply.`,
+          link: '/chats',
+        });
+      } catch (e) { console.error('handoff bell error:', e.message); } // bell failing must never break the webhook!
     }
 
     res.status(200).send(''); // Meta happy (empty 200 = "received, don't retry")

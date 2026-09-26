@@ -41,6 +41,13 @@ function Steps({ n, of }) { // progress dots ("Step 2 of 4" — nobody gets lost
 }
 
 // Load Meta's SDK once (Embedded Signup popup needs window.FB!).
+function isStandaloneBrowser() { // installed PWA (popups lose their return trip here — offer the manual road!)
+  try {
+    if (window.navigator && window.navigator.standalone === true) return true; // iOS installed
+    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true; // Android/desktop installed
+  } catch {}
+  return false;
+}
 function loadFbSdk(appId) {
   return new Promise((resolve) => {
     const init = () => { // (re-)init with THIS attempt's App ID (a stale init from an older/wrong ID would poison every retry until reload!)
@@ -421,6 +428,22 @@ export default function Connect() {
               </div>
             )}
             <p className="hint">Stuck on the popup? Allow popups for this site and retry — or talk to support from Help.</p>
+            {!showManual && isStandaloneBrowser() && <p className="hint" style={{ marginTop: 8 }}>On the installed app? Popups struggle here — <button type="button" className="btn ghost sm" onClick={() => setShowManual(true)}>enter details manually</button></p>}
+            {showManual && (<div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+              <h2>Enter details manually</h2>
+              <p className="desc">Same two values from your Meta app dashboard (WhatsApp → API testing) — no developer maze:</p>
+              <ol className="desc" style={{ margin: '8px 0 8px 18px', display: 'grid', gap: 4 }}>
+                <li>Open your Meta app → WhatsApp → API testing.</li>
+                <li>Copy the <b>Phone Number ID</b> (all digits) + the <b>temporary token</b> (lasts 24h — enough to connect + TEST today).</li>
+              </ol>
+              <label>Phone Number ID (all digits)</label>
+              <input value={phoneId} onChange={(e) => setPhoneId(e.target.value)} placeholder="e.g. 123456789012345" inputMode="numeric" spellCheck="false" />
+              <label>Access token (long string)</label>
+              <input value={metaToken} onChange={(e) => setMetaToken(e.target.value)} placeholder="Paste the token from API testing" spellCheck="false" autoComplete="off" />
+              <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                <button className="btn sm" disabled={busy} onClick={metaConnect}>{busy ? (<><Loader size={15} />Checking…</>) : 'Check + continue'}</button>
+              </div>
+            </div>)}
           </>)}
           {step === 2 && (<>
             <h2>Link VeloSales Ai in your Meta dashboard</h2>

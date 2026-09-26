@@ -35,6 +35,20 @@ async function sendText(token, chatId, text) {
   }
 }
 
+// Typing presence ("…is typing" in the customer's chat). Fire-and-forget:
+// shown while the AI thinks so silence never feels dead. Telegram clears it
+// after ~5s, so long replies re-fire it (see routes caller!). Failures are
+// swallowed — presence must NEVER block or break the real reply!
+async function sendAction(token, chatId, action) {
+  if (!token || !chatId) return; // guards (empty token = shop never connected Telegram!)
+  try {
+    await fetch(`${api(token)}/sendChatAction`, { // Bot API sendChatAction (POST JSON: chat_id + action!)
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, action: action || 'typing' }),
+    });
+  } catch (e) { /* presence is best-effort — log nothing (a dead network already logs plenty!) */ }
+}
 // Send a product photo with the reply as its caption (Pro catalog photos).
 // Returns true when Telegram accepted it, false = caller falls back to text.
 async function sendPhoto(token, chatId, photoUrl, caption) {
@@ -102,4 +116,4 @@ function parseInbound(update) {
   return null; // anything else (polls, locations, contacts…) ignored for v1 (scope!)
 }
 
-module.exports = { verifySecret, sendText, sendPhoto, downloadFile, parseInbound }; // route + webhook import these five
+module.exports = { verifySecret, sendText, sendPhoto, sendAction, downloadFile, parseInbound }; // route + webhook import these six

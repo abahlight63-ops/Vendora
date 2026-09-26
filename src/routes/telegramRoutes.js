@@ -66,7 +66,13 @@ async function handleParsed(business, botToken, parsed, req, res) {
     ownerTid: business.owner_telegram_id || null, // linked owner id (owner commands from here!)
     media, // pre-downloaded {kind,mime,base64} (vision input for photos!)
   };
-  await handleInbound(req, res); // ONE brain (all LEARN/SYNC/PAUSE/AI/takeover logic reused — zero duplication!)
+  tg.sendAction(botToken, parsed.chatId, 'typing').catch(() => {}); // instant presence (customer sees "typing…" while the AI thinks!)
+  const keepTyping = setInterval(() => { tg.sendAction(botToken, parsed.chatId, 'typing').catch(() => {}); }, 4000); // Telegram clears presence after ~5s — re-fire until the reply lands!
+  try {
+    await handleInbound(req, res); // ONE brain (all LEARN/SYNC/PAUSE/AI/takeover logic reused — zero duplication!)
+  } finally {
+    clearInterval(keepTyping); // reply sent (or errored) → stop presence (no orphan timers, ever!)
+  }
 }
 
 // ---- Per-shop bot: POST /webhook/telegram/:bizId ----

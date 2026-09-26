@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react'; // useEffect = load ticket history on mount; useState = accordion + form
 import { startTour } from '../components/Tour.jsx'; // named import { } (NOT default!) — replay button fires the tour bus
 import { api, fmtDate, pop, toast } from '../lib/api.js'; // api() tickets; fmtDate stamps; pop() filed-confirmation; toast() small errors
+import Loader from '../components/Loader.jsx'; // mini orbit in the send button
 
 const FAQS = [ // [question, answer] pairs — content lives HERE, markup below is generic (separation of content & presentation!)
   ['How do I connect my WhatsApp?', 'Open the Connect page and tap "Connect WhatsApp" — a Meta popup opens, you log in with Facebook and pick your business number. We store everything against your account automatically. Then paste our webhook URL + verify code in Meta (shown on screen) and finish with TEST — the page flips to LIVE.'],
@@ -79,7 +80,7 @@ function SupportBox() { // support ticket form + history (Help tab's "Still stuc
       <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. Bot replies with old prices" maxLength={120} /> {/* maxLength mirrors server slice (defense in depth!) */}
       <label>What happened?</label>
       <textarea value={body} onChange={(e) => setBody(e.target.value)} rows="4" placeholder="Tell us step by step…" />
-      <div style={{ marginTop: 12 }}><button className="btn" disabled={busy} onClick={send}>{busy ? 'Sending…' : 'Send to support'}</button></div>
+      <div style={{ marginTop: 12 }}><button className="btn" disabled={busy} onClick={send}>{busy ? (<><Loader size={15} />Sending…</>) : 'Send to support'}</button></div>
       <div style={{ marginTop: 16 }}>
         <h2 style={{ fontSize: 14 }}>Your messages</h2> {/* ticket history (status + admin replies inline!) */}
         {tickets === null ? <div className="skel" /> : tickets.length === 0 ? <p className="hint">No messages yet — your replies from support will appear here.</p> : ( // trilogy: loading bar → empty → tickets

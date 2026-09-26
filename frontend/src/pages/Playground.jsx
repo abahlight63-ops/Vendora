@@ -6,6 +6,7 @@
 // Also sets localStorage 'vendora-tested' so the Dashboard checklist ticks!
 import { useEffect, useState } from 'react'; // useState only (no mount fetch — starts with a greeting); useEffect = video gate once
 import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 30s video gate (free tier, once/day!)
+import Loader from '../components/Loader.jsx'; // mini orbit in the typing bubble
 
 export default function Playground() { // no props (uses session catalog server-side)
   const [msgs, setMsgs] = useState([{ from: 'ai', text: 'Hi! I\'m your AI shop assistant. Ask me like a customer — e.g. "Abeg, do you have blue gown?"' }]); // initial AI greeting (from:'ai' renders left/green bubble; \' escapes apostrophe)
@@ -31,7 +32,7 @@ export default function Playground() { // no props (uses session catalog server-
       <div className="card">
         <div className="thread" style={{ minHeight: 220 }}> {/* .thread = chat column (CSS); minHeight stops layout jump when empty */}
           {msgs.map((m, i) => (<div key={i} className={m.from === 'you' ? 'bubble-out' : 'bubble-in'}>{m.text}</div>))} {/* key={i} ACCEPTABLE here (append-only list, never reorders — index keys only break on reorder/delete!); bubble-out = you/right, bubble-in = AI/left */}
-          {busy && <div className="bubble-in"><span className="hint">Typing…</span></div>} {/* && conditional: typing bubble ONLY while busy */}
+          {busy && <div className="bubble-in"><span className="hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Loader size={14} />Typing…</span></div>} {/* && conditional: branded typing bubble ONLY while busy */}
         </div>
         <div className="row-input"> {/* flex row: input stretches, button fixed (CSS .row-input rules) */}
           <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Do you have blue gown?" onKeyDown={(e) => { if (e.key === 'Enter') send(); }} /> {/* controlled input + Enter-to-send (onKeyDown checks e.key — Shift+Enter irrelevant for <input> single-line) */}

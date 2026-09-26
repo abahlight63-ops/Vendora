@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react'; // useState = passwords + status; useEffect = title
 import { Link } from 'react-router-dom'; // back-to-login link
 import { api } from '../lib/api.js'; // reset POST
+import Loader from '../components/Loader.jsx'; // mini orbit in the save button
 
 export default function Reset() {
   const [pw1, setPw1] = useState(''); // new password draft
@@ -46,7 +47,7 @@ export default function Reset() {
               <input value={pw1} onChange={(e) => setPw1(e.target.value)} type="password" placeholder="••••••••" autoComplete="new-password" /> {/* autoComplete=new-password (password managers OFFER to generate!) */}
               <label>Type it again</label>
               <input value={pw2} onChange={(e) => setPw2(e.target.value)} type="password" placeholder="••••••••" autoComplete="new-password" onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} /> {/* Enter submits from either field */}
-              <button className="btn login-cta" disabled={busy} onClick={submit}>{busy ? 'Saving…' : 'Save new password'}</button>
+              <button className="btn login-cta" disabled={busy} onClick={submit}>{busy ? (<><Loader size={15} />Saving…</>) : 'Save new password'}</button>
               <div className={'auth-message' + (err ? ' err' : '')}>{msg}</div> {/* status (err class only on failure — no shake here, calmer page) */}
               <p className="auth-toggle"><Link to="/login">Back to sign in</Link></p> {/* Router Link (client-side — no reload!) */}
             </>

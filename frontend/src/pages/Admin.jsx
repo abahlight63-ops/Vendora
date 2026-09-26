@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api, fmtDate, pop, toast } from '../lib/api.js';
 import { money } from '../lib/money.js';
 import Ic from '../components/icons.jsx';
-import Loader from '../components/Loader.jsx'; // Orbit V while the gate checks
+import Loader, { BrandGate } from '../components/Loader.jsx'; // BrandGate (access check) + mini orbit (AI test button!)
 import { adsStatus, clearSponsorSeen, clearVideoSeen, maybeShowSponsor, maybeShowVideoAd } from '../lib/ads.js'; // sponsor + video previews (this browser's tier/tags, daily caps bypassed)
 
 const TABS = [['stats', 'Overview', 'chart', 'green'], ['users', 'Users', 'profile', 'blue'], ['revenue', 'Income', 'cash', 'gold'], ['transfers', 'Transfers', 'send', 'orange'], ['referrals', 'Referrals', 'gift', 'purple'], ['channels', 'Channels', 'plug', 'teal'], ['complaints', 'Complaints', 'help', 'red'], ['templates', 'Templates', 'copy', 'gold'], ['broadcast', 'Broadcast', 'mega', 'orange'], ['warn', 'Warn user', 'warn', 'red'], ['ai', 'AI health', 'spark', 'purple'], ['ads', 'Ads', 'card', 'green']]; // [key, label, icon, accent] quads — EVERY console page is a tab (one page visible at a time, never stacked!)
@@ -86,7 +86,7 @@ export default function Admin() {
           <div className="auth-pane">
             <h1>Admin only</h1> {/* plain title (no branding fanfare — obscurity is a feature here!) */}
             <p className="switch-note">{gate === 'checking' ? 'Checking access…' : 'This area is private. Enter the admin password.'}</p>
-            {gate === 'checking' && <div style={{ display: 'grid', placeItems: 'center', padding: '18px 0 6px' }}><Loader size={40} /></div>}
+            {gate === 'checking' && <BrandGate size={64} />}
             {gate === 'locked' && ( // password form ONLY when confirmed locked (checking shows text alone — no flash of inputs!)
               <>
                 <label>Admin password</label>
@@ -353,7 +353,7 @@ function AiHealth() { // AI KEYS LIVE? one-tap ping per provider (booleans + sho
     <div className="card">
       <h2><Ic n="spark" s={18} /> AI health</h2>
       <p className="desc">Pings every AI key with a 5-token hello. Green = working. Red names the exact problem (bad key? retired model? spent quota?) — fix that key on Render, then redeploy.</p>
-      <button className="btn sm" disabled={h === 'checking'} onClick={test}>{h === 'checking' ? 'Testing…' : 'Test all AIs'}</button>
+      <button className="btn sm" disabled={h === 'checking'} onClick={test}>{h === 'checking' ? (<><Loader size={15} />Testing…</>) : 'Test all AIs'}</button>
       {Array.isArray(h) && (
         <div style={{ marginTop: 10 }}>
           {h.map((r) => (

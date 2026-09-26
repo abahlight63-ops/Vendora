@@ -8,7 +8,7 @@ import { Suspense, lazy, useCallback, useEffect, useState } from 'react'; // Sus
 import { Routes, Route, Navigate } from 'react-router-dom'; // Routes = switch; Route = path→element; Navigate = redirect element
 import Shell from './components/Shell.jsx'; // app frame (sidebar+topbar) wrapping guarded pages — ALWAYS needed (eager!)
 import Splash from './components/Splash.jsx'; // brand intro (shown first — eager, it's tiny!)
-import Loader from './components/Loader.jsx'; // branded Orbit V (page fallback + login wall!)
+import { BrandGate } from './components/Loader.jsx'; // selling-point loading face (page fallback + login wall!)
 import { api } from './lib/api.js'; // backend fetch helper (session cookie included)
 import { loadNetworkAds, setAdsCache, resetAdsCache } from './lib/ads.js'; // free-tier ad tags (single loader — Pro gets nothing)
 import { useTheme } from './lib/theme.js'; // [theme, toggleTheme] (dark/light, persisted)
@@ -36,8 +36,8 @@ const VeloSalesAI = lazy(() => import('./pages/VeloSalesAI.jsx')); // general AI
 const Privacy = lazy(() => import('./pages/Privacy.jsx')); // public legal (no login needed)
 const Terms = lazy(() => import('./pages/Terms.jsx')); // public legal
 const Faq = lazy(() => import('./pages/Faq.jsx')); // public FAQ marketing page
-function PageFallback() { // chunk loading placeholder (Orbit V — on-brand, same as Splash!)
-  return <div className="page"><div className="card" style={{ display: 'grid', placeItems: 'center', padding: 44 }}><Loader size={44} /></div></div>;
+function PageFallback() { // chunk loading placeholder (scatter logo — the brand moment, same family as Splash!)
+  return <div className="page"><div className="card"><BrandGate /></div></div>;
 }
 
 function useMe() { // CUSTOM HOOK: "who's logged in?" — returns {me, loading, setMe}. Hooks let us reuse stateful logic.
@@ -57,7 +57,7 @@ function useMe() { // CUSTOM HOOK: "who's logged in?" — returns {me, loading, 
 }
 
 function Guard({ me, loading, theme, onToggleTheme, onLogout, children }) { // login wall: wraps every private page (destructure 6 props)
-  if (loading) return <div className="page"><div className="card" style={{ display: 'grid', placeItems: 'center', padding: 44 }}><Loader size={40} /></div></div>; // still checking session → Orbit V (no flashing!)
+  if (loading) return <div className="page"><div className="card"><BrandGate /></div></div>; // still checking session → scatter logo (no flashing!)
   if (!me) return <Navigate to="/login" replace />; // guest → redirect to /login (replace = don't keep bad URL in history)
   return <Shell biz={me} theme={theme} onToggleTheme={onToggleTheme} onLogout={onLogout}>{children}</Shell>; // logged in → frame + page (children = the page element; onLogout clears login state on sign-out)
 }
@@ -75,10 +75,10 @@ export default function App() { // ROOT component (main.jsx renders this)
       <Route path="/privacy" element={<Privacy />} /> {/* public legal trio (no Guard — Google + guests must read them!) */}
       <Route path="/terms" element={<Terms />} />
       <Route path="/faq" element={<Faq />} />
-      <Route path="/login" element={loading ? <div className="page"><div className="card"><p className="hint">Loading…</p></div></div> : me ? <Navigate to="/dashboard" replace /> : <Login setMe={setMe} theme={theme} onToggleTheme={toggleTheme} />} /> {/* logged-in visiting /login → dashboard (no login-loop); loading → placeholder so we don't flash the form */}
+      <Route path="/login" element={loading ? <div className="page"><div className="card"><BrandGate /></div></div> : me ? <Navigate to="/dashboard" replace /> : <Login setMe={setMe} theme={theme} onToggleTheme={toggleTheme} />} /> {/* logged-in visiting /login → dashboard (no login-loop); loading → brand gate so we don't flash the form */}
       <Route path="/reset" element={<Reset />} /> {/* forgot-password landing (public — must NOT be Guarded: no session exists yet!) */}
       <Route path="/onboarding" element={<Onboarding me={me} />} /> {/* welcome tour (reachable logged-in OR fresh — by design) */}
-      <Route path="/welcome" element={loading ? <div className="page"><div className="card"><p className="hint">Loading…</p></div></div> : me ? <Welcome /> : <Navigate to="/login" replace />} /> {/* niche + heard-from (new signups land here after the tour; guests → login) */}
+      <Route path="/welcome" element={loading ? <div className="page"><div className="card"><BrandGate /></div></div> : me ? <Welcome /> : <Navigate to="/login" replace />} /> {/* niche + heard-from (new signups land here after the tour; guests → login) */}
       <Route path="/dashboard" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Dashboard biz={me} /></Guard>} /> {/* Guard pattern: <Guard …><Page/></Guard> = page becomes `children` */}
       <Route path="/chats" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Chats /></Guard>} />
       <Route path="/catalog" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Catalog /></Guard>} />
@@ -94,7 +94,7 @@ export default function App() { // ROOT component (main.jsx renders this)
       <Route path="/notifications/:id" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Notifications /></Guard>} /> {/* one notice fully (photo/video + long body!) */}
       <Route path="/refer-earn" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><ReferEarn /></Guard>} /> {/* full Refer & Earn page (Dashboard card teasers it!) */}
       <Route path="/velosales-ai" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><VeloSalesAI biz={me} /></Guard>} />
-      <Route path="/" element={loading ? <div className="page"><div className="card"><p className="hint">Loading…</p></div></div> : me ? <Navigate to="/dashboard" replace /> : <Landing theme={theme} onToggleTheme={toggleTheme} />} /> {/* / = smart root: loading→placeholder, logged-in→dashboard, guest→marketing landing (ternary chain) */}
+      <Route path="/" element={loading ? <div className="page"><div className="card"><BrandGate /></div></div> : me ? <Navigate to="/dashboard" replace /> : <Landing theme={theme} onToggleTheme={toggleTheme} />} /> {/* / = smart root: loading→brand gate, logged-in→dashboard, guest→marketing landing (ternary chain) */}
       <Route path="*" element={<div className="page"><div className="card"><h2>Page not found</h2><p className="hint">That link doesn't exist.</p><p style={{ marginTop: 12 }}><a href="/dashboard">Back to overview</a></p></div></div>} /> {/* path="*" = catch-all 404 (MUST be last — Routes picks first match!) */}
     </Routes></Suspense>
   );

@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom'; // useNavigate = go somewhere in
 import { api } from '../lib/api.js'; // api() auth calls
 import { normalizePhone, prettyPhone } from '../lib/phone.js'; // WhatsApp input help (validate + pretty-print on blur)
 import Ic from '../components/icons.jsx'; // bolt/spark/hand/check/mail/eye icons
+import Loader from '../components/Loader.jsx'; // mini orbit inside busy buttons (the brand, spinning!)
 
 const DEMO = [ // scripted demo conversation (loops forever in the brand panel!)
   { from: 'you', text: 'Abeg, do you have blue gown?' }, // from: 'you' = customer bubble (right)…
@@ -110,7 +111,7 @@ function GoogleButton({ busy, setBusy, fail, afterAuth, setMe, setOtpEmail, swit
         <label>Business WhatsApp</label><input value={g.wa} onChange={(e) => setG({ ...g, wa: e.target.value })} placeholder="0803 123 4567" inputMode="tel" />
         <label>Opening hours</label><input value={g.hours} onChange={(e) => setG({ ...g, hours: e.target.value })} placeholder="Mon–Sat, 9am–7pm" />
         <label>Referral code <span className="hint">(optional — bonus for you both)</span></label><input value={g.ref} onChange={(e) => setG({ ...g, ref: e.target.value })} placeholder="e.g. AMAKA-4F2K" spellCheck="false" autoComplete="off" style={{ textTransform: 'uppercase' }} />
-        <button className="btn login-cta" disabled={gBusy} onClick={finishSignup}>{gBusy ? 'Creating…' : 'Create my shop →'}</button>
+        <button className="btn login-cta" disabled={gBusy} onClick={finishSignup}>{gBusy ? (<><Loader size={15} />Creating…</>) : 'Create my shop →'}</button>
         <p className="auth-toggle"><a onClick={() => setNeedBiz(null)}>Back</a></p> {/* Back drops the form (credential discarded — re-click to restart!) */}
       </div>
     );
@@ -335,7 +336,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
               <label>Repeat new password</label>
               <input type="password" value={rpw2} onChange={(e) => setRpw2(e.target.value)} placeholder="Same password again" autoComplete="new-password" onKeyDown={(e) => { if (e.key === 'Enter') verifyOtp(); }} />
             </>)}
-            <button className="btn login-cta" disabled={busy} onClick={verifyOtp}>{busy ? <span className="spinner" /> : null}{busy ? 'Checking…' : otpPurpose === 'reset' ? 'Set password →' : 'Verify →'}</button>
+            <button className="btn login-cta" disabled={busy} onClick={verifyOtp}>{busy ? (<><Loader size={15} />Checking…</>) : otpPurpose === 'reset' ? 'Set password →' : 'Verify →'}</button>
             <div className="otp-fallback">
               <button type="button" className="btn ghost" disabled={busy || cool > 0} onClick={resendCode}>{cool > 0 ? `Resend code in ${cool}s` : 'Resend code'}</button>
               <button type="button" className="btn ghost" disabled={busy} onClick={sendLink}>Send a verification link instead</button>
@@ -347,7 +348,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
             <p className="switch-note">Enter your account email — if it exists, a 1-hour reset link is on its way.</p>
             <label>Email</label>
             <input value={f.email} onChange={set('email')} type="email" placeholder="you@business.com" autoComplete="email" onKeyDown={(e) => { if (e.key === 'Enter') forgotSend(); }} />
-            <button className="btn login-cta" disabled={busy} onClick={forgotSend}>{busy ? <span className="spinner" /> : null}{busy ? 'Sending…' : 'Send reset link'}</button>
+            <button className="btn login-cta" disabled={busy} onClick={forgotSend}>{busy ? (<><Loader size={15} />Sending…</>) : 'Send reset link'}</button>
             <div className="otp-fallback">
               <button type="button" className="btn ghost" disabled={busy} onClick={forgotCode}>Send a code instead</button>
             </div>
@@ -374,7 +375,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
           {mode === 'signup' && f.password.length > 0 && ( // strength meter: signup + non-empty only…
             <div className="pw-meter"><i className={pwScore >= 1 ? 'on' : ''} /><i className={pwScore >= 2 ? 'on' : ''} /><i className={pwScore >= 3 ? 'on' : ''} /><span>{pwScore >= 2 ? 'Strong enough' : 'Keep typing…'}</span></div>
           )}
-          <button className="btn login-cta" disabled={busy} onClick={mode === 'login' ? login : signup}>{busy ? <span className="spinner" /> : null}{busy ? 'Please wait…' : mode === 'login' ? 'Sign in →' : 'Start my free trial →'}</button> {/* disabled while busy (double-submit lock); spinner span OR null; label ternary ×2 (busy? then mode?) */}
+          <button className="btn login-cta" disabled={busy} onClick={mode === 'login' ? login : signup}>{busy ? (<><Loader size={15} />Please wait…</>) : mode === 'login' ? 'Sign in →' : 'Start my free trial →'}</button> {/* disabled while busy (double-submit lock); mini orbit + label (busy? then mode?) */}
           {(mode === 'login' || mode === 'signup') && <GoogleButton busy={busy} setBusy={setBusy} fail={fail} afterAuth={afterAuth} setMe={setMe} setOtpEmail={setOtpEmail} switchMode={switchMode} setMsg={setMsg} setMsgErr={setMsgErr} />} {/* social login under BOTH forms (one component, both modes!) */}
           {needsVerify && (
             <div className="otp-help" style={{ marginTop: 12 }}>

@@ -352,7 +352,7 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .mpick-name { font-size: 14px; font-weight: 700; }
 .mpick-desc { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mpick-foot { font-size: 12px; color: var(--faint); padding: 8px 10px 4px; line-height: 1.5; border-top: 1px solid var(--line-soft); margin-top: 4px; }
-.mpick-empty { padding: 16px; text-align: center; color: var(--muted); font-size: 13.5px; }
+.mpick-empty { padding: 16px; text-align: center; color: var(--muted); font-size: 13.5px; display: flex; align-items: center; justify-content: center; gap: 8px; } /* mini orbit + label ride side by side */
 .mpick-hint { font-size: 12px; color: var(--faint); flex: 1 1 200px; }
 .vai-via { font-size: 11px; color: var(--faint); margin-top: 4px; }
 
@@ -1427,6 +1427,10 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
 .orbit-loader .orbit-spin { transform-origin: 60px 60px; animation: orbitRot 1.4s linear infinite; }
 @keyframes orbitRot { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .orbit-loader .orbit-spin { animation: none; } }
+/* ── BrandGate (the selling-point loading face: scatter logo + wordmark, on every full-page wait) ── */
+.brandgate { display: grid; place-items: center; gap: 12px; padding: 48px 20px; }
+.brandgate-name { font-weight: 800; letter-spacing: 4px; font-size: 13px; color: var(--muted); }
+.btn .orbit-loader { vertical-align: -2px; } /* mini orbit rides inside busy buttons (flex gap handles the spacing!) */
 
 /* ── brand unification: auth cards (login + admin gate) go dark liquid glass ──
    They were the last white surfaces while the whole app is dark glass. */

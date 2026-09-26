@@ -8,6 +8,7 @@ import { api, pop, toast } from '../lib/api.js'; // api() save; pop() big succes
 import { normalizePhone, prettyPhone } from '../lib/phone.js'; // live phone help: normalize (validate) + pretty (display)
 import { NICHES } from '../lib/niches.js'; // lane picker (same list as Welcome — catalog shelves + AI suggestions follow it!)
 import Ic from '../components/icons.jsx'; // check icon for the "Saved as …" line
+import Loader from '../components/Loader.jsx'; // mini orbit in the alerts buttons
 
 export default function Profile({ biz }) { // biz prop = business from App's useMe (includes currency/timezone from getMe!)
   const [f, setF] = useState({ name: biz?.name || '', owner: biz?.owner_number || '', hours: biz?.hours || '', tone: biz?.tone || 'friendly and helpful', currency: biz?.currency || 'NGN', timezone: biz?.timezone || 'Africa/Lagos', niche: biz?.business_niche || '', personal: ((biz?.personal_contacts || []).join('\n')), faq: (biz?.faq || []).map((x) => x.question + ' | ' + x.answer).join('\n') }); // ONE form object (biz?. guards slow load; || defaults; faq ARRAY → one-per-line "question | answer" TEXT for easy editing!; personal JSONB array → one-number-per-line text!)
@@ -116,8 +117,8 @@ function PhoneAlerts() { // Web Push toggle: quota/support/broadcast alerts on t
         </p></div>
         {st !== 'checking' && st !== 'unsupported' && (
           st === 'on'
-            ? <button className="btn sm ghost" disabled={busy} onClick={disable}>{busy ? 'Working…' : 'Turn off'}</button>
-            : <button className="btn sm" disabled={busy} onClick={enable}>{busy ? 'Enabling…' : 'Turn on'}</button>
+            ? <button className="btn sm ghost" disabled={busy} onClick={disable}>{busy ? (<><Loader size={15} />Working…</>) : 'Turn off'}</button>
+            : <button className="btn sm" disabled={busy} onClick={enable}>{busy ? (<><Loader size={15} />Enabling…</>) : 'Turn on'}</button>
         )}
       </div>
     </div>

@@ -11,6 +11,7 @@ import { maybeShowSponsor } from '../lib/ads.js';
 import { chipsFor, DEFAULT_CHIPS } from '../lib/niches.js'; // niche starter chips (freelancer sees gigs, baker sees orders!)
 import GlassUpsell from '../components/GlassUpsell.jsx';
 import Ic from '../components/icons.jsx';
+import Loader from '../components/Loader.jsx'; // mini orbit while brains load
 
 const SUGGESTIONS = DEFAULT_CHIPS; // generic fallback (niche chips replace these when the shop picked a hustle!)
 
@@ -62,7 +63,7 @@ function ModelPicker({ models, model, onPick, onLocked }) {
       </button>
       {open && (
         <div className="mpick-pop" role="listbox" aria-label="Choose AI model">
-          {models.length === 0 && <div className="mpick-empty">Loading AIs…</div>}
+          {models.length === 0 && <div className="mpick-empty"><Loader size={16} />Loading AIs…</div>}
           {GROUPS.map((g) => {
             const items = models.filter((m) => (m.badge || 'Smart') === g);
             if (!items.length) return null;

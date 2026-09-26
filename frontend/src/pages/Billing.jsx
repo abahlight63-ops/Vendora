@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react'; // useState = bill/busy/period; use
 import { api, fmtDate, pop } from '../lib/api.js'; // api() calls; fmtDate = expiry dates; pop() = big animated outcomes
 import { money } from '../lib/money.js'; // money(n, 'NGN'|'USD') formatter
 import Ic from '../components/icons.jsx'; // check icons
+import Loader from '../components/Loader.jsx'; // mini orbit in the pay button
 
 const PRO_FEATS = [ // Pro tier: the full salesperson (same for monthly + yearly — ONE tier, two prices!)
   'Unlimited AI replies, Pidgin + English',
@@ -161,7 +162,7 @@ export default function Billing() {
           <span className="plan-save">Save {money(price.save, cur)} — {price.save_pct}% off monthly</span> // server-computed save + pct (NGN 22%/33%, USD mirrors!)
         )}
         <ul className="plan-feats">{feats.map((f) => (<li key={f}><Ic n="checkCircle" s={15} /><span>{f}</span></li>))}</ul>
-        <button className={'btn' + (isHot ? '' : ' ghost')} disabled={!!busy} onClick={() => pay(planKey)}>{busy === planKey ? 'Starting…' : status === 'active' ? `Extend ${tierKey === 'plus' ? 'Pro Plus' : 'Pro'} ${period}` : `${amt(price)}/${period === 'monthly' ? 'month' : 'year'} — ${tierKey === 'plus' ? 'Pro Plus' : 'Pro'}`}</button>
+        <button className={'btn' + (isHot ? '' : ' ghost')} disabled={!!busy} onClick={() => pay(planKey)}>{busy === planKey ? (<><Loader size={15} />Starting…</>) : status === 'active' ? `Extend ${tierKey === 'plus' ? 'Pro Plus' : 'Pro'} ${period}` : `${amt(price)}/${period === 'monthly' ? 'month' : 'year'} — ${tierKey === 'plus' ? 'Pro Plus' : 'Pro'}`}</button>
       </div>
     );
   };

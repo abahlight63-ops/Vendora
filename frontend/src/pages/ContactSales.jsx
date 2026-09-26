@@ -5,6 +5,7 @@
 // answers in-app. Same complaint pipeline as Help — zero new backend.
 import { useState } from 'react'; // controlled form drafts + busy lock
 import { api, pop, toast } from '../lib/api.js'; // api() files the ticket; pop()/toast() outcomes
+import Loader from '../components/Loader.jsx'; // mini orbit in the send button
 
 export default function ContactSales() {
   const [shop, setShop] = useState(''); // shop name draft
@@ -44,7 +45,7 @@ export default function ContactSales() {
         <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" inputMode="email" maxLength={120} />
         <label>Anything we should know?</label>
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows="4" placeholder="Branches, volumes, timelines…" maxLength={1500} />
-        <div style={{ marginTop: 12 }}><button className="btn" disabled={busy} onClick={send}>{busy ? 'Sending…' : 'Send enquiry'}</button></div>
+        <div style={{ marginTop: 12 }}><button className="btn" disabled={busy} onClick={send}>{busy ? (<><Loader size={15} />Sending…</>) : 'Send enquiry'}</button></div>
       </div>
     </>
   );

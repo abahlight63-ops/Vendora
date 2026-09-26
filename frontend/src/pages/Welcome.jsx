@@ -12,6 +12,7 @@
 // lines that react to the pick.
 import { useEffect, useState } from 'react'; // useState = step + 5 drafts + busy; useEffect = skip-if-done
 import Logo from '../components/Logo.jsx'; // theme-aware brand mark (blue dark / green light!)
+import Loader, { BrandGate } from '../components/Loader.jsx'; // scatter gate (checking) + mini orbit (save button!)
 import { useNavigate } from 'react-router-dom'; // nav() after save (dashboard or back)
 import { api, pop } from '../lib/api.js'; // api() calls; pop() for save outcomes
 import { NICHES, HEARD_FROM } from '../lib/niches.js'; // picker data (shared with VeloSalesAI chips!)
@@ -83,7 +84,7 @@ export default function Welcome() {
   }
   function back() { if (step > 0) setStep(step - 1); } // back keeps every draft (state lives outside the step!)
 
-  if (checking) return <div className="page"><div className="card"><p className="hint">Loading…</p></div></div>; // session check (same placeholder habit as App guards!)
+  if (checking) return <div className="page"><div className="card"><BrandGate /></div></div>; // session check (brand gate — no flashing!)
 
   const sizeCheer = SIZES.find((o) => o.v === size)?.cheer; // encouragement for the CURRENT pick (?. guards skipped!)
   const volCheer = VOLUMES.find((o) => o.v === volume)?.cheer;
@@ -189,7 +190,7 @@ export default function Welcome() {
             ? <span className="hint">You can change this later in Profile.</span>
             : <button className="btn ghost" disabled={busy} onClick={back}>Back</button>}
           {step === 4
-            ? <button className="btn" disabled={busy} onClick={() => save()}>{busy ? 'Saving…' : 'Start selling'} <Ic n="next" s={15} /></button>
+            ? <button className="btn" disabled={busy} onClick={() => save()}>{busy ? (<><Loader size={15} />Saving…</>) : 'Start selling'} <Ic n="next" s={15} /></button>
             : <button className="btn" disabled={busy} onClick={next}>Continue <Ic n="next" s={15} /></button>}
         </div>
       </div>

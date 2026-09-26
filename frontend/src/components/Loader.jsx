@@ -2,7 +2,11 @@
 // WHAT: the ONE branded loader (Orbit V) — V monogram + rotating dashed
 // orbit (mint dot + gold dot). Minimal at 16px, hero at 88px.
 // Props: size (px), withLogo (splash: logo mark rides inside the orbit).
-// No npm modules — inline SVG + one CSS keyframe (.orbit-loader).
+// BrandGate (below): the full-page loading FACE — scatter-and-assemble logo
+// + wordmark, for every route fallback, guard and session check (the selling
+// point users recognize!). Buttons use mini <Loader size={15}/> inline.
+// No npm modules — inline SVG + CSS keyframes.
+import ScatterLogo from './ScatterLogo.jsx'; // scatter-and-assemble hero (the selling-point moment!)
 export default function Loader({ size = 40, withLogo = false }) {
   const mark = '/logo-green.png?v=2'; // signature green, always
   return (
@@ -23,5 +27,14 @@ export default function Loader({ size = 40, withLogo = false }) {
           : <path d="M42 44 L60 78 L78 44" fill="none" stroke="url(#orbit-g)" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" />}
       </svg>
     </span>
+  );
+}
+
+export function BrandGate({ size = 76, label = 'VELOSALES AI' }) { // full-page loading face (route fallbacks, guards, session checks — everywhere users wait on blank screens!)
+  return (
+    <div className="brandgate" role="status" aria-label="Loading">
+      <ScatterLogo size={size} />
+      <div className="brandgate-name">{label}</div>
+    </div>
   );
 }

@@ -12,6 +12,7 @@ import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 30s video gate (
 import { categoriesFor, detailHintFor, learnExampleFor } from '../lib/niches.js'; // niche shelves + hints (electronics sees Phones, fashion sees Gowns!)
 import { maybeShowSponsor } from '../lib/ads.js'; // sponsor interstitial after adds (free tier, max once/day)
 import Ic from '../components/icons.jsx'; // trash + close glyphs
+import Loader from '../components/Loader.jsx'; // mini orbit in sync/upload buttons
 import LockButton from '../components/LockButton.jsx'; // padlock → upgrade card (the ONLY paywall affordance!)
 
 const SYNC_LINES = [ // upgrade-card bullets for profile sync (LockButton feeds these to the modal!)
@@ -147,7 +148,7 @@ export default function Catalog() { // no props needed (fetches everything itsel
             <label style={{ marginTop: 12 }}>Business profile text</label> {/* <label> = accessible caption for the textarea */}
             <textarea value={syncText} onChange={(e) => setSyncText(e.target.value)} rows="4" placeholder="Amaka Beauty — Bone straight wig ₦95,000, silk press ₦15,000, open Mon–Sat 9am–7pm…" /> {/* controlled textarea: value + onChange mirror state (rows="4" = height) */}
             <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <button className="btn" disabled={syncing} onClick={sync}>{syncing ? 'Syncing…' : 'Sync profile'}</button> {/* disabled during AI call (double-click protection!) + label flips */}
+              <button className="btn" disabled={syncing} onClick={sync}>{syncing ? (<><Loader size={15} />Syncing…</>) : 'Sync profile'}</button> {/* disabled during AI call (double-click protection!) + orbit flips */}
               {syncInfo?.synced && <span className="hint">Last synced: {syncInfo.synced_at ? new Date(syncInfo.synced_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'yes'}</span>} {/* ?. guards null syncInfo; inline date formatting (no date lib!) */}
             </div>
             <p className="hint" style={{ marginTop: 8 }}>Tip: from your WhatsApp you can also send <b>SYNC:</b> followed by the same text.</p>
@@ -177,7 +178,7 @@ export default function Catalog() { // no props needed (fetches everything itsel
             {f.photo.trim() && <button className="del" style={{ fontSize: 12 }} onClick={() => setF({ ...f, photo: '' })}>Clear</button>} {/* draft clear (no confirm — not saved yet!) */}
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
-            <button type="button" className="btn sm" disabled={uploading} onClick={() => fileRef.current && fileRef.current.click()}><Ic n="camera" s={15} />{uploading ? 'Uploading…' : 'Upload media'}</button> {/* opens the phone's file picker (accept = images only!) */}
+            <button type="button" className="btn sm" disabled={uploading} onClick={() => fileRef.current && fileRef.current.click()}><Ic n="camera" s={15} />{uploading ? (<><Loader size={15} />Uploading…</>) : 'Upload media'}</button> {/* opens the phone's file picker (accept = images only!) */}
             <span className="hint">…or paste an image link below</span>
           </div>
           <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { uploadMedia(e.target.files && e.target.files[0]); e.target.value = ''; }} /> {/* hidden picker; value reset so the SAME file can be re-picked! */}

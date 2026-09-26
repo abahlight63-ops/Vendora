@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react'; // state per step; effect l
 import { api, pop, toast } from '../lib/api.js'; // api() calls; pop() big outcomes; toast() small notes
 import { maybeShowVideoAd } from '../lib/ads.js'; // gated 30s video (free tier connects watch first — Pro never sees it!)
 import Ic from '../components/icons.jsx'; // drawn glyphs (never emoji!)
+import Loader from '../components/Loader.jsx'; // mini orbit in busy buttons (brand consistency!)
 import GlassUpsell from '../components/GlassUpsell.jsx'; // locked-model upgrade card
 
 function CopyBtn({ text, label }) { // one-tap copy (navigator.clipboard + fallback!)
@@ -280,7 +281,7 @@ export default function Connect() {
             <p className="hint">We never see or store your Facebook password — this login happens directly and securely through Meta.</p>
             <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
               <button className="btn ghost sm" onClick={back}>Back</button>
-              <button className="btn sm" disabled={busy} onClick={embeddedConnect}>{busy ? 'Opening Meta…' : 'Continue to connect'}</button>
+              <button className="btn sm" disabled={busy} onClick={embeddedConnect}>{busy ? (<><Loader size={15} />Opening Meta…</>) : 'Continue to connect'}</button>
             </div>
             {!st?.metaEmbeddedReady && st && (
               <p className="hint" style={{ marginTop: 10 }}>One-tap signup is being set up on our side — use the manual paste below for now.</p>
@@ -300,7 +301,7 @@ export default function Connect() {
                 <label>Access token (long string)</label>
                 <input value={metaToken} onChange={(e) => setMetaToken(e.target.value)} placeholder="Paste the token from API Setup" spellCheck="false" autoComplete="off" />
                 <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-                  <button className="btn sm" disabled={busy} onClick={metaConnect}>{busy ? 'Checking…' : 'Check + continue'}</button>
+                  <button className="btn sm" disabled={busy} onClick={metaConnect}>{busy ? (<><Loader size={15} />Checking…</>) : 'Check + continue'}</button>
                 </div>
               </div>)}
           </>)}
@@ -345,14 +346,14 @@ export default function Connect() {
             <input value={tgToken} onChange={(e) => setTgToken(e.target.value)} placeholder="123456789:ABCdefGhIJKlmNoPQRsTuVwxyZ" spellCheck="false" autoComplete="off" />
             <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
               <button className="btn ghost sm" onClick={back}>Back</button>
-              <button className="btn sm" disabled={busy} onClick={tgConnect}>{busy ? 'Checking…' : 'Connect bot'}</button>
+              <button className="btn sm" disabled={busy} onClick={tgConnect}>{busy ? (<><Loader size={15} />Checking…</>) : 'Connect bot'}</button>
             </div>
             <p className="hint" style={{ marginTop: 8 }}>We check the token with Telegram instantly — a wrong or expired token is rejected right here.</p>
             <div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
               <h2>Or skip BotFather — shared bot <span className="pill ok">PRO</span></h2>
               <p className="desc">Pro shops ride our house bot: one tap, no tokens, nothing to revoke. Customers open your link once, then chat normally.</p>
               <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-                <button className="btn sm" disabled={busy} onClick={tgSharedConnect}>{busy ? 'Connecting…' : 'Connect shared bot'}</button>
+                <button className="btn sm" disabled={busy} onClick={tgSharedConnect}>{busy ? (<><Loader size={15} />Connecting…</>) : 'Connect shared bot'}</button>
               </div>
               <p className="hint" style={{ marginTop: 8 }}>Free plan? This button opens the upgrade card instead — your own bot above stays free forever.</p>
             </div>
@@ -364,7 +365,7 @@ export default function Connect() {
             {!tgSharedCard && st?.telegram?.sharedBot && <div className="learn-box light" style={{ marginTop: 10 }}><b>Connected via @{st.telegram.sharedBot}</b><br /><span className="hint">Generate a fresh customer link below.</span></div>}
             <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
               <button className="btn ghost sm" onClick={back}>Back</button>
-              <button className="btn sm" disabled={busy} onClick={tgSharedConnect}>{busy ? 'Working…' : 'Get customer link'}</button>
+              <button className="btn sm" disabled={busy} onClick={tgSharedConnect}>{busy ? (<><Loader size={15} />Working…</>) : 'Get customer link'}</button>
               <button className="btn ghost sm" disabled={busy} onClick={tgSharedOff}>Switch off</button>
             </div>
           </>)}

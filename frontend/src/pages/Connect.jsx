@@ -58,11 +58,11 @@ function isAndroid() { // ANY Android browser or installed app (gate the Chrome 
     return /android/i.test(window.navigator.userAgent || '');
   } catch { return false; }
 }
-function chromeEscapeUrl() { // intent:// link that opens THIS page in full Chrome (popup machinery works there!)
+function chromeEscapeUrl() { // package-free intent:// → Android shows the "Open with…" chooser (user picks Chrome!) instead of jumping blind. Full action + browsable category for reliable chooser on all OEM skins.
   try {
     const u = new URL(window.location.href);
     const target = `https://${u.host}/connect`; // land back on the Connect road (fresh state, no stale query!)
-    return `intent://${u.host}/connect#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(target)};end`;
+    return `intent://${u.host}/connect#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=${encodeURIComponent(target)};end`;
   } catch { return ''; }
 }
 async function openInChrome(setShowManual, toast) { // installed PWA → full Chrome, via the OS share sheet (native, never silently swallowed like intent: taps!) — same profile, login carries over!
@@ -462,7 +462,7 @@ export default function Connect() {
                 <b>{isStandaloneBrowser() ? 'On the installed app?' : 'Popup misbehaving?'}</b><br />
                 <span className="hint">{isStandaloneBrowser() ? 'Popups can\u2019t complete inside the installed app — open this page in full Chrome instead (same login carries over, nothing to redo):' : 'Open this page fresh in Chrome — same login carries over, and the popup gets a clean window:'}</span>
                 <div style={{ marginTop: 8 }}><button className="btn sm" onClick={() => openInChrome(setShowManual, toast)}>Open in Chrome</button></div>
-                <span className="hint">Pick Chrome from the share list → finish the Meta steps there → return here. Your connection (and TEST) will be waiting. Nothing opens? The manual boxes appear below on their own.</span>
+                <span className="hint">Pick Chrome from the list → finish the Meta steps there → return here. Your connection (and TEST) will be waiting. No list appears? The manual boxes appear below on their own.</span>
               </div>
             )}
             {!st?.metaEmbeddedReady && st && (

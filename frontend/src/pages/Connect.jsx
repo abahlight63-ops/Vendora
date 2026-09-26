@@ -22,14 +22,18 @@ function CopyRow({ label, value }) { // tap-anywhere copy row: plain selectable 
 }
 
 const WA_SLIDES = [ // road-card visuals (/connect/whatsapp-N.png land tonight — placeholders until then!)
-  { img: '/connect/whatsapp-1.png', title: 'Tap Continue', text: 'One tap opens Meta — log in, pick your business number.' },
-  { img: '/connect/whatsapp-2.png', title: 'Paste 2 values', text: 'Webhook URL + verify code into your Meta dashboard.' },
-  { img: '/connect/whatsapp-3.png', title: 'TEST → LIVE', text: 'Send a message — this page flips LIVE instantly.' },
+  { img: '/connect/whatsapp-1.png', title: 'Tap Continue', text: 'One tap opens Meta — the login window appears.' },
+  { img: '/connect/whatsapp-2.png', title: 'Log in + pick number', text: 'Facebook account tied to your business, then your number.' },
+  { img: '/connect/whatsapp-3.png', title: 'Finish every step', text: 'Complete the whole window — skipped steps mean no code.' },
+  { img: '/connect/whatsapp-4.png', title: 'Paste 2 values', text: 'Webhook URL + verify code into your Meta dashboard.' },
+  { img: '/connect/whatsapp-5.png', title: 'TEST → LIVE', text: 'Send a message — this page flips LIVE instantly.' },
 ];
 const TG_SLIDES = [
-  { img: '/connect/telegram-1.png', title: 'Ask @BotFather', text: 'Send /newbot → name it → username ending in bot.' },
-  { img: '/connect/telegram-2.png', title: 'Paste the token', text: 'Tap-copy from BotFather, paste here, connect.' },
-  { img: '/connect/telegram-3.png', title: 'Chat away', text: 'Customers message your bot — the AI answers.' },
+  { img: '/connect/telegram-1.png', title: 'Ask @BotFather', text: 'Open Telegram, search @BotFather, send /newbot.' },
+  { img: '/connect/telegram-2.png', title: 'Name your bot', text: 'Display name customers see + username ending in bot.' },
+  { img: '/connect/telegram-3.png', title: 'Copy the token', text: 'Tap-copy the long token from BotFather’s reply.' },
+  { img: '/connect/telegram-4.png', title: 'Paste + connect', text: 'Paste here, tap Connect bot — verified instantly.' },
+  { img: '/connect/telegram-5.png', title: 'Chat away', text: 'Customers message your bot — the AI answers.' },
 ];
 
 function Steps({ n, of }) { // progress dots ("Step 2 of 4" — nobody gets lost!)
@@ -167,7 +171,11 @@ export default function Connect() {
         if (signup.current.watch) { clearTimeout(signup.current.watch); signup.current.watch = null; } // answered (any answer!) → watchdog stands down
         setBusy(false);
         try { if (typeof console !== 'undefined' && console.debug) console.debug('[meta] popup answered, keys:', resp ? Object.keys(resp) : null, 'hasCode:', !!(resp && resp.authResponse && resp.authResponse.code)); } catch {} // KEYS only (never tokens!) — devtools diagnosis without leaking secrets
-        if (resp && resp.error) { setShowManual(true); return pop('err', 'Meta refused the popup', (resp.error.message || resp.error) + ' — usual causes: wrong App ID on Render, or the app URL missing in Meta dashboard → Facebook Login → Authorized JavaScript origins.'); } // Meta's REAL verdict surfaced (was swallowed as "closed before finishing"!)
+        if (resp && resp.error) {
+          const emsg = String(resp.error.message || resp.error);
+          if (/javascript sdk|jssdk/i.test(emsg)) { setShowManual(true); return pop('err', 'One switch missing in Meta', 'In developers.facebook.com → your app → Facebook Login → Settings, set "Log in with the JavaScript SDK" to YES and save. Then retry here — the popup is blocked until that switch is on.'); } // Meta names the exact toggle (the #1 desktop blocker — mobile shows it as a silent close!)
+          setShowManual(true); return pop('err', 'Meta refused the popup', emsg + ' — usual causes: wrong App ID on Render, or the app URL missing in Meta dashboard → Facebook Login → Authorized JavaScript origins.');
+        } // Meta's REAL verdict surfaced (was swallowed as "closed before finishing"!)
         if (resp && resp.authResponse && resp.authResponse.code) {
           signup.current.code = String(resp.authResponse.code); // the server exchanges this for a token!
           // The message listener usually already captured the IDs — give it a beat, then finish anyway (server discovers the number itself!).
@@ -401,7 +409,7 @@ export default function Connect() {
               <li>Once confirmed, your account connects automatically — no codes or technical setup needed on your end.</li>
             </ol>
             <p className="hint">We never see or store your Facebook password — this login happens directly and securely through Meta.</p>
-            <div className="learn-box light" style={{ marginTop: 10 }}><b>Before you tap — 30 seconds that prevent 90% of popup failures:</b><br />1. Log into the RIGHT Facebook account in THIS browser (the one tied to your WhatsApp Business — business admin, not staff).<br />2. Allow popups + third-party cookies for this site (address-bar icon).<br />3. Finish EVERY step inside the popup — especially picking your business number, or we get a code with no number.</div>
+            <div className="learn-box light" style={{ marginTop: 10 }}><b>Before you tap — 30 seconds that prevent 90% of popup failures:</b><br />1. Log into the RIGHT Facebook account in THIS browser (the one tied to your WhatsApp Business — business admin, not staff).<br />2. Allow popups + third-party cookies for this site (address-bar icon).<br />3. Finish EVERY step inside the popup — especially picking your business number, or we get a code with no number.<br />4. On the installed app? Do this step once in full Chrome, then return here for daily use.</div>
             <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
               <button className="btn ghost sm" onClick={back}>Back</button>
               <button className="btn sm" disabled={busy} onClick={embeddedConnect}>{busy ? (<><Loader size={15} />Opening Meta…</>) : 'Continue to connect'}</button>

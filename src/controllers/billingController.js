@@ -163,6 +163,12 @@ async function flutterwaveInit(req, res) {
 // Extends expiry from the later of (existing expiry, now) — early renewals
 // never lose days. Resets trial flags (a buyer is no longer "trialing"!).
 async function activateSubscription(businessId, kind, days, reference, method, amountMinor, currency) {
+  if (reference) { // IDEMPOTENCY: webhooks retry + return-verify can double-fire (same reference = same money — never extend twice, never double-email!)
+    try {
+      const { rows: dup } = await db.query("SELECT 1 FROM payments WHERE reference = $1 AND status = 'active' LIMIT 1", [String(reference)]);
+      if (dup.length) { console.log(`activateSubscription: duplicate ${method} ${reference} ignored`); return { duplicate: true }; }
+    } catch (e) { console.error('activation dedupe error:', e.message); } // lookup failed → proceed anyway (activation beats caution here!)
+  }
   const boughtTier = (PLANS[kind] && PLANS[kind].tier) || 'pro'; // pro_* → pro, plus_* → plus (Plus-only gates read this!)
   await db.query(
     `UPDATE businesses
@@ -282,4 +288,51 @@ async function handleFlutterwaveWebhook(req, res) {
   res.status(200).end();
 }
 
-module.exports = { initialize, flutterwaveInit, reportTransfer, handlePaystackWebhook, handleFlutterwaveWebhook, PLANS, planFor, SALES_EMAIL }; // routes + ownerController.getBilling import from here
+// Verify-on-return: the payer is BACK from checkout (?reference= /
+// ?transaction_id=). Webhooks usually beat them here (idempotency above makes
+// double-activation impossible), but a slow/misconfigured webhook must NEVER
+// leave "I paid, nothing happened". GET /api/billing/verify (requireAuth!):
+//   ?provider=paystack&reference=X  |  ?provider=flutterwave&tx_id=Y
+// Ownership enforced: metadata.business_id MUST equal the session shop.
+async function verifyReturn(req, res) {
+  const provider = String(req.query.provider || 'paystack').toLowerCase();
+  try {
+    if (provider === 'flutterwave') {
+      const txId = String(req.query.tx_id || req.query.transaction_id || '');
+      if (!txId) return res.status(400).json({ error: 'Missing transaction id.' });
+      if (!process.env.FLW_SECRET_KEY) return res.status(503).json({ error: 'Verification unavailable right now.' });
+      const vr = await fetch(`https://api.flutterwave.com/v3/transactions/${encodeURIComponent(txId)}/verify`, {
+        headers: { Authorization: `Bearer ${process.env.FLW_SECRET_KEY}` },
+      });
+      const v = await vr.json().catch(() => ({}));
+      const d = v.data || {};
+      if (v.status !== 'success' || !d || d.status !== 'successful') return res.status(402).json({ error: 'Payment not confirmed yet — if money left your account, wait a minute and retry.' });
+      const meta = d.meta || {};
+      if (String(meta.business_id) !== String(req.session.businessId)) return res.status(403).json({ error: 'That payment belongs to a different shop.' });
+      const kind = String(meta.kind || 'pro_monthly').toLowerCase();
+      const days = Number(meta.days) || (PLANS[kind] ? PLANS[kind].days : 30);
+      await activateSubscription(meta.business_id, kind, days, d.tx_ref || String(txId), 'flutterwave', Math.round(Number(d.amount) * 100), 'USD');
+      return res.json({ ok: true });
+    }
+    const reference = String(req.query.reference || req.query.trxref || '');
+    if (!reference) return res.status(400).json({ error: 'Missing payment reference.' });
+    if (!process.env.PAYSTACK_SECRET_KEY) return res.status(503).json({ error: 'Verification unavailable right now.' });
+    const vr = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+      headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
+    });
+    const v = await vr.json().catch(() => ({}));
+    const d = v.data || {};
+    if (!v.status || d.status !== 'success') return res.status(402).json({ error: 'Payment not confirmed yet — if money left your account, wait a minute and retry.' });
+    const meta = d.metadata || {};
+    if (String(meta.business_id) !== String(req.session.businessId)) return res.status(403).json({ error: 'That payment belongs to a different shop.' });
+    const kind = String(meta.kind || 'pro_monthly').toLowerCase();
+    const days = Number(meta.days) || (PLANS[kind] ? PLANS[kind].days : Number(process.env.SUBSCRIPTION_DAYS || 30));
+    await activateSubscription(meta.business_id, kind, days, d.reference || reference, 'paystack', Number(d.amount) || 0, String(d.currency || 'NGN').toUpperCase());
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('verify return error:', e.message);
+    return res.status(502).json({ error: 'Could not reach the payment provider — try again.' });
+  }
+}
+
+module.exports = { initialize, flutterwaveInit, reportTransfer, handlePaystackWebhook, handleFlutterwaveWebhook, verifyReturn, PLANS, planFor, SALES_EMAIL }; // routes + ownerController.getBilling import from here

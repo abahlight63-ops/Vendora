@@ -12,5 +12,6 @@ const router = express.Router(); // the mini-app
 router.post('/billing/initialize', requireAuth, billingLimiter, billingController.initialize); // start Paystack checkout (→ authorization_url)
 router.post('/billing/flutterwave/initialize', requireAuth, billingLimiter, billingController.flutterwaveInit); // start Flutterwave checkout (USD/intl → payment link)
 router.post('/billing/transfer', requireAuth, billingController.reportTransfer); // RETIRED (410 — kept so old apps get the message, not a 404!)
+router.get('/billing/verify', requireAuth, billingController.verifyReturn); // return-from-checkout safety net (?provider + reference/tx_id → server-verified activation!)
 
 module.exports = { router, handlePaystackWebhook: billingController.handlePaystackWebhook }; // export both: the router AND the webhook fn (server.js wires the webhook itself)

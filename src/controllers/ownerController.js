@@ -663,7 +663,9 @@ async function telegramShared(req, res) {
       subscription_status: b[0].subscription_status, subscription_expires: b[0].subscription_expires,
       trial_started_at: b[0].trial_started_at, plan_tier: b[0].plan_tier,
     });
-    if (tier === 'free') return res.status(402).json({ error: 'Shared Telegram bot is a Pro feature — upgrade to connect in one tap, no BotFather needed.' });
+    const testers = String(process.env.TELEGRAM_SHARED_TESTERS || '').split(',').map((s) => s.trim()).filter(Boolean); // owner-only test window: comma-separated business IDs (Admin console shows yours!) — everyone else still hits the Pro gate below!
+    const isTester = testers.includes(String(req.session.businessId));
+    if (tier === 'free' && !isTester) return res.status(402).json({ error: 'Shared Telegram bot is a Pro feature — upgrade to connect in one tap, no BotFather needed.' });
     const code = 'BIZ' + require('crypto').randomBytes(3).toString('hex').toUpperCase(); // fresh code (each tap INVALIDATES the old — leaked links die!)
     await db.query('UPDATE businesses SET telegram_link_code = $1, telegram_shared_on = true WHERE id = $2', [code, req.session.businessId]);
     res.json({ // code travels ONLY on explicit generate (status endpoints never leak it!)

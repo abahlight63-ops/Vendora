@@ -83,6 +83,16 @@ export default function Billing() {
     setBill(data);
   }
   useEffect(() => { load(); }, []); // [] = mount-only
+  useEffect(() => { // Flutterwave RETURN: ?transaction_id=… in the URL → server-verified activation (idempotent — webhook usually already did it!)
+    const q = new URLSearchParams(window.location.search);
+    const tx = q.get('transaction_id') || q.get('tx_ref');
+    if (!tx) return;
+    window.history.replaceState({}, '', window.location.pathname); // strip FIRST (refresh-safe!)
+    api('/api/billing/verify?provider=flutterwave&tx_id=' + encodeURIComponent(q.get('transaction_id') || tx)).then(({ ok, data }) => {
+      if (ok) { load(); pop('ok', 'Payment confirmed — Pro is active!', 'Receipt emailed to you. Enjoy the full plan.'); }
+      else pop('err', 'Payment not confirmed yet', (data && data.error) || 'If money left your account, wait a minute and retry.');
+    }).catch(() => pop('err', 'Could not verify payment', 'If it still shows Free below, retry in a minute.'));
+  }, []);
 
   async function pay(plan) { // CARD FLOW: secure checkout session → redirect the whole page there
     const isUSD = (bill?.currency === 'USD'); // Dollar shops → international checkout, Naira shops → local checkout (location does the routing, silently!)

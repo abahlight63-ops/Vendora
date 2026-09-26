@@ -7,7 +7,7 @@
 // derived values (trialLeft, steps) computed during render (no extra state!).
 import { useEffect, useState } from 'react'; // useState = s/bill/guideOff; useEffect = fetch-on-mount
 import { Link } from 'react-router-dom'; // Link = client-side nav (no page reload, unlike <a>)
-import { api, fmtTime } from '../lib/api.js'; // api() fetches; fmtTime formats inbox timestamps
+import { api, fmtTime, pop } from '../lib/api.js'; // api() fetches; fmtTime formats inbox timestamps; pop() celebrates payment returns
 import Ic from '../components/icons.jsx'; // <Ic n="chat"/> icon set
 import { maybeShowSponsor } from '../lib/ads.js'; // daily sponsor interstitial (free tier, silent for Pro)
 
@@ -40,6 +40,16 @@ export default function Dashboard({ biz }) { // biz = business object from App (
     const t = setTimeout(() => { maybeShowSponsor(); }, 8000); // free-tier sponsor interstitial, 8s after Overview lands (daily cap inside; Pro = silent no-op)
     return () => clearTimeout(t); // cleanup on unmount (no stray popup after navigation)
   }, []); // [] deps = mount-only (fetch once; live updates would need polling/websocket — out of scope)
+  useEffect(() => { // Paystack RETURN: ?reference=… in the URL → server-verified activation (webhook usually already did it — idempotent, so double runs are safe!)
+    const q = new URLSearchParams(window.location.search);
+    const ref = q.get('reference') || q.get('trxref');
+    if (!ref) return;
+    window.history.replaceState({}, '', window.location.pathname); // strip FIRST (refresh-safe: reloads never re-verify!)
+    api('/api/billing/verify?provider=paystack&reference=' + encodeURIComponent(ref)).then(({ ok, data }) => {
+      if (ok) pop('ok', 'Payment confirmed — Pro is active!', 'Receipt emailed to you. Profile sync, photos + premium brains are on.');
+      else pop('err', 'Payment not confirmed yet', (data && data.error) || 'If money left your account, wait a minute and retry.');
+    }).catch(() => pop('err', 'Could not verify payment', 'Check Billing — if it still shows Free, retry in a minute.'));
+  }, []);
   const first = (biz?.name || 'there').split(' ')[0]; // "Amaka Beauty Studio" → "Amaka" (?. guards slow-loading biz; || 'there' fallback)
   const trialLeft = bill && bill.status === 'trialing' && bill.trial_ends // trial countdown in DAYS: only when status IS trialing AND an end date exists…
     ? Math.max(0, Math.ceil((new Date(bill.trial_ends) - Date.now()) / 86400000)) : null; // …ms difference ÷ ms-per-day, ceil UP (a partial day still counts), max(0) clamps past-dates; null = hide the strip

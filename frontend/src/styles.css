@@ -1429,8 +1429,8 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
 @media (prefers-reduced-motion: reduce) { .orbit-loader .orbit-spin { animation: none; } }
 /* ── Connect guide slides (visual road cards: auto-rotating screenshots, branded placeholder until shots land) ── */
 .gslide { margin: 12px 0 4px; }
-.gslide-frame { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--card); aspect-ratio: 16 / 9; display: grid; place-items: center; }
-.gslide-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gslide-frame { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: #04120c; aspect-ratio: 16 / 9; min-height: 180px; display: grid; place-items: center; }
+.gslide-frame img { width: 100%; height: 100%; object-fit: contain; display: block; } /* contain (never cover!): portrait phone shots show WHOLE, letterboxed on dark — nothing cropped ever */
 .gslide-ph { display: grid; place-items: center; gap: 4px; padding: 20px; text-align: center; background: linear-gradient(135deg, rgba(18,140,74,.12), rgba(37,211,102,.05)); }
 .gslide-ph b { letter-spacing: 3px; font-size: 13px; }
 .gslide-cap { display: grid; gap: 2px; margin-top: 8px; }
@@ -1441,6 +1441,11 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
 /* ── copy rows (tap-to-copy value boxes: plain text, NEVER links — nothing navigates away!) ── */
 .copyrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--surface); cursor: pointer; }
 .copyrow span:first-child { flex: 1; min-width: 200px; overflow-wrap: anywhere; user-select: all; color: var(--text-1); font-size: 13.5px; }
+@media (max-width: 960px) {
+  .copyrow span:first-child { font-size: 12.5px; word-break: break-all; } /* long URLs wrap hard on narrow phones (no sideways scroll!) */
+  .gslide-frame { aspect-ratio: 4 / 3; } /* taller art on phones (guide shots stay readable!) */
+  .gslide-cap b { font-size: 15px; } /* step titles thumb-legible */
+}
 /* ── BrandGate (the selling-point loading face: scatter logo + wordmark, on every full-page wait) ── */
 .brandgate { display: grid; place-items: center; gap: 12px; padding: 48px 20px; }
 .brandgate-name { font-weight: 800; letter-spacing: 4px; font-size: 13px; color: var(--muted); }

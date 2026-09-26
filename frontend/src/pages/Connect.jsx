@@ -65,14 +65,21 @@ function chromeEscapeUrl() { // package-free intent:// → Android shows the "Op
     return `intent://${u.host}/connect#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=${encodeURIComponent(target)};end`;
   } catch { return ''; }
 }
-async function openInChrome(setShowManual, toast) { // installed PWA → full Chrome, via the OS share sheet (native, never silently swallowed like intent: taps!) — same profile, login carries over!
-  const target = (() => { try { return `${new URL(window.location.href).origin}/connect`; } catch { return ''; } })();
-  if (target && navigator.share) { // share sheet: user picks Chrome (one familiar tap — pick it from the list!)
-    try { await navigator.share({ title: 'VeloSales Ai — Connect WhatsApp', text: 'Open in Chrome to connect WhatsApp, then return here.', url: target }); return; }
-    catch (e) { /* dismissed → fall through to the intent link below */ }
-  }
-  if (target) window.location.href = chromeEscapeUrl(); // no share API → intent link (watchdog below covers silence!)
-  chromeEscapeArmed(setShowManual, toast);
+async function openInChrome(setShowManual, toast) { // installed PWA → full Chrome. Order: DIRECT googlechrome:// launch (no chooser UI for Transsion skins to swallow!) → share sheet → manual auto-reveal. Same profile everywhere, login carries over!
+  let target = '';
+  try { target = `${new URL(window.location.href).origin}/connect`; } catch {}
+  if (!target) { setShowManual(true); return; }
+  window.location.href = 'googlechrome://navigate?url=' + encodeURIComponent(target); // straight into Chrome (Infinix/Tecno/Xiaomi-safe — no dialog to lose!)
+  setTimeout(async () => { // still here 2s later? Direct launch died → offer the share sheet once, then manual
+    let left = false;
+    try { left = document.hidden || !document.hasFocus(); } catch {}
+    if (left) return; // gone to Chrome (success — watchdog stands down!)
+    if (navigator.share) { // second chance: OS share sheet (user picks Chrome by hand!)
+      try { await navigator.share({ title: 'VeloSales Ai — Connect WhatsApp', text: 'Open in Chrome to connect WhatsApp, then return here.', url: target }); return; }
+      catch (e) { /* dismissed → fall through to manual below */ }
+    }
+    chromeEscapeArmed(setShowManual, toast); // everything failed → manual road reveals itself (never a dead tap!)
+  }, 2000);
 }
 function chromeEscapeArmed(setShowManual, toast) { // intent taps die SILENTLY when Chrome is missing (fallback reloads this same page = looks dead!) — watchdog catches it
   setTimeout(() => {
@@ -460,9 +467,9 @@ export default function Connect() {
             {isAndroid() && (
               <div className="learn-box light" style={{ marginTop: 10 }}>
                 <b>{isStandaloneBrowser() ? 'On the installed app?' : 'Popup misbehaving?'}</b><br />
-                <span className="hint">{isStandaloneBrowser() ? 'Popups can\u2019t complete inside the installed app — open this page in full Chrome instead (same login carries over, nothing to redo):' : 'Open this page fresh in Chrome — same login carries over, and the popup gets a clean window:'}</span>
+                <span className="hint">{isStandaloneBrowser() ? 'Popups can\u2019t complete inside the installed app — this jumps straight into full Chrome (same login carries over, nothing to redo):' : 'Open this page fresh in Chrome — same login carries over, and the popup gets a clean window:'}</span>
                 <div style={{ marginTop: 8 }}><button className="btn sm" onClick={() => openInChrome(setShowManual, toast)}>Open in Chrome</button></div>
-                <span className="hint">Pick Chrome from the list → finish the Meta steps there → return here. Your connection (and TEST) will be waiting. No list appears? The manual boxes appear below on their own.</span>
+                <span className="hint">Finish the Meta steps in Chrome, then return here — your connection (and TEST) will be waiting. If Chrome asks, allow it; if nothing opens, share this page to Chrome by hand (browser ⋮ menu) or use the manual boxes below.</span>
               </div>
             )}
             {!st?.metaEmbeddedReady && st && (

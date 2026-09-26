@@ -60,6 +60,15 @@ function chromeEscapeUrl() { // intent:// link that opens THIS page in full Chro
     return `intent://${u.host}/connect#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(target)};end`;
   } catch { return ''; }
 }
+async function openInChrome(setShowManual, toast) { // installed PWA → full Chrome, via the OS share sheet (native, never silently swallowed like intent: taps!) — same profile, login carries over!
+  const target = (() => { try { return `${new URL(window.location.href).origin}/connect`; } catch { return ''; } })();
+  if (target && navigator.share) { // share sheet: user picks Chrome (one familiar tap — pick it from the list!)
+    try { await navigator.share({ title: 'VeloSales Ai — Connect WhatsApp', text: 'Open in Chrome to connect WhatsApp, then return here.', url: target }); return; }
+    catch (e) { /* dismissed → fall through to the intent link below */ }
+  }
+  if (target) window.location.href = chromeEscapeUrl(); // no share API → intent link (watchdog below covers silence!)
+  chromeEscapeArmed(setShowManual, toast);
+}
 function chromeEscapeArmed(setShowManual, toast) { // intent taps die SILENTLY when Chrome is missing (fallback reloads this same page = looks dead!) — watchdog catches it
   setTimeout(() => {
     let left = false; // did we actually leave for Chrome? (backgrounded tab = success!)
@@ -447,8 +456,8 @@ export default function Connect() {
               <div className="learn-box light" style={{ marginTop: 10 }}>
                 <b>On the installed app?</b><br />
                 <span className="hint">Popups can&apos;t complete inside the installed app — open this page in full Chrome instead (same login carries over, nothing to redo):</span>
-                <div style={{ marginTop: 8 }}><a className="btn sm" href={chromeEscapeUrl()} onClick={() => chromeEscapeArmed(setShowManual, toast)}>Open in Chrome</a></div>
-                <span className="hint">Finish the Meta steps in Chrome, then return here — your connection (and TEST) will be waiting. If Chrome doesn&apos;t open, the manual boxes appear below on their own.</span>
+                <div style={{ marginTop: 8 }}><button className="btn sm" onClick={() => openInChrome(setShowManual, toast)}>Open in Chrome</button></div>
+                <span className="hint">Pick Chrome from the share list → finish the Meta steps there → return here. Your connection (and TEST) will be waiting. Nothing opens? The manual boxes appear below on their own.</span>
               </div>
             )}
             {!st?.metaEmbeddedReady && st && (

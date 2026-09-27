@@ -200,9 +200,11 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       resolve(outcome);
     };
     const log = (event) => logVideo(slot, pick, event); // source pinned (closure!)
+    let started = false; // playback REALLY started? (countdown stays FROZEN at 30 until first pixels move — loading time never steals viewing time!)
+    const markStarted = () => { if (!started) { started = true; t0 = Date.now(); } }; // clock reset (idempotent — first signal wins!)
     // ── overlay skeleton (DOM-built + textContent = XSS-safe!) ──
     const ov = document.createElement('div');
-    ov.className = 'pop-overlay vgate-ov'; // vgate-ov = FULLSCREEN on phones (theatre mode — brand-safe framing around any creative!)
+    ov.className = 'pop-overlay vgate-ov'; // vgate-ov = FULLSCREEN theatre on every screen (brand-safe framing around any creative!)
     ov.innerHTML =
       '<div class="pop-card sponsor vgate">' +
       '<span class="sponsor-tag">Sponsored · video</span>' +
@@ -211,7 +213,6 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       '<div class="vgate-meta"><span class="vgate-count">30</span><button class="vgate-skip" hidden>Skip →</button></div>' +
       '<div class="vgate-body"></div>' +
       '<button class="btn sm vgate-visit" hidden>Visit sponsor</button>' +
-      '<button class="vgate-report">Report this ad</button>' +
       '</div>';
     const title = pick === 'sponsor' ? (v.sponsorTitle || 'Sponsored') : pick === 'hilltopads' ? 'Sponsored video' : 'Rewarded video';
     ov.querySelector('h3').textContent = title; // textContent (never innerHTML with config strings!)
@@ -220,19 +221,18 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
     const skipBtn = ov.querySelector('.vgate-skip');
     const body = ov.querySelector('.vgate-body');
     const visitBtn = ov.querySelector('.vgate-visit');
-    const reportBtn = ov.querySelector('.vgate-report');
-    reportBtn.onclick = () => { log('report'); toast('Reported — we review ad sources daily and kill bad layers. Thanks!'); finish('skipped'); }; // report = logged per source (Admin funnel shows the count!) + gate closes (user distress respected!)
-    // ── countdown + progress (one 250ms ticker drives everything!) ──
+    // ── countdown + progress (one 250ms ticker drives everything — FROZEN until markStarted fires!) ──
     const tick = setInterval(() => {
-      const el = Math.min(VIDEO_LEN, (Date.now() - t0) / 1000); // elapsed, capped at 30
+      const el = Math.min(VIDEO_LEN, (Date.now() - t0) / 1000); // elapsed VIEWING time, capped at 30 (loading doesn't count!)
       bar.style.width = (el / VIDEO_LEN * 100) + '%';
       count.textContent = String(Math.max(0, Math.ceil(VIDEO_LEN - el)));
-      if (el >= VIDEO_SKIP_AT && skipBtn.hidden) skipBtn.hidden = false; // skip unlocks at 5s (polite!)
+      if (el >= VIDEO_SKIP_AT && skipBtn.hidden) skipBtn.hidden = false; // skip unlocks at 5s of VIEWING (polite!)
       for (const [mark, ev] of [[7.5, 'q25'], [15, 'q50'], [22.5, 'q75']]) { // quartile marks (7.5/15/22.5s of 30!)
         if (el >= mark && !quartiles[ev]) { quartiles[ev] = true; log(ev); }
       }
+      if (el >= VIDEO_LEN) { log('complete'); finish('completed'); } // full 30s WATCHED → invoice it (no early exits on slow loads!)
     }, 250);
-    const watchdog = setTimeout(() => { log('complete'); finish('completed'); }, VIDEO_LEN * 1000 + 1500); // 30s + grace (hung players can't trap users!)
+    const watchdog = setTimeout(() => { log('complete'); finish('completed'); }, 90000); // absolute backstop (frozen clock + slow loads: nothing traps, ever!)
     skipBtn.onclick = () => { log('skip'); finish('skipped'); }; // skip = logged + out (no upsell on skips — politeness!)
     // ── the playable: own mp4, Hilltop VAST doc, OR network tag in our frame ──
     let tagScript = null;
@@ -245,7 +245,8 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       video.style.cssText = 'width:100%;border-radius:12px;background:#000;max-height:300px;display:block;margin-top:8px;';
       body.appendChild(video);
       video.addEventListener('ended', () => { log('complete'); finish('completed'); }); // natural end (< 30s clips complete early — fair!)
-      video.play().catch(() => {}); // autoplay blocked (rare, muted usually passes) → countdown still completes fairly
+      video.addEventListener('playing', markStarted, { once: true }); // first pixels move → clock starts (loading/buffering never billed as viewing!)
+      video.play().catch(() => {}); // autoplay blocked (rare, muted usually passes) → watchdog still frees the user fairly
       visitBtn.hidden = false; // sponsor gets the billable button (tap = money!)
       visitBtn.onclick = async () => { // VISIT = the money event (logged BEFORE leaving, like sponsor clicks!)
         log('click');
@@ -261,7 +262,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       video.style.cssText = 'width:100%;border-radius:12px;background:#000;max-height:300px;display:block;margin-top:8px;';
       body.appendChild(video);
       let mgr = null; // IMA ads manager (destroyed on every exit — no orphan audio ever!)
-      let loadTimer = setTimeout(() => finish('layer-empty'), 8000); // VAST/network/IMA all dead or hanging? → NEXT layer (never a dead timer!)
+      let loadTimer = setTimeout(() => finish('layer-empty'), 12000); // VAST/network/IMA all dead or hanging? → NEXT layer (12s grace for slow phone networks!)
       extraCleanup = () => { clearTimeout(loadTimer); try { mgr && mgr.destroy(); } catch {} };
       loadImaSdk().then(() => {
         if (done) return; // user already skipped (race lost — destroy nothing, exit took over!)
@@ -273,7 +274,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
             try {
               mgr = e.getAdsManager(video);
               let adStarted = false; // no-fill guard: fresh/pending zones serve EMPTY VAST yet IMA still fires ALL_ADS_COMPLETED (an unwatched "complete" would fake revenue + invoice a sponsor for nothing!)
-              mgr.addEventListener(window.google.ima.AdEvent.Type.STARTED, () => { adStarted = true; }); // a real creative actually playing (silent flag — no new funnel event, backend whitelist untouched!)
+              mgr.addEventListener(window.google.ima.AdEvent.Type.STARTED, () => { adStarted = true; markStarted(); }); // real creative playing → clock starts too!
               mgr.addEventListener(window.google.ima.AdEvent.Type.ALL_ADS_COMPLETED, () => { // finished…
                 if (adStarted) { log('complete'); finish('completed'); } // …watched (< 30s = early complete, fair!)…
                 else finish('layer-empty'); // …nothing ever played → NEXT layer (empty zone, never a fake complete!)
@@ -303,11 +304,12 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       tagScript.src = pick === 'hilltopads' ? v.hilltopads : v.monetag;
       tagScript.onerror = () => finish('layer-empty'); // dead tag → NEXT layer (never a dead timer!)
       document.head.appendChild(tagScript); // mount → their unit renders (their player, THEIR close buttons ignored — OUR countdown rules!)
-      emptyCheck = setTimeout(() => { // 5s empty-frame guard: tag loaded but painted NOTHING? (the /drm/… lesson!)
+      emptyCheck = setTimeout(() => { // 10s painted-or-dead guard: tag loaded but painted NOTHING?
         const painted = holder.querySelector('video,iframe,canvas,object,embed') // real players…
           || Array.from(holder.querySelectorAll('*')).some((el) => !el.hasAttribute('data-vgate-ph') && el.getBoundingClientRect().height > 4); // …or any visible tag output (placeholder excluded!)
         if (!painted) finish('layer-empty'); // blank → NEXT layer (a broken tag never embarrasses us!)
-      }, 5000);
+        else markStarted(); // painted → clock starts (slow load never steals viewing time!)
+      }, 10000); // 10s grace (slow phone networks need room — 5s killed working tags!)
     }
     log('start'); // funnel opens (completions ÷ starts = the number sponsors pay for!)
     document.body.appendChild(ov); // mount (outside React, like toasts/pops!)

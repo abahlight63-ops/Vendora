@@ -54,15 +54,15 @@ services:
       - key: ADS_VIDEO_ONLY
         value: 0
       - key: SPONSOR_TITLE
-        sync: false
+        value: VeloSales Ai — your shop, open 24/7
       - key: SPONSOR_TEXT
-        sync: false
+        value: Instant answers in English or Pidgin, straight from your catalog. Free forever plan.
       - key: SPONSOR_LINK
-        sync: false
+        value: https://velosalesai.com.ng
       - key: SPONSOR_IMAGE
         sync: false
       - key: SPONSOR_VIDEO_URL
-        sync: false
+        value: /ads/velosales-promo.mp4
       - key: SPONSOR_RATE_PER_CLICK
         value: 50
       - key: OPENAI_API_KEY

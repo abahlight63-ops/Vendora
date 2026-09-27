@@ -34,7 +34,7 @@ Status: backend ships three modes (see `getMe` in ownerController.js):
    `ADS_VIDEO_ONLY` warnings (a warning means the tag is missing/not-a-player
    and gates will skip — safe, just no revenue).
 4. Verify as a **free-tier** account with no ad-blocker: open Inbox → a 30s
-   gated player with countdown + skip-at-5s appears (once/day/action).
+    gated player with countdown + skip-at-5s appears (up to 10/day/section, 5-min spacing).
    Kill test: with ad-blocker on, the gate must vanish to a working button
    (5s empty-frame guard) — never a dead timer.
 5. Admin → AdsStatus preview ("Only HilltopAds" button) fires the isolated

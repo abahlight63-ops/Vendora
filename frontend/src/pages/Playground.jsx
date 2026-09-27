@@ -5,7 +5,7 @@
 // STATE: msgs (thread incl. greeting), input (draft), busy (AI thinking?).
 // Also sets localStorage 'vendora-tested' so the Dashboard checklist ticks!
 import { useEffect, useState } from 'react'; // useState only (no mount fetch — starts with a greeting); useEffect = video gate once
-import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 30s video gate (free tier, once/day!)
+import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 30s video gate (free tier, 10/day with 5-min gaps!)
 import Loader from '../components/Loader.jsx'; // mini orbit in the typing bubble
 
 export default function Playground() { // no props (uses session catalog server-side)

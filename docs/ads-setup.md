@@ -85,7 +85,7 @@ or connect as a free-tier shop with no ad-blocker.
 2. Paste it in Render → Environment → **redeploy** (env loads at boot only!).
 3. Open an **incognito window** (fresh daily caps!) → sign up a test shop (free
    tier) → open Catalog: the 30s gate appears (skip unlocks at 5s).
-4. Visit Connect, Test bot, Inbox — one gate per page per day, Pro sees none.
+4. Visit Connect, Test bot, Inbox — up to 10 gates per page per day (5+ min apart), Pro sees none.
 5. Click "Visit sponsor" → Admin → ad console shows the click + completions.
 6. Add network zones one by one (`ADS_VIDEO_HILLTOPADS` → test → next).
    Order check: temporarily unset the mp4 to watch each network layer fire.

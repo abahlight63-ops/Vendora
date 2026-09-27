@@ -91,15 +91,34 @@ export function clearSponsorSeen() { try { localStorage.removeItem('sponsor_seen
 
 const VIDEO_LEN = 30; // the gate: 30 seconds of attention (sponsor invoice unit!)
 const VIDEO_SKIP_AT = 5; // skip unlocks at 5s (polite but paid — completions still track!)
+const VIDEO_PER_DAY = 10; // per section per day (connect × catalog × chats × insights… — volume is the revenue!)
+const VIDEO_GAP_MIN = 5; // minutes between two gates on the SAME section (never back-to-back nagging!)
 
-function videoCapKey(slot) { // once per action per day (never stack videos back-to-back!)
-  return `advideo:${slot}:` + new Date().toISOString().slice(0, 10); // UTC date (same convention as sponsor_seen!)
+function videoCapKey(slot) { // per-section daily tally (UTC date — same convention as sponsor_seen!)
+  return `advideo:${slot}:` + new Date().toISOString().slice(0, 10);
+}
+function videoTally(slot) { // { count, last } — tolerant reader (old '1' flags + corrupt JSON → fresh tally, never crash!)
+  try {
+    const raw = localStorage.getItem(videoCapKey(slot));
+    if (!raw) return { count: 0, last: 0 };
+    const p = JSON.parse(raw);
+    if (p && typeof p.count === 'number' && typeof p.last === 'number') return p;
+    return { count: Number(raw) || 0, last: 0 }; // legacy '1' flag → counts as shown, gap timer fresh
+  } catch { return { count: 0, last: 0 }; } // storage broken → treat as fresh here (caller fail-closes below on write errors!)
 }
 function videoSeen(slot) {
-  try { return !!localStorage.getItem(videoCapKey(slot)); } catch { return true; } // storage broken → pretend seen (fewer ads, never errors!)
+  try {
+    const { count, last } = videoTally(slot);
+    if (count >= VIDEO_PER_DAY) return true; // today's 10 for this section are done
+    if (last && Date.now() - last < VIDEO_GAP_MIN * 60 * 1000) return true; // cooling down (5-min breather!)
+    return false;
+  } catch { return true; } // storage broken → pretend seen (fewer ads, never errors!)
 }
 function markVideoSeen(slot) {
-  try { localStorage.setItem(videoCapKey(slot), '1'); } catch {} // mark FIRST (even instant closes consume the day — no nagging!)
+  try {
+    const { count } = videoTally(slot);
+    localStorage.setItem(videoCapKey(slot), JSON.stringify({ count: count + 1, last: Date.now() }));
+  } catch {} // mark FIRST (even instant closes consume one of the 10 — no nagging!)
 }
 export function clearVideoSeen(slot) { try { localStorage.removeItem(videoCapKey(slot || 'connect')); } catch {} } // Admin preview bypass!
 
@@ -149,7 +168,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
     return o;
   };
   if (!v) return done('skipped-empty'); // Pro, logged-out, or backend without video config
-  if (!force && videoSeen(slot)) return done('skipped-cap'); // already gated this action today
+  if (!force && videoSeen(slot)) return done('skipped-cap'); // today's 10 done OR still cooling down (Admin force bypasses!)
   const order = only ? [only] : (Array.isArray(v.order) && v.order.length ? v.order : ['sponsor', 'hilltopads', 'monetag']);
   const has = { // what's actually playable right now? (sponsor mp4 needs video+link; network layers need their zone URL!)
     sponsor: !!(v.sponsorVideo && v.sponsorLink),

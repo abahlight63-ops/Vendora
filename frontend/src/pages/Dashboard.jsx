@@ -12,6 +12,7 @@ import { describeNetError } from '../lib/netDetail.js'; // one voice for load fa
 import LoadFailed from '../components/LoadFailed.jsx'; // branded failed card + Retry (never eternal skeletons!)
 import Ic from '../components/icons.jsx'; // <Ic n="chat"/> icon set
 import { maybeShowSponsor } from '../lib/ads.js'; // daily sponsor interstitial (free tier, silent for Pro)
+import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 30s video gate (free tier — overview pays too!)
 
 function greeting() { // NOT a component (lowercase, returns a string): time-based hello.
   const h = new Date().getHours(); // getHours() = 0–23 local time…
@@ -47,6 +48,7 @@ export default function Dashboard({ biz }) { // biz = business object from App (
       } catch (e) { if (!dead) setFailed({ status: 0, detail: describeNetError(e) }); } // network down / timeout → failed card (never eternal skeletons!)
     })(); // ← invoke the IIFE immediately
     const t = setTimeout(() => { maybeShowSponsor(); }, 8000); // free-tier sponsor interstitial, 8s after Overview lands (daily cap inside; Pro = silent no-op)
+    maybeShowVideoAd({ slot: 'page-dashboard' }); // video gate (fire-and-forget: overview loads UNDER the overlay!)
     const onOnline = () => { if (!dead) setTries((x) => x + 1); }; // back online? auto-retry (no tap needed!)
     window.addEventListener('online', onOnline);
     return () => { dead = true; clearTimeout(t); window.removeEventListener('online', onOnline); }; // cleanup on unmount (no stray popup, no leaked listener!)

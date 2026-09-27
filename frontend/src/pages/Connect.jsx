@@ -139,7 +139,7 @@ export default function Connect() {
   useEffect(() => { // mount: status + models in parallel (no await between = both fly!) + ONE page-entry video gate
     load();
     api('/api/me/ai-models').then(({ ok, data }) => { if (ok && Array.isArray(data.models)) setModels(data.models); });
-    maybeShowVideoAd({ slot: 'page-connect' }); // page gate replaces per-button gates (one video/day here — never stacked!)
+    maybeShowVideoAd({ slot: 'page-connect' }); // page gate replaces per-button gates (10/day here, 5-min gaps — never stacked!)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => { // Chrome-handoff landing (?autoconnect=meta): strip param FIRST (refresh-safe!), open the meta road, arm auto-start

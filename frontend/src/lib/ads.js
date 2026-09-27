@@ -188,7 +188,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
 
   // ── one gated player attempt (overlay lifetime = this promise!) ──
   function playVideoLayer({ slot, pick, v }) { return new Promise((resolve) => { // overlay lifetime = this promise (close paths ALL resolve it!)
-    const t0 = Date.now(); // gate clock (drives countdown + progress + completion!)
+    let t0 = Date.now(); // gate clock (drives countdown + progress + completion — RESET on first playback by markStarted!)
     let done = false; // settled once (timers + events race — first wins!)
     let quartiles = {}; // q25/q50/q75 logged once each (completion RATE = attention quality!)
     const finish = (outcome) => { // single exit (clear timers, remove overlay, resolve caller!)

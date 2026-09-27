@@ -373,8 +373,8 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .vgate-skip[hidden] { display: none; } /* hidden till 5s (polite countdown!) */
 .vgate-visit { margin-top: 12px; width: 100%; }
 /* ── video-gate theatre mode (FULLSCREEN on every screen: phones, tablets, desktop!) ── */
-.pop-overlay.vgate-ov { padding: 0; place-items: stretch; }
-.pop-overlay.vgate-ov .pop-card.vgate { max-width: none; width: 100%; min-height: 100vh; min-height: 100dvh; border-radius: 0; border-left: none; border-right: none; display: flex; flex-direction: column; justify-content: center; padding: 22px 18px calc(22px + env(safe-area-inset-bottom, 0px)); }
+.pop-overlay.vgate-ov { padding: 0; display: grid; overflow-y: auto; } /* scroll safety: short viewports scroll instead of slicing the top off! */
+.pop-overlay.vgate-ov .pop-card.vgate { max-width: none; width: 100%; min-height: 100vh; min-height: 100dvh; margin: auto; border-radius: 0; border-left: none; border-right: none; display: flex; flex-direction: column; justify-content: center; padding: 22px 18px calc(22px + env(safe-area-inset-bottom, 0px)); } /* margin:auto centers when it fits, scrolls from the TOP when it overflows (flex-centering alone cuts!) */
 .pop-overlay.vgate-ov .vgate-body video { max-height: 52vh; max-height: 52dvh; }
 .pop-overlay.vgate-ov .vgate-skip { min-height: 48px; padding: 12px 26px; font-size: 15px; }
 

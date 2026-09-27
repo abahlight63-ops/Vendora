@@ -259,8 +259,11 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       const video = document.createElement('video');
       video.muted = true; video.playsInline = true; video.preload = 'auto'; // muted inline (browser autoplay policy + no iOS takeover!)
       video.setAttribute('disablepictureinpicture', ''); // keep it in the card!
-      video.style.cssText = 'width:100%;border-radius:12px;background:#000;max-height:300px;display:block;margin-top:8px;';
+      video.style.cssText = 'width:100%;border-radius:12px;background:#000;max-height:300px;display:block;margin-top:8px;cursor:pointer;';
       body.appendChild(video);
+      const tapHint = document.createElement('p'); // click affordance (tapping the video opens the advertiser — IMA handles the landing page natively!)
+      tapHint.className = 'hint'; tapHint.style.marginTop = '6px'; tapHint.textContent = 'Interested? Tap the video to open the offer.';
+      body.appendChild(tapHint);
       let mgr = null; // IMA ads manager (destroyed on every exit — no orphan audio ever!)
       let loadTimer = setTimeout(() => finish('layer-empty'), 12000); // VAST/network/IMA all dead or hanging? → NEXT layer (12s grace for slow phone networks!)
       extraCleanup = () => { clearTimeout(loadTimer); try { mgr && mgr.destroy(); } catch {} };
@@ -279,6 +282,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
                 if (adStarted) { log('complete'); finish('completed'); } // …watched (< 30s = early complete, fair!)…
                 else finish('layer-empty'); // …nothing ever played → NEXT layer (empty zone, never a fake complete!)
               });
+              mgr.addEventListener(window.google.ima.AdEvent.Type.CLICK, () => { log('click'); }); // tap on the video → IMA opens the offer natively; we log the click for the funnel (never blocks, never closes!)
               mgr.addEventListener(window.google.ima.AdErrorEvent.Type.AD_ERROR, () => finish('layer-empty')); // bad creative → NEXT layer (never embarrass us!)
               adDisplay.initialize();
               mgr.init(640, 360, window.google.ima.ViewMode.NORMAL);

@@ -11,6 +11,8 @@ import { money } from '../lib/money.js';
 import Ic from '../components/icons.jsx';
 import Loader, { BrandGate, useMinDisplay } from '../components/Loader.jsx'; // BrandGate (access check) + mini orbit (AI test button!) + brand beat
 import { adsStatus, clearSponsorSeen, clearVideoSeen, maybeShowSponsor, maybeShowVideoAd } from '../lib/ads.js'; // sponsor + video previews (this browser's tier/tags, daily caps bypassed)
+import LoadFailed from '../components/LoadFailed.jsx'; // failed-tab card + Retry (panels never spin forever!)
+import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures (offline? waking? stale?)
 
 const TABS = [['stats', 'Overview', 'chart', 'green'], ['users', 'Users', 'profile', 'blue'], ['revenue', 'Income', 'cash', 'gold'], ['transfers', 'Transfers', 'send', 'orange'], ['referrals', 'Referrals', 'gift', 'purple'], ['channels', 'Channels', 'plug', 'teal'], ['complaints', 'Complaints', 'help', 'red'], ['templates', 'Templates', 'copy', 'gold'], ['broadcast', 'Broadcast', 'mega', 'orange'], ['warn', 'Warn user', 'warn', 'red'], ['ai', 'AI health', 'spark', 'purple'], ['ads', 'Ads', 'card', 'green']]; // [key, label, icon, accent] quads — EVERY console page is a tab (one page visible at a time, never stacked!)
 const STATIC_TABS = ['templates', 'broadcast', 'warn', 'ai', 'ads']; // self-loading panels (no endpoint — render immediately, no skeleton!)
@@ -28,6 +30,7 @@ export default function Admin() {
   const [d, setD] = useState(null); // tab data (shape depends on tab — single state, reused!)
   const [blastSeed, setBlastSeed] = useState(null); // template → broadcast prefill ({t,b,link,image,video,n})
   const [warnSeed, setWarnSeed] = useState(null); // template → warn-one prefill (same shape, who stays empty)
+  const [loadErr, setLoadErr] = useState(null); // null | { status, detail } — tab load failure (Retry card in-panel!)
   const minDone = useMinDisplay(1000); // brand beat (fast gate checks still show the scatter a full second!)
 
   async function check() { // lockdown: EVERY visit starts locked (tab closed + reopened = password again, always!)
@@ -59,19 +62,21 @@ export default function Admin() {
   }
 
   async function load(t) { // tab loader: one endpoint per DATA tab (switch re-fetches = always fresh!)…
-    if (STATIC_TABS.includes(t)) { setTab(t); setD({}); return; } // static page (templates/forms/health load themselves — no endpoint, no skeleton!)
-    setTab(t); setD(null); // set tab + null data (null renders skeletons — consistent loading UX!)
+    if (STATIC_TABS.includes(t)) { setTab(t); setD({}); setLoadErr(null); return; } // static page (templates/forms/health load themselves — no endpoint, no skeleton!)
+    setTab(t); setD(null); setLoadErr(null); // set tab + null data (null renders skeletons — consistent loading UX!)
     if (t === 'referrals') { // referrals = THREE endpoints at once (overview + airtime queue + leaderboard!)
       const [o, p, l] = await Promise.all([api('/api/admin/referrals'), api('/api/admin/referrals/pending'), api('/api/admin/referrals/leaders')]);
       if (o.status === 401 || p.status === 401 || l.status === 401) { setGate('locked'); toast('Admin session expired — sign in again', 'err'); return; }
       if (o.ok && p.ok && l.ok) { setD({ overview: o.data.rows || [], pending: p.data.rows || [], leaders: l.data.rows || [] }); return; }
-      toast('Could not load referrals', 'err'); return;
+      setLoadErr({ status: o.status || p.status || l.status, detail: 'Could not load referrals.' }); toast('Could not load referrals', 'err'); return;
     }
     const urls = { stats: '/api/admin/stats', users: '/api/admin/users', revenue: '/api/admin/stats', transfers: '/api/admin/transfers', channels: '/api/admin/channels', complaints: '/api/admin/complaints' }; // tab → endpoint map (revenue reuses stats + payments list below? stats covers totals; transfers tab shows the money ACTIONS)
-    const { ok, status, data } = await api(urls[t]); // fetch…
-    if (ok) setD(data); // …store (array or object — panels branch on tab, not shape!)
-    else if (status === 401) { setGate('locked'); toast('Admin session expired — sign in again', 'err'); } // idle 30 min → password again (tight by design!)
-    else toast(data.error || 'Load failed', 'err'); // other failures → toast (gate stays — retry the tab!)
+    try {
+      const { ok, status, data } = await api(urls[t], { timeout: 15000 }); // fetch…
+      if (ok) setD(data); // …store (array or object — panels branch on tab, not shape!)
+      else if (status === 401) { setGate('locked'); toast('Admin session expired — sign in again', 'err'); } // idle 30 min → password again (tight by design!)
+      else { setLoadErr({ status, detail: (data && data.error) || 'Load failed.' }); toast(data.error || 'Load failed', 'err'); } // other failures → error card + toast (gate stays — retry the tab!)
+    } catch (e) { setLoadErr({ status: 0, detail: describeNetError(e) }); toast('Load failed — check connection', 'err'); } // down/timeout → error card (never eternal skeleton!)
   }
 
   async function act(url, body, msg) { // generic ACTION helper: POST → pop → reload tab (approve/reject/verify/resolve all flow through here!)
@@ -121,7 +126,8 @@ export default function Admin() {
         <button className="btn ghost sm" style={{ width: '100%', marginTop: 8 }} onClick={signOut}>Sign out</button>
       </nav>
       <div key={tab} className={'admin-panel acc-' + accent}> {/* key={tab} = remount per tab → entrance animation replays every switch! */}
-      {!d ? <div className="card"><div className="skel" /></div> : tab === 'stats' ? <Stats d={d} /> // null → skeleton; else ONE panel per page (clicking Users never shows Templates — each page owns the screen!)
+      {loadErr ? <div className="card"><LoadFailed title={`Couldn't load ${tab}`} status={loadErr.status} detail={loadErr.detail} tries={0} onRetry={() => load(tab)} backTo="/dashboard" backLabel="Back to Overview" /></div>
+      : !d ? <div className="card"><div className="skel" /></div> : tab === 'stats' ? <Stats d={d} /> // error card / skeleton / ONE panel per page (clicking Users never shows Templates — each page owns the screen!)
         : tab === 'users' ? <Users rows={d} refresh={() => load('users')} act={act} />
         : tab === 'revenue' ? <Revenue d={d} />
         : tab === 'transfers' ? <Transfers rows={d} act={act} />

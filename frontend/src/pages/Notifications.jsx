@@ -6,26 +6,37 @@
 import { useEffect, useState } from 'react'; // useState = items/one; useEffect = load on mount + id change
 import { Link, useNavigate, useParams } from 'react-router-dom'; // Link = back nav; useParams = :id; useNavigate = row taps
 import { api } from '../lib/api.js'; // api() calls (session-authed — owners see ONLY their inbox!)
+import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures
+import LoadFailed from '../components/LoadFailed.jsx'; // branded failed card + Retry (never eternal skeletons!)
 
 export default function Notifications() {
   const { id } = useParams(); // undefined on /notifications (list mode!)
   const nav = useNavigate();
   const [items, setItems] = useState(null); // null = loading (skeletons!)
   const [one, setOne] = useState(null); // detail row (null = loading/missing!)
+  const [failed, setFailed] = useState(null); // null | { status, detail } — list load failure (Retry card!)
+  const [tries, setTries] = useState(0); // retry counter (forces reload — no page refresh!)
 
   useEffect(() => { // inbox list (both modes — detail needs the row even before mark-read returns!)
-    api('/api/me/notifications').then(({ ok, data }) => {
+    let dead = false; // unmount guard (slow networks + fast navigation!)
+    setFailed(null);
+    api('/api/me/notifications', { timeout: 15000 }).then(({ ok, status, data }) => {
+      if (dead) return;
       if (ok && Array.isArray(data.items)) setItems(data.items);
+      else if (!ok && status === 401) window.location.href = '/login'; // session died → login (not an error loop!)
       else setItems([]);
-    });
-  }, []);
+    }).catch(() => { if (!dead) { setFailed({ status: 0, detail: describeNetError() }); setItems([]); } }); // down/timeout → failed card (never eternal skeletons!)
+    const onOnline = () => { if (!dead) setTries((t) => t + 1); }; // internet's back? reload without a tap!
+    window.addEventListener('online', onOnline);
+    return () => { dead = true; window.removeEventListener('online', onOnline); };
+  }, [tries]); // [tries] = Retry bumps → refetch
 
   useEffect(() => { // detail mode: open + mark read (scoped server-side — another shop's id = 404!)
     if (!id) { setOne(null); return; }
     setOne(null);
     api(`/api/me/notifications/${id}/read`, { method: 'POST' }).then(({ ok, data }) => {
       setOne(ok ? data : 'missing');
-    });
+    }).catch(() => setOne('missing')); // down → missing card (Back button stays — retry possible!)
   }, [id]); // id change (list → detail, detail → detail) re-runs
 
   if (id) { // ── DETAIL: the whole story (photo/video + full long body!) ──
@@ -53,6 +64,7 @@ export default function Notifications() {
       <div className="page-head"><div><h1>Notifications</h1><p>Payment news and app updates — tap any row to read it fully.</p></div></div>
       <div className="card">
         {items === null ? <div className="skel-grid">{[0, 1, 2].map((i) => (<div key={i} className="skel" style={{ height: 56, marginBottom: 8 }} />))}</div>
+          : failed && items.length === 0 ? <LoadFailed title="Couldn't load notifications" status={failed.status} detail={failed.detail} tries={tries} onRetry={() => { setItems(null); setTries((t) => t + 1); }} backTo="/dashboard" backLabel="Back to Overview" />
           : items.length === 0 ? <div className="empty"><b>All caught up</b>Payment verifications and app updates will land here.</div>
             : items.map((n) => (
               <button key={n.id} className={'nbell-item' + (n.is_read ? '' : ' fresh')} style={{ borderBottom: '1px solid var(--line-soft)' }} onClick={() => nav(`/notifications/${n.id}`)}>

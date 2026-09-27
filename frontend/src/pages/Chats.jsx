@@ -18,9 +18,31 @@ export default function Chats() {
   const [msgs, setMsgs] = useState(null); // thread messages (null = loading thread → bubble skeletons)
   const [draft, setDraft] = useState(''); // reply draft (controlled input!)
   const [sending, setSending] = useState(false); // send in flight (button locks — no double-sends!)
-  async function load() { const { data } = await api('/api/me/conversations'); setConvos(data || []); } // reusable reload (called on mount + back-from-thread to refresh flags)
-  useEffect(() => { load(); maybeShowVideoAd({ slot: 'page-chats' }); }, []); // [] = mount-only fetch + video gate (fire-and-forget: inbox loads UNDER the overlay!)
-  async function open(c) { setThread(c); setMsgs(null); setDraft(''); const { data } = await api('/api/me/conversations/' + c.id + '/messages'); setMsgs(data || []); } // open thread: show screen instantly (thread set) + spinner messages (msgs null) → fill when fetch lands. c.id in URL (backend ownership-checks it!)
+  const [failed, setFailed] = useState(null); // null | { status, detail } — list load failure (Retry card, never eternal skeletons!)
+  const [tries, setTries] = useState(0); // retry counter (forces reload — no page refresh!)
+  async function load() { // reusable reload (mount + retry + back-from-thread to refresh flags)
+    try {
+      setFailed(null);
+      const { data } = await api('/api/me/conversations', { timeout: 15000 });
+      setConvos(data || []);
+    } catch (e) { setFailed({ status: 0, detail: describeNetError(e) }); } // down/timeout → failed card (never eternal skeletons!)
+  }
+  useEffect(() => { // mount + retry (tries in deps!) + auto-retry when back online
+    let dead = false; // unmount guard (slow networks + fast navigation!)
+    load();
+    maybeShowVideoAd({ slot: 'page-chats' }); // page-entry 30s video gate (free tier, once/day — inbox loads UNDER the overlay!)
+    const onOnline = () => { if (!dead && failed) setTries((t) => t + 1); }; // internet's back? reload without a tap!
+    window.addEventListener('online', onOnline);
+    return () => { dead = true; window.removeEventListener('online', onOnline); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tries]);
+  async function open(c) { // open thread: show screen instantly + spinner messages → fill when fetch lands (c.id in URL — backend ownership-checks it!)
+    setThread(c); setMsgs(null); setDraft('');
+    try {
+      const { data } = await api('/api/me/conversations/' + c.id + '/messages', { timeout: 15000 });
+      setMsgs(data || []);
+    } catch { toast('Could not open chat — check connection, Back and retry', 'err'); setMsgs([]); } // failed open → toast + empty (Back button stays — retry possible!)
+  }
   const list = (convos || []).filter((c) => filter === 'all' ? true : filter === 'needs' ? c.needs_human : !c.needs_human); // nested ternary filter: all→everything; needs→flagged; handled→rest ((convos||[]) guards loading)
 
   async function takeover(paused) { // flip THIS chat's bot: true = you talk (bot silent), false = AI resumes. POSTs to the takeover endpoint, then refreshes local state so the badge flips instantly.
@@ -65,6 +87,12 @@ export default function Chats() {
       </div>
     );
   }
+  if (failed && convos === null && !thread) return ( // list failed BEFORE first paint (nothing to show — failed card, never skeletons!)
+    <>
+      <div className="page-head"><div><h1>Inbox</h1><p>Every WhatsApp chat. Green = AI handled. Gold = needs your human touch.</p></div></div>
+      <LoadFailed title="Couldn't load inbox" status={failed.status} detail={failed.detail} tries={tries} onRetry={() => { setConvos(null); setTries((t) => t + 1); }} backTo="/dashboard" backLabel="Back to Overview" />
+    </>
+  );
   return ( // LIST SCREEN (thread is null)…
     <>
       <div className="page-head"><div><h1>Inbox</h1><p>Every WhatsApp chat. Green = AI handled. Gold = needs your human touch.</p></div></div>

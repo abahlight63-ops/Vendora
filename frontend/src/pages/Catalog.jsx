@@ -11,6 +11,8 @@ import { api, pop, toast } from '../lib/api.js'; // api() calls; pop() big anima
 import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 30s video gate (free tier, once/day!)
 import { categoriesFor, detailHintFor, learnExampleFor } from '../lib/niches.js'; // niche shelves + hints (electronics sees Phones, fashion sees Gowns!)
 import { maybeShowSponsor } from '../lib/ads.js'; // sponsor interstitial after adds (free tier, max once/day)
+import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures
+import LoadFailed from '../components/LoadFailed.jsx'; // branded failed card + Retry (never eternal skeletons!)
 import Ic from '../components/icons.jsx'; // trash + close glyphs
 import Loader from '../components/Loader.jsx'; // mini orbit in sync/upload buttons
 import LockButton from '../components/LockButton.jsx'; // padlock → upgrade card (the ONLY paywall affordance!)
@@ -39,14 +41,27 @@ export default function Catalog() { // no props needed (fetches everything itsel
   const [syncing, setSyncing] = useState(false); // disables button + "Syncing…" label (prevents double-submit!)
   const [uploading, setUploading] = useState(false); // photo upload in flight (button shows "Uploading…")
   const fileRef = useRef(null); // hidden <input type="file"> — the Upload-media button clicks it open
-  async function load() { const { data } = await api('/api/me/products'); setProducts(data || []); } // reusable reload (called after every mutation — simplest correct refresh strategy)
-  useEffect(() => { // mount: independent fetches (no await between = parallel-ish; .then chains don't block each other)
+  const [failed, setFailed] = useState(null); // null | { status, detail } — products load failure (Retry card!)
+  const [tries, setTries] = useState(0); // retry counter (forces reload — no page refresh!)
+  async function load() { // reusable reload (mount + retry + every mutation — simplest correct refresh strategy)
+    try {
+      setFailed(null);
+      const { data } = await api('/api/me/products', { timeout: 15000 });
+      setProducts(data || []);
+    } catch (e) { setFailed({ status: 0, detail: describeNetError(e) }); } // down/timeout → failed card (never eternal skeletons!)
+  }
+  useEffect(() => { // mount + retry (tries in deps!) + auto-retry when back online
+    let dead = false; // unmount guard (slow networks + fast navigation!)
     load(); // products list
-    api('/api/me/billing').then(({ data }) => { if (data?.tier) setTier(data.tier); }); // ?. guards failed responses (tier stays 'free' default)
-    api('/api/me/profile-sync').then(({ data }) => { if (data) setSyncInfo(data); }); // if (data) guards null (logged-out edge)
-    api('/api/me').then(({ data }) => { if (data?.business?.business_niche) setNiche(data.business.business_niche); }); // shop lane → niche shelves + hints
+    api('/api/me/billing').then(({ data }) => { if (!dead && data?.tier) setTier(data.tier); }).catch(() => {}); // ?. guards failed responses (tier stays 'free' default)
+    api('/api/me/profile-sync').then(({ data }) => { if (!dead && data) setSyncInfo(data); }).catch(() => {}); // garnish fetches never break the page!
+    api('/api/me').then(({ data }) => { if (!dead && data?.business?.business_niche) setNiche(data.business.business_niche); }).catch(() => {}); // shop lane → niche shelves + hints
     maybeShowVideoAd({ slot: 'page-catalog' }); // video gate (fire-and-forget: catalog loads UNDER the overlay!)
-  }, []); // [] = mount-only
+    const onOnline = () => { if (!dead && failed) setTries((t) => t + 1); }; // internet's back? reload without a tap!
+    window.addEventListener('online', onOnline);
+    return () => { dead = true; window.removeEventListener('online', onOnline); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tries]); // [tries] = Retry bumps → refetch
   async function sync() { // Pro profile-sync: paste text → AI scaffolds catalog
     if (!syncText.trim()) return toast('Paste your business profile text first', 'err'); // guard: blank submit → error toast (return stops here)
     setSyncing(true); // lock UI during the AI call (slow!.extractProducts takes seconds)
@@ -116,6 +131,12 @@ export default function Catalog() { // no props needed (fetches everything itsel
     else toast('Could not remove product', 'err');
     load();
   }
+  if (failed && products === null) return ( // products failed BEFORE first paint (nothing to show — failed card, never skeletons!)
+    <>
+      <div className="page-head"><div><h1>Catalog</h1><p>The single source of truth. If it's not here, the AI will not promise it.</p></div></div>
+      <LoadFailed title="Couldn't load catalog" status={failed.status} detail={failed.detail} tries={tries} onRetry={() => { setProducts(null); setTries((t) => t + 1); }} backTo="/dashboard" backLabel="Back to Overview" />
+    </>
+  );
   return (
     <>
       <div className="page-head"><div className="row" style={{ width: '100%' }}> {/* .row = flex space-between (title left, pill right) */}

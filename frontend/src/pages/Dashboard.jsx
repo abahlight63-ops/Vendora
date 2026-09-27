@@ -8,6 +8,8 @@
 import { useEffect, useState } from 'react'; // useState = s/bill/guideOff; useEffect = fetch-on-mount
 import { Link } from 'react-router-dom'; // Link = client-side nav (no page reload, unlike <a>)
 import { api, fmtTime, pop } from '../lib/api.js'; // api() fetches; fmtTime formats inbox timestamps; pop() celebrates payment returns
+import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures (offline? waking? stale?)
+import LoadFailed from '../components/LoadFailed.jsx'; // branded failed card + Retry (never eternal skeletons!)
 import Ic from '../components/icons.jsx'; // <Ic n="chat"/> icon set
 import { maybeShowSponsor } from '../lib/ads.js'; // daily sponsor interstitial (free tier, silent for Pro)
 
@@ -22,24 +24,33 @@ export default function Dashboard({ biz }) { // biz = business object from App (
   const [s, setS] = useState(null); // s = summary {convos, pct, needs, products, flagged[], latest[]} (null = loading → skeletons!)
   const [bill, setBill] = useState(null); // billing object (status, trial_ends… for the trial strip)
   const [live, setLive] = useState(false); // any channel LIVE? (WhatsApp inbound seen OR Telegram connected — Connect page owns this!)
-  useEffect(() => { // runs ONCE on mount ([]): fetch everything in parallel…
+  const [failed, setFailed] = useState(null); // null | { status, detail } — total load failure (Retry card, never eternal skeletons!)
+  const [tries, setTries] = useState(0); // retry counter (bumps refetch — no page reload!)
+  useEffect(() => { // runs on mount + every retry ([] + tries): fetch everything in parallel…
+    let dead = false; // unmount guard (slow networks + fast navigation!)
+    setFailed(null);
     (async () => { // async IIFE (effects can't be async directly — so define + call an async fn inside)
-      const [{ data: products }, { data: convos }, { data: b }, { data: ch }] = await Promise.all([ // Promise.all = 4 requests AT ONCE (faster than sequential); destructure each {data}
-        api('/api/me/products'), api('/api/me/conversations'), api('/api/me/billing'), api('/api/me/channels'),
-      ]);
-      if (ch && ch.whatsapp && (ch.whatsapp.live || (ch.telegram && ch.telegram.connected))) setLive(true); // checklist step ticks (WhatsApp TEST passed OR Telegram on!)
-      const c = convos || [], needs = c.filter((x) => x.needs_human); // || [] guards null; .filter picks flagged chats
-      setS({ // crunch into ONE setState (single re-render, not three!)
-        convos: c.length, // total chats
-        pct: c.length ? Math.round(((c.length - needs.length) / c.length) * 100) : 100, // % handled by AI (ternary avoids divide-by-zero → 100% when empty)
-        needs: needs.length, products: (products || []).length, // flagged count, catalog size
-        flagged: needs.slice(0, 3), latest: c.slice(0, 3), // .slice(0,3) = first 3 for the two cards (convos already newest-first from API)
-      });
-      setBill(b || null); // billing (|| null normalizes undefined)
+      try {
+        const [{ data: products }, { data: convos }, { data: b }, { data: ch }] = await Promise.all([ // Promise.all = 4 requests AT ONCE (faster than sequential); destructure each {data}
+          api('/api/me/products', { timeout: 15000 }), api('/api/me/conversations', { timeout: 15000 }), api('/api/me/billing', { timeout: 15000 }), api('/api/me/channels', { timeout: 15000 }),
+        ]);
+        if (dead) return;
+        if (ch && ch.whatsapp && (ch.whatsapp.live || (ch.telegram && ch.telegram.connected))) setLive(true); // checklist step ticks (WhatsApp TEST passed OR Telegram on!)
+        const c = convos || [], needs = c.filter((x) => x.needs_human); // || [] guards null; .filter picks flagged chats
+        setS({ // crunch into ONE setState (single re-render, not three!)
+          convos: c.length, // total chats
+          pct: c.length ? Math.round(((c.length - needs.length) / c.length) * 100) : 100, // % handled by AI (ternary avoids divide-by-zero → 100% when empty)
+          needs: needs.length, products: (products || []).length, // flagged count, catalog size
+          flagged: needs.slice(0, 3), latest: c.slice(0, 3), // .slice(0,3) = first 3 for the two cards (convos already newest-first from API)
+        });
+        setBill(b || null); // billing (|| null normalizes undefined)
+      } catch (e) { if (!dead) setFailed({ status: 0, detail: describeNetError(e) }); } // network down / timeout → failed card (never eternal skeletons!)
     })(); // ← invoke the IIFE immediately
     const t = setTimeout(() => { maybeShowSponsor(); }, 8000); // free-tier sponsor interstitial, 8s after Overview lands (daily cap inside; Pro = silent no-op)
-    return () => clearTimeout(t); // cleanup on unmount (no stray popup after navigation)
-  }, []); // [] deps = mount-only (fetch once; live updates would need polling/websocket — out of scope)
+    const onOnline = () => { if (!dead) setTries((x) => x + 1); }; // back online? auto-retry (no tap needed!)
+    window.addEventListener('online', onOnline);
+    return () => { dead = true; clearTimeout(t); window.removeEventListener('online', onOnline); }; // cleanup on unmount (no stray popup, no leaked listener!)
+  }, [tries]); // [tries] = Retry bumps → refetch (mount + retries share this path!)
   useEffect(() => { // Paystack RETURN: ?reference=… in the URL → server-verified activation (webhook usually already did it — idempotent, so double runs are safe!)
     const q = new URLSearchParams(window.location.search);
     const ref = q.get('reference') || q.get('trxref');
@@ -77,6 +88,12 @@ export default function Dashboard({ biz }) { // biz = business object from App (
   const doneCount = steps.filter((x) => x.done).length; // .filter keeps dones; .length counts them (progress bar math below)
   const showGuide = !guideOff && s && doneCount < steps.length; // show only when: not dismissed AND loaded AND incomplete (&& chain = all must be truthy)
 
+  if (failed && !s) return ( // total failure BEFORE first paint (nothing to show yet — failed card INSTEAD of skeletons!)
+    <>
+      <div className="page-head"><div><h1>Overview</h1><p>Your shop at a glance.</p></div></div>
+      <LoadFailed title="Couldn't load overview" status={failed.status} detail={failed.detail} tries={tries} onRetry={() => { setS(null); setTries((t) => t + 1); }} backTo="/help" backLabel="Get help" />
+    </>
+  );
   return ( // <> fragment: hero + strip + guide + stats + two cards (no wrapper div needed)
     <>
       <div className="dash-hero"> {/* gradient banner card (CSS) */}

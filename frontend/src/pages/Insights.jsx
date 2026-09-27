@@ -8,6 +8,8 @@
 import { useEffect, useState } from 'react'; // useState = stats object; useEffect = fetch+crunch on mount
 import { Link } from 'react-router-dom'; // deep-links (flag card → inbox!)
 import { api } from '../lib/api.js'; // conversations fetch
+import { describeLoadFailure, describeNetError } from '../lib/netDetail.js'; // one voice for load failures
+import LoadFailed from '../components/LoadFailed.jsx'; // branded failed card + Retry (never eternal dashes!)
 import { ForexChart, Spark } from '../components/Chart.jsx'; // forex line + sparkline (zero deps!)
 
 function dayKey(t) { // local YYYY-MM-DD (toISOString is UTC — would bucket wrong near midnight!)
@@ -15,12 +17,17 @@ function dayKey(t) { // local YYYY-MM-DD (toISOString is UTC — would bucket wr
 }
 
 export default function Insights() { // no props (self-sufficient)
-  const [d, setD] = useState(null); // null = loading (skeletons); object = crunched stats (never stuck: catch → empty!)
+  const [d, setD] = useState(null); // null = loading (skeletons); object = crunched stats
+  const [failed, setFailed] = useState(null); // null | { status, detail } — fetch failure (Retry card, never eternal dashes!)
+  const [tries, setTries] = useState(0); // retry counter (forces reload — no page refresh!)
   useEffect(() => {
+    let dead = false; // unmount guard (slow networks + fast navigation!)
+    setFailed(null);
     (async () => { // async IIFE (effects can't be async)
       try {
-        const { ok, data: convos } = await api('/api/me/conversations'); // raw chat list (same endpoint as inbox!)
-        if (!ok) { setD({ empty: true }); return; } // 401/session → empty state, not eternal dashes!
+        const { ok, status, data: convos } = await api('/api/me/conversations', { timeout: 15000 }); // raw chat list (same endpoint as inbox!)
+        if (dead) return;
+        if (!ok) { setFailed({ status, detail: describeLoadFailure({ status, error: convos }) }); return; } // 401/session/server → failed card (empty state is for genuinely-empty shops!)
         const c = convos || []; // || [] guards null (failed fetch → empty stats, not crash!)
         const needs = c.filter((x) => x.needs_human); // flagged subset (the interesting ones!)
         const reasons = {}; // plain OBJECT as frequency map: {reasonText: count}
@@ -46,9 +53,18 @@ export default function Insights() { // no props (self-sufficient)
         const delta = prev7 > 0 ? Math.round(((last7 - prev7) / prev7) * 100) : (last7 > 0 ? 100 : 0); // week-over-week % (prev 0 + new chats = +100%!)
         const peakH = hours.indexOf(Math.max(...hours));
         setD({ total: c.length, needs: needs.length, rate: c.length ? Math.round(((c.length - needs.length) / c.length) * 100) : 100, top, vol, res, labels, hours, delta, last7, peakH });
-      } catch { setD({ empty: true }); } // network down → empty state (never eternal dashes!)
+      } catch { if (!dead) setFailed({ status: 0, detail: describeNetError() }); } // network down → failed card (empty state is for genuinely-empty shops!)
     })(); // invoke immediately
-  }, []); // [] = mount-only
+    const onOnline = () => { if (!dead) setTries((t) => t + 1); }; // internet's back? reload without a tap! (failed-only would also do — tries refetch is idempotent anyway)
+    window.addEventListener('online', onOnline);
+    return () => { dead = true; window.removeEventListener('online', onOnline); };
+  }, [tries]); // [tries] = Retry bumps → refetch
+  if (failed && !d) return ( // fetch failed BEFORE first paint (failed card, never skeletons!)
+    <>
+      <div className="page-head"><div><h1>Insights</h1><p>What customers ask, what the AI nails, and where you lose money.</p></div></div>
+      <LoadFailed title="Couldn't load insights" status={failed.status} detail={failed.detail} tries={tries} onRetry={() => { setD(null); setTries((t) => t + 1); }} backTo="/dashboard" backLabel="Back to Overview" />
+    </>
+  );
   if (!d) return ( // LOADING: skeleton chart mirroring the real layout
     <>
       <div className="page-head"><div><h1>Insights</h1><p>What customers ask, what the AI nails, and where you lose money.</p></div></div>

@@ -8,7 +8,7 @@ import { Suspense, lazy, useCallback, useEffect, useState } from 'react'; // Sus
 import { Routes, Route, Navigate } from 'react-router-dom'; // Routes = switch; Route = path→element; Navigate = redirect element
 import Shell from './components/Shell.jsx'; // app frame (sidebar+topbar) wrapping guarded pages — ALWAYS needed (eager!)
 import Splash from './components/Splash.jsx'; // brand intro (shown first — eager, it's tiny!)
-import { BrandGate } from './components/Loader.jsx'; // selling-point loading face (page fallback + login wall!)
+import { BrandGate, useMinDisplay } from './components/Loader.jsx'; // selling-point loading face (page fallback + login wall!) + 1s brand beat
 import { api } from './lib/api.js'; // backend fetch helper (session cookie included)
 import { loadNetworkAds, setAdsCache, resetAdsCache } from './lib/ads.js'; // free-tier ad tags (single loader — Pro gets nothing)
 import { useTheme } from './lib/theme.js'; // [theme, toggleTheme] (dark/light, persisted)
@@ -57,7 +57,8 @@ function useMe() { // CUSTOM HOOK: "who's logged in?" — returns {me, loading, 
 }
 
 function Guard({ me, loading, theme, onToggleTheme, onLogout, children }) { // login wall: wraps every private page (destructure 6 props)
-  if (loading) return <div className="page"><div className="card"><BrandGate /></div></div>; // still checking session → scatter logo (no flashing!)
+  const minDone = useMinDisplay(1000); // brand beat (fast session checks still show the scatter a full second!)
+  if (loading || !minDone) return <div className="page"><div className="card"><BrandGate /></div></div>; // still checking session → scatter logo (no flashing!)
   if (!me) return <Navigate to="/login" replace />; // guest → redirect to /login (replace = don't keep bad URL in history)
   return <Shell biz={me} theme={theme} onToggleTheme={onToggleTheme} onLogout={onLogout}>{children}</Shell>; // logged in → frame + page (children = the page element; onLogout clears login state on sign-out)
 }

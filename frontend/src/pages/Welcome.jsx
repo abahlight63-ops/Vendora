@@ -12,7 +12,7 @@
 // lines that react to the pick.
 import { useEffect, useState } from 'react'; // useState = step + 5 drafts + busy; useEffect = skip-if-done
 import Logo from '../components/Logo.jsx'; // theme-aware brand mark (blue dark / green light!)
-import Loader, { BrandGate } from '../components/Loader.jsx'; // scatter gate (checking) + mini orbit (save button!)
+import Loader, { BrandGate, useMinDisplay } from '../components/Loader.jsx'; // scatter gate (checking) + mini orbit (save button!) + brand beat
 import { useNavigate } from 'react-router-dom'; // nav() after save (dashboard or back)
 import { api, pop } from '../lib/api.js'; // api() calls; pop() for save outcomes
 import { NICHES, HEARD_FROM } from '../lib/niches.js'; // picker data (shared with VeloSalesAI chips!)
@@ -51,6 +51,7 @@ export default function Welcome() {
   const [heard, setHeard] = useState(''); // Q5 pick ('' = skipped)
   const [busy, setBusy] = useState(false); // save lock (double-tap protection!)
   const [checking, setChecking] = useState(true); // true until /api/me answers (no flashing!)
+  const minDone = useMinDisplay(1000); // brand beat (fast checks still show the scatter a full second!)
 
   useEffect(() => { // mount: already set up? → dashboard (returning users never see this!)
     api('/api/me').then(({ ok, data }) => {
@@ -84,7 +85,7 @@ export default function Welcome() {
   }
   function back() { if (step > 0) setStep(step - 1); } // back keeps every draft (state lives outside the step!)
 
-  if (checking) return <div className="page"><div className="card"><BrandGate /></div></div>; // session check (brand gate — no flashing!)
+  if (checking || !minDone) return <div className="page"><div className="card"><BrandGate /></div></div>; // session check + brand beat (no flashing!)
 
   const sizeCheer = SIZES.find((o) => o.v === size)?.cheer; // encouragement for the CURRENT pick (?. guards skipped!)
   const volCheer = VOLUMES.find((o) => o.v === volume)?.cheer;

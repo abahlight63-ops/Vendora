@@ -183,7 +183,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
     const log = (event) => logVideo(slot, pick, event); // source pinned (closure!)
     // ── overlay skeleton (DOM-built + textContent = XSS-safe!) ──
     const ov = document.createElement('div');
-    ov.className = 'pop-overlay';
+    ov.className = 'pop-overlay vgate-ov'; // vgate-ov = FULLSCREEN on phones (theatre mode — brand-safe framing around any creative!)
     ov.innerHTML =
       '<div class="pop-card sponsor vgate">' +
       '<span class="sponsor-tag">Sponsored · video</span>' +
@@ -192,6 +192,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       '<div class="vgate-meta"><span class="vgate-count">30</span><button class="vgate-skip" hidden>Skip →</button></div>' +
       '<div class="vgate-body"></div>' +
       '<button class="btn sm vgate-visit" hidden>Visit sponsor</button>' +
+      '<button class="vgate-report">Report this ad</button>' +
       '</div>';
     const title = pick === 'sponsor' ? (v.sponsorTitle || 'Sponsored') : pick === 'hilltopads' ? 'Sponsored video' : 'Rewarded video';
     ov.querySelector('h3').textContent = title; // textContent (never innerHTML with config strings!)
@@ -200,6 +201,8 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
     const skipBtn = ov.querySelector('.vgate-skip');
     const body = ov.querySelector('.vgate-body');
     const visitBtn = ov.querySelector('.vgate-visit');
+    const reportBtn = ov.querySelector('.vgate-report');
+    reportBtn.onclick = () => { log('report'); toast('Reported — we review ad sources daily and kill bad layers. Thanks!'); finish('skipped'); }; // report = logged per source (Admin funnel shows the count!) + gate closes (user distress respected!)
     // ── countdown + progress (one 250ms ticker drives everything!) ──
     const tick = setInterval(() => {
       const el = Math.min(VIDEO_LEN, (Date.now() - t0) / 1000); // elapsed, capped at 30

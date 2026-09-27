@@ -7,6 +7,7 @@
 // point users recognize!). Buttons use mini <Loader size={15}/> inline.
 // No npm modules — inline SVG + CSS keyframes.
 import ScatterLogo from './ScatterLogo.jsx'; // scatter-and-assemble hero (the selling-point moment!)
+import { useEffect, useState } from 'react'; // useMinDisplay timer (brand beat — see below!)
 export default function Loader({ size = 40, withLogo = false }) {
   const mark = '/logo-green.png?v=2'; // signature green, always
   return (
@@ -37,4 +38,14 @@ export function BrandGate({ size = 76, label = 'VELOSALES AI' }) { // full-page 
       <div className="brandgate-name">{label}</div>
     </div>
   );
+}
+
+export function useMinDisplay(ms = 1000) { // brand beat: gate stays UP at least ms even if data lands instantly (fast loads still register the mark — max 1s delay, only when faster!)
+  const [minDone, setMinDone] = useState(false); // false → keep the gate (mount starts the clock!)
+  useEffect(() => { // mount-only timer (cleanup on unmount — no stray state!)
+    const t = setTimeout(() => setMinDone(true), ms);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return minDone;
 }

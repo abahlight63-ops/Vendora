@@ -1031,7 +1031,7 @@ async function adClick(req, res) {
 // Whitelisted values only (junk events die with 400, never touch the DB!).
 async function adVideoEvent(req, res) {
   const SOURCES = ['sponsor', 'hilltopads', 'monetag'];
-  const EVENTS = ['start', 'q25', 'q50', 'q75', 'complete', 'click', 'skip'];
+  const EVENTS = ['start', 'q25', 'q50', 'q75', 'complete', 'click', 'skip', 'report'];
   const { slot, source, event } = req.body || {};
   if (!SOURCES.includes(source) || !EVENTS.includes(event)) {
     return res.status(400).json({ error: 'Bad video event.' }); // tampered payloads stop here

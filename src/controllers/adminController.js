@@ -378,6 +378,7 @@ async function adStats(req, res) {
        COUNT(*) FILTER (WHERE event = 'start')::int AS starts,
        COUNT(*) FILTER (WHERE event = 'complete')::int AS completes,
        COUNT(*) FILTER (WHERE event = 'click')::int AS clicks,
+       COUNT(*) FILTER (WHERE event = 'report')::int AS reports,
        COUNT(*) FILTER (WHERE event = 'complete' AND created_at >= date_trunc('month', now()))::int AS month_completes
      FROM video_views GROUP BY source ORDER BY completes DESC`
   );

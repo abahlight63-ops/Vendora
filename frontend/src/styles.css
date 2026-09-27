@@ -372,7 +372,16 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .vgate-skip { background: none; border: 1px solid var(--line); color: var(--ink); font: inherit; font-size: 13px; font-weight: 700; border-radius: 999px; padding: 7px 18px; cursor: pointer; }
 .vgate-skip[hidden] { display: none; } /* hidden till 5s (polite countdown!) */
 .vgate-visit { margin-top: 12px; width: 100%; }
+.vgate-report { display: block; margin: 10px auto 0; background: none; border: none; color: var(--muted); font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; padding: 8px 12px; min-height: 36px; } /* brand-safety valve (adult/spam creative → logged per source, layer killed!) */
 @media (prefers-reduced-motion: reduce) { .vgate-bar i { transition: none; } }
+/* ── video-gate theatre mode (phones: FULLSCREEN overlay, big player, thumb-sized controls!) ── */
+@media (max-width: 960px) {
+  .pop-overlay.vgate-ov { padding: 0; place-items: stretch; }
+  .pop-overlay.vgate-ov .pop-card.vgate { max-width: none; width: 100%; min-height: 100vh; min-height: 100dvh; border-radius: 0; border-left: none; border-right: none; display: flex; flex-direction: column; justify-content: center; padding: 22px 18px calc(22px + env(safe-area-inset-bottom, 0px)); }
+  .pop-overlay.vgate-ov .vgate-body video { max-height: 52vh; max-height: 52dvh; }
+  .pop-overlay.vgate-ov .vgate-skip { min-height: 48px; padding: 12px 26px; font-size: 15px; }
+  .pop-overlay.vgate-ov .vgate-report { min-height: 44px; font-size: 13px; }
+}
 
 /* ---------- guided tour ---------- */
 .tour-dim { position: fixed; inset: 0; z-index: 250; background: rgba(6, 17, 12, 0.6); animation: popFade 0.25s ease both; }

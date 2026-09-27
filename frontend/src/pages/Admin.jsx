@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api, fmtDate, pop, toast } from '../lib/api.js';
 import { money } from '../lib/money.js';
 import Ic from '../components/icons.jsx';
-import Loader, { BrandGate } from '../components/Loader.jsx'; // BrandGate (access check) + mini orbit (AI test button!)
+import Loader, { BrandGate, useMinDisplay } from '../components/Loader.jsx'; // BrandGate (access check) + mini orbit (AI test button!) + brand beat
 import { adsStatus, clearSponsorSeen, clearVideoSeen, maybeShowSponsor, maybeShowVideoAd } from '../lib/ads.js'; // sponsor + video previews (this browser's tier/tags, daily caps bypassed)
 
 const TABS = [['stats', 'Overview', 'chart', 'green'], ['users', 'Users', 'profile', 'blue'], ['revenue', 'Income', 'cash', 'gold'], ['transfers', 'Transfers', 'send', 'orange'], ['referrals', 'Referrals', 'gift', 'purple'], ['channels', 'Channels', 'plug', 'teal'], ['complaints', 'Complaints', 'help', 'red'], ['templates', 'Templates', 'copy', 'gold'], ['broadcast', 'Broadcast', 'mega', 'orange'], ['warn', 'Warn user', 'warn', 'red'], ['ai', 'AI health', 'spark', 'purple'], ['ads', 'Ads', 'card', 'green']]; // [key, label, icon, accent] quads — EVERY console page is a tab (one page visible at a time, never stacked!)
@@ -28,6 +28,7 @@ export default function Admin() {
   const [d, setD] = useState(null); // tab data (shape depends on tab — single state, reused!)
   const [blastSeed, setBlastSeed] = useState(null); // template → broadcast prefill ({t,b,link,image,video,n})
   const [warnSeed, setWarnSeed] = useState(null); // template → warn-one prefill (same shape, who stays empty)
+  const minDone = useMinDisplay(1000); // brand beat (fast gate checks still show the scatter a full second!)
 
   async function check() { // lockdown: EVERY visit starts locked (tab closed + reopened = password again, always!)
     setGate('checking');
@@ -86,8 +87,8 @@ export default function Admin() {
           <div className="auth-pane">
             <h1>Admin only</h1> {/* plain title (no branding fanfare — obscurity is a feature here!) */}
             <p className="switch-note">{gate === 'checking' ? 'Checking access…' : 'This area is private. Enter the admin password.'}</p>
-            {gate === 'checking' && <BrandGate size={64} />}
-            {gate === 'locked' && ( // password form ONLY when confirmed locked (checking shows text alone — no flash of inputs!)
+            {gate === 'checking' || !minDone ? <BrandGate size={64} /> : null}
+            {gate === 'locked' && minDone && ( // password form ONLY when confirmed locked AND brand beat done (checking shows gate alone — no flash of inputs!)
               <>
                 <label>Admin password</label>
                 <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="••••••••" autoComplete="current-password" onKeyDown={(e) => { if (e.key === 'Enter') login(); }} /> {/* Enter submits (same keyboard habit as Login!) */}
@@ -419,11 +420,11 @@ function AdsStatus() { // AD KEYS LIVE? booleans only — key VALUES never leave
         <div style={{ marginTop: 12 }}>
           <p className="hint" style={{ marginBottom: 6 }}>Video funnel by source (completions = invoice unit · est. this month: ₦{(vstats.estimate_video_month_naira || 0).toLocaleString()})</p>
           <div className="table-wrap"><table>
-            <thead><tr><th>Source</th><th>Starts</th><th>Completes</th><th>Clicks</th><th>Rate</th></tr></thead>
+            <thead><tr><th>Source</th><th>Starts</th><th>Completes</th><th>Clicks</th><th>Reports</th><th>Rate</th></tr></thead>
             <tbody>
               {vstats.video.map((r) => (
                 <tr key={r.source}>
-                  <td><b>{r.source}</b></td><td>{r.starts}</td><td><b>{r.completes}</b></td><td>{r.clicks}</td>
+                  <td><b>{r.source}</b></td><td>{r.starts}</td><td><b>{r.completes}</b></td><td>{r.clicks}</td><td>{Number(r.reports) > 0 ? <span className="pill flag">{r.reports} reported</span> : '—'}</td>
                   <td><span className="hint">{r.starts ? Math.round(r.completes / r.starts * 100) + '%' : '—'}</span></td>
                 </tr>
               ))}

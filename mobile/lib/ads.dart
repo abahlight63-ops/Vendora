@@ -78,32 +78,98 @@ Future<void> _log(String slot, String source, String event) async {
   } catch (_) {} // funnel gaps beat frozen gates (web parity!)
 }
 
+/// In-memory ads payload (warmed after login — gates then skip network entirely!).
+Map<String, dynamic>? _adsMem;
+int _adsMemAt = 0;
+const _adsTtlMs = 10 * 60 * 1000;
+
+/// Seed the cache from an existing /api/me response (call after login —
+/// zero extra HTTP, same trick as web setAdsCache!).
+void seedAdsCache(Map<String, dynamic> me) {
+  try {
+    final a = me['ads'];
+    if (a is Map) {
+      _adsMem = Map<String, dynamic>.from(a);
+      _adsMemAt = DateTime.now().millisecondsSinceEpoch;
+    }
+  } catch (_) {}
+}
+
+/// Warm the cache (call once after login — next gate opens with zero HTTP!).
+Future<void> warmAdsCache() async {
+  try {
+    final me = await ApiClient.instance
+        .me()
+        .timeout(const Duration(seconds: 5), onTimeout: () => <String, dynamic>{});
+    if (me['ads'] is Map) {
+      _adsMem = Map<String, dynamic>.from(me['ads'] as Map);
+      _adsMemAt = DateTime.now().millisecondsSinceEpoch;
+    }
+  } catch (_) {}
+}
+
 /// Gated 30s video (sponsor mp4s: house promo + paying sponsors).
 /// Outcomes mirror web: completed | skipped | visited | skipped-empty |
 /// skipped-cap | failed-all. Callers ALWAYS proceed afterwards!
+/// FAST PATH: cap checked FIRST (no network when capped!); cached ads used
+/// instantly; /api/me has a 3.5s cap (slow server → skip, never a stuck gate!).
 Future<String> maybeShowVideoAd(BuildContext context,
     {String slot = 'mobile', bool force = false}) async {
   try {
-    final me = await ApiClient.instance.me();
-    final ads = (me as Map)['ads'];
-    final v = ads is Map ? ads['video'] : null;
+    if (!force && await _capped(slot)) return 'skipped-cap'; // capped? <50ms exit — ZERO network (the #1 slow-ads cause on phones!)
+    Map<String, dynamic>? ads = _adsMem;
+    final fresh =
+        ads != null && DateTime.now().millisecondsSinceEpoch - _adsMemAt < _adsTtlMs;
+    if (!fresh) {
+      try {
+        final me = await ApiClient.instance
+            .me()
+            .timeout(const Duration(milliseconds: 3500),
+                onTimeout: () => <String, dynamic>{});
+        if (me['ads'] is Map) {
+          ads = Map<String, dynamic>.from(me['ads'] as Map);
+          _adsMem = ads;
+          _adsMemAt = DateTime.now().millisecondsSinceEpoch;
+        } else if (!fresh) {
+          ads = null;
+        }
+      } catch (_) {
+        if (!fresh) ads = null; // offline → use stale cache or skip (never trap!)
+      }
+    }
+    final v = ads is Map ? (ads as Map)['video'] : null;
     if (v is! Map) return 'skipped-empty'; // Pro / logged-out / ads off
-    if (!force && await _capped(slot)) return 'skipped-cap';
     final url = '${v['sponsorVideo'] ?? ''}';
     final link = '${v['sponsorLink'] ?? ''}';
     final title = '${v['sponsorTitle'] ?? 'Sponsored'}';
     if (url.isEmpty || link.isEmpty) {
       return 'skipped-empty'; // native plays sponsor mp4s ONLY (VAST/.js need web IMA — those layers live on web!)
     }
+    Uri? uri;
+    try {
+      uri = Uri.parse(url);
+      if (!uri.hasScheme) return 'skipped-empty'; // bad config → straight through (never a trap!)
+    } catch (_) {
+      return 'skipped-empty';
+    }
     if (!force) await _mark(slot);
     if (!context.mounted) return 'skipped-empty';
     // ignore: use_build_context_synchronously (guarded above + inside!)
-    final out = await showDialog<String>(
-      context: context,
-      barrierDismissible: false, // no tap-out dodge (skip button at 25s is the exit!)
-      useSafeArea: false, // true fullscreen (notch to chin!)
-      builder: (_) => _ReelGate(
-          url: url, link: link, title: title, slot: slot, log: _log),
+    // FULLSCREEN route (not showDialog!): Dialog boxes constrain + center
+    // their child, so tall reel + header + buttons overflowed and rendered
+    // "halfway"/clipped on small phones. A fullscreen opaque route gives the
+    // gate the whole screen — nothing can be cut off (scroll-safe inside!).
+    final out = await Navigator.of(context).push<String>(
+      PageRouteBuilder<String>(
+        fullscreenDialog: true,
+        opaque: true, // solid black (no ghost of the page behind!)
+        barrierDismissible: false, // no tap-out dodge (skip button at 25s is the exit!)
+        transitionDuration: const Duration(milliseconds: 250),
+        pageBuilder: (_, __, ___) => _ReelGate(
+            url: url, link: link, title: title, slot: slot, log: _log),
+        transitionsBuilder: (_, anim, __, child) =>
+            FadeTransition(opacity: anim, child: child),
+      ),
     );
     return out ?? 'skipped';
   } catch (_) {
@@ -146,7 +212,13 @@ class _ReelGateState extends State<_ReelGate> {
     super.initState();
     _ctl = VideoPlayerController.networkUrl(Uri.parse(widget.url))
       ..setVolume(0.0); // muted (autoplay-legal everywhere!)
-    _ctl.initialize().then((_) {
+    // Init has a 10s cap: slow/dead files fail FAST to 'failed-all' instead
+    // of holding the user on a spinner (the "ads take forever" complaint!).
+    _ctl
+        .initialize()
+        .timeout(const Duration(seconds: 10),
+            onTimeout: () => throw TimeoutException('video-init'))
+        .then((_) {
       if (!mounted) return;
       setState(() {}); // first frame → rebuild (loading spinner out!)
       _ctl.play();
@@ -209,138 +281,184 @@ class _ReelGateState extends State<_ReelGate> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final size = MediaQuery.of(context).size;
-    final reelH = (size.height * 0.72).clamp(0.0, size.width * 16 / 9);
     final left = _lenSec - _el;
-    return Container(
-      color: Colors.black, // theatre black, edge to edge
-      child: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: scheme.primary.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text('SPONSORED · VIDEO',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1,
-                      color: scheme.primary)),
-            ),
-            const SizedBox(height: 6),
-            Text(widget.title,
-                style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white)),
-            const SizedBox(height: 10),
-            // Gradient-bordered 9:16 reel (mint → gold, the house frame!).
-            Container(
-              padding: const EdgeInsets.all(2.5),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                gradient: const LinearGradient(colors: [
-                  Color(0xFF25D366),
-                  Color(0xFF7EF0C0),
-                  Color(0xFFFFCF5C),
-                ], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                boxShadow: [
-                  BoxShadow(
-                      color: const Color(0xFF25D366).withValues(alpha: 0.28),
-                      blurRadius: 26,
-                      spreadRadius: 1),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: SizedBox(
-                  width: reelH * 9 / 16,
-                  height: reelH,
-                  child: _ctl.value.isInitialized
-                      ? AspectRatio(
-                          aspectRatio: 9 / 16,
-                          child: FittedBox(
-                            fit: BoxFit.cover, // reels crop, never letterbox (full-bleed portrait!)
+    // Scaffold + LayoutBuilder (NOT fixed MediaQuery fractions!): the reel is
+    // sized from the REAL available space minus header/footer, and the whole
+    // column scrolls if the phone is short — the gate can NEVER render halfway.
+    return Scaffold(
+      backgroundColor: Colors.black, // theatre black, edge to edge
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (ctx, constraints) {
+            final maxW = constraints.maxWidth;
+            final maxH = constraints.maxHeight;
+            // Reel width fits the screen with margins (cap 430 like web!);
+            // height keeps 9:16 but never exceeds what's left after the
+            // header (~120) + footer (~190) — min 220 so it never collapses.
+            final reelW = (maxW - 32).clamp(0.0, 430.0);
+            var reelH = (reelW * 16 / 9).clamp(220.0, 640.0);
+            final room = maxH - 320;
+            if (room < reelH && room >= 220) reelH = room;
+            return SingleChildScrollView(
+              // short screens scroll instead of clipping (the halfway fix!)
+              physics: const ClampingScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: maxH),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: scheme.primary
+                                .withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text('SPONSORED · VIDEO',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1,
+                                  color: scheme.primary)),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(widget.title,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white)),
+                        const SizedBox(height: 10),
+                        // Gradient-bordered 9:16 reel (mint → gold, the house frame!).
+                        Container(
+                          padding: const EdgeInsets.all(2.5),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            gradient: const LinearGradient(colors: [
+                              Color(0xFF25D366),
+                              Color(0xFF7EF0C0),
+                              Color(0xFFFFCF5C),
+                            ], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                            boxShadow: [
+                              BoxShadow(
+                                  color: const Color(0xFF25D366)
+                                      .withValues(alpha: 0.28),
+                                  blurRadius: 26,
+                                  spreadRadius: 1),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(18),
                             child: SizedBox(
-                              width: _ctl.value.size.width == 0
-                                  ? 360
-                                  : _ctl.value.size.width,
-                              height: _ctl.value.size.height == 0
-                                  ? 640
-                                  : _ctl.value.size.height,
-                              child: VideoPlayer(_ctl),
+                              width: reelW,
+                              height: reelH,
+                              child: _ctl.value.isInitialized
+                                  ? FittedBox(
+                                      fit: BoxFit
+                                          .cover, // reels crop, never letterbox (full-bleed portrait!)
+                                      child: SizedBox(
+                                        width: _ctl.value.size.width == 0
+                                            ? 360
+                                            : _ctl.value.size.width,
+                                        height: _ctl.value.size.height == 0
+                                            ? 640
+                                            : _ctl.value.size.height,
+                                        child: VideoPlayer(_ctl),
+                                      ),
+                                    )
+                                  : const Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          CircularProgressIndicator(
+                                              strokeWidth: 3),
+                                          SizedBox(height: 10),
+                                          Text('Loading video…',
+                                              style: TextStyle(
+                                                  fontSize: 13,
+                                                  color: Colors.white70)),
+                                        ],
+                                      ),
+                                    ),
                             ),
                           ),
-                        )
-                      : const Center(
-                          child: CircularProgressIndicator(strokeWidth: 3)),
+                        ),
+                        const SizedBox(height: 10),
+                        // Countdown + progress (frozen till playback — loading never counts!).
+                        SizedBox(
+                          width: reelW,
+                          child: Column(children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(99),
+                              child: LinearProgressIndicator(
+                                value: (_el / _lenSec).clamp(0.0, 1.0),
+                                minHeight: 8,
+                                backgroundColor: Colors.white12,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('$left s',
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white70)),
+                                _el >= _skipAt
+                                    ? TextButton(
+                                        onPressed: () {
+                                          unawaited(widget.log(widget.slot,
+                                              'sponsor', 'skip'));
+                                          _finish('skipped');
+                                        },
+                                        child: const Text('Skip →',
+                                            style:
+                                                TextStyle(fontSize: 15)),
+                                      )
+                                    : const SizedBox(
+                                        height:
+                                            48), // reserve skip's space (no jump when it unlocks!)
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton.icon(
+                                onPressed: () async {
+                                  // THE money event: logged BEFORE leaving (web parity!)…
+                                  try {
+                                    await ApiClient.instance.adClick(
+                                        'video-${widget.slot}',
+                                        widget.link);
+                                  } catch (_) {} // …logging never blocks the visit…
+                                  unawaited(widget.log(widget.slot,
+                                      'sponsor', 'click'));
+                                  await launchUrl(Uri.parse(widget.link),
+                                      mode: LaunchMode
+                                          .externalApplication);
+                                  _finish('visited');
+                                },
+                                icon: const Icon(Icons.open_in_new,
+                                    size: 17),
+                                label: const Text('Visit sponsor'),
+                              ),
+                            ),
+                          ]),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 10),
-            // Countdown + progress (frozen till playback — loading never counts!).
-            SizedBox(
-              width: reelH * 9 / 16,
-              child: Column(children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(99),
-                  child: LinearProgressIndicator(
-                    value: (_el / _lenSec).clamp(0.0, 1.0),
-                    minHeight: 8,
-                    backgroundColor: Colors.white12,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('$left s',
-                        style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white70)),
-                    _el >= _skipAt
-                        ? TextButton(
-                            onPressed: () {
-                              unawaited(widget.log(
-                                  widget.slot, 'sponsor', 'skip'));
-                              _finish('skipped');
-                            },
-                            child: const Text('Skip →',
-                                style: TextStyle(fontSize: 15)),
-                          )
-                        : const Text('',
-                            style: TextStyle(fontSize: 15)),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () async {
-                      // THE money event: logged BEFORE leaving (web parity!)…
-                      try {
-                        await ApiClient.instance.adClick(
-                            'video-${widget.slot}', widget.link);
-                      } catch (_) {} // …logging never blocks the visit…
-                      unawaited(
-                          widget.log(widget.slot, 'sponsor', 'click'));
-                      await launchUrl(Uri.parse(widget.link),
-                          mode: LaunchMode.externalApplication);
-                      _finish('visited');
-                    },
-                    icon: const Icon(Icons.open_in_new, size: 17),
-                    label: const Text('Visit sponsor'),
-                  ),
-                ),
-              ]),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

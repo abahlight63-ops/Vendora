@@ -39,11 +39,83 @@ export async function adsStatus() {
 export async function getAds() {
   if ((cached !== null || seeded) && Date.now() - cachedAt < ADS_TTL_MS) return cached; // fresh cache → no HTTP call (fast + fewer logs)
   try {
-    const { ok, data } = await api('/api/me'); // getMe response carries .ads alongside .business
+    const { ok, data } = await api('/api/me', { timeout: 8000 }); // getMe response carries .ads alongside .business (8s cap — ads refresh must never hang)
     cached = ok ? data.ads || null : null; // ok? use it (|| null if backend sent nothing) : logged-out → null
   } catch { cached = null; } // network error → treat as "no ads" (ads must NEVER break the app)
   cachedAt = Date.now(); // stamp EVERY fetch (even failures — don't hammer a struggling server!)
   return cached;
+}
+
+// Sync peek at the cache (NO network — the gate uses this first so capped /
+// Pro / empty users exit in <1ms without waiting for /api/me on slow networks!).
+function peekAds() { return (cached !== null || seeded) ? cached : undefined; }
+
+// Fast fetch with a SHORT timeout for gate decisions (slow /api/me must SKIP
+// the gate, never delay the page!). Resolves null on timeout/error.
+async function getAdsFast(ms = 3000) {
+  const peek = peekAds();
+  if (peek !== undefined) {
+    if (Date.now() - cachedAt < ADS_TTL_MS) return peek; // fresh → use it now
+    getAds().catch(() => {}); // stale → use stale now, refresh in background (next gate sees fresh tags!)
+    return peek;
+  }
+  try {
+    const out = await Promise.race([
+      getAds(),
+      new Promise((res) => setTimeout(() => res('__timeout'), ms)),
+    ]);
+    if (out === '__timeout') return null; // slow server → skip gate (page works exactly as today!)
+    return out;
+  } catch { return null; }
+}
+
+// Preconnect helper (DNS + TLS warm-up BEFORE the heavy file — shaves
+// 300-1500ms off first ad load on mobile networks, zero cost when unused!).
+function preconnect(origin) {
+  try {
+    if (!origin || typeof document === 'undefined') return;
+    const u = new URL(origin, window.location.href);
+    if (document.querySelector(`link[data-pc="${u.host}"]`)) return;
+    const l = document.createElement('link');
+    l.rel = 'preconnect'; l.href = u.origin; l.crossOrigin = 'anonymous';
+    l.dataset.pc = u.host;
+    document.head.appendChild(l);
+  } catch {}
+}
+
+// Warm the video layer on IDLE after login (free tier only): sponsor mp4
+// preload + IMA SDK fetch happen BEFORE any gate fires, so the first gate
+// opens instantly with pixels already in cache. Never blocks the app.
+let _warmed = false;
+export function preloadVideoAssets() {
+  if (_warmed) return; _warmed = true;
+  const idle = (fn) => {
+    try {
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) window.requestIdleCallback(fn, { timeout: 4000 });
+      else setTimeout(fn, 2500);
+    } catch { setTimeout(fn, 2500); }
+  };
+  idle(async () => {
+    try {
+      const ads = peekAds() !== undefined ? peekAds() : await getAdsFast(4000);
+      const v = ads && ads.video;
+      if (!v) return;
+      if (v.sponsorVideo) { // mp4: <link preload> warms the HTTP cache (playback later is instant!)
+        try {
+          preconnect(v.sponsorVideo);
+          if (!document.querySelector('link[data-preload="sponsor-video"]')) {
+            const l = document.createElement('link');
+            l.rel = 'preload'; l.as = 'video'; l.href = v.sponsorVideo;
+            l.dataset.preload = 'sponsor-video';
+            document.head.appendChild(l);
+          }
+        } catch {}
+      }
+      const vast = v.hilltopads && !isScriptTag(v.hilltopads) ? v.hilltopads : (v.monetag && !isScriptTag(v.monetag) ? v.monetag : null);
+      if (vast) { try { preconnect(vast); } catch {} } // VAST doc host warm (XML fetch later skips DNS/TLS!)
+      if (v.hilltopads || v.monetag) loadImaSdk().catch(() => {}); // IMA SDK in background (gate later resolves instantly!)
+    } catch {}
+  });
 }
 
 // Per-VIEW: inject each network tag once per session (15s stuck-tag guard — slow phone networks need room).
@@ -56,8 +128,10 @@ function dayKey(provider) { // daily-cap storage key, e.g. 'adfreq:monetag:2026-
 function injectTag(provider, url, freq) { // NOT exported: internal helper (only loadNetworkAds uses it)
   if (!url || document.querySelector(`script[data-adnet="${provider}"]`)) return; // no URL, or tag already present → skip (idempotent = safe to call repeatedly)
   if (freq === 'daily' || /popunder/i.test(provider || '')) return; // popunder-style tags HIJACK the next click (whole tab → offer URL). Banned from auto-inject — offers open ONLY behind explicit "Visit sponsor" taps (new tab!).
+  try { preconnect(url); } catch {} // DNS/TLS warm first (shaves ~0.3-1.5s on mobile networks!)
   const s = document.createElement('script'); // create <script> element programmatically…
   s.async = true; // async = never blocks page rendering (ads must never slow the app)
+  try { s.fetchPriority = 'low'; } catch {} // ad tags yield to app API calls + page chunks (user content ALWAYS wins bandwidth!)
   s.dataset.adnet = provider; // data-adnet="monetag" → the dedupe hook above finds it next time
   s.dataset.adfreq = freq || 'session'; // data-adfreq lets the AdSlot ad-block probe ignore daily-capped tags
   s.src = url; // setting .src STARTS the download (browser fetches the ad network's code)
@@ -70,12 +144,19 @@ function injectTag(provider, url, freq) { // NOT exported: internal helper (only
   }
 }
 export async function loadNetworkAds() { // called ONCE by App.jsx after login (exported for that single use)
-  const ads = await getAds(); // tier-resolved config (null for Pro/logged-out)
-  if (!ads) return; // nothing to load → done (Pro sees zero ads, zero requests)
-  const nets = Array.isArray(ads.networks) && ads.networks.length // prefer the networks ARRAY (multi-network)…
-    ? ads.networks
-    : (ads.scriptUrl ? [{ provider: ads.provider, scriptUrl: ads.scriptUrl, freq: 'session' }] : []); // …fall back to legacy single-tag shape (backward-compat with older backend)
-  nets.forEach((n) => injectTag(n.provider || 'custom', n.scriptUrl, n.freq || 'session')); // forEach (not await): tags load INDEPENDENTLY, in parallel
+  const run = async () => {
+    const ads = peekAds() !== undefined ? peekAds() : await getAdsFast(4000); // cache-first (never stall login on slow /api/me!)
+    if (!ads) { preloadVideoAssets(); return; } // nothing to load → still warm video layer, then done (Pro sees zero ads, zero requests)
+    const nets = Array.isArray(ads.networks) && ads.networks.length // prefer the networks ARRAY (multi-network)…
+      ? ads.networks
+      : (ads.scriptUrl ? [{ provider: ads.provider, scriptUrl: ads.scriptUrl, freq: 'session' }] : []); // …fall back to legacy single-tag shape (backward-compat with older backend)
+    nets.forEach((n) => injectTag(n.provider || 'custom', n.scriptUrl, n.freq || 'session')); // forEach (not await): tags load INDEPENDENTLY, in parallel
+    preloadVideoAssets(); // warm mp4 + IMA on idle (first gate opens instantly!)
+  };
+  try { // DEFER to idle: page data (products/chats) wins the first seconds — ads load after, never competing!
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) window.requestIdleCallback(() => run().catch(() => {}), { timeout: 3000 });
+    else setTimeout(() => run().catch(() => {}), 2000);
+  } catch { run().catch(() => {}); }
 }
 
 const VIDEO_LEN = 30; // the gate: 30 FULL seconds of attention (sponsor invoice unit!)
@@ -135,7 +216,7 @@ function loadImaSdk() {
     s.async = true;
     s.dataset.ima = 'sdk'; // marker (never re-inject!)
     s.src = 'https://imasdk.googleapis.com/js/sdkloader/ima3.js';
-    const kill = setTimeout(() => { s.remove(); _imaPromise = null; reject(new Error('ima-timeout')); }, 10000);
+    const kill = setTimeout(() => { s.remove(); _imaPromise = null; reject(new Error('ima-timeout')); }, 6000); // 6s (preloaded on idle — usually instant; slow SDK fails over fast to next layer!)
     s.onload = () => { clearTimeout(kill); (window.google && window.google.ima) ? resolve() : (_imaPromise = null, reject(new Error('ima-bad'))); };
     s.onerror = () => { clearTimeout(kill); s.remove(); _imaPromise = null; reject(new Error('ima-fail')); };
     document.head.appendChild(s);
@@ -151,15 +232,16 @@ function loadImaSdk() {
 // never blocks!). force = Admin preview (bypasses the daily cap, never marks
 // it!). only = Admin per-layer test ('sponsor' | 'hilltopads' | 'monetag').
 export async function maybeShowVideoAd({ slot = 'connect', force = false, only = null } = {}) {
-  const ads = await getAds(); // tier-resolved config (Pro = null → straight through!)
-  const v = ads && ads.video;
   const done = (o) => { // EVERY exit records its reason (open devtools console → window.__lastVideoGate tells you WHY nothing showed!)
     try { window.__lastVideoGate = { slot, outcome: o, at: new Date().toISOString() }; } catch {}
     try { if (typeof console !== 'undefined' && console.debug) console.debug('[ads] video gate:', slot, '→', o); } catch {}
     return o;
   };
+  try { if (typeof document !== 'undefined' && document.querySelector('.pop-card.vgate')) return done('already-open'); } catch {} // double-tap guard FIRST (zero network — second click sails straight through!)
+  if (!force) { try { if (videoSeen(slot)) return done('skipped-cap'); } catch {} } // capped? exit in <1ms — NO /api/me on slow networks (the #1 "ads feel slow" cause: every page waited on HTTP before deciding "no ad"!)
+  const ads = await getAdsFast(3000); // cache-first + 3s cap (slow server → skip gate, page works exactly as today — never a delayed blank wait!)
+  const v = ads && ads.video;
   if (!v) return done('skipped-empty'); // Pro, logged-out, or backend without video config
-  if (!force && videoSeen(slot)) return done('skipped-cap'); // today's 10 done OR still cooling down (Admin force bypasses!)
   const order = only ? [only] : (Array.isArray(v.order) && v.order.length ? v.order : ['sponsor', 'hilltopads', 'monetag']);
   const has = { // what's actually playable right now? (sponsor mp4 needs video+link; network layers need their zone URL!)
     sponsor: !!(v.sponsorVideo && v.sponsorLink),
@@ -168,7 +250,6 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
   };
   const candidates = order.filter((s) => has[s]); // available layers, waterfall order (sponsor mp4 wins ties!)
   if (!candidates.length) return done('skipped-empty'); // nothing configured → button works exactly as today (never a dead end!)
-  if (typeof document !== 'undefined' && document.querySelector('.pop-card.vgate')) return done('already-open'); // double-tap guard (one gate at a time — second click sails straight through!)
   if (!force) markVideoSeen(slot);
   let filled = 0; // seconds actually WATCHED this gate (short films chain until 30!)
   for (const pick of candidates) { // try each layer in turn (dead layer → next, never a dead timer! Every layer plays INLINE: sponsor mp4, or VAST doc / .js tag via the gated player below!)
@@ -240,19 +321,30 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
     }, 250);
     const watchdog = setTimeout(() => { log('complete'); finish('completed'); }, 90000); // absolute backstop (frozen clock + slow loads: nothing traps, ever!)
     skipBtn.onclick = () => { log('skip'); finish('skipped'); }; // skip = logged + out (no upsell on skips — politeness!)
+    // ── mount FIRST (instant feedback — user never stares at the page wondering!) ──
+    log('start'); // funnel opens (completions ÷ starts = the number sponsors pay for!)
+    document.body.appendChild(ov); // mount BEFORE heavy loads (spinner shows while mp4/VAST/tag streams in!)
     // ── the playable: own mp4, Hilltop VAST doc, OR network tag in our frame ──
     let tagScript = null;
-    let emptyCheck = null; // 5s blank-frame watchdog (network path only!)
+    let emptyCheck = null; // blank-frame watchdog (network path only!)
     let extraCleanup = null; // VAST path stashes its teardown here (manager destroy + load timer!)
     if (pick === 'sponsor') { // own mp4: full gated player (countdown meters it, completion invoices it!)
       const video = document.createElement('video');
+      try { preconnect(v.sponsorVideo); } catch {} // warm once more (preload link may already have it!)
       video.src = v.sponsorVideo; video.muted = true; video.playsInline = true; video.preload = 'auto'; // muted autoplay (browser POLICY — sound needs a tap!); playsInline (no iOS takeover!)
       video.setAttribute('disablepictureinpicture', ''); // keep it in the card (no floating escape hatch!)
+      try { video.poster = ''; } catch {}
       video.className = 'vgate-reel'; // 9:16 fullscreen reel frame (styled border + glow live in CSS!)
       video.style.cssText = 'background:#000;display:block;margin-top:8px;';
-      body.appendChild(video);
+      const loadHint = document.createElement('p'); // instant loading state (replaced by pixels — never a black mystery box!)
+      loadHint.className = 'hint'; loadHint.style.marginTop = '6px'; loadHint.textContent = 'Loading video…';
+      body.appendChild(video); body.appendChild(loadHint);
+      const hideHint = () => { try { loadHint.remove(); } catch {} };
+      video.addEventListener('canplay', hideHint, { once: true }); // decodable frames → hint out (fast!)
       video.addEventListener('ended', () => { log('complete'); finish('completed'); }); // natural end (< 30s clips complete early — fair!)
-      video.addEventListener('playing', markStarted, { once: true }); // first pixels move → clock starts (loading/buffering never billed as viewing!)
+      video.addEventListener('playing', () => { hideHint(); markStarted(); }, { once: true }); // first pixels move → clock starts (loading/buffering never billed as viewing!)
+      video.addEventListener('error', () => finish('layer-empty'), { once: true }); // dead mp4 → NEXT layer fast (never a 30s black box!)
+      try { video.load(); } catch {}
       video.play().catch(() => {}); // autoplay blocked (rare, muted usually passes) → watchdog still frees the user fairly
       visitBtn.hidden = false; // sponsor gets the billable button (tap = money!)
       visitBtn.onclick = async () => { // VISIT = the money event (logged BEFORE leaving, like sponsor clicks!)
@@ -274,7 +366,8 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       tapHint.className = 'hint'; tapHint.style.marginTop = '6px'; tapHint.textContent = 'Interested? Tap the video to open the offer.';
       body.appendChild(tapHint);
       let mgr = null; // IMA ads manager (destroyed on every exit — no orphan audio ever!)
-      let loadTimer = setTimeout(() => finish('layer-empty'), 12000); // VAST/network/IMA all dead or hanging? → NEXT layer (12s grace for slow phone networks!)
+      try { preconnect(pick === 'hilltopads' ? v.hilltopads : v.monetag); } catch {} // VAST host warm (usually already preconnected on idle!)
+      let loadTimer = setTimeout(() => finish('layer-empty'), 7000); // VAST dead/hanging? → NEXT layer fast (7s — SDK preloaded, so working zones answer in 1-3s!)
       extraCleanup = () => { clearTimeout(loadTimer); try { mgr && mgr.destroy(); } catch {} };
       loadImaSdk().then(() => {
         if (done) return; // user already skipped (race lost — destroy nothing, exit took over!)
@@ -315,19 +408,26 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       body.appendChild(holder);
       tagScript = document.createElement('script');
       tagScript.async = true;
+      try { tagScript.fetchPriority = 'low'; } catch {} // tag yields to video bytes (user sees pixels first!)
       tagScript.dataset.vgate = pick; // data-vgate = our marker (cleanup finds it!)
       tagScript.src = pick === 'hilltopads' ? v.hilltopads : v.monetag;
+      try { preconnect(tagScript.src); } catch {}
+      const checkPainted = () => {
+        try {
+          return !!(holder.querySelector('video,iframe,canvas,object,embed') // real players…
+            || Array.from(holder.querySelectorAll('*')).some((el) => !el.hasAttribute('data-vgate-ph') && el.getBoundingClientRect().height > 4)); // …or any visible tag output (placeholder excluded!)
+        } catch { return false; }
+      };
+      tagScript.onload = () => { // tag code arrived → give it 1.5s to paint, then start the clock early (no waiting for the 6s guard!)
+        setTimeout(() => { if (!done && checkPainted()) markStarted(); }, 1500);
+      };
       tagScript.onerror = () => finish('layer-empty'); // dead tag → NEXT layer (never a dead timer!)
       document.head.appendChild(tagScript); // mount → their unit renders (their player, THEIR close buttons ignored — OUR countdown rules!)
-      emptyCheck = setTimeout(() => { // 10s painted-or-dead guard: tag loaded but painted NOTHING?
-        const painted = holder.querySelector('video,iframe,canvas,object,embed') // real players…
-          || Array.from(holder.querySelectorAll('*')).some((el) => !el.hasAttribute('data-vgate-ph') && el.getBoundingClientRect().height > 4); // …or any visible tag output (placeholder excluded!)
-        if (!painted) finish('layer-empty'); // blank → NEXT layer (a broken tag never embarrasses us!)
+      emptyCheck = setTimeout(() => { // 6s painted-or-dead guard: tag loaded but painted NOTHING?
+        if (!checkPainted()) finish('layer-empty'); // blank → NEXT layer (a broken tag never embarrasses us!)
         else markStarted(); // painted → clock starts (slow load never steals viewing time!)
-      }, 10000); // 10s grace (slow phone networks need room — 5s killed working tags!)
+      }, 6000); // 6s (working tags paint in 1-3s; dead ones fail over fast instead of holding the user!)
     }
-    log('start'); // funnel opens (completions ÷ starts = the number sponsors pay for!)
-    document.body.appendChild(ov); // mount (outside React, like toasts/pops!)
   });
   } // end playVideoLayer (nested — hoisted, one layer attempt per call!)
 }

@@ -11,7 +11,7 @@ import { api, fmtTime, pop } from '../lib/api.js'; // api() fetches; fmtTime for
 import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures (offline? waking? stale?)
 import LoadFailed from '../components/LoadFailed.jsx'; // branded failed card + Retry (never eternal skeletons!)
 import Ic from '../components/icons.jsx'; // <Ic n="chat"/> icon set
-import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 30s video gate (free tier — overview pays too!)
+import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 60s video gate (free tier — overview pays too!)
 
 function greeting() { // NOT a component (lowercase, returns a string): time-based hello.
   const h = new Date().getHours(); // getHours() = 0–23 local time…

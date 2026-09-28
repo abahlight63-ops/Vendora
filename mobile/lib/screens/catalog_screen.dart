@@ -111,7 +111,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       setState(() => _cat = null);
       if (mounted) FocusScope.of(context).unfocus();
       _load();
-      if (mounted) unawaited(maybeShowVideoAd(context, slot: 'mobile-catalog')); // web parity: 30s reel after adds (free tier — same caps!)
+      if (mounted) unawaited(maybeShowVideoAd(context, slot: 'mobile-catalog')); // web parity: 60s reel after adds (free tier — same caps!)
     } on ApiException catch (e) {
       if (mounted) showToast(context, e.message, type: 'err');
     }

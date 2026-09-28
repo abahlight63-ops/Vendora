@@ -6,7 +6,7 @@
 //     their dashboard).
 //   per-CLICK: in-house "Sponsored" interstitial, max once/day, clicks logged
 //     to /api/me/ads/click for per-click sponsor billing (/api/ads/stats).
-//   per-COMPLETE: gated 30s VIDEO on Connect (free tier): own sponsor mp4 >
+//   per-COMPLETE: gated 60s VIDEO on Connect (free tier): own sponsor mp4 >
 //     HilltopAds VAST > Monetag rewarded (VAST doc or .js — both play inline).
 //     Completions are the invoice unit (5-20x banner CPMs!) — logged to
 //     /api/me/ads/video.
@@ -159,8 +159,8 @@ export async function loadNetworkAds() { // called ONCE by App.jsx after login (
   } catch { run().catch(() => {}); }
 }
 
-const VIDEO_LEN = 30; // the gate: 30 FULL seconds of attention (sponsor invoice unit!)
-const VIDEO_SKIP_AT = 25; // reference: skip unlocks 5s before window end (per-window rule lives in skipAt = LEN - 5!)
+const VIDEO_LEN = 60; // the gate: 60 FULL seconds of attention (sponsor invoice unit!)
+const VIDEO_SKIP_AT = 55; // reference: skip unlocks 5s before window end (per-window rule lives in skipAt = LEN - 5!)
 const VIDEO_PER_DAY = 10; // per section per day (connect × catalog × chats × insights… — volume is the revenue!)
 const VIDEO_GAP_MIN = 5; // minutes between two gates on the SAME section (never back-to-back nagging!)
 
@@ -223,9 +223,9 @@ function loadImaSdk() {
   });
   return _imaPromise;
 }
-// GATED 30s VIDEO (page entries, free tier only): sponsor mp4 >
+// GATED 60s VIDEO (page entries, free tier only): sponsor mp4 >
 // HilltopAds VAST (via IMA) > Monetag rewarded (VAST doc or .js — both inline).
-// Layers CHAIN until 30s are actually watched (a 6s bumper + a 24s film = one
+// Layers CHAIN until 60s are actually watched (a 6s bumper + a 54s film = one
 // full gate — short creatives never end the show early, every view invoices!).
 // Countdown + progress bar, skip unlocks 5s before each window ends. Resolves
 // when the flow ends — callers ALWAYS proceed afterwards (the gate delays,
@@ -255,12 +255,12 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
   for (const pick of candidates) { // try each layer in turn (dead layer → next, never a dead timer! Every layer plays INLINE: sponsor mp4, or VAST doc / .js tag via the gated player below!)
     const remaining = VIDEO_LEN - filled;
     if (remaining < 5 && filled > 0) break; // crumbs left — call it filled (no silly 2s windows!)
-    const r = await playVideoLayer({ slot, pick, v, len: remaining }); // window = what's left of the 30s (first layer gets the full 30!)
+    const r = await playVideoLayer({ slot, pick, v, len: remaining }); // window = what's left of the 60s (first layer gets the full 60!)
     filled += r.viewed || 0;
     if (r.outcome === 'visited') return done('visited'); // user left for the offer — respect it, stop the chain!
     if (r.outcome === 'completed') {
-      if (filled >= VIDEO_LEN - 1) return done('completed'); // 30s watched — invoice it!
-      continue; // short creative — NEXT layer tops up the 30s (more impressions = more income!)
+      if (filled >= VIDEO_LEN - 1) return done('completed'); // 60s watched — invoice it!
+      continue; // short creative — NEXT layer tops up the 60s (more impressions = more income!)
     }
     if (r.outcome !== 'layer-empty') return done(r.outcome); // skipped → respect it, stop the chain!
     logVideo(slot, pick, 'tag-failed');
@@ -269,7 +269,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
 
   // ── one gated player attempt (overlay lifetime = this promise!) ──
   // len = this window's seconds (first layer: full 30; chained layers: what's left!).
-  // Resolves { outcome, viewed } — viewed feeds the 30s chain above!
+  // Resolves { outcome, viewed } — viewed feeds the 60s chain above!
   function playVideoLayer({ slot, pick, v, len }) { return new Promise((resolve) => { // overlay lifetime = this promise (close paths ALL resolve it!)
     const LEN = Math.max(5, Math.min(VIDEO_LEN, Number(len) || VIDEO_LEN)); // window clamp (silly crumbs rejected!)
     let t0 = Date.now(); // gate clock (drives countdown + progress + completion — RESET on first playback by markStarted!)
@@ -307,7 +307,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
     const body = ov.querySelector('.vgate-body');
     const visitBtn = ov.querySelector('.vgate-visit');
     // ── countdown + progress (one 250ms ticker drives everything — FROZEN until markStarted fires!) ──
-    const skipAt = Math.max(0, LEN - 5); // skip unlocks 5s before THIS window ends (full 30 → 25s, chained windows scale!)
+    const skipAt = Math.max(0, LEN - 5); // skip unlocks 5s before THIS window ends (full 60 → 55s, chained windows scale!)
     const tick = setInterval(() => {
       const el = Math.min(LEN, (Date.now() - t0) / 1000); // elapsed VIEWING time, capped at window (loading doesn't count!)
       viewed = el; // feed the chain (finish() snapshots this!)
@@ -319,7 +319,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       }
       if (el >= LEN) { log('complete'); finish('completed'); } // window fully WATCHED → invoice it (no early exits on slow loads!)
     }, 250);
-    const watchdog = setTimeout(() => { log('complete'); finish('completed'); }, 90000); // absolute backstop (frozen clock + slow loads: nothing traps, ever!)
+    const watchdog = setTimeout(() => { log('complete'); finish('completed'); }, 120000); // absolute backstop (frozen clock + slow loads: nothing traps, ever! 60s gate + 60s load slack!)
     skipBtn.onclick = () => { log('skip'); finish('skipped'); }; // skip = logged + out (no upsell on skips — politeness!)
     // ── mount FIRST (instant feedback — user never stares at the page wondering!) ──
     log('start'); // funnel opens (completions ÷ starts = the number sponsors pay for!)
@@ -341,9 +341,9 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       body.appendChild(video); body.appendChild(loadHint);
       const hideHint = () => { try { loadHint.remove(); } catch {} };
       video.addEventListener('canplay', hideHint, { once: true }); // decodable frames → hint out (fast!)
-      video.addEventListener('ended', () => { log('complete'); finish('completed'); }); // natural end (< 30s clips complete early — fair!)
+      video.addEventListener('ended', () => { log('complete'); finish('completed'); }); // natural end (< 60s clips complete early — fair!)
       video.addEventListener('playing', () => { hideHint(); markStarted(); }, { once: true }); // first pixels move → clock starts (loading/buffering never billed as viewing!)
-      video.addEventListener('error', () => finish('layer-empty'), { once: true }); // dead mp4 → NEXT layer fast (never a 30s black box!)
+      video.addEventListener('error', () => finish('layer-empty'), { once: true }); // dead mp4 → NEXT layer fast (never a 60s black box!)
       try { video.load(); } catch {}
       video.play().catch(() => {}); // autoplay blocked (rare, muted usually passes) → watchdog still frees the user fairly
       visitBtn.hidden = false; // sponsor gets the billable button (tap = money!)
@@ -381,7 +381,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
               let adStarted = false; // no-fill guard: fresh/pending zones serve EMPTY VAST yet IMA still fires ALL_ADS_COMPLETED (an unwatched "complete" would fake revenue + invoice a sponsor for nothing!)
               mgr.addEventListener(window.google.ima.AdEvent.Type.STARTED, () => { adStarted = true; markStarted(); }); // real creative playing → clock starts too!
               mgr.addEventListener(window.google.ima.AdEvent.Type.ALL_ADS_COMPLETED, () => { // finished…
-                if (adStarted) { log('complete'); finish('completed'); } // …watched (< 30s = early complete, fair!)…
+                if (adStarted) { log('complete'); finish('completed'); } // …watched (< 60s = early complete, fair!)…
                 else finish('layer-empty'); // …nothing ever played → NEXT layer (empty zone, never a fake complete!)
               });
               mgr.addEventListener(window.google.ima.AdEvent.Type.CLICK, () => { log('click'); }); // tap on the video → IMA opens the offer natively; we log the click for the funnel (never blocks, never closes!)
@@ -432,6 +432,6 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
   } // end playVideoLayer (nested — hoisted, one layer attempt per call!)
 }
 // NOTE: the old per-CLICK sponsor interstitial (maybeShowSponsor) was REMOVED —
-// the 30s video gate is the ONLY ad surface now (Visit-sponsor clicks live
+// the 60s video gate is the ONLY ad surface now (Visit-sponsor clicks live
 // INSIDE the gate). Backend click logging (/api/me/ads/click) stays: the gate
 // calls it. No card popups anywhere, by owner order!

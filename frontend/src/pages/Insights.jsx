@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react'; // useState = stats object; useEffect = fetch+crunch on mount
 import { Link } from 'react-router-dom'; // deep-links (flag card → inbox!)
 import { api } from '../lib/api.js'; // conversations fetch
-import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 30s video gate (free tier — insights pays too!)
+import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 60s video gate (free tier — insights pays too!)
 import { describeLoadFailure, describeNetError } from '../lib/netDetail.js'; // one voice for load failures
 import LoadFailed from '../components/LoadFailed.jsx'; // branded failed card + Retry (never eternal dashes!)
 import { ForexChart, Spark } from '../components/Chart.jsx'; // forex line + sparkline (zero deps!)

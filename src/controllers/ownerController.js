@@ -104,7 +104,7 @@ async function getMe(req, res) {
     const hillPlayable = hillTag;
     const video = videoOnly // video-only: Hilltop tag or nothing (monetag/sponsor layers forcibly off!)
       ? { order: ['hilltopads'], sponsorVideo: null, sponsorLink: null, sponsorTitle: null, hilltopads: hillPlayable, monetag: null }
-      : { // 30s gated player on Connect (free tier): sponsor mp4 > HilltopAds VAST > Monetag rewarded
+      : { // 60s gated player on Connect (free tier): sponsor mp4 > HilltopAds VAST > Monetag rewarded
         order: videoOrder.length ? videoOrder : ['sponsor', 'hilltopads', 'monetag'], // empty env = full waterfall (safe default!)
         sponsorVideo: (sponsor && sponsor.video) || null, // own mp4 (first priority, billed per COMPLETE!)
         sponsorLink: (sponsor && sponsor.link) || null,

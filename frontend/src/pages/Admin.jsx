@@ -384,7 +384,7 @@ function AdsStatus() { // AD KEYS LIVE? booleans only — key VALUES never leave
   useEffect(() => { api('/api/ads/stats').then(({ ok, data }) => { if (ok) setVstats(data); }); }, []); // earnings funnel (same mount — completions × rate = sponsor invoice!)
   if (!s) return <div className="card"><div className="skel" /></div>;
   const dot = (on) => (<span className={'pill ' + (on ? 'ok' : 'flag')} style={{ fontSize: 11 }}>{on ? 'Yes' : 'No'}</span>); // boolean → at-a-glance pill (no key values shown, ever!)
-  async function previewVideo(only) { // Preview button: force the REAL 30s gate (cap bypassed, events still logged as slot=preview!)
+  async function previewVideo(only) { // Preview button: force the REAL 60s gate (cap bypassed, events still logged as slot=preview!)
     setPreviewMsg('Checking…');
     clearVideoSeen('preview'); // bypass the daily cap (preview-only!)
     const st = await adsStatus(); // Pro session? video config present?
@@ -403,7 +403,7 @@ function AdsStatus() { // AD KEYS LIVE? booleans only — key VALUES never leave
       <p className="desc">Video gate — own mp4: {dot(s.sponsorVideo)} · HilltopAds: {dot(s.videoHilltopads)} · Monetag: {dot(s.videoMonetag)} · Order: <code>{s.videoOrder}</code> · ₦{s.rateViewNaira}/completed view</p>
       <p className="hint">{s.note}</p>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
-        <button className="btn ghost sm" onClick={() => previewVideo()}>Preview 30s video gate</button>
+        <button className="btn ghost sm" onClick={() => previewVideo()}>Preview 60s video gate</button>
         {previewMsg ? <span className="hint">{previewMsg}</span> : null}
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>

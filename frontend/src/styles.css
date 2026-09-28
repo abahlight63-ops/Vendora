@@ -360,7 +360,7 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .pop-card.sponsor { border-color: var(--gold-line); }
 .sponsor-tag { display: inline-block; font-size: 10.5px; font-weight: 800; letter-spacing: 1px; color: var(--gold); background: var(--gold-bg); border: 1px solid var(--gold-line); padding: 3px 12px; border-radius: 999px; margin-bottom: 10px; }
 
-/* gated 30s video (Connect buttons, free tier only — vgate = video gate!) */
+/* gated 60s video (Connect buttons, free tier only — vgate = video gate!) */
 .pop-card.vgate { max-width: 420px; }
 .vgate-bar { height: 8px; border-radius: 99px; background: var(--line-soft); overflow: hidden; margin: 12px 0 6px; }
 .vgate-bar i { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, #25D366, #7ef0c0); transition: width 0.25s linear; }

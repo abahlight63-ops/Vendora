@@ -36,12 +36,12 @@ Sponsored card on web (Visit button inside the fullscreen reel), plus native ful
    "Visit sponsor" goes), `SPONSOR_VIDEO_URL=<mp4 url>`,
    `SPONSOR_RATE_PER_CLICK=50`.
 4. Redeploy. Admin → "Ad keys live?" must show Sponsor ✅ and Video ✅.
-5. Test with a free-tier account: open Connect — the 30s reel plays (skip unlocks at 25s). No card popups anywhere by design.
+5. Test with a free-tier account: open Connect — the 60s reel plays (skip unlocks at 55s). No card popups anywhere by design.
 
-## Stream 3 — GATED 30s VIDEO on Connect (the big money)
+## Stream 3 — GATED 60s VIDEO on Connect (the big money)
 
-Free-tier owners tapping a Connect button watch 30 seconds first (countdown +
-progress, skip unlocks at 5s), then the connect action continues. Pro never
+Free-tier owners tapping a Connect button watch 60 seconds first (countdown +
+progress, skip unlocks at 55s), then the connect action continues. Pro never
 sees it. Waterfall, first AVAILABLE wins:
 
 1. **Your sponsor mp4** (`SPONSOR_VIDEO_URL`) — direct deals, billed per
@@ -75,7 +75,7 @@ estimate). A sponsor click inside the player ALSO lands in `ad_clicks`.
   configured-but-dead (wrong shape / pending zone / ad-blocker); check
   devtools console → `window.__lastVideoGate`.
 
-Test: Admin → "Preview 30s video gate" (force-plays, logs under slot=preview),
+Test: Admin → "Preview 60s video gate" (force-plays, logs under slot=preview),
 or connect as a free-tier shop with no ad-blocker.
 
 ### Get started checklist (make video ads actually work)
@@ -83,7 +83,7 @@ or connect as a free-tier shop with no ad-blocker.
    `SPONSOR_LINK` + `SPONSOR_VIDEO_URL`). Network zones can wait.
 2. Paste it in Render → Environment → **redeploy** (env loads at boot only!).
 3. Open an **incognito window** (fresh daily caps!) → sign up a test shop (free
-   tier) → open Catalog: the 30s gate appears (skip unlocks at 5s).
+   tier) → open Catalog: the 60s gate appears (skip unlocks at 55s).
 4. Visit Connect, Test bot, Inbox — up to 10 gates per page per day (5+ min apart), Pro sees none.
 5. Click "Visit sponsor" → Admin → ad console shows the click + completions.
 6. Add network zones one by one (`ADS_VIDEO_HILLTOPADS` → test → next).

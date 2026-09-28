@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api.dart';
-import '../ads.dart'; // page-entry 30s reel (free tier — overview pays too!)
+import '../ads.dart'; // page-entry 60s reel (free tier — overview pays too!)
 import '../format.dart';
 import '../glass.dart';
 import '../motion.dart';

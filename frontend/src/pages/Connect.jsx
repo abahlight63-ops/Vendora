@@ -6,7 +6,7 @@
 // DATA: GET /api/me/channels (status + Meta App ID/Config ID) + GET /api/me/ai-models.
 import { useEffect, useRef, useState } from 'react'; // state per step; effect loads status once
 import { api, pop, toast } from '../lib/api.js'; // api() calls; pop() big outcomes; toast() small notes
-import { maybeShowVideoAd } from '../lib/ads.js'; // gated 30s video (free tier connects watch first — Pro never sees it!)
+import { maybeShowVideoAd } from '../lib/ads.js'; // gated 60s video (free tier connects watch first — Pro never sees it!)
 import Ic from '../components/icons.jsx'; // drawn glyphs (never emoji!)
 import Loader from '../components/Loader.jsx'; // mini orbit in busy buttons (brand consistency!)
 import GlassUpsell from '../components/GlassUpsell.jsx'; // locked-model upgrade card

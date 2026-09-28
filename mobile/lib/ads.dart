@@ -4,7 +4,7 @@
 // SPONSOR MP4s ONLY (direct files!): network VAST/.js tags need the web IMA
 // player, so on phones those layers simply don't exist — the house promo +
 // paying sponsor mp4s play fullscreen 9:16 here, which is also the best
-// money (zero rev-share, zero approval!). 30s full view, skip at 25s,
+// money (zero rev-share, zero approval!). 60s full view, skip at 55s,
 // 10/day/section with 5-min gaps — same timetable as web.
 // Per-view network tags can't run natively (no script engine!) — that income
 // is web-only. Ads must NEVER break the app: everything is try/caught, Pro
@@ -20,8 +20,8 @@ import 'api.dart';
 
 const _perDay = 10; // per section per day (web parity!)
 const _gapMin = 5; // minutes between two gates on the SAME section
-const _lenSec = 30; // FULL 30 seconds of attention (sponsor invoice unit!)
-const _skipAt = 25; // skip unlocks at 25s (5s left!)
+const _lenSec = 60; // FULL 60 seconds of attention (sponsor invoice unit!)
+const _skipAt = 55; // skip unlocks at 55s (5s left!)
 
 /// Per-section daily tally {c, t} — tolerant reader (corrupt JSON → fresh,
 /// never crash!).
@@ -108,7 +108,7 @@ Future<void> warmAdsCache() async {
   } catch (_) {}
 }
 
-/// Gated 30s video (sponsor mp4s: house promo + paying sponsors).
+/// Gated 60s video (sponsor mp4s: house promo + paying sponsors).
 /// Outcomes mirror web: completed | skipped | visited | skipped-empty |
 /// skipped-cap | failed-all. Callers ALWAYS proceed afterwards!
 /// FAST PATH: cap checked FIRST (no network when capped!); cached ads used
@@ -163,7 +163,7 @@ Future<String> maybeShowVideoAd(BuildContext context,
       PageRouteBuilder<String>(
         fullscreenDialog: true,
         opaque: true, // solid black (no ghost of the page behind!)
-        barrierDismissible: false, // no tap-out dodge (skip button at 25s is the exit!)
+        barrierDismissible: false, // no tap-out dodge (skip button at 55s is the exit!)
         transitionDuration: const Duration(milliseconds: 250),
         pageBuilder: (_, __, ___) => _ReelGate(
             url: url, link: link, title: title, slot: slot, log: _log),
@@ -177,7 +177,7 @@ Future<String> maybeShowVideoAd(BuildContext context,
   }
 }
 
-/// Fullscreen 9:16 reel: countdown 30 → 0, skip unlocks at 25s, Visit opens
+/// Fullscreen 9:16 reel: countdown 60 → 0, skip unlocks at 55s, Visit opens
 /// the sponsor (logged BEFORE leaving, like web!). Muted autoplay (store
 /// policy + politeness — sound needs the advertiser's own player!).
 class _ReelGate extends StatefulWidget {
@@ -240,21 +240,21 @@ class _ReelGateState extends State<_ReelGate> {
               .floor()
               .clamp(0, _lenSec); // wall-clock VIEWING seconds (buffering included — fair!)
       _el = el;
-      // quartiles at 7.5/15/22.5s of 30 (completion RATE = attention quality!)
+      // quartiles at 15/30/45s of 60 (completion RATE = attention quality!)
       for (final e in [
-        [7.5, 'q25'],
-        [15, 'q50'],
-        [22.5, 'q75']
+        [15.0, 'q25'],
+        [30.0, 'q50'],
+        [45.0, 'q75']
       ]) {
         if (_el >= (e[0] as double) && _q.add(e[1] as String)) {
           unawaited(widget.log(widget.slot, 'sponsor', e[1] as String));
         }
       }
-      if (_el >= _lenSec) _finish('completed'); // full 30s WATCHED → invoice it!
+      if (_el >= _lenSec) _finish('completed'); // full 60s WATCHED → invoice it!
       if (mounted) setState(() {});
     });
-    _watchdog = Timer(const Duration(seconds: 90), () {
-      _finish('completed'); // absolute backstop (nothing traps, ever!)
+    _watchdog = Timer(const Duration(seconds: 120), () {
+      _finish('completed'); // absolute backstop (nothing traps, ever! 60s gate + 60s load slack!)
     });
     unawaited(widget.log(widget.slot, 'sponsor', 'start')); // funnel opens!
   }

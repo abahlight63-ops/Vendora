@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from 'react'; // useState ×6 slices of UI state; useEffect = triple-fetch on mount
 import { Link } from 'react-router-dom'; // Link for the inline billing links (client-side nav)
 import { api, pop, toast } from '../lib/api.js'; // api() calls; pop() big animated results; toast() small notes
-import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 30s video gate (free tier, 10/day!) — the ONLY ad surface (no cards!)
+import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 60s video gate (free tier, 10/day!) — the ONLY ad surface (no cards!)
 import { categoriesFor, detailHintFor, learnExampleFor } from '../lib/niches.js'; // niche shelves + hints (electronics sees Phones, fashion sees Gowns!)
 import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures
 import LoadFailed from '../components/LoadFailed.jsx'; // branded failed card + Retry (never eternal skeletons!)

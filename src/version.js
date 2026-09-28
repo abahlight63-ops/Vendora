@@ -3,8 +3,9 @@
 // Bump VERSION + add a note on every user-visible release — the Shell checks
 // /api/version on load and toasts "VeloSales Ai updated" when it changes, and the
 // admin broadcast button can push the same notes into every inbox.
-const APP_VERSION = '1.10.0';
+const APP_VERSION = '1.11.0';
 const WHATS_NEW = [
+  'Sponsored videos now run a full 60 seconds (skip at 55s) on web + mobile',
   'Fullscreen video ads: 9:16 reels, full 30 seconds, skip at 25s — update for the new player!',
   'Inbox replies: answer customers right inside the app (both channels), gold flag clears itself',
   'Catalog delivery info: delivery time, pickup location and how-to-buy per product — the AI quotes them',

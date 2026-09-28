@@ -7,7 +7,7 @@
 // renders a totally different screen from the same component.
 import { useEffect, useState } from 'react'; // useState ×5; useEffect = load inbox on mount
 import { api, fmtTime, toast } from '../lib/api.js'; // api() fetches; fmtTime stamps; toast() send errors
-import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 30s video gate (free tier, 10/day — inbox pays too!)
+import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 60s video gate (free tier, 10/day — inbox pays too!)
 import Ic from '../components/icons.jsx'; // back-arrow icon
 import Loader from '../components/Loader.jsx'; // mini orbit in the Send button
 
@@ -30,7 +30,7 @@ export default function Chats() {
   useEffect(() => { // mount + retry (tries in deps!) + auto-retry when back online
     let dead = false; // unmount guard (slow networks + fast navigation!)
     load();
-    maybeShowVideoAd({ slot: 'page-chats' }); // page-entry 30s video gate (free tier, 10/day — inbox loads UNDER the overlay!)
+    maybeShowVideoAd({ slot: 'page-chats' }); // page-entry 60s video gate (free tier, 10/day — inbox loads UNDER the overlay!)
     const onOnline = () => { if (!dead && failed) setTries((t) => t + 1); }; // internet's back? reload without a tap!
     window.addEventListener('online', onOnline);
     return () => { dead = true; window.removeEventListener('online', onOnline); };

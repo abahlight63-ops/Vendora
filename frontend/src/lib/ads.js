@@ -246,6 +246,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
         finish('visited');
       };
     } else if ((pick === 'hilltopads' || pick === 'monetag') && !isScriptTag(pick === 'hilltopads' ? v.hilltopads : v.monetag)) { // VAST *document* (XML, not a .js tag — ANY network: Hilltop, Monetag, ExoClick…): played via Google IMA inside our frame (muted inline — same house rules as the mp4 path!)
+      visitBtn.hidden = true; // network layers: NO Visit button (tapping the video opens the offer — one CTA per layer, never two!)
       const video = document.createElement('video');
       video.muted = true; video.playsInline = true; video.preload = 'auto'; // muted inline (browser autoplay policy + no iOS takeover!)
       video.setAttribute('disablepictureinpicture', ''); // keep it in the card!
@@ -289,6 +290,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
         } catch { finish('layer-empty'); } // IMA API shape changed upstream → next layer, never a crash
       }).catch(() => finish('layer-empty')); // SDK itself unreachable (blocked/offline) → next layer
     } else { // network zone (self-rendering .js tag: Monetag rewarded, or a .js Hilltop tag): renders INSIDE our frame…
+      visitBtn.hidden = true; // network layers: NO Visit button (their player carries its own CTA!)
       const holder = document.createElement('div');
       holder.className = 'vgate-reel vgate-holder'; // network tag renders INSIDE the same 9:16 reel frame!
       holder.style.cssText = 'margin-top:8px;min-height:120px;';

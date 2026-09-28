@@ -10,7 +10,7 @@
 // data or the app shell — stale shells strand users on old bugs!). /assets/*
 // (Vite-hashed, immutable) cache-first for speed. Full offline mode = later.
 // No build step, no imports — plain worker script (keep it dependency-free!).
-const VERSION = 'velosalesai-v1'; // bump to force-update every client (new deploys change assets anyway via hashed names!)
+const VERSION = 'velosalesai-v2'; // bump to force-update every client (new deploys change assets anyway via hashed names!)
 const ASSET_CACHE = VERSION + '-assets';
 
 self.addEventListener('install', (e) => { // new worker downloaded (fresh visit after a deploy!)…

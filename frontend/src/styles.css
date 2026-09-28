@@ -376,8 +376,9 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .pop-overlay.vgate-ov .vgate-body video { max-height: 52vh; max-height: 52dvh; }
 /* ── 9:16 reel frame (TikTok/Reels shape: full-bleed portrait, gradient border + glow!) ── */
 .vgate-reel { width: min(100%, 430px); aspect-ratio: 9 / 16; max-height: 68vh; max-height: 68dvh; margin-left: auto; margin-right: auto; object-fit: cover; border-radius: 18px; border: 2px solid transparent; background: linear-gradient(#000, #000) padding-box, linear-gradient(135deg, #25D366, #7ef0c0 40%, #ffcf5c) border-box; box-shadow: 0 0 28px rgba(37, 211, 102, 0.28), 0 18px 50px rgba(0, 0, 0, 0.5); }
-.vgate-holder { overflow: hidden; background: #000; }
+.vgate-holder { overflow: hidden; background: #000; text-align: center; }
 .vgate-holder > * { border-radius: 16px; }
+.vgate-holder iframe, .vgate-holder video, .vgate-holder canvas, .vgate-holder object, .vgate-holder embed { margin-inline: auto; display: block; max-width: 100%; } /* network players center themselves (no more left-hugging creatives!) */
 @media (max-width: 960px) {
   .vgate-reel { width: 100%; max-height: 72vh; max-height: 72dvh; }
 }

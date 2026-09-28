@@ -292,13 +292,15 @@ class _ReelGateState extends State<_ReelGate> {
           builder: (ctx, constraints) {
             final maxW = constraints.maxWidth;
             final maxH = constraints.maxHeight;
-            // Reel width fits the screen with margins (cap 430 like web!);
-            // height keeps 9:16 but never exceeds what's left after the
-            // header (~120) + footer (~190) — min 220 so it never collapses.
-            final reelW = (maxW - 32).clamp(0.0, 430.0);
-            var reelH = (reelW * 16 / 9).clamp(220.0, 640.0);
-            final room = maxH - 320;
-            if (room < reelH && room >= 220) reelH = room;
+            // TRUE 9:16 always: height is picked first (screen width × 16/9,
+            // capped by what's left after header ~70 + footer ~160), then
+            // WIDTH IS DERIVED FROM HEIGHT — one side never shrinks alone,
+            // which broke the ratio and cover-cropped the video (the
+            // "oversize" bug!). Short screens scroll instead of squashing.
+            var reelH = ((maxW - 32) * 16 / 9).clamp(220.0, 600.0);
+            final room = maxH - 230;
+            if (room < reelH) reelH = room.clamp(220.0, 600.0);
+            final reelW = (reelH * 9 / 16).clamp(0.0, 430.0);
             return SingleChildScrollView(
               // short screens scroll instead of clipping (the halfway fix!)
               physics: const ClampingScrollPhysics(),

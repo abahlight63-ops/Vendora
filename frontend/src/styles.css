@@ -368,19 +368,21 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .vgate-count { font-size: 13px; font-weight: 800; color: var(--muted); }
 .vgate-count::after { content: "s"; font-weight: 400; } /* the number IS seconds (pure CSS suffix!) */
 .vgate-skip { background: none; border: 1px solid var(--line); color: var(--ink); font: inherit; font-size: 13px; font-weight: 700; border-radius: 999px; padding: 7px 18px; cursor: pointer; }
-.vgate-skip[hidden] { display: none; } /* hidden till 5s (polite countdown!) */
+.vgate-skip[hidden] { display: none; } /* hidden till 5s left (polite countdown!) */
 .vgate-visit { margin-top: 12px; width: 100%; }
 /* ── video-gate theatre mode (FULLSCREEN on every screen: phones, tablets, desktop!) ── */
 .pop-overlay.vgate-ov { padding: 0; display: grid; overflow-y: auto; } /* scroll safety: short viewports scroll instead of slicing the top off! */
 .pop-overlay.vgate-ov .pop-card.vgate { max-width: none; width: 100%; min-height: 100vh; min-height: 100dvh; margin: auto; border-radius: 0; border-left: none; border-right: none; display: flex; flex-direction: column; justify-content: center; padding: 22px 18px calc(22px + env(safe-area-inset-bottom, 0px)); } /* margin:auto centers when it fits, scrolls from the TOP when it overflows (flex-centering alone cuts!) */
-.pop-overlay.vgate-ov .vgate-body video { max-height: 52vh; max-height: 52dvh; }
 /* ── 9:16 reel frame (TikTok/Reels shape: full-bleed portrait, gradient border + glow!) ── */
-.vgate-reel { width: min(100%, 430px); aspect-ratio: 9 / 16; max-height: 68vh; max-height: 68dvh; margin-left: auto; margin-right: auto; object-fit: cover; border-radius: 18px; border: 2px solid transparent; background: linear-gradient(#000, #000) padding-box, linear-gradient(135deg, #25D366, #7ef0c0 40%, #ffcf5c) border-box; box-shadow: 0 0 28px rgba(37, 211, 102, 0.28), 0 18px 50px rgba(0, 0, 0, 0.5); }
+/* TRUE 9:16 always: the height cap is baked INTO the width (68vh × 9/16), so the
+   frame can never go "width says one thing, max-height says another" — that mismatch
+   broke aspect-ratio and cover-cropped the video (the "oversize" bug!). */
+.vgate-reel { width: min(100%, 430px, calc(68vh * 9 / 16)); width: min(100%, 430px, calc(68dvh * 9 / 16)); aspect-ratio: 9 / 16; margin-left: auto; margin-right: auto; object-fit: cover; border-radius: 18px; border: 2px solid transparent; background: linear-gradient(#000, #000) padding-box, linear-gradient(135deg, #25D366, #7ef0c0 40%, #ffcf5c) border-box; box-shadow: 0 0 28px rgba(37, 211, 102, 0.28), 0 18px 50px rgba(0, 0, 0, 0.5); }
 .vgate-holder { overflow: hidden; background: #000; text-align: center; }
 .vgate-holder > * { border-radius: 16px; }
 .vgate-holder iframe, .vgate-holder video, .vgate-holder canvas, .vgate-holder object, .vgate-holder embed { margin-inline: auto; display: block; max-width: 100%; } /* network players center themselves (no more left-hugging creatives!) */
 @media (max-width: 960px) {
-  .vgate-reel { width: 100%; max-height: 72vh; max-height: 72dvh; }
+  .vgate-reel { width: min(100%, calc(72vh * 9 / 16)); width: min(100%, calc(72dvh * 9 / 16)); }
 }
 .pop-overlay.vgate-ov .vgate-skip { min-height: 48px; padding: 12px 26px; font-size: 15px; }
 

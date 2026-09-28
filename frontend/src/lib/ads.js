@@ -79,7 +79,7 @@ export async function loadNetworkAds() { // called ONCE by App.jsx after login (
 }
 
 const VIDEO_LEN = 30; // the gate: 30 FULL seconds of attention (sponsor invoice unit!)
-const VIDEO_SKIP_AT = 25; // skip unlocks at 25s (5s left — watch the film or tap out at the death!)
+const VIDEO_SKIP_AT = 25; // reference: skip unlocks 5s before window end (per-window rule lives in skipAt = LEN - 5!)
 const VIDEO_PER_DAY = 10; // per section per day (connect × catalog × chats × insights… — volume is the revenue!)
 const VIDEO_GAP_MIN = 5; // minutes between two gates on the SAME section (never back-to-back nagging!)
 
@@ -144,10 +144,12 @@ function loadImaSdk() {
 }
 // GATED 30s VIDEO (page entries, free tier only): sponsor mp4 >
 // HilltopAds VAST (via IMA) > Monetag rewarded (VAST doc or .js — both inline).
-// Countdown + progress bar + skip-at-5s. Resolves when the flow ends —
-// callers ALWAYS proceed afterwards (the gate delays, never blocks!).
-// force = Admin preview (bypasses the daily cap, never marks it!).
-// only = Admin per-layer test ('sponsor' | 'hilltopads' | 'monetag').
+// Layers CHAIN until 30s are actually watched (a 6s bumper + a 24s film = one
+// full gate — short creatives never end the show early, every view invoices!).
+// Countdown + progress bar, skip unlocks 5s before each window ends. Resolves
+// when the flow ends — callers ALWAYS proceed afterwards (the gate delays,
+// never blocks!). force = Admin preview (bypasses the daily cap, never marks
+// it!). only = Admin per-layer test ('sponsor' | 'hilltopads' | 'monetag').
 export async function maybeShowVideoAd({ slot = 'connect', force = false, only = null } = {}) {
   const ads = await getAds(); // tier-resolved config (Pro = null → straight through!)
   const v = ads && ads.video;
@@ -168,17 +170,30 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
   if (!candidates.length) return done('skipped-empty'); // nothing configured → button works exactly as today (never a dead end!)
   if (typeof document !== 'undefined' && document.querySelector('.pop-card.vgate')) return done('already-open'); // double-tap guard (one gate at a time — second click sails straight through!)
   if (!force) markVideoSeen(slot);
+  let filled = 0; // seconds actually WATCHED this gate (short films chain until 30!)
   for (const pick of candidates) { // try each layer in turn (dead layer → next, never a dead timer! Every layer plays INLINE: sponsor mp4, or VAST doc / .js tag via the gated player below!)
-    const outcome = await playVideoLayer({ slot, pick, v }); // gated player (resolves completed/skipped/layer-empty!)
-    if (outcome !== 'layer-empty') return done(outcome); // empty frame → NEXT layer (a broken tag never embarrasses us!)
+    const remaining = VIDEO_LEN - filled;
+    if (remaining < 5 && filled > 0) break; // crumbs left — call it filled (no silly 2s windows!)
+    const r = await playVideoLayer({ slot, pick, v, len: remaining }); // window = what's left of the 30s (first layer gets the full 30!)
+    filled += r.viewed || 0;
+    if (r.outcome === 'visited') return done('visited'); // user left for the offer — respect it, stop the chain!
+    if (r.outcome === 'completed') {
+      if (filled >= VIDEO_LEN - 1) return done('completed'); // 30s watched — invoice it!
+      continue; // short creative — NEXT layer tops up the 30s (more impressions = more income!)
+    }
+    if (r.outcome !== 'layer-empty') return done(r.outcome); // skipped → respect it, stop the chain!
     logVideo(slot, pick, 'tag-failed');
   }
-  return done(candidates.length ? 'failed-all' : 'skipped-empty'); // configured-but-dead vs nothing-configured (DIFFERENT problems: wrong URL shape / pending zone / ad-blocker vs empty env — Admin preview explains each!)
+  return done(filled > 0 ? 'completed' : (candidates.length ? 'failed-all' : 'skipped-empty')); // watched something → completed; dead layers → failed-all; nothing configured → skipped-empty!
 
   // ── one gated player attempt (overlay lifetime = this promise!) ──
-  function playVideoLayer({ slot, pick, v }) { return new Promise((resolve) => { // overlay lifetime = this promise (close paths ALL resolve it!)
+  // len = this window's seconds (first layer: full 30; chained layers: what's left!).
+  // Resolves { outcome, viewed } — viewed feeds the 30s chain above!
+  function playVideoLayer({ slot, pick, v, len }) { return new Promise((resolve) => { // overlay lifetime = this promise (close paths ALL resolve it!)
+    const LEN = Math.max(5, Math.min(VIDEO_LEN, Number(len) || VIDEO_LEN)); // window clamp (silly crumbs rejected!)
     let t0 = Date.now(); // gate clock (drives countdown + progress + completion — RESET on first playback by markStarted!)
     let done = false; // settled once (timers + events race — first wins!)
+    let viewed = 0; // seconds actually watched in THIS window (feeds the chain!)
     let quartiles = {}; // q25/q50/q75 logged once each (completion RATE = attention quality!)
     const finish = (outcome) => { // single exit (clear timers, remove overlay, resolve caller!)
       if (done) return; done = true;
@@ -186,7 +201,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       try { tagScript && tagScript.remove(); } catch {} // network tag yanked (no orphan players phoning home!)
       try { extraCleanup && extraCleanup(); } catch {} // IMA manager destroy (same hygiene!)
       ov.classList.add('out'); setTimeout(() => ov.remove(), 250); // fade, then gone
-      resolve(outcome);
+      resolve({ outcome, viewed });
     };
     const log = (event) => logVideo(slot, pick, event); // source pinned (closure!)
     let started = false; // playback REALLY started? (countdown stays FROZEN at 30 until first pixels move — loading time never steals viewing time!)
@@ -199,7 +214,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       '<span class="sponsor-tag">Sponsored · video</span>' +
       '<h3></h3>' +
       '<div class="vgate-bar"><i></i></div>' +
-      '<div class="vgate-meta"><span class="vgate-count">30</span><button class="vgate-skip" hidden>Skip →</button></div>' +
+      '<div class="vgate-meta"><span class="vgate-count">' + LEN + '</span><button class="vgate-skip" hidden>Skip →</button></div>' +
       '<div class="vgate-body"></div>' +
       '<button class="btn sm vgate-visit" hidden>Visit sponsor</button>' +
       '</div>';
@@ -211,15 +226,17 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
     const body = ov.querySelector('.vgate-body');
     const visitBtn = ov.querySelector('.vgate-visit');
     // ── countdown + progress (one 250ms ticker drives everything — FROZEN until markStarted fires!) ──
+    const skipAt = Math.max(0, LEN - 5); // skip unlocks 5s before THIS window ends (full 30 → 25s, chained windows scale!)
     const tick = setInterval(() => {
-      const el = Math.min(VIDEO_LEN, (Date.now() - t0) / 1000); // elapsed VIEWING time, capped at 30 (loading doesn't count!)
-      bar.style.width = (el / VIDEO_LEN * 100) + '%';
-      count.textContent = String(Math.max(0, Math.ceil(VIDEO_LEN - el)));
-      if (el >= VIDEO_SKIP_AT && skipBtn.hidden) skipBtn.hidden = false; // skip unlocks at 25s of VIEWING (5s left!)
-      for (const [mark, ev] of [[7.5, 'q25'], [15, 'q50'], [22.5, 'q75']]) { // quartile marks (7.5/15/22.5s of 30!)
+      const el = Math.min(LEN, (Date.now() - t0) / 1000); // elapsed VIEWING time, capped at window (loading doesn't count!)
+      viewed = el; // feed the chain (finish() snapshots this!)
+      bar.style.width = (el / LEN * 100) + '%';
+      count.textContent = String(Math.max(0, Math.ceil(LEN - el)));
+      if (el >= skipAt && skipBtn.hidden) skipBtn.hidden = false; // skip unlocks (5s left in window!)
+      for (const [mark, ev] of [[LEN * 0.25, 'q25'], [LEN * 0.5, 'q50'], [LEN * 0.75, 'q75']]) { // quartile marks scale with the window!
         if (el >= mark && !quartiles[ev]) { quartiles[ev] = true; log(ev); }
       }
-      if (el >= VIDEO_LEN) { log('complete'); finish('completed'); } // full 30s WATCHED → invoice it (no early exits on slow loads!)
+      if (el >= LEN) { log('complete'); finish('completed'); } // window fully WATCHED → invoice it (no early exits on slow loads!)
     }, 250);
     const watchdog = setTimeout(() => { log('complete'); finish('completed'); }, 90000); // absolute backstop (frozen clock + slow loads: nothing traps, ever!)
     skipBtn.onclick = () => { log('skip'); finish('skipped'); }; // skip = logged + out (no upsell on skips — politeness!)

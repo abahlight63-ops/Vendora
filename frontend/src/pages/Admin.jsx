@@ -10,7 +10,7 @@ import { api, fmtDate, pop, toast } from '../lib/api.js';
 import { money } from '../lib/money.js';
 import Ic from '../components/icons.jsx';
 import Loader, { BrandGate, useMinDisplay } from '../components/Loader.jsx'; // BrandGate (access check) + mini orbit (AI test button!) + brand beat
-import { adsStatus, clearSponsorSeen, clearVideoSeen, maybeShowSponsor, maybeShowVideoAd } from '../lib/ads.js'; // sponsor + video previews (this browser's tier/tags, daily caps bypassed)
+import { adsStatus, clearVideoSeen, maybeShowVideoAd } from '../lib/ads.js'; // video previews (daily caps bypassed)
 import LoadFailed from '../components/LoadFailed.jsx'; // failed-tab card + Retry (panels never spin forever!)
 import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures (offline? waking? stale?)
 
@@ -384,15 +384,6 @@ function AdsStatus() { // AD KEYS LIVE? booleans only — key VALUES never leave
   useEffect(() => { api('/api/ads/stats').then(({ ok, data }) => { if (ok) setVstats(data); }); }, []); // earnings funnel (same mount — completions × rate = sponsor invoice!)
   if (!s) return <div className="card"><div className="skel" /></div>;
   const dot = (on) => (<span className={'pill ' + (on ? 'ok' : 'flag')} style={{ fontSize: 11 }}>{on ? 'Yes' : 'No'}</span>); // boolean → at-a-glance pill (no key values shown, ever!)
-  async function preview() { // Preview button: bypass today's cap, then run the REAL interstitial path…
-    setPreviewMsg('Checking…');
-    clearSponsorSeen(); // bypass the once/day cap (preview-only; owners still capped)
-    const st = await adsStatus(); // this browser's actual tier/tags (Pro session? empty config?)
-    if (st.state === 'pro') { setPreviewMsg('No preview: THIS browser session is Pro/trial — ads serve to free-tier owners only. Log in as a free shop to preview.'); return; }
-    if (!st.sponsor) { setPreviewMsg('No preview: sponsor not configured — set SPONSOR_TITLE + SPONSOR_LINK in .env and restart the server. Network tags (Monetag) still load for free users.'); return; }
-    const shown = await maybeShowSponsor(); // real interstitial (same card owners see)
-    setPreviewMsg(shown ? '' : 'Not shown: already previewed today or sponsor missing.');
-  }
   async function previewVideo(only) { // Preview button: force the REAL 30s gate (cap bypassed, events still logged as slot=preview!)
     setPreviewMsg('Checking…');
     clearVideoSeen('preview'); // bypass the daily cap (preview-only!)
@@ -412,7 +403,6 @@ function AdsStatus() { // AD KEYS LIVE? booleans only — key VALUES never leave
       <p className="desc">Video gate — own mp4: {dot(s.sponsorVideo)} · HilltopAds: {dot(s.videoHilltopads)} · Monetag: {dot(s.videoMonetag)} · Order: <code>{s.videoOrder}</code> · ₦{s.rateViewNaira}/completed view</p>
       <p className="hint">{s.note}</p>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
-        <button className="btn ghost sm" onClick={preview}>Preview sponsor card</button>
         <button className="btn ghost sm" onClick={() => previewVideo()}>Preview 30s video gate</button>
         {previewMsg ? <span className="hint">{previewMsg}</span> : null}
       </div>

@@ -221,6 +221,9 @@ class ApiClient {
     String? imageUrl,
     String? quantity,
     String? category,
+    String? deliveryInfo,
+    String? location,
+    String? howToBuy,
   ]) async =>
       (await post('/api/me/products', {
         'name': name,
@@ -233,6 +236,12 @@ class ApiClient {
           'category': category.trim(), // omitted when blank = preserved!
         if (imageUrl != null && imageUrl.trim().isNotEmpty)
           'image_url': imageUrl.trim(), // omitted when blank = preserve existing on same-name updates (web parity!)
+        if (deliveryInfo != null && deliveryInfo.trim().isNotEmpty)
+          'delivery_info': deliveryInfo.trim(), // omitted when blank = preserved (toggles never wipe it!)
+        if (location != null && location.trim().isNotEmpty)
+          'location': location.trim(), // pickup area, omitted when blank = preserved!
+        if (howToBuy != null && howToBuy.trim().isNotEmpty)
+          'how_to_buy': howToBuy.trim(), // order steps, omitted when blank = preserved!
       }) as Map)
           .cast<String, dynamic>();
 
@@ -380,6 +389,42 @@ class ApiClient {
   /// Mirrors web ads.js: logged BEFORE the visit, never blocks it.
   Future<void> adClick(String slot, String url) async {
     await post('/api/me/ads/click', {'slot': slot, 'target_url': url});
+  }
+
+  /// In-app owner reply (inbox thread composer): sends through the chat's OWN
+  /// channel (WhatsApp/Telegram, incl. shared-mode shops), clears the gold
+  /// flag + pauses the bot (hand back explicitly when done — web parity!).
+  Future<Map<String, dynamic>> replyConversation(dynamic id, String text) async =>
+      (await post('/api/me/conversations/$id/reply', {'text': text}) as Map)
+          .cast<String, dynamic>();
+
+  /// Shared-bot road (Pro/testers, no BotFather paste): { connected, code,
+  /// botName, deepLink } — web parity with Connect's shared card.
+  Future<Map<String, dynamic>> telegramShared() async =>
+      (await post('/api/me/telegram/shared', {}) as Map)
+          .cast<String, dynamic>();
+
+  /// Shared-bot off switch (own-token road untouched).
+  Future<Map<String, dynamic>> telegramSharedOff() async =>
+      (await post('/api/me/telegram/shared', {'off': true}) as Map)
+          .cast<String, dynamic>();
+
+  /// Telegram webhook health: { configured, shared, ok, webhookUrl, pending,
+  /// lastError } — powers the Verify button (web parity!).
+  Future<Map<String, dynamic>> telegramHealth() async =>
+      (await get('/api/me/telegram/health') as Map).cast<String, dynamic>();
+
+  /// WhatsApp token liveness: { connected, phone, reason } — powers the
+  /// Verify WhatsApp button (dead temp tokens named here!).
+  Future<Map<String, dynamic>> waHealth() async =>
+      (await get('/api/me/channels/meta/health') as Map)
+          .cast<String, dynamic>();
+
+  /// Gated-video funnel event (starts, quartiles, completes, clicks, skips —
+  /// completions are the invoice unit!). Fire-and-forget from callers.
+  Future<void> videoEvent(String slot, String source, String event) async {
+    await post('/api/me/ads/video',
+        {'slot': slot, 'source': source, 'event': event});
   }
 
   // ── Bell inbox: { items: [{id,title,body,link,image_url,video_url,is_read,created_at}…],

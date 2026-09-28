@@ -26,7 +26,7 @@ not in VeloSales Ai.
 ## Stream 2 — VIDEO ads (your own mp4, no network needed)
 
 This is the reliable video path: a 15–30s clip that plays INSIDE the
-Sponsored card on web, plus a Watch-video button in the phone app.
+Sponsored card on web (Visit button inside the fullscreen reel), plus native fullscreen playback in the phone app.
 
 1. Get a clip: ask a local business for a 15–30s promo video (this is also
    your sales pitch — THEY pay YOU per click, `SPONSOR_RATE_PER_CLICK`).
@@ -36,8 +36,7 @@ Sponsored card on web, plus a Watch-video button in the phone app.
    "Visit sponsor" goes), `SPONSOR_VIDEO_URL=<mp4 url>`,
    `SPONSOR_RATE_PER_CLICK=50`.
 4. Redeploy. Admin → "Ad keys live?" must show Sponsor ✅ and Video ✅.
-5. Test with a free-tier account: add a product (Catalog) or hit the AI
-   daily limit → Sponsored card appears (max once/day) with the video.
+5. Test with a free-tier account: open Connect — the 30s reel plays (skip unlocks at 25s). No card popups anywhere by design.
 
 ## Stream 3 — GATED 30s VIDEO on Connect (the big money)
 

@@ -356,11 +356,9 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .mpick-hint { font-size: 12px; color: var(--faint); flex: 1 1 200px; }
 .vai-via { font-size: 11px; color: var(--faint); margin-top: 4px; }
 
-/* sponsored interstitial (per-click direct deals, free tier only) */
+/* sponsored label (video gate keeps its "Sponsored" tag — labeling stays legal!) */
 .pop-card.sponsor { border-color: var(--gold-line); }
 .sponsor-tag { display: inline-block; font-size: 10.5px; font-weight: 800; letter-spacing: 1px; color: var(--gold); background: var(--gold-bg); border: 1px solid var(--gold-line); padding: 3px 12px; border-radius: 999px; margin-bottom: 10px; }
-.sponsor-skip { display: block; width: 100%; margin-top: 10px; background: none; border: none; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; text-decoration: underline; }
-.sponsor-pro { margin-top: 12px; margin-bottom: 0; }
 
 /* gated 30s video (Connect buttons, free tier only — vgate = video gate!) */
 .pop-card.vgate { max-width: 420px; }
@@ -376,6 +374,13 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .pop-overlay.vgate-ov { padding: 0; display: grid; overflow-y: auto; } /* scroll safety: short viewports scroll instead of slicing the top off! */
 .pop-overlay.vgate-ov .pop-card.vgate { max-width: none; width: 100%; min-height: 100vh; min-height: 100dvh; margin: auto; border-radius: 0; border-left: none; border-right: none; display: flex; flex-direction: column; justify-content: center; padding: 22px 18px calc(22px + env(safe-area-inset-bottom, 0px)); } /* margin:auto centers when it fits, scrolls from the TOP when it overflows (flex-centering alone cuts!) */
 .pop-overlay.vgate-ov .vgate-body video { max-height: 52vh; max-height: 52dvh; }
+/* ── 9:16 reel frame (TikTok/Reels shape: full-bleed portrait, gradient border + glow!) ── */
+.vgate-reel { width: min(100%, 430px); aspect-ratio: 9 / 16; max-height: 68vh; max-height: 68dvh; margin-left: auto; margin-right: auto; object-fit: cover; border-radius: 18px; border: 2px solid transparent; background: linear-gradient(#000, #000) padding-box, linear-gradient(135deg, #25D366, #7ef0c0 40%, #ffcf5c) border-box; box-shadow: 0 0 28px rgba(37, 211, 102, 0.28), 0 18px 50px rgba(0, 0, 0, 0.5); }
+.vgate-holder { overflow: hidden; background: #000; }
+.vgate-holder > * { border-radius: 16px; }
+@media (max-width: 960px) {
+  .vgate-reel { width: 100%; max-height: 72vh; max-height: 72dvh; }
+}
 .pop-overlay.vgate-ov .vgate-skip { min-height: 48px; padding: 12px 26px; font-size: 15px; }
 
 /* ---------- guided tour ---------- */
@@ -1029,14 +1034,7 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .qa.sel { border-color: #25D366; box-shadow: 0 0 0 1px #25D366; }
 @media (max-width: 640px) { .niche-grid { grid-template-columns: 1fr; } }
 
-/* ── AdSlot: the ONE visible in-app ad slot (free tier only — Pro renders null) */
-.adslot { display: grid; gap: 8px; margin: 14px 0; }
-.adslot-card { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--card); border: 1.5px solid var(--gold-line); border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow-sm); }
-.adslot-body { flex: 1; min-width: 180px; display: grid; gap: 2px; }
-.adslot-body b { font-size: 14.5px; }
-.adslot-bar { display: flex; align-items: center; gap: 10px; background: var(--bg-secondary); border: 1px dashed var(--border); border-radius: 12px; padding: 10px 12px; font-size: 13px; color: var(--text-2); }
-.adslot-bar svg { flex: 0 0 auto; color: var(--green-dark); }
-.adslot-bar span { flex: 1; }
+/* ── adslot-x: close/dismiss square button (reused by the Admin drawer — kept after the AdSlot cards were removed) */
 .adslot-x { flex: 0 0 auto; width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text-2); cursor: pointer; font-size: 12px; }
 .adslot-x:hover { border-color: var(--text-1); color: var(--text-1); }
 

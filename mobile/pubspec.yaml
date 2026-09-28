@@ -37,6 +37,7 @@ dependencies:
   http: ^1.2.0
   shared_preferences: ^2.3.0
   url_launcher: ^6.3.0
+  video_player: ^2.9.0 # 30s fullscreen reel gate (sponsor mp4s play natively — network VAST stays web-only!)
 
 dev_dependencies:
   flutter_test:

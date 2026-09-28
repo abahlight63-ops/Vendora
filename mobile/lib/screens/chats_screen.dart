@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 
 import '../api.dart';
+import '../ads.dart'; // page-entry 30s reel (free tier — inbox pays too!)
 import '../format.dart';
 import '../glass.dart';
 import '../motion.dart';
@@ -27,6 +28,9 @@ class _ChatsScreenState extends State<ChatsScreen> {
   void initState() {
     super.initState();
     _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(maybeShowVideoAd(context, slot: 'mobile-chats')); // reel gate (free tier — loads UNDER the overlay!)
+    });
   }
 
   Future<void> _load() async {
@@ -229,12 +233,22 @@ class _ThreadScreenState extends State<ThreadScreen> {
   List<dynamic>? _msgs;
   String? _err;
   late bool _paused;
+  bool _needsHuman = false; // gold flag snapshot (cleared locally on send!)
+  final _draft = TextEditingController(); // reply draft (controlled input!)
+  bool _sending = false; // send in flight (button locks — no double-sends!)
 
   @override
   void initState() {
     super.initState();
     _paused = widget.chat['bot_paused'] == true;
+    _needsHuman = widget.chat['needs_human'] == true;
     _load();
+  }
+
+  @override
+  void dispose() {
+    _draft.dispose(); // controller cleanup (no leaked listeners!)
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -254,6 +268,40 @@ class _ThreadScreenState extends State<ThreadScreen> {
       if (mounted) setState(() => _paused = paused);
     } on ApiException catch (e) {
       if (mounted) showToast(context, e.message, type: 'err');
+    }
+  }
+
+  /// Owner reply INSIDE the app (web parity!): sends through the chat's OWN
+  /// channel, clears the gold flag + pauses the bot (hand back explicitly!).
+  Future<void> _send() async {
+    final text = _draft.text.trim();
+    if (text.isEmpty || _sending) return; // empty/double-tap guards
+    setState(() => _sending = true);
+    try {
+      await ApiClient.instance.replyConversation(widget.chat['id'], text);
+      _draft.clear();
+      if (mounted) {
+        setState(() {
+          _sending = false;
+          _paused = true; // you're talking now (Hand-back button appears!)
+          _needsHuman = false; // answered (gold flag clears!)
+        });
+        (_msgs ??= []).add({
+          'direction': 'out',
+          'body': text,
+          'created_at': DateTime.now().toUtc().toIso8601String(),
+        }); // optimistic append (server already stored it!)
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => _sending = false);
+        showToast(context, e.message, type: 'err'); // honest backend reason (not connected? blocked chat?)
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _sending = false);
+        showToast(context, 'No connection.', type: 'err');
+      }
     }
   }
 
@@ -443,6 +491,66 @@ class _ThreadScreenState extends State<ThreadScreen> {
                             );
                           },
                         ),
+        ),
+        // Reply composer: type + Send (Enter key sends too!). Sending clears
+        // the gold flag + pauses the bot (no double answers — hand back after!).
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _draft,
+                      minLines: 1,
+                      maxLines: 4,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _send(),
+                      decoration: InputDecoration(
+                        hintText: _needsHuman
+                            ? 'Answer them here…'
+                            : 'Reply as yourself…',
+                        border: const OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.all(Radius.circular(22)),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: _sending ? null : _send,
+                    style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 44),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 18)),
+                    child: _sending
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2),
+                          )
+                        : const Text('Send',
+                            style: TextStyle(fontSize: 13)),
+                  ),
+                ]),
+                if (!_paused)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Sending pauses the bot on this chat — hand back when done.',
+                      style: TextStyle(fontSize: 11),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ]),
     );

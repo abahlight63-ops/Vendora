@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api.dart';
+import '../ads.dart'; // page-entry 30s reel (free tier — overview pays too!)
 import '../format.dart';
 import '../glass.dart';
 import '../motion.dart';
@@ -33,6 +34,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(maybeShowVideoAd(context, slot: 'mobile-dashboard')); // reel gate (free tier — loads UNDER the overlay!)
+    });
   }
 
   Future<void> _load() async {

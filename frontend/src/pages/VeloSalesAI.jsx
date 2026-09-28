@@ -7,7 +7,6 @@ import { useEffect, useRef, useState } from 'react';
 import Logo from '../components/Logo.jsx'; // theme-aware brand mark (blue dark / green light!)
 import { Link } from 'react-router-dom';
 import { api, pop, toast } from '../lib/api.js';
-import { maybeShowSponsor } from '../lib/ads.js';
 import { chipsFor, DEFAULT_CHIPS } from '../lib/niches.js'; // niche starter chips (freelancer sees gigs, baker sees orders!)
 import GlassUpsell from '../components/GlassUpsell.jsx';
 import Ic from '../components/icons.jsx';
@@ -116,7 +115,6 @@ export default function VeloSalesAI({ biz }) {
       } else if (status === 429) {
         setMsgs((m) => [...m, { from: 'ai', text: data.error }]);
         toast('Daily limit reached', 'err');
-        maybeShowSponsor();
         setUpsellLines([ // quota wall = upgrade moment (context lines beat the generic list!)
           '50 free chats a day — Pro never queues',
           'Unlimited free AIs + 50 premium chats daily',

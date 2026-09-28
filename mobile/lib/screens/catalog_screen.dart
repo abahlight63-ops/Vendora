@@ -11,6 +11,17 @@ import '../motion.dart';
 
 const _webBilling = 'https://vendorabot.vercel.app/billing'; // checkout lives in the browser (same as Billing tab!)
 
+/// Delivery line for product rows: delivery · location · how-to-buy (reads
+/// the same three backend columns the web Catalog writes — one catalog!).
+String _fulfilment(Map<String, dynamic> p) {
+  final bits = <String>[];
+  for (final k in ['delivery_info', 'location', 'how_to_buy']) {
+    final v = '${p[k] ?? ''}'.trim();
+    if (v.isNotEmpty) bits.add(v);
+  }
+  return bits.join(' · ');
+}
+
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
 
@@ -27,6 +38,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
   final _desc = TextEditingController();
   final _photo = TextEditingController(); // optional photo link (upgraded shops: bot sends it!)
   final _qty = TextEditingController(); // number in stock (whole units!)
+  final _delivery = TextEditingController(); // delivery time/options (bot quotes it!)
+  final _location = TextEditingController(); // pickup area (bot quotes it!)
+  final _howtobuy = TextEditingController(); // order + payment steps (bot quotes it!)
   String? _cat; // picked shelf (null = no category)
   List<String> _shelves = const ['New Arrivals', 'Best Sellers', 'General', 'Other']; // niche shelves (replaced by catalog-meta!)
   String _detailHint = 'Note (optional)'; // details hint in the lane's words
@@ -44,6 +58,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
     _desc.dispose();
     _photo.dispose();
     _qty.dispose();
+    _delivery.dispose();
+    _location.dispose();
+    _howtobuy.dispose();
     super.dispose();
   }
 
@@ -81,16 +98,20 @@ class _CatalogScreenState extends State<CatalogScreen> {
     }
     try {
       await ApiClient.instance.addProduct(_name.text.trim(), _price.text,
-          _desc.text, _photo.text, _qty.text, _cat);
+          _desc.text, _photo.text, _qty.text, _cat, _delivery.text,
+          _location.text, _howtobuy.text); // blank delivery trio omitted server-side = preserved (web parity!)
       _name.clear();
       _price.clear();
       _desc.clear();
       _photo.clear();
       _qty.clear();
+      _delivery.clear();
+      _location.clear();
+      _howtobuy.clear();
       setState(() => _cat = null);
       if (mounted) FocusScope.of(context).unfocus();
       _load();
-      if (mounted) unawaited(maybeShowSponsor(context)); // web parity: sponsor moment after adds (free tier, max once/day)
+      if (mounted) unawaited(maybeShowVideoAd(context, slot: 'mobile-catalog')); // web parity: 30s reel after adds (free tier — same caps!)
     } on ApiException catch (e) {
       if (mounted) showToast(context, e.message, type: 'err');
     }
@@ -203,6 +224,26 @@ class _CatalogScreenState extends State<CatalogScreen> {
                             .toList(),
                         onChanged: (v) => setState(() => _cat = v),
                       )),
+              ]),
+              const SizedBox(height: 8),
+              // Delivery & how to buy: the bot quotes these VERBATIM (never invents timing/fees!).
+              TextField(
+                  controller: _delivery,
+                  decoration: const InputDecoration(
+                      labelText: 'Delivery time (e.g. Lagos 24–48hrs)')),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(
+                    child: TextField(
+                        controller: _location,
+                        decoration: const InputDecoration(
+                            labelText: 'Pickup location'))),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: TextField(
+                        controller: _howtobuy,
+                        decoration: const InputDecoration(
+                            labelText: 'How to buy'))),
               ]),
               const SizedBox(height: 8),
               // Photo box: Upload-media on web, https link here — the bot sends it
@@ -344,7 +385,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                   title: Text(
                                       '${p['name']}${p['category'] is String && (p['category'] as String).isNotEmpty ? ' · ${p['category']}' : ''}'),
                                   subtitle: Text(
-                                      '${p['price'] ?? ''}${p['quantity'] != null ? ' · ×${p['quantity']}' : ''} ${p['description'] ?? ''}'
+                                      '${p['price'] ?? ''}${p['quantity'] != null ? ' · ×${p['quantity']}' : ''} ${p['description'] ?? ''}${_fulfilment(p).isNotEmpty ? '\nDelivery: ${_fulfilment(p)}' : ''}'
                                           .trim()),
                                   trailing: Row(
                                     mainAxisSize: MainAxisSize.min,

@@ -36,6 +36,9 @@ class _ConnectScreenState extends State<ConnectScreen> {
   String? _verifyToken;
   final _tgToken = TextEditingController();
   String? _tgCode;
+  String? _tgShared; // shared-bot result text (Pro road — code + link + note!)
+  String? _waHealth; // Verify WhatsApp verdict line (token alive? or what to fix!)
+  String? _tgHealth; // Verify Telegram verdict line (webhook OK? or what to fix!)
   String? _brain;
   bool _testing = false;
   Timer? _poll;
@@ -126,8 +129,96 @@ class _ConnectScreenState extends State<ConnectScreen> {
           _load();
           showToast(context, 'Telegram connected!');
         } else {
-          showToast(context, 'Token rejected.', type: 'err');
+          showToast(context,
+              'Saved but not connected — sign out and in again.', type: 'err');
         }
+      });
+
+  /// Shared-bot road (Pro/testers, no BotFather paste — web parity!).
+  Future<void> _tgSharedConnect() => _run(() async {
+        try {
+          final r = await ApiClient.instance.telegramShared();
+          if (r['connected'] == true) {
+            setState(() {
+              _tgShared =
+                  'Customer link: ${r['deepLink'] ?? ''}\nCode: ${r['code'] ?? ''}\n${r['note'] ?? ''}';
+              _step = 2;
+            });
+            _load();
+            showToast(context, 'Shared bot connected!');
+          } else {
+            showToast(context, 'Shared bot unavailable.', type: 'err');
+          }
+        } on ApiException catch (e) {
+          // 402 = free tier → upgrade card (same as locked brains, never a dead button!)
+          if (e.status == 402) {
+            _upsellShared();
+          } else {
+            rethrow; // _run toasts everything else (session, server, network!)
+          }
+        }
+      });
+
+  void _upsellShared() {
+    glassSheet(
+      context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(children: [
+            Icon(Icons.lock_outline, size: 20),
+            SizedBox(width: 8),
+            Text('Shared bot is Pro',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+          ]),
+          const SizedBox(height: 10),
+          const Text(
+              'One tap, no BotFather, customers bind with your link. Free plan? Your own bot above stays free forever.'),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () => launchUrl(Uri.parse(_webBilling),
+                  mode: LaunchMode.externalApplication),
+              child: const Text('See upgrade options'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _tgSharedOff() => _run(() async {
+        await ApiClient.instance.telegramSharedOff();
+        setState(() {
+          _tgShared = null;
+          _step = 1;
+        });
+        _load();
+        showToast(context, 'Shared bot switched off.');
+      });
+
+  /// Verify buttons (web parity!): token alive? webhook registered? Exact fix named.
+  Future<void> _waVerify() => _run(() async {
+        final r = await ApiClient.instance.waHealth();
+        setState(() => _waHealth = r['connected'] == true
+            ? 'Token alive${'${r['phone'] ?? ''}'.isNotEmpty ? ' · ${r['phone']}' : ''}. TEST not flipping? The webhook paste in Meta is missing — not credentials.'
+            : 'Needs attention: ${(r['reason'] ?? '') == 'token-dead' ? 'Meta token expired — reconnect with a fresh token.' : 'not connected yet.'}');
+      });
+
+  Future<void> _tgVerify() => _run(() async {
+        final r = await ApiClient.instance.telegramHealth();
+        setState(() {
+          if (r['configured'] != true) {
+            _tgHealth = 'No bot saved yet — connect below first.';
+          } else if (r['ok'] == true) {
+            _tgHealth = 'Webhook OK. Message the bot — it answers.';
+          } else {
+            _tgHealth =
+                'Needs attention: ${r['lastError'] ?? 'webhook not registered'} — re-save your token.';
+          }
+        });
       });
 
   Future<void> _tgLink() => _run(() async {
@@ -264,7 +355,45 @@ class _ConnectScreenState extends State<ConnectScreen> {
               if ('${_wa['number'] ?? ''}'.isNotEmpty)
                 Text('Shop number: ${_wa['number']}',
                     style: const TextStyle(fontSize: 12)),
+              if (_wa['metaConnected'] == true)
+                const Text('Meta linked — no credentials needed from you.',
+                    style: TextStyle(fontSize: 12)),
             ]),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Verify row: token alive? webhook registered? Exact fix named (web parity!).
+        GlassCard(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Connection health',
+                      style: TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 8),
+                  Wrap(spacing: 8, runSpacing: 8, children: [
+                    OutlinedButton(
+                        onPressed: _busy ? null : _waVerify,
+                        child: const Text('Verify WhatsApp',
+                            style: TextStyle(fontSize: 13))),
+                    OutlinedButton(
+                        onPressed: _busy ? null : _tgVerify,
+                        child: const Text('Verify Telegram',
+                            style: TextStyle(fontSize: 13))),
+                  ]),
+                  if ((_waHealth ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text('WhatsApp: $_waHealth',
+                        style: const TextStyle(fontSize: 12)),
+                  ],
+                  if ((_tgHealth ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text('Telegram: $_tgHealth',
+                        style: const TextStyle(fontSize: 12)),
+                  ],
+                ]),
           ),
         ),
         const SizedBox(height: 12),
@@ -349,7 +478,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
             style: TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 4),
         const Text(
-            'Fastest: open the web app → Connect → "Connect WhatsApp" (one-tap Meta popup). Or paste both values below from developers.facebook.com → your app → WhatsApp → API Setup.',
+            'Fastest: open the web app → Connect → "Connect WhatsApp" (one-tap Meta popup). Or paste both values below from your Meta app dashboard (WhatsApp → API testing).',
             style: TextStyle(fontSize: 12)),
         const SizedBox(height: 8),
         TextField(
@@ -409,6 +538,49 @@ class _ConnectScreenState extends State<ConnectScreen> {
         const SizedBox(height: 4),
         const Text('We check the token with Telegram instantly.',
             style: TextStyle(fontSize: 12)),
+        const SizedBox(height: 12),
+        const Text('Or skip BotFather — shared bot (Pro)',
+            style: TextStyle(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 4),
+        const Text(
+            'Pro shops ride our house bot: one tap, no tokens, nothing to revoke. Free plan? Your own bot above stays free forever.',
+            style: TextStyle(fontSize: 12)),
+        const SizedBox(height: 8),
+        FilledButton.tonal(
+            onPressed: _busy ? null : _tgSharedConnect,
+            child: const Text('Connect shared bot')),
+      ]);
+    }
+    // Shared-mode step 2 (fresh tap OR earlier session!): customer link card.
+    final sharedOn =
+        _tgShared != null || ((_st?['telegram'] as Map?)?['shared'] == true);
+    if (sharedOn) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('Shared bot is live — give customers this link',
+            style: TextStyle(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 4),
+        const Text(
+            'Anyone who opens it once is bound to your shop forever. Owner commands stay in your dashboard.',
+            style: TextStyle(fontSize: 12)),
+        const SizedBox(height: 8),
+        if ((_tgShared ?? '').isNotEmpty)
+          Text(_tgShared!, style: const TextStyle(fontSize: 13)),
+        if ((_tgShared ?? '').isEmpty &&
+            '${((_st?['telegram'] as Map?)?['sharedBot'] ?? '')}'
+                .isNotEmpty)
+          Text(
+              'Connected via @${(_st?['telegram'] as Map?)?['sharedBot']} — generate a fresh link below.',
+              style: const TextStyle(fontSize: 13)),
+        const SizedBox(height: 8),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          FilledButton.tonal(
+              onPressed: _busy ? null : _tgSharedConnect,
+              child: const Text('Get customer link')),
+          OutlinedButton(
+              onPressed: _busy ? null : _tgSharedOff,
+              child: const Text('Switch off',
+                  style: TextStyle(fontSize: 13))),
+        ]),
       ]);
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

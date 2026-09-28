@@ -8,9 +8,8 @@
 import { useEffect, useRef, useState } from 'react'; // useState ×6 slices of UI state; useEffect = triple-fetch on mount
 import { Link } from 'react-router-dom'; // Link for the inline billing links (client-side nav)
 import { api, pop, toast } from '../lib/api.js'; // api() calls; pop() big animated results; toast() small notes
-import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 30s video gate (free tier, 10/day!)
+import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 30s video gate (free tier, 10/day!) — the ONLY ad surface (no cards!)
 import { categoriesFor, detailHintFor, learnExampleFor } from '../lib/niches.js'; // niche shelves + hints (electronics sees Phones, fashion sees Gowns!)
-import { maybeShowSponsor } from '../lib/ads.js'; // sponsor interstitial after adds (free tier, max once/day)
 import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures
 import LoadFailed from '../components/LoadFailed.jsx'; // branded failed card + Retry (never eternal skeletons!)
 import Ic from '../components/icons.jsx'; // trash + close glyphs
@@ -90,7 +89,7 @@ export default function Catalog() { // no props needed (fetches everything itsel
     if (f.howtobuy.trim() !== '') body.how_to_buy = f.howtobuy.trim(); // order steps ONLY when typed!
     if (f.photo.trim()) body.image_url = f.photo.trim(); // photo key ONLY when pasted (omitted = preserve existing on same-name updates — re-adding a price never wipes the photo!)
     const { ok, data } = await api('/api/me/products', { method: 'POST', body: JSON.stringify(body) });
-    if (ok) { pop('ok', 'Product added!', 'The AI can sell it from now on.'); setF({ name: '', price: '', desc: '', photo: '', qty: '', cat: '', delivery: '', location: '', howtobuy: '' }); load(); maybeShowSponsor(); } // success popup + clear form + reload + sponsor hook (fire-and-forget: no await — sponsor must never block!)
+    if (ok) { pop('ok', 'Product added!', 'The AI can sell it from now on.'); setF({ name: '', price: '', desc: '', photo: '', qty: '', cat: '', delivery: '', location: '', howtobuy: '' }); load(); } // success popup + clear form + reload
     else pop('err', 'Could not add product', data.error || 'Please try again.'); // failure popup (data.error from backend validation — includes bad-photo-URL + bad-stock messages!)
   }
   async function uploadMedia(file) { // Upload media: pick from YOUR files → hosted → URL fills the photo field

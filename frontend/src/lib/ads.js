@@ -78,23 +78,12 @@ export async function loadNetworkAds() { // called ONCE by App.jsx after login (
   nets.forEach((n) => injectTag(n.provider || 'custom', n.scriptUrl, n.freq || 'session')); // forEach (not await): tags load INDEPENDENTLY, in parallel
 }
 
-function seenToday() { // has the sponsor interstitial shown today? (daily cap lives HERE, client-side)
-  try { return localStorage.getItem('sponsor_seen') === new Date().toISOString().slice(0, 10); } // compare stored 'YYYY-MM-DD' with today (toISOString is UTC — fine for a daily cap)
-  catch { return true; } // storage broken (private mode) → pretend seen (fail CLOSED: fewer ads, never errors)
-}
-function markSeen() { // record today's showing…
-  try { localStorage.setItem('sponsor_seen', new Date().toISOString().slice(0, 10)); } catch {} // …silently ignore storage failures
-}
-
-// Clears today's sponsor cap (Admin "Preview" button uses this, then calls maybeShowSponsor).
-export function clearSponsorSeen() { try { localStorage.removeItem('sponsor_seen'); } catch {} }
-
-const VIDEO_LEN = 30; // the gate: 30 seconds of attention (sponsor invoice unit!)
-const VIDEO_SKIP_AT = 5; // skip unlocks at 5s (polite but paid — completions still track!)
+const VIDEO_LEN = 30; // the gate: 30 FULL seconds of attention (sponsor invoice unit!)
+const VIDEO_SKIP_AT = 25; // skip unlocks at 25s (5s left — watch the film or tap out at the death!)
 const VIDEO_PER_DAY = 10; // per section per day (connect × catalog × chats × insights… — volume is the revenue!)
 const VIDEO_GAP_MIN = 5; // minutes between two gates on the SAME section (never back-to-back nagging!)
 
-function videoCapKey(slot) { // per-section daily tally (UTC date — same convention as sponsor_seen!)
+function videoCapKey(slot) { // per-section daily tally (UTC date!)
   return `advideo:${slot}:` + new Date().toISOString().slice(0, 10);
 }
 function videoTally(slot) { // { count, last } — tolerant reader (old '1' flags + corrupt JSON → fresh tally, never crash!)
@@ -226,7 +215,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       const el = Math.min(VIDEO_LEN, (Date.now() - t0) / 1000); // elapsed VIEWING time, capped at 30 (loading doesn't count!)
       bar.style.width = (el / VIDEO_LEN * 100) + '%';
       count.textContent = String(Math.max(0, Math.ceil(VIDEO_LEN - el)));
-      if (el >= VIDEO_SKIP_AT && skipBtn.hidden) skipBtn.hidden = false; // skip unlocks at 5s of VIEWING (polite!)
+      if (el >= VIDEO_SKIP_AT && skipBtn.hidden) skipBtn.hidden = false; // skip unlocks at 25s of VIEWING (5s left!)
       for (const [mark, ev] of [[7.5, 'q25'], [15, 'q50'], [22.5, 'q75']]) { // quartile marks (7.5/15/22.5s of 30!)
         if (el >= mark && !quartiles[ev]) { quartiles[ev] = true; log(ev); }
       }
@@ -242,7 +231,8 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       const video = document.createElement('video');
       video.src = v.sponsorVideo; video.muted = true; video.playsInline = true; video.preload = 'auto'; // muted autoplay (browser POLICY — sound needs a tap!); playsInline (no iOS takeover!)
       video.setAttribute('disablepictureinpicture', ''); // keep it in the card (no floating escape hatch!)
-      video.style.cssText = 'width:100%;border-radius:12px;background:#000;max-height:300px;display:block;margin-top:8px;';
+      video.className = 'vgate-reel'; // 9:16 fullscreen reel frame (styled border + glow live in CSS!)
+      video.style.cssText = 'background:#000;display:block;margin-top:8px;';
       body.appendChild(video);
       video.addEventListener('ended', () => { log('complete'); finish('completed'); }); // natural end (< 30s clips complete early — fair!)
       video.addEventListener('playing', markStarted, { once: true }); // first pixels move → clock starts (loading/buffering never billed as viewing!)
@@ -259,7 +249,8 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       const video = document.createElement('video');
       video.muted = true; video.playsInline = true; video.preload = 'auto'; // muted inline (browser autoplay policy + no iOS takeover!)
       video.setAttribute('disablepictureinpicture', ''); // keep it in the card!
-      video.style.cssText = 'width:100%;border-radius:12px;background:#000;max-height:300px;display:block;margin-top:8px;cursor:pointer;';
+      video.className = 'vgate-reel'; // same 9:16 reel frame (tap = offer open!)
+      video.style.cssText = 'background:#000;display:block;margin-top:8px;cursor:pointer;';
       body.appendChild(video);
       const tapHint = document.createElement('p'); // click affordance (tapping the video opens the advertiser — IMA handles the landing page natively!)
       tapHint.className = 'hint'; tapHint.style.marginTop = '6px'; tapHint.textContent = 'Interested? Tap the video to open the offer.';
@@ -299,6 +290,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       }).catch(() => finish('layer-empty')); // SDK itself unreachable (blocked/offline) → next layer
     } else { // network zone (self-rendering .js tag: Monetag rewarded, or a .js Hilltop tag): renders INSIDE our frame…
       const holder = document.createElement('div');
+      holder.className = 'vgate-reel vgate-holder'; // network tag renders INSIDE the same 9:16 reel frame!
       holder.style.cssText = 'margin-top:8px;min-height:120px;';
       holder.innerHTML = '<p class="hint" data-vgate-ph>Loading video…</p>'; // placeholder (slow networks show intent, not blank!)
       body.appendChild(holder);
@@ -320,41 +312,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
   });
   } // end playVideoLayer (nested — hoisted, one layer attempt per call!)
 }
-
-// Per-CLICK: sponsored interstitial, max once/day, clearly labeled, one-tap close.
-// Call after high-attention free-tier moments (product add, AI limit hit).
-export async function maybeShowSponsor() { // called by Catalog + VeloSalesAI + Dashboard (exported for those)
-  const ads = await getAds(); // tier-resolved config…
-  const sp = ads?.sponsor; // ?. = null-safe (ads null → sp undefined, no crash)
-  if (!sp || seenToday()) return false; // no sponsor configured OR already shown today → skip (return value tells caller)
-  markSeen(); // mark FIRST (even if they close instantly, it counted as shown — daily cap holds)
-  const ov = document.createElement('div'); // fullscreen dim layer (reuses .pop-overlay styles = consistent look)
-  ov.className = 'pop-overlay';
-  ov.innerHTML = // static markup only (title/text set via textContent below = XSS-safe)…
-    '<div class="pop-card sponsor">' +
-    '<span class="sponsor-tag">Sponsored</span>' + // ALWAYS labeled (hiding sponsorship = illegal in most countries!)
-    '<h3></h3><p></p>' + // filled safely below
-    '<button class="btn sm">Visit sponsor</button>' + // primary: visit (this click = billable!)
-    '<button class="sponsor-skip">Continue without visiting</button>' + // secondary: free dismiss (forced views without exit = policy violation)
-    '<p class="hint sponsor-pro">Pro removes sponsors — see Billing</p></div>'; // upsell line (free→paid conversion!)
-  ov.querySelector('h3').textContent = sp.title; // textContent = HTML-injection-proof
-  ov.querySelector('p').textContent = sp.text || ''; // || '' guards missing text
-  if (sp.video) { // VIDEO AD: 15–30s mp4 from SPONSOR_VIDEO_URL (no network needed)…
-    const v = document.createElement('video'); // createElement (not innerHTML): the URL can never inject markup…
-    v.src = sp.video; // …mp4 file (Cloudinary free hosting works)…
-    v.controls = true; // play/pause/seek/volume (user-driven: never autoplay with sound — browser policy + politeness!)…
-    v.playsInline = true; // iOS: play inside the card, not fullscreen-takeover…
-    v.preload = 'metadata'; // load duration + first frame only (no data eaten until they press play)…
-    v.style.cssText = 'width:100%;border-radius:12px;margin:8px 0;background:#000;max-height:230px;'; // card-shaped player (black bars like real video ads)
-    ov.querySelector('.pop-card').insertBefore(v, ov.querySelector('.btn')); // …above the Visit button (see → tap = the billable click!)
-  }
-  const close = () => { ov.classList.add('out'); setTimeout(() => ov.remove(), 250); }; // fade (CSS) then remove from DOM
-  ov.querySelector('.btn').onclick = async () => { // VISIT = the money event…
-    try { await api('/api/me/ads/click', { method: 'POST', body: JSON.stringify({ slot: 'sponsor', target_url: sp.link }) }); } catch {} // …log it for sponsor invoicing FIRST (await = counted before they leave; try/catch = logging never blocks)
-    window.open(sp.link, '_blank', 'noopener'); // open sponsor in new tab (noopener = the sponsor page can't touch OUR window — security!)
-    close(); // dismiss after
-  };
-  ov.querySelector('.sponsor-skip').onclick = close; // skip = just close (no logging — only visits bill)
-  document.body.appendChild(ov); // mount (outside React, like toasts/pops)
-  return true; // shown (caller may ignore)
-}
+// NOTE: the old per-CLICK sponsor interstitial (maybeShowSponsor) was REMOVED —
+// the 30s video gate is the ONLY ad surface now (Visit-sponsor clicks live
+// INSIDE the gate). Backend click logging (/api/me/ads/click) stays: the gate
+// calls it. No card popups anywhere, by owner order!

@@ -10,7 +10,6 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'; // NavLink
 import { api, toast } from '../lib/api.js'; // api() for the logout call (+ version check below)
 import ThemeToggle from './ThemeToggle.jsx'; // sun/moon button (topbar — light mode for sensitive eyes!)
 import Notifications from './Notifications.jsx'; // bell (payment + update alerts)
-import AdSlot from './AdSlot.jsx'; // visible free-tier ad slot (Pro renders null — mounted once here = on every page)
 import Tour from './Tour.jsx'; // first-run coachmarks (mounted once here = available everywhere)
 
 const GROUPS = [ // sidebar sections: label + [iconKey, label, route] rows (data-driven nav = add a row, get a link)
@@ -128,7 +127,6 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
                 <button className="btn ghost sm" onClick={() => setUpdateBanner(null)} aria-label="Dismiss">Dismiss</button>
               </div>
             )}
-            <AdSlot /> {/* free-tier visible ads on EVERY page (Pro/null = renders nothing — zero layout shift for paid) */}
             {children}</main> {/* children = THE PAGE (Dashboard/Catalog/…) rendered inside the frame */}        </div>
       </div>
       <nav className="mobile-bar"> {/* bottom tab bar: mobile only (CSS), 5 key sections */}

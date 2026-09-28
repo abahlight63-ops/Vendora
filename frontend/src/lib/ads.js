@@ -268,7 +268,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
   return done(filled > 0 ? 'completed' : (candidates.length ? 'failed-all' : 'skipped-empty')); // watched something → completed; dead layers → failed-all; nothing configured → skipped-empty!
 
   // ── one gated player attempt (overlay lifetime = this promise!) ──
-  // len = this window's seconds (first layer: full 30; chained layers: what's left!).
+  // len = this window's seconds (first layer: full 60; chained layers: what's left!).
   // Resolves { outcome, viewed } — viewed feeds the 60s chain above!
   function playVideoLayer({ slot, pick, v, len }) { return new Promise((resolve) => { // overlay lifetime = this promise (close paths ALL resolve it!)
     const LEN = Math.max(5, Math.min(VIDEO_LEN, Number(len) || VIDEO_LEN)); // window clamp (silly crumbs rejected!)
@@ -278,14 +278,14 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
     let quartiles = {}; // q25/q50/q75 logged once each (completion RATE = attention quality!)
     const finish = (outcome) => { // single exit (clear timers, remove overlay, resolve caller!)
       if (done) return; done = true;
-      clearInterval(tick); clearTimeout(watchdog); clearTimeout(emptyCheck);
+      clearInterval(tick); clearTimeout(watchdog); clearTimeout(emptyCheck); clearTimeout(stallTimer);
       try { tagScript && tagScript.remove(); } catch {} // network tag yanked (no orphan players phoning home!)
       try { extraCleanup && extraCleanup(); } catch {} // IMA manager destroy (same hygiene!)
       ov.classList.add('out'); setTimeout(() => ov.remove(), 250); // fade, then gone
       resolve({ outcome, viewed });
     };
     const log = (event) => logVideo(slot, pick, event); // source pinned (closure!)
-    let started = false; // playback REALLY started? (countdown stays FROZEN at 30 until first pixels move — loading time never steals viewing time!)
+    let started = false; // playback REALLY started? (countdown stays FROZEN at 60 until first pixels move — loading time never steals viewing time!)
     const markStarted = () => { if (!started) { started = true; t0 = Date.now(); } }; // clock reset (idempotent — first signal wins!)
     // ── overlay skeleton (DOM-built + textContent = XSS-safe!) ──
     const ov = document.createElement('div');
@@ -309,6 +309,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
     // ── countdown + progress (one 250ms ticker drives everything — FROZEN until markStarted fires!) ──
     const skipAt = Math.max(0, LEN - 5); // skip unlocks 5s before THIS window ends (full 60 → 55s, chained windows scale!)
     const tick = setInterval(() => {
+      if (!started) return; // FROZEN until first pixels move (loading shows "Loading video…" + full count — zero viewing time burns, zero quartiles fire, no auto-complete on slow loads!)
       const el = Math.min(LEN, (Date.now() - t0) / 1000); // elapsed VIEWING time, capped at window (loading doesn't count!)
       viewed = el; // feed the chain (finish() snapshots this!)
       bar.style.width = (el / LEN * 100) + '%';
@@ -327,6 +328,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
     // ── the playable: own mp4, Hilltop VAST doc, OR network tag in our frame ──
     let tagScript = null;
     let emptyCheck = null; // blank-frame watchdog (network path only!)
+    let stallTimer = null; // stall watchdog (sponsor mp4 only — see below!)
     let extraCleanup = null; // VAST path stashes its teardown here (manager destroy + load timer!)
     if (pick === 'sponsor') { // own mp4: full gated player (countdown meters it, completion invoices it!)
       const video = document.createElement('video');
@@ -345,7 +347,10 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       video.addEventListener('playing', () => { hideHint(); markStarted(); }, { once: true }); // first pixels move → clock starts (loading/buffering never billed as viewing!)
       video.addEventListener('error', () => finish('layer-empty'), { once: true }); // dead mp4 → NEXT layer fast (never a 60s black box!)
       try { video.load(); } catch {}
-      video.play().catch(() => {}); // autoplay blocked (rare, muted usually passes) → watchdog still frees the user fairly
+      video.play().catch(() => {}); // autoplay blocked (rare, muted usually passes) → stall guard below frees the user fast
+      stallTimer = setTimeout(() => { // loaded metadata but never played (blocked/stalled stream)? → NEXT layer at 20s, never a 2-minute "Loading video…" hang!
+        if (!started && !done) { log('stall'); finish('layer-empty'); }
+      }, 20000);
       visitBtn.hidden = false; // sponsor gets the billable button (tap = money!)
       visitBtn.onclick = async () => { // VISIT = the money event (logged BEFORE leaving, like sponsor clicks!)
         log('click');

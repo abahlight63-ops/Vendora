@@ -74,6 +74,7 @@ async function goChromeConnect(setShowManual, toast) { // broken contexts (insta
   let target = '';
   try { target = `${new URL(window.location.href).origin}/connect?autoconnect=meta`; } catch {}
   if (!target) { setShowManual(true); return; }
+  try { localStorage.setItem('vendora-autoconnect', 'meta'); } catch {} // handshake: same-profile browsers share storage — the landing page auto-starts even if ?autoconnect is lost (e.g. a login redirect eats the query!)
   if (isAndroid()) {
     // Android intent: opens the DEFAULT browser (Chrome on most phones — respects Brave/Opera users too!).
     // Old code used googlechrome:// which dies SILENTLY when Chrome isn't the handler (the "never opens" bug!).
@@ -169,13 +170,16 @@ export default function Connect() {
     maybeShowVideoAd({ slot: 'page-connect' }); // page gate replaces per-button gates (10/day here, 5-min gaps — never stacked!)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useEffect(() => { // Chrome-handoff landing (?autoconnect=meta): strip param FIRST (refresh-safe!), open the meta road, arm auto-start
-    let q = null;
-    try { q = new URLSearchParams(window.location.search); } catch {}
-    if (!q || q.get('autoconnect') !== 'meta' || autoTried.current) return;
+  useEffect(() => { // browser-handoff landing (?autoconnect=meta OR the localStorage handshake): open the meta road, arm auto-start
+    if (autoTried.current) return;
+    let viaQuery = false, viaStore = false;
+    try { viaQuery = new URLSearchParams(window.location.search).get('autoconnect') === 'meta'; } catch {}
+    try { viaStore = localStorage.getItem('vendora-autoconnect') === 'meta'; } catch {}
+    if (!viaQuery && !viaStore) return;
     autoTried.current = true;
     autoGo.current = true;
-    try { window.history.replaceState({}, '', window.location.pathname); } catch {}
+    try { localStorage.removeItem('vendora-autoconnect'); } catch {} // consume once (refresh-safe!)
+    try { if (viaQuery) window.history.replaceState({}, '', window.location.pathname); } catch {}
     openRoad('meta');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -244,7 +248,12 @@ export default function Connect() {
 
   // ---- Embedded Signup launch ----
   async function embeddedConnect() {
-    if (isAndroid() && isStandaloneBrowser()) return goChromeConnect(setShowManual, toast); // installed app: popups die here — Continue ITSELF hands to full Chrome (auto-starts there!)
+    if (isStandaloneBrowser()) { // installed app (PWA): popups die here on EVERY platform — never even try one!
+      if (isAndroid()) return goChromeConnect(setShowManual, toast); // Android: Continue ITSELF hands to the real browser (auto-starts there!)
+      setShowManual(true); // iPhone installed app: iOS gives NO way to force-open Safari — manual road + guidance instead (never a dead tap!)
+      toast('Installed apps can\u2019t open the Meta window — open this site in Safari (share → Open in Safari), sign in, then tap Continue there. Or enter details manually below.', 'err');
+      return;
+    }
     if (isInAppBrowser()) { // e.g. opened from a WhatsApp chat link: Meta popup can NEVER work in this webview…
       if (isAndroid()) return goChromeConnect(setShowManual, toast); // …so auto-open the real browser (same one-tap promise as the installed app!)
       setShowManual(true); // iOS webviews can't be force-opened outward — manual + guidance instead (zero silent-death!)

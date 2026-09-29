@@ -58,63 +58,11 @@ async function getMe(req, res) {
   if (b.trialJustEnded) { // watchdog flipped us to free THIS load (flags below already saved)…
     b.subscription_status = 'expired'; // …mirror it in THIS response (UI honest on the very first expired load, no refresh needed!)
   }
-  // Ads: free tier only — Pro never sees ads.
-  // provider: the per-view network tag (Monetag MultiTag). sponsor: YOUR OWN
-  // direct deal with a local business (best rates).
-  // Free tier ALWAYS gets an object (even when nothing is configured) so the
-  // app can show its own house notice — Pro gets null (zero ad pixels).
+  // Ads REMOVED (owner call): every tier gets ads: null — zero ad pixels,
+  // zero ad endpoints, zero third-party ad code on any client.
   const tier = planService.tier(b); // 'pro' | 'free' from subscription + trial clock
-  let ads = null; // default: no ads (Pro, or logged-out edge, or ads opted OUT)
-  // ADS MODES (owner's call — see ads-future.md for the full playbook):
-  //   ADS_ENABLED=1    → full menu (networks + sponsor + video waterfall).
-  //   ADS_VIDEO_ONLY=1 → Hilltop gated video ONLY (no tags, no interstitials,
-  //                      no popunders, no Smartlinks — the careful path!).
-  // Frontend treats null as "no ads" and empty networks/sponsor as "video
-  // gates only" — every combination degrades to working buttons, never traps.
-  const videoOnly = process.env.ADS_VIDEO_ONLY === '1';
-  if ((process.env.ADS_ENABLED === '1' || videoOnly) && tier !== 'pro') { // free users only past this point…
-    // Video-only mode strips everything but the Hilltop gated player (careful
-    // integration: a video gate with countdown + skip can never hijack a click
-    // the way tags and offer links can — worst case it shows nothing and the
-    // button works exactly as today!).
-    const sponsor = !videoOnly && process.env.SPONSOR_TITLE && process.env.SPONSOR_LINK
-      ? { title: process.env.SPONSOR_TITLE, text: process.env.SPONSOR_TEXT || '', // && = both must exist; || '' = optional fields default empty
-          link: process.env.SPONSOR_LINK, image: process.env.SPONSOR_IMAGE || '',
-          video: (process.env.SPONSOR_VIDEO_URL || '').trim() || null } // optional mp4: plays inside the interstitial (video ads without any network!)
-      : null; // no sponsor configured (or video-only mode) → null (frontend shows its house notice)
-    // One entry: the primary per-view network (Monetag MultiTag). Single slot
-    // ONLY — second networks and popunders are unwired (banners/social bars
-    // only; popunders hijack the user's next click and drag the whole tab to
-    // the offer URL — the /drm/… lesson!). freq 'session' = inject once per
-    // login; the network itself throttles impressions.
-    // Video-only mode sends ZERO networks (no third-party JS on the page!).
-    const networks = videoOnly ? [] : [
-      { provider: process.env.ADS_PROVIDER || 'custom', scriptUrl: process.env.ADS_SCRIPT_URL || null, freq: 'session' },
-    ].filter((n) => n.scriptUrl); // .filter keeps only configured networks (unconfigured = no tag = no crash)
-    const videoOrder = String(process.env.ADS_VIDEO_ORDER || 'sponsor,hilltopads,monetag') // waterfall order (reorder without a deploy!)
-      .split(',').map((s) => s.trim().toLowerCase()).filter((s) => ['sponsor', 'hilltopads', 'monetag'].includes(s));
-    const hillTag = (process.env.ADS_VIDEO_HILLTOPADS || '').trim() || null;
-    // Video-only mode passes the configured URL straight through (the owner
-    // pastes it deliberately from their own Hilltop zone panel — zone #7458485
-    // serves VAST *documents*, not .js). Safety lives in the PLAYER, not the
-    // URL: .js tags script-inject, everything else is FETCHED as VAST XML by
-    // the on-demand IMA player (never executed, never navigated — the /drm/…
-    // danger was auto-injected tags + same-tab exits, neither applies here!).
-    // Any failure at any step degrades to a working button (never a trap!).
-    const hillPlayable = hillTag;
-    const video = videoOnly // video-only: Hilltop tag or nothing (monetag/sponsor layers forcibly off!)
-      ? { order: ['hilltopads'], sponsorVideo: null, sponsorLink: null, sponsorTitle: null, hilltopads: hillPlayable, monetag: null }
-      : { // 60s gated player on Connect (free tier): sponsor mp4 > HilltopAds VAST > Monetag rewarded
-        order: videoOrder.length ? videoOrder : ['sponsor', 'hilltopads', 'monetag'], // empty env = full waterfall (safe default!)
-        sponsorVideo: (sponsor && sponsor.video) || null, // own mp4 (first priority, billed per COMPLETE!)
-        sponsorLink: (sponsor && sponsor.link) || null,
-        sponsorTitle: (sponsor && sponsor.title) || null,
-        hilltopads: (process.env.ADS_VIDEO_HILLTOPADS || '').trim() || null, // VAST/video zone tag URL
-        monetag: (process.env.ADS_VIDEO_MONETAG || '').trim() || null, // rewarded/interstitial zone tag URL (VAST doc or .js — both play inline!)
-      };
-    ads = { networks, sponsor, scriptUrl: networks[0]?.scriptUrl || null, provider: networks[0]?.provider || 'custom', video }; // scriptUrl/provider kept for backward-compat with older frontend
-  }
-  res.json({ business: { ...b, tier }, ads }); // spread ...b copies all columns + adds tier; ads rides along so App.jsx knows whether to load tags
+  const ads = null; // ads gone for good (clients ignore this field now — kept so old app versions never crash on a missing key!)
+  res.json({ business: { ...b, tier }, ads }); // spread ...b copies all columns + adds tier
 }
 
 async function updateBusiness(req, res) {
@@ -608,7 +556,7 @@ async function complaintCreate(req, res) {
   const { rows } = await db.query( // INSERT, RETURNING the ticket (frontend appends it instantly — optimistic-ish, but server-confirmed!)
     `INSERT INTO complaints (business_id, subject, body) VALUES ($1, $2, $3)
      RETURNING id, subject, body, status, reply, created_at`,
-    [req.session.businessId, String(subject || 'Support request').slice(0, 120), body.trim()] // String()+slice caps subject (DB hygiene, same habit as adClick!)
+    [req.session.businessId, String(subject || 'Support request').slice(0, 120), body.trim()] // String()+slice caps subject (DB hygiene!)
   );
   { // acknowledgement email (best-effort!)
     const mail = require('../services/emailTemplates');
@@ -1011,43 +959,6 @@ async function metaPullProfile(req, res) {
   }
 }
 
-// Log a sponsor/ad click (per-click billing for direct sponsors).
-async function adClick(req, res) {
-  const { slot, target_url } = req.body || {}; // which placement + where they went
-  try {
-    await db.query( // plain audit INSERT (admin adStats aggregates these into Naira)
-      'INSERT INTO ad_clicks (business_id, slot, target_url) VALUES ($1, $2, $3)',
-      [req.session.businessId, String(slot || 'sponsor').slice(0, 40), String(target_url || '').slice(0, 500)] // String() + slice() = length-cap untrusted input (DB hygiene)
-    );
-    res.json({ ok: true });
-  } catch (e) {
-    console.error('adClick error:', e.message);
-    res.status(500).json({ error: 'Could not record click' });
-  }
-}
-
-// Gated video event: { slot, source, event } → video_views row (starts,
-// quartiles, completes, clicks, skips — completions are the invoice unit!).
-// Whitelisted values only (junk events die with 400, never touch the DB!).
-async function adVideoEvent(req, res) {
-  const SOURCES = ['sponsor', 'hilltopads', 'monetag'];
-  const EVENTS = ['start', 'q25', 'q50', 'q75', 'complete', 'click', 'skip', 'report'];
-  const { slot, source, event } = req.body || {};
-  if (!SOURCES.includes(source) || !EVENTS.includes(event)) {
-    return res.status(400).json({ error: 'Bad video event.' }); // tampered payloads stop here
-  }
-  try {
-    await db.query(
-      'INSERT INTO video_views (business_id, slot, source, event) VALUES ($1, $2, $3, $4)',
-      [req.session.businessId, String(slot || 'connect').slice(0, 40), source, event] // slice caps untrusted input (same habit as adClick!)
-    );
-    res.json({ ok: true });
-  } catch (e) {
-    console.error('adVideo error:', e.message);
-    res.status(500).json({ error: 'Could not record video event' });
-  }
-}
-
 // VeloSales Ai model list for the dropdown (locked flags depend on tier).
 async function aiModels(req, res) {
   const planService = require('../services/planService');
@@ -1236,8 +1147,6 @@ module.exports = { // every handler the routes file wires up (miss one here = ro
   ask,
   aiModels,
   aiStatus,
-  adClick,
-  adVideoEvent,
   botToggle,
   chatTakeover,
   chatReply,

@@ -11,7 +11,7 @@ import { api, fmtTime, pop } from '../lib/api.js'; // api() fetches; fmtTime for
 import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures (offline? waking? stale?)
 import LoadFailed from '../components/LoadFailed.jsx'; // branded failed card + Retry (never eternal skeletons!)
 import Ic from '../components/icons.jsx'; // <Ic n="chat"/> icon set
-import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 60s video gate (free tier — overview pays too!)
+
 
 function greeting() { // NOT a component (lowercase, returns a string): time-based hello.
   const h = new Date().getHours(); // getHours() = 0–23 local time…
@@ -46,7 +46,6 @@ export default function Dashboard({ biz }) { // biz = business object from App (
         setBill(b || null); // billing (|| null normalizes undefined)
       } catch (e) { if (!dead) setFailed({ status: 0, detail: describeNetError(e) }); } // network down / timeout → failed card (never eternal skeletons!)
     })(); // ← invoke the IIFE immediately
-    maybeShowVideoAd({ slot: 'page-dashboard' }); // video gate (fire-and-forget: overview loads UNDER the overlay!)
     const onOnline = () => { if (!dead) setTries((x) => x + 1); }; // back online? auto-retry (no tap needed!)
     window.addEventListener('online', onOnline);
     return () => { dead = true; window.removeEventListener('online', onOnline); }; // cleanup on unmount (no leaked listener!)
@@ -114,8 +113,6 @@ export default function Dashboard({ biz }) { // biz = business object from App (
       {quizVolume === '50-plus' && bill && bill.status !== 'active' && bill.status !== 'trialing' && ( // high-volume shops past trial, unpaid: honest plan nudge (quiz payoff — no surprise caps! trial strip covers trialing users above!)
         <div className="trial-strip"><Ic n="bolt" s={16} /><span><b>50+ chats a day? You'll outgrow Free fast.</b> Pro keeps every reply instant at volume.</span><Link to="/billing">See plans<Ic n="next" s={14} /></Link></div>
       )}
-
-      {/* visible free-tier ads live in Shell (every page) — no duplicate slot here */}
 
       {showGuide && ( // checklist card (see showGuide logic above)…
         <div className="card guide-card">

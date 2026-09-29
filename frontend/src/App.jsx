@@ -10,7 +10,7 @@ import Shell from './components/Shell.jsx'; // app frame (sidebar+topbar) wrappi
 import Splash from './components/Splash.jsx'; // brand intro (shown first — eager, it's tiny!)
 import { BrandGate, useMinDisplay } from './components/Loader.jsx'; // selling-point loading face (page fallback + login wall!) + 1s brand beat
 import { api } from './lib/api.js'; // backend fetch helper (session cookie included)
-import { loadNetworkAds, setAdsCache, resetAdsCache } from './lib/ads.js'; // free-tier ad tags (single loader — Pro gets nothing)
+
 import { useTheme } from './lib/theme.js'; // [theme, toggleTheme] (dark/light, persisted)
 // Pages load LAZY (one chunk each — first paint downloads shell + current page only, not all 20!):
 const Login = lazy(() => import('./pages/Login.jsx')); // sign in / sign up / OTP / forgot (public)
@@ -46,10 +46,6 @@ function useMe() { // CUSTOM HOOK: "who's logged in?" — returns {me, loading, 
   useEffect(() => { // runs ONCE on mount ([] deps = componentDidMount equivalent)
     api('/api/me').then(({ ok, data }) => { // destructure the {ok, data} shape api() returns
       setMe(ok ? data.business : null); // ok → store business (includes tier!); else guest (bad session/expired)
-      // Per-VIEW ads live ONLY in lib/ads.js (single source of truth).
-      // Backend sends tags to free tier only; Pro gets null → zero ads.
-      // Seed the ads cache from THIS response so lib/ads.js never double-fetches.
-      if (ok) { setAdsCache(data.ads); loadNetworkAds(); } else { resetAdsCache(); } // fire-and-forget (async fn, no await — ads must never block rendering)
       setLoading(false); // done either way (finally-style: success AND failure clear loading)
     }).catch(() => setLoading(false)); // network DOWN → guest mode, still clear loading (app must render something!)
   }, []); // [] = run once (no deps = never re-run)
@@ -68,7 +64,7 @@ export default function App() { // ROOT component (main.jsx renders this)
   const [theme, toggleTheme] = useTheme(); // dark/light (persisted, applied to <html>)
   const [splash, setSplash] = useState(true); // brand intro visible?
   const hideSplash = useCallback(() => setSplash(false), []); // useCallback = stable function identity (Splash's effect dep won't loop)
-  const handleLogout = useCallback(() => { setMe(null); resetAdsCache(); }, []); // logout clears login state AND ads cache (next login refetches fresh tier/tags)
+  const handleLogout = useCallback(() => { setMe(null); }, []); // logout clears login state (next login refetches fresh)
   if (splash) return <Splash done={hideSplash} />; // EARLY RETURN: splash covers everything until done() fires
   return ( // after splash: the route table (order matters — first match wins!)
     <Suspense fallback={<PageFallback />}> {/* lazy pages suspend here while their chunk downloads (fallback matches Guard's look!) */}<Routes>

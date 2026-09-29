@@ -21,7 +21,7 @@ const FAQS = [ // [question, answer] pairs — content lives HERE, markup below 
   ['Can I get a refund?', "First payment within 7 days if the service genuinely failed you — message us here with details. Duplicate charges are always refunded in full."], // double quotes dodge the apostrophe problem (pick quote style per string!)
   ['How do I cancel?', "Just stop paying — you drop to free at period end, nothing deleted. To erase everything, ask us here and it's gone within 14 days."],
   ['Can the AI make mistakes?', 'Rarely, but yes — which is why unsure chats hand off to you instead of guessing. Keep your catalog accurate and review flagged chats daily.'],
-  ['Why do I see sponsored messages?', 'The free plan is supported by clearly-labeled sponsor cards (max one a day) plus quiet network ads. Pro removes all of them — see Billing.'],
+  ['Will I see ads?', 'No — VeloSales Ai shows zero ads on every plan, free included. Pro adds profile sync, product photos and premium AI brains — see Billing.'],
   ['How do I install the app?', 'See the Install card at the top of this page — one tap on Android/desktop Chrome (system confirm included), Share → Add to Home Screen on iPhone Safari. Icon on your home screen, full-screen, no app store.'],
   ['How do I connect Telegram?', 'Open the Connect page and pick Telegram: message @BotFather → /newbot → name it → paste the token here. Then get your link code so owner commands work from your phone. Free, about a minute.'],
   ['Do voice notes work?', 'Yes — on Pro. Customers send voice notes on WhatsApp or Telegram, the bot transcribes them with Whisper and answers like normal text. Free tier gets a polite handoff instead.'],

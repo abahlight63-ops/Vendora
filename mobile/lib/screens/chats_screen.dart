@@ -6,7 +6,6 @@
 import 'package:flutter/material.dart';
 
 import '../api.dart';
-import '../ads.dart'; // page-entry 60s reel (free tier — inbox pays too!)
 import '../format.dart';
 import '../glass.dart';
 import '../motion.dart';
@@ -28,9 +27,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
   void initState() {
     super.initState();
     _load();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) unawaited(maybeShowVideoAd(context, slot: 'mobile-chats')); // reel gate (free tier — loads UNDER the overlay!)
-    });
   }
 
   Future<void> _load() async {

@@ -260,19 +260,7 @@ function envAudit() {
     const n = (process.env.TELEGRAM_SHARED_BOT_NAME || '').trim();
     if ((t && !n) || (!t && n)) console.warn('TELEGRAM CHECK: set BOTH TELEGRAM_SHARED_BOT_TOKEN and TELEGRAM_SHARED_BOT_NAME (or neither) — half-configured shared road refuses Pro connects.');
   }
-  if (process.env.ADS_VIDEO_ONLY === '1') { // video-only mode self-check (misconfig here = silent gates — shout instead!)
-    const tag = String(process.env.ADS_VIDEO_HILLTOPADS || '').trim();
-    if (!tag) console.warn('ENV MISSING: ADS_VIDEO_ONLY=1 but ADS_VIDEO_HILLTOPADS is empty — gates will silently skip (that is safe, just no revenue).');
-  }
-  { // video-gate boot line (booleans only — proves Render picked up the env AFTER redeploy: no more "did my paste apply?" guessing!)
-    const mode = process.env.ADS_VIDEO_ONLY === '1' ? 'video-only' : (process.env.ADS_ENABLED === '1' ? 'full' : 'off');
-    const layers = {
-      sponsorVideo: !!(process.env.SPONSOR_VIDEO_URL || '').trim(),
-      hilltopads: !!(process.env.ADS_VIDEO_HILLTOPADS || '').trim(),
-      monetag: !!(process.env.ADS_VIDEO_MONETAG || '').trim(),
-    };
-    console.log(`VIDEO GATE: mode=${mode} order=${process.env.ADS_VIDEO_ORDER || 'sponsor,hilltopads,monetag'} layers=${JSON.stringify(layers)} (gates serve FREE-tier shops only — trial counts as Pro, so test with a free account + no ad-blocker!)`);
-  }
+  console.log('ADS: removed (owner call) — every tier gets ads:null, zero ad code ships to any client.');
 }
 
 // Shared-bot webhook registration (Pro road!). Per-shop bots self-register on

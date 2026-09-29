@@ -544,27 +544,6 @@ async function notifyUser(req, res) {
   }
 }
 
-// ---- Ads status: are the Render ad keys live? (booleans only — key VALUES
-// never leave the server!) The #1 "ads don't show" cause is keys added in the
-// Render dashboard but the service never redeployed (Node reads env at boot).
-// #2 is testing on a Pro/trial account (backend sends ads to FREE tier only).
-// #3 is an ad-blocker in the test browser. ----
-async function adsStatus(req, res) {
-  res.json({
-    network1: !!(process.env.ADS_SCRIPT_URL || '').trim(),
-    provider1: process.env.ADS_PROVIDER || 'custom',
-    sponsor: !!(process.env.SPONSOR_TITLE || '').trim() && !!(process.env.SPONSOR_LINK || '').trim(),
-    sponsorTitle: (process.env.SPONSOR_TITLE || '').slice(0, 60),
-    sponsorVideo: !!(process.env.SPONSOR_VIDEO_URL || '').trim(), // own mp4 set? (gated player first priority — no network needed)
-    videoHilltopads: !!(process.env.ADS_VIDEO_HILLTOPADS || '').trim(), // VAST/video zone tag set?
-    videoMonetag: !!(process.env.ADS_VIDEO_MONETAG || '').trim(), // rewarded zone tag set (VAST doc or .js — both play inline)?
-    videoOrder: process.env.ADS_VIDEO_ORDER || 'sponsor,hilltopads,monetag',
-    rateNaira: Number(process.env.SPONSOR_RATE_PER_CLICK || 50),
-    rateViewNaira: Number(process.env.SPONSOR_RATE_PER_VIEW || 5), // ₦ per COMPLETED sponsor view (video invoice unit!)
-    note: 'Ads serve to FREE-tier owners only — Pro and trial accounts get ads:null by design. Test with a free account and no ad-blocker.',
-  });
-}
-
 // ---- AI health: same ping-all as the owner diagnosis, but behind the admin
 // gate (booleans + short errors only — key VALUES never leave the server!) ----
 async function aiStatus(req, res) {
@@ -641,8 +620,7 @@ module.exports = {
   updateBusiness,
   listBusinessProducts,
   deleteBusiness,
-  adStats,
-  adsStatus,
+  adStats, // historical earnings only (ads removed — no new rows!)
   aiStatus,
   adminLogin,
   adminLogout,

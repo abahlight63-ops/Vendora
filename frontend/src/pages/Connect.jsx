@@ -6,7 +6,7 @@
 // DATA: GET /api/me/channels (status + Meta App ID/Config ID) + GET /api/me/ai-models.
 import { useEffect, useRef, useState } from 'react'; // state per step; effect loads status once
 import { api, pop, toast } from '../lib/api.js'; // api() calls; pop() big outcomes; toast() small notes
-import { maybeShowVideoAd } from '../lib/ads.js'; // gated 60s video (free tier connects watch first — Pro never sees it!)
+
 import Ic from '../components/icons.jsx'; // drawn glyphs (never emoji!)
 import Loader from '../components/Loader.jsx'; // mini orbit in busy buttons (brand consistency!)
 import GlassUpsell from '../components/GlassUpsell.jsx'; // locked-model upgrade card
@@ -164,10 +164,9 @@ export default function Connect() {
       if (data.whatsapp && !brain) setBrain(data.whatsapp.model || 'gemini-flash-full'); // adopt server truth once (user edits after!)
     }
   }
-  useEffect(() => { // mount: status + models in parallel (no await between = both fly!) + ONE page-entry video gate
+  useEffect(() => { // mount: status + models in parallel (no await between = both fly!)
     load();
     api('/api/me/ai-models').then(({ ok, data }) => { if (ok && Array.isArray(data.models)) setModels(data.models); });
-    maybeShowVideoAd({ slot: 'page-connect' }); // page gate replaces per-button gates (10/day here, 5-min gaps — never stacked!)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => { // browser-handoff landing (?autoconnect=meta OR the localStorage handshake): open the meta road, arm auto-start

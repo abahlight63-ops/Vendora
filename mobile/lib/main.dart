@@ -10,7 +10,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'api.dart';
-import 'ads.dart';
 import 'glass.dart';
 import 'theme.dart';
 import 'splash.dart';
@@ -66,7 +65,6 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
   Future<List> _checkAuth() async {
     try {
       final me = await ApiClient.instance.me(); // cookie valid? (+ business row!)
-      try { seedAdsCache(me); } catch (_) {} // seed the gate cache from THIS response (zero extra HTTP — gates open instantly!)
       final biz = (me['business'] as Map?)?.cast<String, dynamic>();
       final niche = '${biz?['business_niche'] ?? ''}'.trim();
       return [true, niche.isEmpty];

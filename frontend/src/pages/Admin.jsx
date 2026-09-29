@@ -10,12 +10,12 @@ import { api, fmtDate, pop, toast } from '../lib/api.js';
 import { money } from '../lib/money.js';
 import Ic from '../components/icons.jsx';
 import Loader, { BrandGate, useMinDisplay } from '../components/Loader.jsx'; // BrandGate (access check) + mini orbit (AI test button!) + brand beat
-import { adsStatus, clearVideoSeen, maybeShowVideoAd } from '../lib/ads.js'; // video previews (daily caps bypassed)
+
 import LoadFailed from '../components/LoadFailed.jsx'; // failed-tab card + Retry (panels never spin forever!)
 import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures (offline? waking? stale?)
 
-const TABS = [['stats', 'Overview', 'chart', 'green'], ['users', 'Users', 'profile', 'blue'], ['revenue', 'Income', 'cash', 'gold'], ['transfers', 'Transfers', 'send', 'orange'], ['referrals', 'Referrals', 'gift', 'purple'], ['channels', 'Channels', 'plug', 'teal'], ['complaints', 'Complaints', 'help', 'red'], ['templates', 'Templates', 'copy', 'gold'], ['broadcast', 'Broadcast', 'mega', 'orange'], ['warn', 'Warn user', 'warn', 'red'], ['ai', 'AI health', 'spark', 'purple'], ['ads', 'Ads', 'card', 'green']]; // [key, label, icon, accent] quads — EVERY console page is a tab (one page visible at a time, never stacked!)
-const STATIC_TABS = ['templates', 'broadcast', 'warn', 'ai', 'ads']; // self-loading panels (no endpoint — render immediately, no skeleton!)
+const TABS = [['stats', 'Overview', 'chart', 'green'], ['users', 'Users', 'profile', 'blue'], ['revenue', 'Income', 'cash', 'gold'], ['transfers', 'Transfers', 'send', 'orange'], ['referrals', 'Referrals', 'gift', 'purple'], ['channels', 'Channels', 'plug', 'teal'], ['complaints', 'Complaints', 'help', 'red'], ['templates', 'Templates', 'copy', 'gold'], ['broadcast', 'Broadcast', 'mega', 'orange'], ['warn', 'Warn user', 'warn', 'red'], ['ai', 'AI health', 'spark', 'purple']]; // [key, label, icon, accent] quads — EVERY console page is a tab (one page visible at a time, never stacked!)
+const STATIC_TABS = ['templates', 'broadcast', 'warn', 'ai']; // self-loading panels (no endpoint — render immediately, no skeleton!)
 
 function isFresh(ts) { // "NEW" pill window: created within the last 24h (new users, fresh transfers, new referrals light up!)
   const t = new Date(ts).getTime();
@@ -109,7 +109,7 @@ export default function Admin() {
   const accent = (TABS.find(([k]) => k === tab) || [, , , 'green'])[3]; // active tab's color (drives header dot + panel tint!)
   return ( // CONSOLE (gate open)…
     <div className="admin-liquid">
-      <div className="page-head"><div className="row" style={{ width: '100%', alignItems: 'center' }}><button className="menu-btn" aria-label="Open admin menu" aria-expanded={navOpen} onClick={() => setNavOpen(true)}><span /><span /><span /></button><div><h1><span className={'admin-dot acc-' + accent} />Admin console</h1><p>Private — overview, users, income, transfers, referrals, channels, complaints, templates, broadcast, warnings, AI health, ads. One page at a time.</p></div><button className="btn ghost sm" onClick={signOut}>Sign out</button></div></div>
+      <div className="page-head"><div className="row" style={{ width: '100%', alignItems: 'center' }}><button className="menu-btn" aria-label="Open admin menu" aria-expanded={navOpen} onClick={() => setNavOpen(true)}><span /><span /><span /></button><div><h1><span className={'admin-dot acc-' + accent} />Admin console</h1><p>Private — overview, users, income, transfers, referrals, channels, complaints, templates, broadcast, warnings, AI health. One page at a time.</p></div><button className="btn ghost sm" onClick={signOut}>Sign out</button></div></div>
       <div className="card admin-tabs"> {/* tab bar — DESKTOP (phones get the hamburger drawer instead!) */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {TABS.map(([k, l, ic, ac]) => ( // destructure quads; icon + label per tab…
@@ -137,7 +137,6 @@ export default function Admin() {
         : tab === 'broadcast' ? <Broadcast act={act} seed={blastSeed} />
         : tab === 'warn' ? <WarnUser act={act} seed={warnSeed} />
         : tab === 'ai' ? <AiHealth />
-        : tab === 'ads' ? <AdsStatus />
         : <Complaints rows={d} act={act} />}
       </div>
     </div>
@@ -376,62 +375,6 @@ function AiHealth() { // AI KEYS LIVE? one-tap ping per provider (booleans + sho
   );
 }
 
-function AdsStatus() { // AD KEYS LIVE? booleans only — key VALUES never leave the server…
-  const [s, setS] = useState(null); // null = loading (skeleton first — same habit as tabs!)
-  const [previewMsg, setPreviewMsg] = useState(''); // preview outcome line (tells the truth when nothing shows) — hooks BEFORE any early return (React rule: same hook order every render!)
-  const [vstats, setVstats] = useState(null); // video funnel per source (starts/completes/clicks + invoice estimate!)
-  useEffect(() => { api('/api/admin/ads/status').then(({ ok, data }) => { if (ok) setS(data); }); }, []); // mount-only probe (admin session already open — 401 impossible here!)
-  useEffect(() => { api('/api/ads/stats').then(({ ok, data }) => { if (ok) setVstats(data); }); }, []); // earnings funnel (same mount — completions × rate = sponsor invoice!)
-  if (!s) return <div className="card"><div className="skel" /></div>;
-  const dot = (on) => (<span className={'pill ' + (on ? 'ok' : 'flag')} style={{ fontSize: 11 }}>{on ? 'Yes' : 'No'}</span>); // boolean → at-a-glance pill (no key values shown, ever!)
-  async function previewVideo(only) { // Preview button: force the REAL 60s gate (cap bypassed, events still logged as slot=preview!)
-    setPreviewMsg('Checking…');
-    clearVideoSeen('preview'); // bypass the daily cap (preview-only!)
-    const st = await adsStatus(); // Pro session? video config present?
-    if (st.state === 'pro') { setPreviewMsg('No preview: THIS browser session is Pro/trial — video gates serve free-tier owners only. Log in as a free shop to preview.'); return; }
-    const out = await maybeShowVideoAd({ slot: 'preview', force: true, only: only || null }); // only = fire ONE layer alone (isolated debugging!)
-    setPreviewMsg(out === 'skipped-empty'
-      ? 'No preview: nothing configured — set SPONSOR_VIDEO_URL or a network video zone, then restart.'
-      : out === 'failed-all'
-        ? 'Configured BUT dead: wrong URL shape (offer link pasted where a VAST/.js tag belongs?), zone still pending approval, or YOUR ad-blocker killed the player. Open devtools console → window.__lastVideoGate, then retest in Incognito with extensions off.'
-        : `Preview done (${out}). Events logged under slot=preview.`);
-  }
-  return (
-    <div className="card">
-      <h2><Ic n="cash" s={18} /> Ad keys live?</h2>
-      <p className="desc">Network ({s.provider1}): {dot(s.network1)} · Sponsor “{(s.sponsorTitle || '—')}”: {dot(s.sponsor)}{s.sponsor ? <> · Video: {dot(s.sponsorVideo)}</> : null} · Sponsor rate: ₦{s.rateNaira}/click</p>
-      <p className="desc">Video gate — own mp4: {dot(s.sponsorVideo)} · HilltopAds: {dot(s.videoHilltopads)} · Monetag: {dot(s.videoMonetag)} · Order: <code>{s.videoOrder}</code> · ₦{s.rateViewNaira}/completed view</p>
-      <p className="hint">{s.note}</p>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
-        <button className="btn ghost sm" onClick={() => previewVideo()}>Preview 60s video gate</button>
-        {previewMsg ? <span className="hint">{previewMsg}</span> : null}
-      </div>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
-        <span className="hint">Test one layer alone:</span>
-          {[['sponsor', 'Own mp4'], ['hilltopads', 'HilltopAds'], ['monetag', 'Monetag']].map(([id, label]) => (
-          <button key={id} className="btn ghost sm" onClick={() => previewVideo(id)}>Only {label}</button>
-        ))}
-      </div>
-      {vstats && Array.isArray(vstats.video) && vstats.video.length > 0 && (
-        <div style={{ marginTop: 12 }}>
-          <p className="hint" style={{ marginBottom: 6 }}>Video funnel by source (completions = invoice unit · est. this month: ₦{(vstats.estimate_video_month_naira || 0).toLocaleString()})</p>
-          <div className="table-wrap"><table>
-            <thead><tr><th>Source</th><th>Starts</th><th>Completes</th><th>Clicks</th><th>Reports</th><th>Rate</th></tr></thead>
-            <tbody>
-              {vstats.video.map((r) => (
-                <tr key={r.source}>
-                  <td><b>{r.source}</b></td><td>{r.starts}</td><td><b>{r.completes}</b></td><td>{r.clicks}</td><td>{Number(r.reports) > 0 ? <span className="pill flag">{r.reports} reported</span> : '—'}</td>
-                  <td><span className="hint">{r.starts ? Math.round(r.completes / r.starts * 100) + '%' : '—'}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table></div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function Stat({ n, l, good }) { // tiny tile (local component — lowercase file, uppercase fn: still a component!)
   return <div className={'stat' + (good === false ? ' warn' : ' good')}><div className="num">{n}</div><div className="lbl">{l}</div></div>; // good=false → gold (needs attention), else green
 }
@@ -511,7 +454,7 @@ function Stats({ d }) { // CONTROL HUB (docs/image_e1a38d81.jpg): liquid glass, 
         <Stat n={d.today} l="Chats today" />
         <Stat n={d.complaints} l="Open tickets" good={d.complaints === 0} />
       </div>
-      <p className="hint" style={{ marginTop: 16 }}>Collected = active payments only. Per-view ad money lives in your Monetag dashboard; per-click sponsor totals: Admin → Revenue uses /api/ads/stats with x-admin-key.</p>
+      <p className="hint" style={{ marginTop: 16 }}>Collected = active payments only. (Ads are retired — past ad totals live on in Revenue below.)</p>
     </div>
   );
 }
@@ -549,7 +492,7 @@ function Revenue({ d }) { // REVENUE: collected totals + where transfer money si
         <div className="stat good"><div className="num">${(Number(d.usd_cents || 0) / 100).toLocaleString()}</div><div className="lbl">USD collected</div></div>
         <div className="stat"><div className="num">₦{(Number(d.month_all || 0) / 100).toLocaleString()}</div><div className="lbl">This month (all)</div></div>
       </div>
-      <p className="hint" style={{ marginTop: 16 }}>Per-click sponsor earnings: call <b>GET /api/ads/stats</b> with your admin key. Per-view network earnings: Monetag dashboard.</p>
+      <p className="hint" style={{ marginTop: 16 }}>Historical ad earnings (ads retired — no new entries): call <b>GET /api/ads/stats</b> with your admin key.</p>
     </div>
   );
 }

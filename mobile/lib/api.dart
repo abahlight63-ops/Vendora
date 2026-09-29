@@ -385,12 +385,6 @@ class ApiClient {
     return (b as Map).cast<String, dynamic>();
   }
 
-  /// Sponsor click log (per-click billing for direct + video sponsors).
-  /// Mirrors web ads.js: logged BEFORE the visit, never blocks it.
-  Future<void> adClick(String slot, String url) async {
-    await post('/api/me/ads/click', {'slot': slot, 'target_url': url});
-  }
-
   /// In-app owner reply (inbox thread composer): sends through the chat's OWN
   /// channel (WhatsApp/Telegram, incl. shared-mode shops), clears the gold
   /// flag + pauses the bot (hand back explicitly when done — web parity!).
@@ -419,13 +413,6 @@ class ApiClient {
   Future<Map<String, dynamic>> waHealth() async =>
       (await get('/api/me/channels/meta/health') as Map)
           .cast<String, dynamic>();
-
-  /// Gated-video funnel event (starts, quartiles, completes, clicks, skips —
-  /// completions are the invoice unit!). Fire-and-forget from callers.
-  Future<void> videoEvent(String slot, String source, String event) async {
-    await post('/api/me/ads/video',
-        {'slot': slot, 'source': source, 'event': event});
-  }
 
   // ── Bell inbox: { items: [{id,title,body,link,image_url,video_url,is_read,created_at}…],
   // unread: n }. Newest first, max 20.

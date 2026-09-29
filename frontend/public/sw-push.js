@@ -1,6 +1,6 @@
 // ── frontend/public/sw-push.js ───────────────────────────────────
 // WHAT: OUR push service worker (phone-bar alerts even with the tab closed).
-// NOT the ad tag (public/sw.js belongs to the ad network — never touch it!).
+// (public/sw.js is a retired ad-network stub that unregisters itself — unrelated to this worker!).
 // Vite copies public/* verbatim to dist root, so this serves at /sw-push.js
 // (root scope REQUIRED — a nested path could never control all pages!).
 // No build step, no imports — plain worker script (keep it dependency-free!).

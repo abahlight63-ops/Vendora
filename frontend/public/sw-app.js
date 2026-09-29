@@ -2,7 +2,7 @@
 // WHAT: OUR app service worker (the install key + phone-bar push in ONE
 // worker). Vite copies public/* verbatim to dist root → serves at /sw-app.js
 // (root scope: controls every page — REQUIRED for the Chrome install prompt!).
-// NOT the ad tag (public/sw.js belongs to the ad network — never touch it!).
+// (public/sw.js is a retired ad-network stub that unregisters itself — unrelated to this worker!).
 // NOT sw-push.js anymore (its push handlers moved HERE — one scope holds ONE
 // worker, so the app worker owns push now; old installs auto-update to this
 // script on next visit, subscriptions survive the update!).

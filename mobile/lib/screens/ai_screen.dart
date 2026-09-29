@@ -7,7 +7,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../ads.dart';
+
 import '../api.dart';
 import '../glass.dart';
 import '../motion.dart';
@@ -201,9 +201,7 @@ class _AiScreenState extends State<AiScreen> {
       }
     } on ApiException catch (e) {
       setState(() => _msgs.add(_AiMessage(false, e.message, 'error')));
-      // Web parity: daily-limit wall doubles as the reel moment (free tier — same caps!).
       if (e.status == 429 && mounted && !_testBot) {
-        unawaited(maybeShowVideoAd(context, slot: 'mobile-ai'));
         _showUpgrade(); // quota wall = upgrade moment (same as the web Pro card!)
       }
     } catch (_) {

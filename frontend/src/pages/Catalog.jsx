@@ -4,11 +4,11 @@
 // this data is literally what the AI is allowed to say.
 // STATE: products (null = loading → skeletons), f (add-form draft), tier
 // (free/pro → sync box vs upgrade card), syncText/syncInfo/syncing.
-// Feedback: pop() for big outcomes, toast() for small ones, sponsor hook.
+// Feedback: pop() for big outcomes, toast() for small ones.
 import { useEffect, useRef, useState } from 'react'; // useState ×6 slices of UI state; useEffect = triple-fetch on mount
 import { Link } from 'react-router-dom'; // Link for the inline billing links (client-side nav)
 import { api, pop, toast } from '../lib/api.js'; // api() calls; pop() big animated results; toast() small notes
-import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 60s video gate (free tier, 10/day!) — the ONLY ad surface (no cards!)
+
 import { categoriesFor, detailHintFor, learnExampleFor } from '../lib/niches.js'; // niche shelves + hints (electronics sees Phones, fashion sees Gowns!)
 import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures
 import LoadFailed from '../components/LoadFailed.jsx'; // branded failed card + Retry (never eternal skeletons!)
@@ -55,7 +55,6 @@ export default function Catalog() { // no props needed (fetches everything itsel
     api('/api/me/billing').then(({ data }) => { if (!dead && data?.tier) setTier(data.tier); }).catch(() => {}); // ?. guards failed responses (tier stays 'free' default)
     api('/api/me/profile-sync').then(({ data }) => { if (!dead && data) setSyncInfo(data); }).catch(() => {}); // garnish fetches never break the page!
     api('/api/me').then(({ data }) => { if (!dead && data?.business?.business_niche) setNiche(data.business.business_niche); }).catch(() => {}); // shop lane → niche shelves + hints
-    maybeShowVideoAd({ slot: 'page-catalog' }); // video gate (fire-and-forget: catalog loads UNDER the overlay!)
     const onOnline = () => { if (!dead && failed) setTries((t) => t + 1); }; // internet's back? reload without a tap!
     window.addEventListener('online', onOnline);
     return () => { dead = true; window.removeEventListener('online', onOnline); };

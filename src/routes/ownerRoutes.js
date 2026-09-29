@@ -29,8 +29,6 @@ router.post('/me/profile-sync', ownerController.profileSync); // Pro: scaffold c
 router.post('/me/ask', ownerController.ask); // VeloSales Ai chat (tier + caps enforced)
 router.get('/me/ai-models', ownerController.aiModels); // dropdown list with locked flags
 router.get('/me/ai-status', ownerController.aiStatus); // one-tap health ping per provider (owner diagnosis)
-router.post('/me/ads/click', ownerController.adClick);
-router.post('/me/ads/video', ownerController.adVideoEvent); // gated video funnel events (starts → completes!)
 router.post('/me/bot', ownerController.botToggle);
 router.post('/me/conversations/:id/takeover', ownerController.chatTakeover);
 router.post('/me/conversations/:id/reply', ownerController.chatReply); // in-app owner reply (sends via the chat's own channel!)

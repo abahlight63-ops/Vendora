@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react'; // useState = stats object; useEffect = fetch+crunch on mount
 import { Link } from 'react-router-dom'; // deep-links (flag card → inbox!)
 import { api } from '../lib/api.js'; // conversations fetch
-import { maybeShowVideoAd } from '../lib/ads.js'; // page-entry 60s video gate (free tier — insights pays too!)
+
 import { describeLoadFailure, describeNetError } from '../lib/netDetail.js'; // one voice for load failures
 import LoadFailed from '../components/LoadFailed.jsx'; // branded failed card + Retry (never eternal dashes!)
 import { ForexChart, Spark } from '../components/Chart.jsx'; // forex line + sparkline (zero deps!)
@@ -58,7 +58,6 @@ export default function Insights() { // no props (self-sufficient)
     })(); // invoke immediately
     const onOnline = () => { if (!dead) setTries((t) => t + 1); }; // internet's back? reload without a tap! (failed-only would also do — tries refetch is idempotent anyway)
     window.addEventListener('online', onOnline);
-    maybeShowVideoAd({ slot: 'page-insights' }); // video gate (fire-and-forget: charts load UNDER the overlay!)
     return () => { dead = true; window.removeEventListener('online', onOnline); };
   }, [tries]); // [tries] = Retry bumps → refetch
   if (failed && !d) return ( // fetch failed BEFORE first paint (failed card, never skeletons!)

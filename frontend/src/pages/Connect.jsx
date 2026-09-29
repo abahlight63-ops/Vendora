@@ -70,17 +70,32 @@ function isInAppBrowser() { // opened inside WhatsApp/Instagram/Facebook/Twitter
     return /FBAN|FBAV|FB_IAB|FBIO[SD]|Instagram|Twitter|LinkedIn|Pinterest|Snapchat|TikTok|WhatsApp|Line\/|MicroMessenger/i.test(ua);
   } catch { return false; }
 }
-async function goChromeConnect(setShowManual, toast) { // installed PWA → full Chrome WITH auto-start (?autoconnect=meta lands → popup opens itself there — ONE tap total, same profile, login carries over!)
+async function goChromeConnect(setShowManual, toast) { // broken contexts (installed PWA, in-app browsers) → a REAL browser WITH auto-start (?autoconnect=meta lands → popup opens itself there — ONE tap total!)
   let target = '';
   try { target = `${new URL(window.location.href).origin}/connect?autoconnect=meta`; } catch {}
   if (!target) { setShowManual(true); return; }
-  window.location.href = 'googlechrome://navigate?url=' + encodeURIComponent(target); // straight into Chrome (Transsion-safe — no dialog to lose!)
-  setTimeout(async () => { // still here 2s later? Direct launch died → share sheet once, then manual
+  if (isAndroid()) {
+    // Android intent: opens the DEFAULT browser (Chrome on most phones — respects Brave/Opera users too!).
+    // Old code used googlechrome:// which dies SILENTLY when Chrome isn't the handler (the "never opens" bug!).
+    // No `package=` pin + browser_fallback_url = never stranded (worst case: we stay right here → watchdog below!).
+    try {
+      const u = new URL(target);
+      window.location.href = 'intent://' + u.host + (u.pathname + u.search + u.hash)
+        + '#Intent;scheme=' + u.protocol.replace(/:$/, '')
+        + ';S.browser_fallback_url=' + encodeURIComponent(target) + ';end';
+    } catch { /* fall through to the watchdog chain below */ }
+  } else {
+    try { // iOS: Chrome scheme (works when Chrome is installed; Safari users get the share-sheet step below!)
+      const u = new URL(target);
+      window.location.href = 'googlechrome://' + u.host + (u.pathname + u.search + u.hash);
+    } catch { /* fall through to the watchdog chain below */ }
+  }
+  setTimeout(async () => { // still here ~2s later? Direct launch died → share sheet once, then manual
     let left = false;
     try { left = document.hidden || !document.hasFocus(); } catch {}
-    if (left) return; // gone to Chrome (success — watchdog stands down!)
-    if (navigator.share) { // second chance: OS share sheet (user picks Chrome by hand!)
-      try { await navigator.share({ title: 'VeloSales Ai — Connect WhatsApp', text: 'Open in Chrome to finish connecting, then return here.', url: target }); return; }
+    if (left) return; // left for the browser (success — watchdog stands down!)
+    if (navigator.share) { // second chance: OS share sheet (user picks Chrome/Safari by hand!)
+      try { await navigator.share({ title: 'VeloSales Ai — Connect WhatsApp', text: 'Open in your browser to finish connecting, then return here.', url: target }); return; }
       catch (e) { /* dismissed → fall through to manual below */ }
     }
     chromeEscapeArmed(setShowManual, toast); // everything failed → manual road reveals itself (never a dead tap!)
@@ -230,9 +245,10 @@ export default function Connect() {
   // ---- Embedded Signup launch ----
   async function embeddedConnect() {
     if (isAndroid() && isStandaloneBrowser()) return goChromeConnect(setShowManual, toast); // installed app: popups die here — Continue ITSELF hands to full Chrome (auto-starts there!)
-    if (isInAppBrowser()) { // e.g. opened from a WhatsApp chat link: Meta popup can NEVER work in this webview — skip straight to manual (same result, zero silent-death!)
-      setShowManual(true);
-      toast('You opened this inside another app — popups are blocked here. Tap ⋮ / ••• → "Open in Chrome (or Safari)", then retry. Or enter details manually below.', 'err');
+    if (isInAppBrowser()) { // e.g. opened from a WhatsApp chat link: Meta popup can NEVER work in this webview…
+      if (isAndroid()) return goChromeConnect(setShowManual, toast); // …so auto-open the real browser (same one-tap promise as the installed app!)
+      setShowManual(true); // iOS webviews can't be force-opened outward — manual + guidance instead (zero silent-death!)
+      toast('You opened this inside another app — popups are blocked here. Tap share → "Open in Safari/Chrome", then retry. Or enter details manually below.', 'err');
       return;
     }
     const appId = st?.metaAppId, configId = st?.metaConfigId;

@@ -58,11 +58,19 @@ class _ConnectScreenState extends State<ConnectScreen> {
     super.dispose();
   }
 
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _err = null;
-    });
+  /// BotFather reality (web parity!): numeric bot id + colon + ~35-char
+  /// secret. Finger-selected pastes that FAIL this are truncated — caught
+  /// HERE with a helpful message, not at Telegram!
+  bool _tgShapeOk(String clean) =>
+      RegExp(r'^\d+:[\w-]{30,}$').hasMatch(clean);
+
+  Future<void> _load({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _loading = true;
+        _err = null;
+      });
+    }
     try {
       final results = await Future.wait([
         ApiClient.instance.channels(),
@@ -102,31 +110,56 @@ class _ConnectScreenState extends State<ConnectScreen> {
   }
 
   Future<void> _metaConnect() => _run(() async {
-        if (_phoneId.text.trim().isEmpty || _metaToken.text.trim().isEmpty) {
+        final pid = _phoneId.text.trim();
+        if (pid.isEmpty || _metaToken.text.trim().isEmpty) {
           showToast(context, 'Paste both values first', type: 'err');
           return;
         }
+        if (!RegExp(r'^\d{5,}$').hasMatch(pid)) {
+          showToast(context,
+              'Phone Number ID is all digits (e.g. 123456789012345) — re-copy it from Meta → WhatsApp → API testing.',
+              type: 'err');
+          return;
+        }
         final r = await ApiClient.instance.metaConnect(
-            _phoneId.text.trim(), _metaToken.text.trim());
+            pid, _metaToken.text.trim());
         _verifyToken = '${r['verifyToken'] ?? ''}';
         _metaToken.clear(); // token lives server-side now (never keep it on screen!)
         setState(() => _step = 2);
-        _load();
+        _load(silent: true); // silent (no skeleton flash — step 2 stays put!)
         showToast(context, 'Meta checked — now link the webhook.');
       });
 
   Future<void> _tgConnect() => _run(() async {
-        if (_tgToken.text.trim().isEmpty) {
+        // Strip invisible code units by NUMBER (ASCII-only source — same set the web app strips: 200B-200F, 2028-202F, FEFF, 00AD)!
+        bool visible(String c) {
+          final u = c.codeUnitAt(0);
+          return !((u >= 0x200B && u <= 0x200F) ||
+              (u >= 0x2028 && u <= 0x202F) ||
+              u == 0xFEFF ||
+              u == 0x00AD);
+        }
+        final clean = _tgToken.text
+            .split('')
+            .where(visible)
+            .join('')
+            .replaceAll(RegExp(r'\s+'), ''); // BotFather wraps lines — rejoin first!
+        if (clean.isEmpty) {
           showToast(context, 'Paste your BotFather token first',
               type: 'err');
           return;
         }
-        final r =
-            await ApiClient.instance.telegramToken(_tgToken.text.trim());
+        if (!_tgShapeOk(clean)) {
+          showToast(context,
+              'Token looks incomplete — TAP-copy it in BotFather with /token (finger-selecting drops characters).',
+              type: 'err');
+          return;
+        }
+        final r = await ApiClient.instance.telegramToken(clean);
         if (r['connected'] == true) {
           _tgToken.clear();
           setState(() => _step = 2);
-          _load();
+          _load(silent: true); // silent (no skeleton flash!)
           showToast(context, 'Telegram connected!');
         } else {
           showToast(context,
@@ -144,7 +177,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
                   'Customer link: ${r['deepLink'] ?? ''}\nCode: ${r['code'] ?? ''}\n${r['note'] ?? ''}';
               _step = 2;
             });
-            _load();
+            _load(silent: true); // silent (no skeleton flash!)
             showToast(context, 'Shared bot connected!');
           } else {
             showToast(context, 'Shared bot unavailable.', type: 'err');
@@ -195,7 +228,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
           _tgShared = null;
           _step = 1;
         });
-        _load();
+        _load(silent: true); // silent (no skeleton flash!)
         showToast(context, 'Shared bot switched off.');
       });
 
@@ -333,8 +366,16 @@ class _ConnectScreenState extends State<ConnectScreen> {
       ]));
     }
     final webhook = '${_st?['webhookUrl'] ?? ''}';
+    // Dropdown guard: saved brain missing from the fetched list (empty/failed
+    // models) → null, never a crash ("exactly one item with value"!).
+    final brainIds = {
+      for (final m in _models)
+        if (m is Map) '${m['id']}',
+    };
+    final brainValue =
+        (_brain != null && brainIds.contains(_brain)) ? _brain : null;
     return RefreshIndicator(
-      onRefresh: _load,
+      onRefresh: () => _load(silent: true), // RefreshIndicator spins itself (no skeleton flash!)
       child: ListView(padding: const EdgeInsets.all(16), children: [
         // Status board.
         GlassCard(
@@ -451,7 +492,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
                       style: TextStyle(fontSize: 12)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    initialValue: _brain,
+                    initialValue: brainValue,
                     decoration: const InputDecoration(
                         labelText: 'WhatsApp brain'),
                     items: [

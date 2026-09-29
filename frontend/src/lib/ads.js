@@ -338,8 +338,9 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       try { video.poster = ''; } catch {}
       video.className = 'vgate-reel'; // 9:16 fullscreen reel frame (styled border + glow live in CSS!)
       video.style.cssText = 'background:#000;display:block;margin-top:8px;';
-      const loadHint = document.createElement('p'); // instant loading state (replaced by pixels — never a black mystery box!)
-      loadHint.className = 'hint'; loadHint.style.marginTop = '6px'; loadHint.textContent = 'Loading video…';
+      const loadHint = document.createElement('div'); // instant loading state (shimmer + label — never a black mystery box!)
+      loadHint.className = 'vgate-loading';
+      loadHint.innerHTML = '<i></i><span>Loading video…</span>'; // static markup only (no config strings — XSS-safe!)
       body.appendChild(video); body.appendChild(loadHint);
       const hideHint = () => { try { loadHint.remove(); } catch {} };
       video.addEventListener('canplay', hideHint, { once: true }); // decodable frames → hint out (fast!)
@@ -409,7 +410,7 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       const holder = document.createElement('div');
       holder.className = 'vgate-reel vgate-holder'; // network tag renders INSIDE the same 9:16 reel frame!
       holder.style.cssText = 'margin-top:8px;min-height:120px;';
-      holder.innerHTML = '<p class="hint" data-vgate-ph>Loading video…</p>'; // placeholder (slow networks show intent, not blank!)
+      holder.innerHTML = '<div class="vgate-loading" data-vgate-ph><i></i><span>Loading video…</span></div>'; // shimmer placeholder (slow networks show intent, not blank!)
       body.appendChild(holder);
       tagScript = document.createElement('script');
       tagScript.async = true;
@@ -419,8 +420,8 @@ export async function maybeShowVideoAd({ slot = 'connect', force = false, only =
       try { preconnect(tagScript.src); } catch {}
       const checkPainted = () => {
         try {
-          return !!(holder.querySelector('video,iframe,canvas,object,embed') // real players…
-            || Array.from(holder.querySelectorAll('*')).some((el) => !el.hasAttribute('data-vgate-ph') && el.getBoundingClientRect().height > 4)); // …or any visible tag output (placeholder excluded!)
+          if (holder.querySelector('video,iframe,canvas,object,embed')) return true; // real players…
+          return Array.from(holder.querySelectorAll('*')).some((el) => !el.closest('[data-vgate-ph]') && el.getBoundingClientRect().height > 4); // …or any visible tag output (shimmer placeholder + its children excluded!)
         } catch { return false; }
       };
       tagScript.onload = () => { // tag code arrived → give it 1.5s to paint, then start the clock early (no waiting for the 6s guard!)

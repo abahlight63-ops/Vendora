@@ -50,7 +50,7 @@ services:
       - key: SPONSOR_RATE_PER_VIEW
         value: 5
       - key: ADS_ENABLED
-        value: 0
+        value: 1
       - key: ADS_VIDEO_ONLY
         value: 0
       - key: SPONSOR_TITLE

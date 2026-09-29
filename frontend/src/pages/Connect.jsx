@@ -58,6 +58,18 @@ function isAndroid() { // ANY Android browser or installed app (gate the Chrome 
     return /android/i.test(window.navigator.userAgent || '');
   } catch { return false; }
 }
+function isMobileBrowser() { // ANY phone/tablet browser (popup watchdogs + manual shortcut key off this — mobile popups die silently!)
+  try {
+    const ua = window.navigator.userAgent || '';
+    return /android|iphone|ipad|ipod|mobile/i.test(ua);
+  } catch { return false; }
+}
+function isInAppBrowser() { // opened inside WhatsApp/Instagram/Facebook/Twitter/X in-app view (Meta popups CANNOT work here — no popup support, cookies blocked!)
+  try {
+    const ua = String(window.navigator.userAgent || '');
+    return /FBAN|FBAV|FB_IAB|FBIO[SD]|Instagram|Twitter|LinkedIn|Pinterest|Snapchat|TikTok|WhatsApp|Line\/|MicroMessenger/i.test(ua);
+  } catch { return false; }
+}
 async function goChromeConnect(setShowManual, toast) { // installed PWA → full Chrome WITH auto-start (?autoconnect=meta lands → popup opens itself there — ONE tap total, same profile, login carries over!)
   let target = '';
   try { target = `${new URL(window.location.href).origin}/connect?autoconnect=meta`; } catch {}
@@ -218,6 +230,11 @@ export default function Connect() {
   // ---- Embedded Signup launch ----
   async function embeddedConnect() {
     if (isAndroid() && isStandaloneBrowser()) return goChromeConnect(setShowManual, toast); // installed app: popups die here — Continue ITSELF hands to full Chrome (auto-starts there!)
+    if (isInAppBrowser()) { // e.g. opened from a WhatsApp chat link: Meta popup can NEVER work in this webview — skip straight to manual (same result, zero silent-death!)
+      setShowManual(true);
+      toast('You opened this inside another app — popups are blocked here. Tap ⋮ / ••• → "Open in Chrome (or Safari)", then retry. Or enter details manually below.', 'err');
+      return;
+    }
     const appId = st?.metaAppId, configId = st?.metaConfigId;
     if (!appId || !configId) { setShowManual(true); return toast('One-tap signup is not set up yet — talk to support from Help', 'err'); }
     if (!/^\d{5,}$/.test(appId)) { setShowManual(true); return pop('err', 'Server App ID looks wrong', 'The META_APP_ID on Render must be the numeric App ID only (digits, no spaces, no business ID mixed in). Fix it there, redeploy, and retry.'); } // garbage-in guard (Meta answers these with "invalid app id"!)
@@ -246,10 +263,11 @@ export default function Connect() {
           toast('Signup closed before finishing — try again when ready', 'err'); // user cancelled (no error state stuck!)
         }
       }, { config_id: configId, response_type: 'code', override_default_response_type: true, extras: { setup: {}, featureType: 'whatsapp_business_app_onboarding', sessionInfoVersion: '3' } }); // extras = REQUIRED by Meta (without featureType the popup runs a plain login that never issues a WhatsApp code — the "I did everything!" mystery!)
-      signup.current.watch = setTimeout(() => { // popup answered NOTHING in 2 min (swallowed callback — blocked third-party cookies do this!) → unstick + support pointer
+      const watchMs = isMobileBrowser() ? 45000 : 120000; // phones: Meta popups die SILENTLY (no callback ever!) — unstick in 45s with manual ready; desktop keeps the 2-min patience
+      signup.current.watch = setTimeout(() => { // popup answered NOTHING (swallowed callback — blocked third-party cookies do this!) → unstick + manual road + support pointer
         signup.current.watch = null; setBusy(false); setShowManual(true);
-        toast('Popup went quiet — allow popups + third-party cookies for this site and retry, or talk to support from Help.', 'err');
-      }, 120000); // 2-min cap (matches the TEST-verify patience — never an eternal spinner!)
+        toast(isMobileBrowser() ? 'Popup went quiet (phones do this silently) — allow popups + third-party cookies and retry, or just enter details manually below.' : 'Popup went quiet — allow popups + third-party cookies for this site and retry, or talk to support from Help.', 'err');
+      }, watchMs); // never an eternal spinner!
     } catch (e) { setBusy(false); setShowManual(true); toast('Popup failed — allow popups and retry', 'err'); }
   }
 
@@ -481,7 +499,7 @@ export default function Connect() {
               </div>
             )}
             <p className="hint">Stuck on the popup? Allow popups for this site and retry — or talk to support from Help.</p>
-            {!showManual && isStandaloneBrowser() && <p className="hint" style={{ marginTop: 8 }}>On the installed app? Popups struggle here — <button type="button" className="btn ghost sm" onClick={() => setShowManual(true)}>enter details manually</button></p>}
+            {!showManual && (isStandaloneBrowser() || isInAppBrowser() || isMobileBrowser()) && <p className="hint" style={{ marginTop: 8 }}>On a phone{isInAppBrowser() ? ' inside another app' : ''}? Popups struggle here — <button type="button" className="btn ghost sm" onClick={() => setShowManual(true)}>enter details manually instead</button> (same result, ~1 minute).</p>}
             {showManual && (<div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
               <h2>Enter details manually</h2>
               <p className="desc">Same two values from your Meta app dashboard (WhatsApp → API testing) — no developer maze:</p>

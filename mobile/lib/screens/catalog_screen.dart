@@ -342,11 +342,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 ),
               )
             : _err != null
-                ? Center(child: Text(_err!))
+                ? EmptyState("Couldn't load your catalog", _err!, retry: _load)
                 : _items!.isEmpty
-                    ? const Center(
-                        child: Text(
-                            'Empty shelf — add your first product above.'))
+                    ? const EmptyState('Empty shelf',
+                        'Add your first product above — it takes 10 seconds.')
                     : RefreshIndicator(
                         onRefresh: _load,
                         child: ListView.builder(

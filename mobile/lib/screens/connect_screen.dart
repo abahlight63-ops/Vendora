@@ -437,12 +437,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
       );
     }
     if (_err != null) {
-      return Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text(_err!),
-        const SizedBox(height: 12),
-        FilledButton(onPressed: _load, child: const Text('Retry')),
-      ]));
+      return EmptyState("Couldn't load your channels", _err!, retry: _load);
     }
     final webhook = '${_st?['webhookUrl'] ?? ''}';
     // Dropdown guard: saved brain missing from the fetched list (empty/failed

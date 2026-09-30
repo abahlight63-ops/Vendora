@@ -212,3 +212,45 @@ Future<T?> glassDialog<T>(
     ),
   );
 }
+
+/// The app's ONE empty-state. Several screens used to hand-roll this as a bare
+/// `Center(child: Text(...))`, which meant no horizontal padding (long messages
+/// ran edge-to-edge on narrow phones) and — worse — an ERROR rendered exactly
+/// like a calm "nothing here" message, with no Retry. Those are the two states
+/// a user most needs to tell apart.
+class EmptyState extends StatelessWidget {
+  const EmptyState(this.title, this.message, {super.key, this.retry});
+
+  final String title; // bold lead line, mirrors the web app's <b> + text shape
+  final String message; // one honest sentence, never dev-speak
+  final VoidCallback? retry; // non-null renders Retry — set it on FAILURES only
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(title,
+                textAlign: TextAlign.center,
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 6),
+            Text(message,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 13,
+                    color: scheme.onSurface.withValues(alpha: 0.7))),
+            if (retry != null) ...[
+              const SizedBox(height: 14),
+              FilledButton(onPressed: retry, child: const Text('Retry')),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}

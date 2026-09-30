@@ -145,21 +145,15 @@ class _ChatsScreenState extends State<ChatsScreen> {
                 ),
               )
             : _err != null
-                ? Center(
-                    child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                        Text(_err!),
-                        const SizedBox(height: 12),
-                        FilledButton(
-                            onPressed: _load,
-                            child: const Text('Retry')),
-                      ]))
+                ? EmptyState("Couldn't load your inbox", _err!, retry: _load)
                 : _list.isEmpty
-                    ? Center(
-                        child: Text((_filter != 'all' || _chan != 'all')
-                            ? 'No chats match these filters — try All.'
-                            : 'Chats appear once you connect WhatsApp or Telegram.'))
+                    ? EmptyState(
+                        (_filter != 'all' || _chan != 'all')
+                            ? 'No chats match'
+                            : 'No chats yet',
+                        (_filter != 'all' || _chan != 'all')
+                            ? 'Nothing here with these filters on — try All.'
+                            : 'Chats appear once you connect WhatsApp or Telegram.')
                     : RefreshIndicator(
                         onRefresh: _load,
                         child: ListView.builder(
@@ -435,7 +429,7 @@ class _ThreadScreenState extends State<ThreadScreen> {
         ),
         Expanded(
           child: _err != null
-              ? Center(child: Text(_err!))
+              ? EmptyState("Couldn't load this chat", _err!)
               : _msgs == null
                   ? ListView(
                       padding: const EdgeInsets.all(12),

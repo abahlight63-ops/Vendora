@@ -168,7 +168,7 @@ export default function Dashboard({ biz }) { // biz = business object from App (
             </div>
           ) : ( // …active user → latest chats (static rows: not links, just status) —
             <div className="qa-list">
-              {s.latest.length === 0 ? <div className="empty"><b>No chats yet</b>Share your WhatsApp number — chats land here.</div>
+              {s.latest.length === 0 ? <div className="empty"><b>No chats yet</b>Share your WhatsApp or Telegram number — chats land here.</div>
                 : s.latest.map((c) => (<div key={c.id} className="qa static"><span className={'qa-dot ' + (c.needs_human ? 'flag' : 'ok')} /><div><b>{c.customer_name || c.customer_number}</b><span className="hint">{(c.last_message || '').slice(0, 80)} · {fmtTime(c.updated_at)}</span></div></div>))} {/* string concat picks dot color (flag=gold, ok=green) */}
             </div>
           )}

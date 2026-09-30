@@ -146,6 +146,7 @@ export default function Connect() {
   const [tgLink, setTgLink] = useState(null);
   const [tgShared, setTgShared] = useState(null); // shared-bot result {code, botName, deepLink, note} (Pro road!)
   const [tgHealth, setTgHealth] = useState(null); // webhook health verdict (Verify button!)
+  const [tgChecking, setTgChecking] = useState(false); // silent background verify (own flag — never fights the shared busy lock!)
   const [waHealth, setWaHealth] = useState(null); // Meta token liveness verdict (Verify WhatsApp button!)
   // Brain + upsell
   const [brain, setBrain] = useState('');
@@ -356,7 +357,7 @@ export default function Connect() {
       if (ok && data.connected) { setTgToken(''); setStep(2); load(); pop('ok', 'Telegram connected' + (data.botUsername ? ' as ' + data.botUsername : '') + '!', 'Send your bot any message to test it.'); }
       else if (status === 401) pop('err', 'Signed out', 'Your session expired — sign in again, then retry.');
       else if (status === 404) pop('err', 'Shop not found', 'Your login lost its shop — sign out and sign in again, then retry. (NOT your token.)');
-      else if (status === 502) pop('err', 'Telegram unreachable', msg || 'Our server could not reach Telegram. Wait a minute and retry.');
+      else if (status === 502) pop('err', /hook/i.test(msg) ? 'Token saved, delivery not yet wired' : 'Telegram unreachable', msg || 'Our server could not reach Telegram. Wait a minute and retry.'); // 502 covers both "Telegram said no" and "we could not reach Telegram" — title follows the reason
       else if (status >= 500) pop('err', 'Server error', (msg || 'Our server hiccuped — wait a minute and retry.') + (data && data.ref ? ` (ref: ${data.ref} — send me this code!)` : '') + ' (NOT your token.)');
       else pop('err', 'Token rejected', msg || 'Check the token from BotFather.');
     } catch (e) {
@@ -405,18 +406,38 @@ export default function Connect() {
     }
   }
   // ---- Webhook health: asks Telegram directly (hook registered? pointing at us? last error?) ----
-  async function tgHealthCheck() {
-    setBusy(true); setTgHealth(null);
+  // repair=true tells the server to re-register a stale hook IN PLACE — the
+  // one-tap fix for "it worked, then stopped" (deploy/URL drift is OUR fault,
+  // so the owner should never have to dig out a working token to fix it).
+  async function tgHealthCheck(repair) {
+    if (repair) setBusy(true);
+    setTgChecking(true);
     try {
-      const { ok, data } = await api('/api/me/telegram/health');
-      if (ok) setTgHealth(data);
-      else toast((data && data.error) || 'Health check failed', 'err');
+      const { ok, data } = await api('/api/me/telegram/health', repair ? { method: 'POST', body: JSON.stringify({ repair: true }) } : undefined);
+      if (ok) {
+        setTgHealth(data);
+        if (repair) {
+          if (data.repaired && data.repaired.healed) pop('ok', 'Telegram repaired', 'We re-registered your bot\u2019s delivery hook \u2014 nothing for you to re-enter.');
+          else if (data.ok) toast('Already healthy \u2014 nothing to fix.');
+          else toast('Could not repair automatically \u2014 details below.', 'err');
+        }
+      } else toast((data && data.error) || 'Health check failed', 'err');
     } catch (e) {
-      toast('Server unreachable — wait a minute and retry', 'err');
+      if (repair) toast('Server unreachable \u2014 wait a minute and retry', 'err'); // silent check must never nag
     } finally {
+      setTgChecking(false);
       setBusy(false);
     }
   }
+  // Silent truth-check on arrival: a token sitting in the database is NOT proof
+  // Telegram can still reach us. One cheap read, no toasts, no spinner —
+  // the pill just tells the truth instead of parroting "connected".
+  const tgCheckedOnce = useRef(false);
+  useEffect(() => {
+    if (!tgOn || tgCheckedOnce.current) return;
+    tgCheckedOnce.current = true;
+    tgHealthCheck(false);
+  }, [tgOn]);
   // ---- Brain pick ----
   async function saveBrain(id) {
     const m = models.find((x) => x.id === id);
@@ -450,8 +471,11 @@ export default function Connect() {
           <span className={'pill ' + (!st ? 'off' : wa && wa.live ? 'ok' : 'flag')} style={{ fontSize: 13 }}>
             {!st ? 'Checking…' : `WhatsApp: ${wa.live ? 'LIVE' : 'OFF'}`} {/* LIVE = inbound seen (TEST passed!) */}
           </span>
-          <span className={'pill ' + (!st ? 'off' : tgOn ? 'ok' : 'flag')} style={{ fontSize: 13 }}>
-            {!st ? 'Checking…' : `Telegram: ${tgOn ? (st.telegram.shared ? 'LIVE · shared' : 'LIVE') : 'OFF'}`}
+          <span className={'pill ' + (!st ? 'off' : !tgOn ? 'flag' : tgHealth && tgHealth.configured ? (tgHealth.ok ? 'ok' : 'flag') : 'off')} style={{ fontSize: 13 }}>
+            {!st ? 'Checking…' : !tgOn ? 'Telegram: OFF'
+              : tgHealth && tgHealth.configured
+                ? (tgHealth.ok ? `Telegram: LIVE${st.telegram.shared ? ' · shared' : ''}${tgChecking ? ' (checking)' : ''}` : 'Telegram: NEEDS REPAIR')
+                : `Telegram: READY (not verified)${tgChecking ? ' — checking…' : ''}`} {/* "connected" is not "delivering" — the live hook verdict wins */}
           </span>
           {wa && wa.number && <span className="hint">Shop number: {wa.number}</span>}
           {wa && wa.metaConnected && <span className="hint">Meta linked — no credentials needed from you.</span>}
@@ -472,13 +496,25 @@ export default function Connect() {
         {tgOn && (
           <div style={{ marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <button className="btn ghost sm" disabled={busy} onClick={tgHealthCheck}>{busy ? 'Verifying…' : 'Verify Telegram connection'}</button>
+              <button className="btn ghost sm" disabled={tgChecking || busy} onClick={() => tgHealthCheck(false)}>{tgChecking ? 'Verifying…' : 'Verify Telegram connection'}</button>
+              {tgHealth && tgHealth.configured && !tgHealth.ok && <button className="btn sm" disabled={busy} onClick={() => tgHealthCheck(true)}>{busy ? 'Repairing…' : 'Repair now'}</button>}
               {tgHealth && tgHealth.configured && tgHealth.ok && <span className="pill ok" style={{ fontSize: 12 }}>Webhook OK{tgHealth.pending ? ` · ${tgHealth.pending} queued` : ''}</span>}
-              {tgHealth && tgHealth.configured && !tgHealth.ok && <span className="pill flag" style={{ fontSize: 12 }}>Needs attention</span>}
+              {tgHealth && tgHealth.configured && !tgHealth.ok && <span className="pill flag" style={{ fontSize: 12 }}>{tgHealth.matches === false ? 'Hook pointing elsewhere' : 'Needs attention'}</span>}
             </div>
             {tgHealth && !tgHealth.configured && <p className="hint" style={{ marginTop: 6 }}>No bot saved yet — connect below first.</p>}
             {tgHealth && tgHealth.configured && tgHealth.ok && <p className="hint" style={{ marginTop: 6 }}>Telegram delivers to us correctly. Message the bot — it answers. Customers: nothing to install, just open your bot/link and chat.</p>}
-            {tgHealth && tgHealth.configured && !tgHealth.ok && <p className="hint" style={{ marginTop: 6 }}>{tgHealth.lastError ? `Telegram says: ${tgHealth.lastError}. ` : 'Webhook not registered. '}Fix: re-save your token (own bot) or reconnect shared — saving re-registers the webhook automatically.</p>}
+            {tgHealth && tgHealth.configured && !tgHealth.ok && (
+              <p className="hint" style={{ marginTop: 6 }}>
+                {tgHealth.matches === false
+                  ? 'Your bot is delivering somewhere else (usually our server moved since you connected). '
+                  : (tgHealth.lastError ? `Telegram says: ${tgHealth.lastError}. ` : 'Webhook not registered. ')}
+                {tgHealth.matches === false
+                  ? 'Tap Repair now — it re-registers the hook in seconds and you do NOT need to re-paste your token.'
+                  : 'Tap Repair now. If repair cannot fix it, the token itself is dead (revoked in BotFather) — create a new bot and re-save it here.'}
+                {tgHealth.expectedUrl ? <><br />It must point at: <code>{tgHealth.expectedUrl}</code></> : null}
+              </p>
+            )}
+            {tgHealth && tgHealth.repaired && tgHealth.repaired.healed && <p className="hint" style={{ marginTop: 6, color: 'var(--good, #17a673)' }}>Repaired just now — your bot is delivering to us again. No queued messages were dropped.</p>}
           </div>
         )}
       </div>

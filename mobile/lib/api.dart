@@ -403,10 +403,17 @@ class ApiClient {
       (await post('/api/me/telegram/shared', {'off': true}) as Map)
           .cast<String, dynamic>();
 
-  /// Telegram webhook health: { configured, shared, ok, webhookUrl, pending,
-  /// lastError } — powers the Verify button (web parity!).
+  /// Telegram webhook health: { configured, shared, ok, webhookUrl,
+  /// expectedUrl, matches, pending, lastError, repaired } — powers the Verify
+  /// button (web parity!).
   Future<Map<String, dynamic>> telegramHealth() async =>
       (await get('/api/me/telegram/health') as Map).cast<String, dynamic>();
+
+  /// Re-registers a stale Telegram hook server-side (no token re-entry) — the
+  /// one-tap fix for "it worked, then stopped".
+  Future<Map<String, dynamic>> telegramRepair() async =>
+      (await post('/api/me/telegram/health', {'repair': true}) as Map)
+          .cast<String, dynamic>();
 
   /// WhatsApp token liveness: { connected, phone, reason } — powers the
   /// Verify WhatsApp button (dead temp tokens named here!).

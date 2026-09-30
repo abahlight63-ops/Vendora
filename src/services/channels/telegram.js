@@ -11,6 +11,48 @@
 
 const api = (token) => `https://api.telegram.org/bot${token}`; // base URL builder (token IN the path — Telegram's design, not ours!)
 
+const HOOK_MS = 15000; // setWebhook/getWebhookInfo cap (cold networks get 15s — same patience as the save-time getMe check!)
+
+async function timedPost(token, method, body) { // POST with a guillotine (a hung Telegram call must never stall boot/watchdog/save!)
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), HOOK_MS);
+  try {
+    const res = await fetch(`${api(token)}/${method}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body || {}), signal: ctrl.signal,
+    });
+    return { ok: res.ok, data: await res.json().catch(() => ({})) };
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// Our hook URL for one shop (single convention — save, heal and health all build it HERE, never inline!).
+function shopHookUrl(base, bizId) {
+  return `${String(base || '').replace(/\/$/, '')}/webhook/telegram/${bizId}`;
+}
+
+// (Re-)register a shop's webhook. Returns { ok, detail } — ok means Telegram
+// accepted (verified by re-read, not by trust!). dropPending=true on fresh
+// saves (no stale backlog); heals pass false to keep whatever queued.
+async function setShopWebhook(token, base, bizId, dropPending) {
+  if (!token || !base || bizId === undefined || bizId === null) return { ok: false, detail: 'missing-config' };
+  const url = shopHookUrl(base, bizId);
+  const secret = (process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();
+  try {
+    const { ok, data } = await timedPost(token, 'setWebhook', {
+      url, ...(secret ? { secret_token: secret } : {}),
+      drop_pending_updates: dropPending !== false,
+    });
+    if (!ok || !data || data.ok !== true) {
+      return { ok: false, detail: (data && data.description ? String(data.description) : 'rejected').slice(0, 120) };
+    }
+    return { ok: true, detail: url };
+  } catch (e) {
+    return { ok: false, detail: String((e && e.message) || 'unreachable').slice(0, 120) };
+  }
+}
+
 // Verify the secret header BotFather attaches (set it in setWebhook!).
 function verifySecret(req) {
   const expected = process.env.TELEGRAM_WEBHOOK_SECRET; // ONE secret for all bots (set once, reuse everywhere — rotation = one env edit!)
@@ -120,4 +162,4 @@ function parseInbound(update) {
   return null; // anything else (polls, locations, contacts…) ignored for v1 (scope!)
 }
 
-module.exports = { verifySecret, sendText, sendPhoto, sendAction, downloadFile, parseInbound }; // route + webhook import these six
+module.exports = { verifySecret, sendText, sendPhoto, sendAction, downloadFile, parseInbound, shopHookUrl, setShopWebhook }; // route + webhook + self-heal import these

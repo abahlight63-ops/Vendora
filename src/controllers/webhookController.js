@@ -51,11 +51,28 @@ async function handleInbound(req, res) {
         ? (to, msg, mediaUrl) => meta.sendText(business.meta_token, business.meta_phone_number_id, (metaCtx && metaCtx.chatId) || String(to || '').replace(/\D/g, ''), msg, mediaUrl) // …photo-by-link + caption, text-only retry inside!
         : async (to, msg) => { console.error(`No WhatsApp sender for business ${business.id} — Meta not connected`); }; // …no sender (Meta never connected) → log, never crash!
 
+    // ---- Owner identity: ONE check for every owner-only command ----
+    // Telegram door: the linked owner id (bound once via /start link_CODE) is
+    // just as authoritative as the WhatsApp owner number. Before this, the
+    // check lived AFTER the LEARN/SYNC blocks, so those two commands only ever
+    // accepted WhatsApp — an owner teaching their catalog from Telegram (the
+    // whole point of connecting it!) silently fell through to the AI and got
+    // nothing saved. Defined here, before every gate, and reused below.
+    // Both fromId AND chatId are accepted: owner_telegram_id stores the sender
+    // USER id, but in a group chat that differs from the CHAT id — and owners
+    // do teach from group chats. Comparing only chatId silently denied them.
+    const tgIsLinkedOwner = !!(
+      tgCtx && business.owner_telegram_id &&
+      (String(business.owner_telegram_id) === String(tgCtx.fromId) ||
+        String(business.owner_telegram_id) === String(tgCtx.chatId))
+    );
+    const isOwner = (business.owner_number && From === business.owner_number) // WhatsApp door: sender IS the owner number…
+      || tgIsLinkedOwner; // …Telegram door: the linked owner (user id or chat id)
+
     // ---- LEARN mode ----
     if ( // three guards: LEARN: prefix + owner number exists + sender IS the owner
       Body.trim().toUpperCase().startsWith(LEARN_PREFIX) && // .trim().toUpperCase() = "  learn: x" still works
-      business.owner_number &&
-      From === business.owner_number // customers can't teach — prevents catalog poisoning
+      isOwner // customers can't teach — prevents catalog poisoning (both doors!)
     ) {
       const adText = Body.trim().slice(LEARN_PREFIX.length).trim(); // strip the 6-char prefix → raw ad text
       if (!adText) { // bare "LEARN:" with nothing after → teach the format
@@ -76,7 +93,7 @@ async function handleInbound(req, res) {
     // ---- SYNC mode (PRO): scaffold catalog from the WhatsApp Business profile ----
     // Owner pastes their business profile / catalog text after SYNC: and the AI
     // builds the catalog from it. Manual LEARN: stays free for everyone.
-    if (Body.trim().toUpperCase().startsWith(SYNC_PREFIX) && business.owner_number && From === business.owner_number) { // same owner-only guards as LEARN
+    if (Body.trim().toUpperCase().startsWith(SYNC_PREFIX) && isOwner) { // same owner-only guards as LEARN (both doors!)
       if (!planService.isPro(business)) { // PAYWALL: free users get the pitch, not the feature
         await reply(From, 'Profile sync is a Pro feature — it checks products against your WhatsApp Business profile automatically.\n\nManual teaching is always free: just send LEARN: followed by your products.\n\nUpgrade to Pro in your VeloSales Ai dashboard to unlock sync.');
         return res.status(200).send('');
@@ -109,8 +126,6 @@ async function handleInbound(req, res) {
     // WHY: the shop number doubles as a personal line — friends chatting must
     // never get product pitches fighting the owner's own conversation.
   const upperBody = Body.trim().toUpperCase(); // normalize once: case + padding proof
-  const isOwner = (business.owner_number && From === business.owner_number) // WhatsApp door: sender IS the owner number…
-    || (tgCtx && business.owner_telegram_id && String(business.owner_telegram_id) === String(tgCtx.chatId)); // …Telegram door: linked owner chat id (bound via /start link_CODE — owner commands work here too!)
     if (isOwner && (upperBody === 'PAUSE' || upperBody === 'RESUME' || upperBody.startsWith('PAUSE '))) {
       if (upperBody === 'RESUME') { // resume everything…
         await db.query('UPDATE businesses SET bot_enabled = true WHERE id = $1', [business.id]); // …global switch on…
@@ -395,7 +410,7 @@ async function alertOwner(business, customerNumber, customerName, message, reaso
     `Customer: ${customerName || 'Unknown'} (${customerNumber})\n` +
     `Message: "${message}"\n` +
     `Why you are needed: ${reason || 'AI could not answer'}\n\n` +
-    `Reply to them directly on WhatsApp: ${customerNumber}`;
+    `Reply to them on the channel they messaged you (${customerNumber})`;
   const jobs = []; // fan-out list (both doors alerted in PARALLEL — owner gets paged wherever they live!)
   if (business.owner_number && business.meta_token && business.meta_phone_number_id) { // WhatsApp door: owner's number via the SHOP's Meta sender…
     const waMeta = require('../services/channels/meta'); // lazy require (consistent file style!)

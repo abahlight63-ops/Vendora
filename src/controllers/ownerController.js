@@ -635,12 +635,14 @@ async function telegramToken(req, res) {
       .catch((e) => console.error('referral reward error:', e.message));
   }
   if (clean) { // token saved → AUTO-register the webhook (previously a manual step shops never found — bots stayed silent!).
-    const secret = (process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();
-    fetch(`https://api.telegram.org/bot${clean}/setWebhook`, {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ url: `${base}/webhook/telegram/${req.session.businessId}`, ...(secret ? { secret_token: secret } : {}), drop_pending_updates: true }),
-    }).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok || d.ok !== true) console.error('telegram setWebhook failed:', JSON.stringify(d).slice(0, 150)); })
-      .catch((e) => console.error('telegram setWebhook error:', e.message)); // fire-and-forget (connect succeeds even if Telegram hiccups — retry by re-saving!)
+    // AWAITED, not fire-and-forget: a green "connected" with a dead hook is
+    // exactly the "worked, then stopped" lie — failure answers 502 LOUDLY
+    // (token IS saved; tapping Check again retries just the hook!).
+    const hook = await require('../services/channels/telegram').setShopWebhook(clean, base, req.session.businessId, true);
+    if (!hook.ok) {
+      console.error('telegram setWebhook failed:', hook.detail);
+      return res.status(502).json({ error: `Token saved, but Telegram refused the delivery hook (${hook.detail}) — tap Check + continue again. If it persists, the server URL Telegram must reach is wrong: tell support.` });
+    }
   } else if (oldToken) { // disconnected → best-effort unhook (stale hooks 200-ignore anyway — this just stops the knocking!)
     fetch(`https://api.telegram.org/bot${oldToken}/deleteWebhook`, { method: 'POST' }).catch(() => {});
   }
@@ -734,6 +736,9 @@ async function telegramShared(req, res) {
 // connected?" forever). Reads the SAVED token (own, else shared house token),
 // asks Telegram for getWebhookInfo: hook URL registered? pointing at us?
 // Telegram-side last error? pending backlog? Secrets never returned.
+// POST { repair: true } additionally RE-REGISTERS a stale hook in place — the
+// #1 cause ("it worked, then stopped") was a deploy/URL change, and the owner
+// should never have to hunt down and re-paste a working token because of it.
 async function telegramHealthCheck(req, res) {
   try {
     const runSelect = (legacy) => db.query(legacy
@@ -742,14 +747,26 @@ async function telegramHealthCheck(req, res) {
     const { rows } = await sharedAware(runSelect);
     if (!rows.length) return res.status(404).json({ error: 'Not found' });
     const own = (rows[0].telegram_bot_token || '').trim();
-    const token = own || (rows[0].telegram_shared_on ? (process.env.TELEGRAM_SHARED_BOT_TOKEN || '').trim() : '');
+    const shared = !own && !!rows[0].telegram_shared_on;
+    const token = own || (shared ? (process.env.TELEGRAM_SHARED_BOT_TOKEN || '').trim() : '');
     if (!token) return res.json({ configured: false });
-    const h = await require('../services/channelHealth').telegramHealth(token);
-    const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
+    const { healHook, baseUrl: healBase } = require('../services/telegramSelfHeal');
+    const base = healBase();
+    const expected = base
+      ? (own ? require('../services/channels/telegram').shopHookUrl(base, req.session.businessId) : `${base}/webhook/telegram/shared`)
+      : '';
+    let h = await require('../services/channelHealth').telegramHealth(token);
+    let repaired = null;
+    if (req.body && req.body.repair && expected && !(h.url === expected && h.ok)) {
+      repaired = await healHook(token, expected, shared ? 'shared bot' : `shop ${req.session.businessId}`); // one-tap fix, no token needed
+      if (repaired.healed) h = await require('../services/channelHealth').telegramHealth(token); // re-read so the UI shows the NEW truth, not the old broken one
+    }
     res.json({
-      configured: true, shared: !own, ok: !!h.ok,
-      webhookUrl: h.url || '', matches: base ? String(h.url || '').startsWith(base) : null,
+      configured: true, shared, ok: !!h.ok,
+      webhookUrl: h.url || '', matches: expected ? (h.url || '') === expected : null,
+      expectedUrl: expected || null,
       pending: Number(h.pending) || 0, lastError: h.lastError || h.reason || '',
+      repaired: repaired ? { healed: !!repaired.healed, ok: !!repaired.ok, detail: repaired.detail } : null,
     });
   } catch (e) {
     console.error('telegram health error:', (e && e.code) || '-', e.message); // JSON 500, never a process crash (see telegramToken note!)

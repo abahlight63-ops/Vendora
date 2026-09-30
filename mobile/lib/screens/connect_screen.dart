@@ -39,6 +39,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
   String? _tgShared; // shared-bot result text (Pro road — code + link + note!)
   String? _waHealth; // Verify WhatsApp verdict line (token alive? or what to fix!)
   String? _tgHealth; // Verify Telegram verdict line (webhook OK? or what to fix!)
+  bool _tgNeedsRepair = false; // verify/repair found a broken hook → offer the one-tap fix
   String? _brain;
   bool _testing = false;
   Timer? _poll;
@@ -123,6 +124,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
         }
         final r = await ApiClient.instance.metaConnect(
             pid, _metaToken.text.trim());
+        if (!mounted) return; // network wait outlived the screen (back-swipe, rotation) — touching context/setState now CRASHES
         _verifyToken = '${r['verifyToken'] ?? ''}';
         _metaToken.clear(); // token lives server-side now (never keep it on screen!)
         setState(() => _step = 2);
@@ -156,6 +158,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
           return;
         }
         final r = await ApiClient.instance.telegramToken(clean);
+        if (!mounted) return; // network wait outlived the screen (back-swipe, rotation) — touching context/setState now CRASHES
         if (r['connected'] == true) {
           _tgToken.clear();
           setState(() => _step = 2);
@@ -171,6 +174,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
   Future<void> _tgSharedConnect() => _run(() async {
         try {
           final r = await ApiClient.instance.telegramShared();
+          if (!mounted) return; // network wait outlived the screen — context/setState now CRASHES
           if (r['connected'] == true) {
             setState(() {
               _tgShared =
@@ -224,6 +228,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
 
   Future<void> _tgSharedOff() => _run(() async {
         await ApiClient.instance.telegramSharedOff();
+        if (!mounted) return; // network wait outlived the screen — context/setState now CRASHES
         setState(() {
           _tgShared = null;
           _step = 1;
@@ -235,6 +240,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
   /// Verify buttons (web parity!): token alive? webhook registered? Exact fix named.
   Future<void> _waVerify() => _run(() async {
         final r = await ApiClient.instance.waHealth();
+        if (!mounted) return; // setState on an unmounted screen throws — guard every post-await hop
         setState(() => _waHealth = r['connected'] == true
             ? 'Token alive${'${r['phone'] ?? ''}'.isNotEmpty ? ' · ${r['phone']}' : ''}. TEST not flipping? The webhook paste in Meta is missing — not credentials.'
             : 'Needs attention: ${(r['reason'] ?? '') == 'token-dead' ? 'Meta token expired — reconnect with a fresh token.' : 'not connected yet.'}');
@@ -242,20 +248,48 @@ class _ConnectScreenState extends State<ConnectScreen> {
 
   Future<void> _tgVerify() => _run(() async {
         final r = await ApiClient.instance.telegramHealth();
+        if (!mounted) return; // setState on an unmounted screen throws — guard every post-await hop
         setState(() {
+          _tgNeedsRepair = false;
           if (r['configured'] != true) {
             _tgHealth = 'No bot saved yet — connect below first.';
           } else if (r['ok'] == true) {
             _tgHealth = 'Webhook OK. Message the bot — it answers.';
-          } else {
+          } else if (r['matches'] == false) {
+            _tgNeedsRepair = true;
             _tgHealth =
-                'Needs attention: ${r['lastError'] ?? 'webhook not registered'} — re-save your token.';
+                'Your bot is delivering somewhere else (usually our server moved since you connected). Tap Repair — it re-registers the hook in seconds, no token needed.';
+          } else {
+            _tgNeedsRepair = true;
+            _tgHealth =
+                'Needs attention: ${r['lastError'] ?? 'webhook not registered'} — tap Repair, and if that fails the token itself is dead: create a new bot in BotFather and re-save it.';
+          }
+        });
+      });
+
+  Future<void> _tgRepair() => _run(() async {
+        final r = await ApiClient.instance.telegramRepair();
+        if (!mounted) return; // setState on an unmounted screen throws — guard every post-await hop
+        final rep = r['repaired'];
+        setState(() {
+          if (rep is Map && rep['healed'] == true) {
+            _tgNeedsRepair = false;
+            _tgHealth =
+                'Repaired just now — your bot is delivering to us again. Nothing queued was dropped.';
+          } else if (r['ok'] == true) {
+            _tgNeedsRepair = false;
+            _tgHealth = 'Already healthy — nothing to fix.';
+          } else {
+            _tgNeedsRepair = true;
+            _tgHealth =
+                'Repair failed: ${(rep is Map ? rep['detail'] : null) ?? r['lastError'] ?? 'Telegram refused the hook'}. If it keeps failing, tell support with your bot username.';
           }
         });
       });
 
   Future<void> _tgLink() => _run(() async {
         final r = await ApiClient.instance.telegramLink();
+        if (!mounted) return; // setState on an unmounted screen throws — guard every post-await hop
         setState(() => _tgCode = '${r['code'] ?? ''}\n${r['note'] ?? ''}');
       });
 
@@ -423,6 +457,11 @@ class _ConnectScreenState extends State<ConnectScreen> {
                         onPressed: _busy ? null : _tgVerify,
                         child: const Text('Verify Telegram',
                             style: TextStyle(fontSize: 13))),
+                    if (_tgNeedsRepair)
+                      FilledButton(
+                          onPressed: _busy ? null : _tgRepair,
+                          child: Text(_busy ? 'Repairing…' : 'Repair Telegram hook',
+                              style: const TextStyle(fontSize: 13))),
                   ]),
                   if ((_waHealth ?? '').isNotEmpty) ...[
                     const SizedBox(height: 6),

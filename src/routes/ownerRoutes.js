@@ -34,6 +34,7 @@ router.post('/me/conversations/:id/takeover', ownerController.chatTakeover);
 router.post('/me/conversations/:id/reply', ownerController.chatReply); // in-app owner reply (sends via the chat's own channel!)
 router.get('/me/telegram', ownerController.telegramStatus);
 router.get('/me/telegram/health', ownerController.telegramHealthCheck); // Connect "Verify" button (webhook really registered? Telegram's last error?)
+router.post('/me/telegram/health', ownerController.telegramHealthCheck); // same check + { repair: true } → re-register a stale hook in place (no token needed!)
 router.post('/me/telegram/token', ownerController.telegramToken);
 router.post('/me/telegram/link', ownerController.telegramLink);
 router.post('/me/telegram/shared', ownerController.telegramShared); // Pro shared-bot road (no BotFather paste!)

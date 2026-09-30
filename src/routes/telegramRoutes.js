@@ -63,6 +63,7 @@ async function handleParsed(business, botToken, parsed, req, res) {
     business, // looked-up shop row (skips number lookup!)
     botToken, // reply sender (routes OUT through this bot!)
     chatId: parsed.chatId, // reply recipient (Telegram chat id!)
+    fromId: parsed.fromId, // sender USER id — the value owner_telegram_id stores! In a group chat fromId ≠ chatId, and owner commands must still work there (people teach from group chats!).
     ownerTid: business.owner_telegram_id || null, // linked owner id (owner commands from here!)
     media, // pre-downloaded {kind,mime,base64} (vision input for photos!)
   };

@@ -183,11 +183,32 @@ function startChannelWatchdog() {
             }
           }
           if (s.telegram_bot_token) {
-            const t = await health.telegramHealth(s.telegram_bot_token);
+            // HEAL BEFORE RINGING: a stale hook is OUR bug (deploy/URL change),
+            // not the owner's — re-register quietly, and only wake them if the
+            // token itself is dead (revoked in BotFather) or Telegram still
+            // refuses after our repair. Silent where possible, honest where not.
+            let repaired = null;
+            try {
+              const { healShop, baseUrl: tgBase } = require('./services/telegramSelfHeal');
+              repaired = await healShop(s.id, s.telegram_bot_token, tgBase());
+            } catch (e) { console.error('telegram heal error:', e.message); }
+            if (repaired && repaired.ok) {
+              if (repaired.healed) {
+                await notify.notify(s.id, { // honest, specific: the outage happened and we fixed it
+                  title: 'Telegram connection repaired',
+                  body: `Your bot had lost its delivery hook after a server change — we re-registered it. Your bot works again; nothing you typed was lost.`,
+                  link: '/connect',
+                });
+              }
+              continue; // healed or already correct → no alarm
+            }
+            const t = repaired ? { ok: false, reason: (repaired.kind || 'hook') + ':' + (repaired.detail || '?') } : await health.telegramHealth(s.telegram_bot_token);
             if (!t.ok) {
               await notify.notify(s.id, {
                 title: 'Your Telegram channel needs attention',
-                body: 'Your bot token stopped working (revoked or regenerated?). Re-save it in Connect → Telegram and message the bot to verify.',
+                body: t.reason === 'token:rejected' || t.reason === 'token'
+                  ? 'Telegram refused your bot token (revoked or regenerated in BotFather). Re-save the token in Connect → Telegram and message the bot to verify.'
+                  : 'We could not re-register your bot\'s delivery hook and Telegram is not reaching the server. Re-save the token in Connect → Telegram, or tell support if it fails again.',
                 link: '/connect',
               });
             }
@@ -260,7 +281,23 @@ function envAudit() {
     const n = (process.env.TELEGRAM_SHARED_BOT_NAME || '').trim();
     if ((t && !n) || (!t && n)) console.warn('TELEGRAM CHECK: set BOTH TELEGRAM_SHARED_BOT_TOKEN and TELEGRAM_SHARED_BOT_NAME (or neither) — half-configured shared road refuses Pro connects.');
   }
-  console.log('ADS: removed (owner call) — every tier gets ads:null, zero ad code ships to any client.');
+    console.log('ADS: removed (owner call) — every tier gets ads:null, zero ad code ships to any client.');
+}
+
+// Per-shop Telegram hook re-assertion. Bots are connected ONCE (owner paste),
+// but their webhook URL dies quietly afterwards: redeploys behind a new host,
+// PUBLIC_BASE_URL edits, deleted hooks, sleeps long enough for Telegram to
+// give up. Before this, nothing ever re-checked — the dashboard said
+// "connected" while messages bounced. healShop() reads getWebhookInfo and only
+// writes when the URL is wrong, so a healthy fleet costs one cheap read each.
+async function healTelegramWebhooks(why) {
+  try {
+    const db = require('./db');
+    const { healAllShops } = require('./services/telegramSelfHeal');
+    const r = await healAllShops(db);
+    if (r.broken.length) console.warn(`TELEGRAM HEAL (${why}): ${r.broken.length} shop(s) still broken —`, JSON.stringify(r.broken).slice(0, 400));
+    return r;
+  } catch (e) { console.error(`Telegram webhook heal (${why}) failed:`, e.message); return null; }
 }
 
 // Shared-bot webhook registration (Pro road!). Per-shop bots self-register on
@@ -299,6 +336,7 @@ require('./services/configService').ensureSchema()
     console.log(`WhatsApp AI support server running on port ${port}`);
     console.log(`Signup/login: http://localhost:${port}/login`);
     console.log(`Dashboard:    http://localhost:${port}/dashboard`);
+    healTelegramWebhooks('boot'); // AFTER listening, NOT awaited — a slow or dead Telegram must never delay the socket opening (shop traffic > webhook hygiene)!
   }))
   .catch((e) => { // DB unreachable or migration broken → refuse to boot half-ready (hosts show this log!)
     console.error('FATAL: schema migration failed:', e.message);

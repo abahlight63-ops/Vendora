@@ -88,7 +88,7 @@ footer{border-top:1px solid var(--line);margin-top:40px;padding:22px 0 40px;colo
 <div class="card"><table>
 <tr><th>Piece</th><th>Where it lives</th><th>Talks to</th></tr>
 <tr><td><b>Backend</b> (Express + Postgres)</td><td>Render · <code>vendora-fsse.onrender.com</code></td><td>Everything below hits this</td></tr>
-<tr><td><b>Web app</b> (React)</td><td>Vercel · <code>vendorabot.vercel.app</code> (proxies <code>/api/*</code> → Render)</td><td>Same backend, cookie session</td></tr>
+<tr><td><b>Web app</b> (React)</td><td>Custom domain · <code>app.velosalesai.com.ng</code> (Vercel-hosted, proxies <code>/api/*</code> → Render)</td><td>Same backend, cookie session</td></tr>
 <tr><td><b>Marketing site</b> (static)</td><td>Netlify · <code>website/</code> folder</td><td>Links only — no API calls</td></tr>
 <tr><td><b>Flutter app</b> (native Dart)</td><td>Play Store (your phone)</td><td>Same backend via <code>API_BASE_URL</code></td></tr>
 </table></div></section>
@@ -118,7 +118,8 @@ footer{border-top:1px solid var(--line);margin-top:40px;padding:22px 0 40px;colo
 <details class="key"><summary><span class="dot red"></span><code>PUBLIC_BASE_URL · FRONTEND_URL</code> <span class="badge b-miss">❌ MISSING locally = correct · REQUIRED on Render</span></summary>
 <div class="body"><p>Leave empty locally (same-origin mode). On Render set:
 <code>PUBLIC_BASE_URL=https://vendora-fsse.onrender.com</code> and
-<code>FRONTEND_URL=https://vendorabot.vercel.app</code>. Without these, cross-site cookies + Paystack callback break in production.</p></div></details>
+<code>FRONTEND_URL=https://app.velosalesai.com.ng</code>. Without these, cross-site cookies + Paystack callback break in production.</p>
+<p style="margin-top:8px"><b>Set FRONTEND_URL to the domain customers actually type</b> — the custom domain above, not the underlying Vercel URL. Cookies are scoped to the host that served them, so a mismatch means a login that silently fails on the first protected page. If you also want the Vercel URL reachable, add it to the CORS allowlist and make sure it redirects to the custom domain.</p></div></details>
 
 <details class="key"><summary><span class="dot gold"></span><code>TELEGRAM_WEBHOOK_SECRET · TELEGRAM_SHARED_BOT_TOKEN · TELEGRAM_SHARED_BOT_NAME</code> <span class="badge b-opt">OPTIONAL · Telegram channel only</span></summary>
 <div class="body"><ol><li>Telegram → chat with <b>@BotFather</b> → <code>/newbot</code> → name it → copy the token → <code>TELEGRAM_SHARED_BOT_TOKEN</code>, username → <code>TELEGRAM_SHARED_BOT_NAME</code>. Free.</li><li>Invent a random string → <code>TELEGRAM_WEBHOOK_SECRET</code> (same value goes in every BotFather <code>setWebhook … secret_token</code> call).</li><li>Skip all three = Telegram stays off, WhatsApp unaffected.</li></ol></div></details>
@@ -168,7 +169,7 @@ prices, caps, models. If a feature says “down”, re-check its key + restart (
 <!-- 7 SITE -->
 <section id="site"><h2>7 · 🌐 Website + video ads</h2><p class="sub">Netlify + <code>website/video-prompts.md</code> (CapCut ~$8–10, Hailuo ~$10, Runway ~$15, InVideo ~$15–20).</p>
 <div class="card"><ol>
-<li>Netlify publish (Section 4.3) → all CTAs already point at <code>vendorabot.vercel.app</code>.</li>
+<li>Netlify publish (Section 4.3) — all CTAs already point at <code>app.velosalesai.com.ng</code>.</li>
 <li>Make 4 videos with the prompts file: 15s hero (9:16) → slot <code>hero-916</code> · 30s how-it-works (16:9) → <code>how-169</code> · UGC testimonial (film real!) · founder story (pinned).</li>
 <li>Drop MP4 URLs into the matching <code>&lt;source src=""&gt;</code> in <code>website/index.html</code> → push → Netlify rebuilds.</li>
 <li>Post native everywhere; reply to every comment week 1.</li>
@@ -179,7 +180,7 @@ prices, caps, models. If a feature says “down”, re-check its key + restart (
 <div class="card"><ol>
 <li><b>Flutter (recommended — built ✅):</b> <code>cd mobile → flutter pub get → flutter run</code> (live backend by default). <code>flutter build appbundle --dart-define API_BASE_URL=https://vendora-fsse.onrender.com</code> → <code>.aab</code>.</li>
 <li>Pay $25 → <code>play.google.com/console</code> → verify → Create app → upload <code>.aab</code> (package <code>com.velosalesai.app</code>).</li>
-<li>Listing: name VeloSales Ai, Business category, 1080×1920 screenshots (use the site's chat demo!), 1024×500 feature graphic, privacy URL <code>vendorabot.vercel.app/privacy</code>.</li>
+<li>Listing: name VeloSales Ai, Business category, 1080×1920 screenshots (use the site's chat demo!), 1024×500 feature graphic, privacy URL <code>app.velosalesai.com.ng/privacy</code>.</li>
 <li>Rating + audience questionnaires → internal test track → production. <b>Back up the signing keystore — losing it = never update again.</b></li>
 <li><b>TWA fallback:</b> manifest + <code>assetlinks.json</code> already ship in <code>dist/</code> → PWABuilder → replace <code>REPLACE_WITH_PLAY_SIGNING_SHA256</code> → push.</li>
 </ol></div></section>

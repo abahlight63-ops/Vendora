@@ -52,7 +52,7 @@ flutter build appbundle --dart-define API_BASE_URL=https://<your-backend>
 1. `https://play.google.com/console` → pay $25 → verify → Create app
 2. Upload the `.aab` → fill listing (name VeloSales Ai, Business category,
    screenshots 1080×1920, feature graphic 1024×500, privacy URL
-   `https://vendorabot.vercel.app/privacy`)
+   `https://app.velosalesai.com.ng/privacy`)
 3. Content rating + target-audience questionnaires → internal test
    track first → promote to production
 

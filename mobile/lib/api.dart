@@ -39,9 +39,12 @@ class ApiClient {
   /// following a referral link on another would land on two different sites,
   /// which is exactly the class of bug a launch cannot ship. One constant, one
   /// override: `--dart-define WEB_APP_URL=https://...`.
+  ///
+  /// Default is the production domain (confirmed 2026-09-30). Point it at the
+  /// Vercel preview URL for staging builds rather than editing this file.
   static const String webUrl = String.fromEnvironment(
     'WEB_APP_URL',
-    defaultValue: 'https://vendorabot.vercel.app',
+    defaultValue: 'https://app.velosalesai.com.ng',
   );
 
   /// Checkout, opened externally. Single source of truth for the upgrade path.

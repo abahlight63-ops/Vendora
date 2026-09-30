@@ -3,14 +3,12 @@
 // Bump VERSION + add a note on every user-visible release — the Shell checks
 // /api/version on load and toasts "VeloSales Ai updated" when it changes, and the
 // admin broadcast button can push the same notes into every inbox.
-const APP_VERSION = '1.12.0';
+const APP_VERSION = '1.13.0';
 const WHATS_NEW = [
-  'Zero ads for everyone — sponsored videos, tags and popups all removed',
-  'Fullscreen video ads: 9:16 reels, full 30 seconds, skip at 25s — update for the new player!',
-  'Inbox replies: answer customers right inside the app (both channels), gold flag clears itself',
-  'Catalog delivery info: delivery time, pickup location and how-to-buy per product — the AI quotes them',
-  'Install as app: Help page walks you through home-screen install, full-screen, no app store',
-  'Network toughness: every page now retries itself with one tap when the internet drops',
+  'WhatsApp now connects on your PHONE - we fixed the popup that never worked in mobile browsers and installed apps (Meta now opens as a full page, like it should)',
+  'Telegram heals itself: if Telegram drops or rejects your webhook, we detect it, repair it and tell you - no more silent dead bots',
+  'Telegram owner commands now work inside group chats, and they respect who actually owns the bot',
+  'Inbox shows which app each chat came from (WhatsApp or Telegram) and lets you filter by it',
+  'Zero ads for everyone - sponsored videos, tags and popups all removed',
 ];
-
 module.exports = { APP_VERSION, WHATS_NEW };

@@ -16,7 +16,10 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.9.0+2
+# Must stay in step with APP_VERSION in src/version.js — the Shell toasts
+# "VeloSales Ai updated" when the server value changes, and Play Store rejects
+# any upload whose versionCode has not gone UP. Bump both together.
+version: 1.13.0+3
 
 environment:
   sdk: ^3.12.2

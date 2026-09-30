@@ -1,4 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The app talks to our API over HTTPS from every screen, so the RELEASE
+         manifest must declare this itself.
+         Why this is here and not left to Flutter: the debug/profile manifests
+         add INTERNET automatically for hot reload, which means a debug build
+         works perfectly while a RELEASE build has no network permission at all
+         and every screen fails on first paint. That gap only shows up in the
+         Play Store build, which is the worst possible time to find it. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
         android:label="VeloSales Ai"
         android:name="${applicationName}"
@@ -40,6 +49,15 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Android 11+ hides other apps from us unless we say what we need.
+             We hand the user to a REAL browser on purpose: the Meta OAuth page
+             (the popup cannot survive an installed app), checkout, and referral
+             links. Without this, `canLaunchUrl` reports "nothing can handle
+             https" and those taps quietly do nothing. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
         </intent>
     </queries>
 </manifest>

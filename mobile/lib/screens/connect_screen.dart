@@ -40,6 +40,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
   String? _waHealth; // Verify WhatsApp verdict line (token alive? or what to fix!)
   String? _tgHealth; // Verify Telegram verdict line (webhook OK? or what to fix!)
   bool _tgNeedsRepair = false; // verify/repair found a broken hook → offer the one-tap fix
+  bool _awaitingMeta = false; // handed the phone to Meta — poll for the return link
   String? _brain;
   bool _testing = false;
   Timer? _poll;
@@ -49,6 +50,50 @@ class _ConnectScreenState extends State<ConnectScreen> {
     super.initState();
     _load();
   }
+
+  /// Meta redirect road (the only road that works on a phone): ask the server
+  /// for a signed single-use state + the Facebook OAuth URL, hand the phone to
+  /// the REAL browser, then poll for the return. The Meta popup can never work
+  /// in an installed app or an in-app webview — that is why connecting from
+  /// Android kept failing.
+  Future<void> _metaOauth() => _run(() async {
+        final r = await ApiClient.instance.metaOauthStart();
+        final url = '${r['url'] ?? ''}';
+        if (url.isEmpty) {
+          setState(() => _err =
+              'Meta redirect is not set up on the server yet — paste your details below, it works today.');
+          return;
+        }
+        final opened = await launchUrl(Uri.parse(url),
+            mode: LaunchMode.externalApplication);
+        if (!mounted) return;
+        if (opened != true) {
+          setState(() => _err =
+              'Could not open your browser. Paste your details below instead — same result.');
+          return;
+        }
+        setState(() {
+          _awaitingMeta = true;
+          _err = null;
+        });
+        _poll?.cancel();
+        _poll = Timer.periodic(const Duration(seconds: 6), (t) async {
+          try {
+            final s = await ApiClient.instance.channels();
+            if (!mounted) return t.cancel();
+            final wa = s['whatsapp'] as Map?;
+            if (wa != null && wa['metaConnected'] == true) {
+              t.cancel();
+              _load(silent: true); // webhook + number for step 2
+              setState(() {
+                _awaitingMeta = false;
+                _step = 2;
+              });
+              showToast(context, 'WhatsApp connected! Paste the two values in Meta next.');
+            }
+          } catch (_) {/* keep polling — the phone is still with Meta */}
+        });
+      });
 
   @override
   void dispose() {
@@ -558,7 +603,26 @@ class _ConnectScreenState extends State<ConnectScreen> {
             style: TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 4),
         const Text(
-            'Fastest: open the web app → Connect → "Connect WhatsApp" (one-tap Meta popup). Or paste both values below from your Meta app dashboard (WhatsApp → API testing).',
+            'Fastest: tap Continue — your browser opens the official Meta page, you sign in, pick your number, and it links itself. Nothing to copy. (The old popup cannot work inside an installed app — that is why it kept failing.)',
+            style: TextStyle(fontSize: 12)),
+        const SizedBox(height: 8),
+        FilledButton(
+            onPressed: _busy || _awaitingMeta ? null : _metaOauth,
+            child: Text(_busy
+                ? 'Opening Meta…'
+                : (_awaitingMeta ? 'Waiting for Meta…' : 'Continue to Meta'))),
+        if (_awaitingMeta) ...[
+          const SizedBox(height: 6),
+          const Text(
+              'Finish in the browser tab that just opened. This screen updates itself the moment your number is linked.',
+              style: TextStyle(fontSize: 12)),
+        ],
+        if ((_err ?? '').isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(_err!, style: const TextStyle(fontSize: 12)),
+        ],
+        const SizedBox(height: 10),
+        const Text('Or paste both values (from Meta app → WhatsApp → API testing):',
             style: TextStyle(fontSize: 12)),
         const SizedBox(height: 8),
         TextField(

@@ -48,17 +48,7 @@ function isStandaloneBrowser() { // installed PWA (popups lose their return trip
   } catch {}
   return false;
 }
-function isAndroidStandalone() { // installed app ON Android (Chrome-escape hatch applies — same profile, session carries over!)
-  try {
-    return isStandaloneBrowser() && isAndroid();
-  } catch { return false; }
-}
-function isAndroid() { // ANY Android browser or installed app (gate the Chrome tools on this — desktops + iPhones never need them!)
-  try {
-    return /android/i.test(window.navigator.userAgent || '');
-  } catch { return false; }
-}
-function isMobileBrowser() { // ANY phone/tablet browser (popup watchdogs + manual shortcut key off this — mobile popups die silently!)
+function isMobileBrowser() { // ANY phone/tablet browser (manual shortcut keys off this — mobile popups die silently!)
   try {
     const ua = window.navigator.userAgent || '';
     return /android|iphone|ipad|ipod|mobile/i.test(ua);
@@ -69,48 +59,6 @@ function isInAppBrowser() { // opened inside WhatsApp/Instagram/Facebook/Twitter
     const ua = String(window.navigator.userAgent || '');
     return /FBAN|FBAV|FB_IAB|FBIO[SD]|Instagram|Twitter|LinkedIn|Pinterest|Snapchat|TikTok|WhatsApp|Line\/|MicroMessenger/i.test(ua);
   } catch { return false; }
-}
-async function goChromeConnect(setShowManual, toast) { // broken contexts (installed PWA, in-app browsers) → a REAL browser WITH auto-start (?autoconnect=meta lands → popup opens itself there — ONE tap total!)
-  let target = '';
-  try { target = `${new URL(window.location.href).origin}/connect?autoconnect=meta`; } catch {}
-  if (!target) { setShowManual(true); return; }
-  try { localStorage.setItem('vendora-autoconnect', 'meta'); } catch {} // handshake: same-profile browsers share storage — the landing page auto-starts even if ?autoconnect is lost (e.g. a login redirect eats the query!)
-  if (isAndroid()) {
-    // Android intent: opens the DEFAULT browser (Chrome on most phones — respects Brave/Opera users too!).
-    // Old code used googlechrome:// which dies SILENTLY when Chrome isn't the handler (the "never opens" bug!).
-    // No `package=` pin + browser_fallback_url = never stranded (worst case: we stay right here → watchdog below!).
-    try {
-      const u = new URL(target);
-      window.location.href = 'intent://' + u.host + (u.pathname + u.search + u.hash)
-        + '#Intent;scheme=' + u.protocol.replace(/:$/, '')
-        + ';S.browser_fallback_url=' + encodeURIComponent(target) + ';end';
-    } catch { /* fall through to the watchdog chain below */ }
-  } else {
-    try { // iOS: Chrome scheme (works when Chrome is installed; Safari users get the share-sheet step below!)
-      const u = new URL(target);
-      window.location.href = 'googlechrome://' + u.host + (u.pathname + u.search + u.hash);
-    } catch { /* fall through to the watchdog chain below */ }
-  }
-  setTimeout(async () => { // still here ~2s later? Direct launch died → share sheet once, then manual
-    let left = false;
-    try { left = document.hidden || !document.hasFocus(); } catch {}
-    if (left) return; // left for the browser (success — watchdog stands down!)
-    if (navigator.share) { // second chance: OS share sheet (user picks Chrome/Safari by hand!)
-      try { await navigator.share({ title: 'VeloSales Ai — Connect WhatsApp', text: 'Open in your browser to finish connecting, then return here.', url: target }); return; }
-      catch (e) { /* dismissed → fall through to manual below */ }
-    }
-    chromeEscapeArmed(setShowManual, toast); // everything failed → manual road reveals itself (never a dead tap!)
-  }, 2000);
-}
-function chromeEscapeArmed(setShowManual, toast) { // intent taps die SILENTLY when Chrome is missing (fallback reloads this same page = looks dead!) — watchdog catches it
-  setTimeout(() => {
-    let left = false; // did we actually leave for Chrome? (backgrounded tab = success!)
-    try { left = document.hidden || !document.hasFocus(); } catch {}
-    if (!left) { // still here 2.5s later → escape failed: reveal the manual road + say so (never a dead tap!)
-      setShowManual(true);
-      toast('Chrome didn\u2019t open — enter details manually below (same result, no popup needed).', 'err');
-    }
-  }, 2500);
 }
 function loadFbSdk(appId) {
   return new Promise((resolve) => {
@@ -246,19 +194,13 @@ export default function Connect() {
     }
   }
 
-  // ---- Embedded Signup launch ----
+  // ---- Embedded Signup launch (desktop popup road) ----
   async function embeddedConnect() {
-    if (isStandaloneBrowser()) { // installed app (PWA): popups die here on EVERY platform — never even try one!
-      if (isAndroid()) return goChromeConnect(setShowManual, toast); // Android: Continue ITSELF hands to the real browser (auto-starts there!)
-      setShowManual(true); // iPhone installed app: iOS gives NO way to force-open Safari — manual road + guidance instead (never a dead tap!)
-      toast('Installed apps can\u2019t open the Meta window — open this site in Safari (share → Open in Safari), sign in, then tap Continue there. Or enter details manually below.', 'err');
-      return;
-    }
-    if (isInAppBrowser()) { // e.g. opened from a WhatsApp chat link: Meta popup can NEVER work in this webview…
-      if (isAndroid()) return goChromeConnect(setShowManual, toast); // …so auto-open the real browser (same one-tap promise as the installed app!)
-      setShowManual(true); // iOS webviews can't be force-opened outward — manual + guidance instead (zero silent-death!)
-      toast('You opened this inside another app — popups are blocked here. Tap share → "Open in Safari/Chrome", then retry. Or enter details manually below.', 'err');
-      return;
+    if (isStandaloneBrowser() || isInAppBrowser() || isMobileBrowser()) {
+      // Phones, installed apps and in-app webviews cannot host this popup —
+      // that is the entire reason mobile connecting never worked. Send them to
+      // the redirect road instead of a flow that is guaranteed to die.
+      return oauthConnect();
     }
     const appId = st?.metaAppId, configId = st?.metaConfigId;
     if (!appId || !configId) { setShowManual(true); return toast('One-tap signup is not set up yet — talk to support from Help', 'err'); }
@@ -295,6 +237,71 @@ export default function Connect() {
       }, watchMs); // never an eternal spinner!
     } catch (e) { setBusy(false); setShowManual(true); toast('Popup failed — allow popups and retry', 'err'); }
   }
+
+  // ---- Meta REDIRECT road (the one that actually works on phones) ----
+  // Why: Meta's Embedded Signup POPUP is blocked inside mobile browsers,
+  // installed web apps and every in-app webview — it opens, dies silently, or
+  // never calls back. A full-page OAuth redirect is the flow Meta built for
+  // phones: navigate away, sign in, navigate back. We open a blank tab
+  // SYNCHRONOUSLY inside the click (a tab opened after an await is a popup
+  // blocker target — this detail is the whole reason it works), then point it
+  // at the Meta URL once the server hands it over.
+  async function oauthConnect() {
+    const tab = window.open('', '_blank'); // sync + user gesture = allowed
+    if (!tab) { // popup blocked even for a blank tab → say exactly what to do
+      setShowManual(true);
+      return pop('err', 'Your browser blocked the new tab', 'Allow popups/tabs for this site (address-bar icon) and tap again, or enter details manually below — same result, ~1 minute.');
+    }
+    setBusy(true);
+    try {
+      const { ok, status, data } = await api('/api/me/meta/oauth/start');
+      if (ok && data && data.url) {
+        tab.location.href = data.url; // hand the tab to Meta
+        setBusy(false);
+        return toast('Finish signing in on the Meta tab — you will come back here automatically.', 'info');
+      }
+      tab.close();
+      setBusy(false);
+      if (status === 401) return pop('err', 'Signed out', 'Your session expired — sign in again, then retry.');
+      setShowManual(true);
+      // A mismatched redirect URI is Meta's #1 config error — hand support the
+      // exact string instead of making them guess it from the code.
+      const uri = data && data.redirectUri;
+      return pop('err', 'Meta redirect unavailable', ((data && data.error) || 'Our server could not build the Meta link.') + (uri ? ` Add this exact URL in Meta → Facebook Login → Valid OAuth redirect URIs: ${uri}` : '') + ' Entering your details manually below works today.');
+    } catch (e) {
+      tab.close();
+      setBusy(false);
+      setShowManual(true);
+      return pop('err', 'Server unreachable', 'Wait a minute and retry — or enter details manually below.');
+    }
+  }
+
+  // Come-back handler: the server bounced us here from /api/meta/oauth/callback.
+  // Runs before anything else so the user lands on the right step, with the
+  // real reason when it failed (never a blank screen).
+  const metaReturnTried = useRef(false);
+  useEffect(() => {
+    if (metaReturnTried.current) return;
+    let q;
+    try { q = new URLSearchParams(window.location.search); } catch { return; }
+    const outcome = q.get('meta');
+    if (!outcome) return;
+    metaReturnTried.current = true;
+    try { window.history.replaceState({}, '', window.location.pathname); } catch {} // consume once (refresh-safe)
+    openRoad('meta');
+    load(); // fresh channel truth (server already stored the number)
+    if (outcome === 'linked') {
+      setStep(2);
+      setMetaProof({ verifyToken: q.get('meta_verify') || '' });
+      pop('ok', 'WhatsApp connected!', `Number ${q.get('meta_phone') || ''} is linked. One paste in Meta, then TEST.`);
+    } else if (outcome === 'cancelled') {
+      pop('err', 'Cancelled', 'You cancelled at Meta — nothing was changed. Tap Continue whenever you are ready.');
+    } else {
+      setShowManual(true);
+      pop('err', 'Meta could not finish', (q.get('meta_reason') || 'The connection did not complete.') + ' Entering details manually below works today.');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function back() { // Back button: step back, or road picker at step 1
     if (step > 1) setStep(step - 1);
@@ -547,7 +554,7 @@ export default function Connect() {
               <li>Once confirmed, your account connects automatically — no codes or technical setup needed on your end.</li>
             </ol>
             <p className="hint">We never see or store your Facebook password — this login happens directly and securely through Meta.</p>
-            <div className="learn-box light" style={{ marginTop: 10 }}><b>Before you tap — 30 seconds that prevent 90% of popup failures:</b><br />1. Log into the RIGHT Facebook account in THIS browser (the one tied to your WhatsApp Business — business admin, not staff).<br />2. Allow popups + third-party cookies for this site (address-bar icon).<br />3. Finish EVERY step inside the popup — especially picking your business number, or we get a code with no number.<br />4. On the installed app? Do this step once in full Chrome, then return here for daily use.</div>
+            <div className="learn-box light" style={{ marginTop: 10 }}><b>Before you tap — 30 seconds that prevent 90% of failures:</b><br />1. Log into the RIGHT Facebook account in THIS browser (the one tied to your WhatsApp Business — business admin, not staff).<br />2. A new tab opens: finish EVERY step there, especially picking your business number.<br />3. When Meta finishes, it sends you straight back here — nothing to copy.<br />4. On a phone or the installed app this is the ONLY road we offer: popups simply cannot work there.</div>
             <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
               <button className="btn ghost sm" onClick={back}>Back</button>
               <button className="btn sm" disabled={busy} onClick={embeddedConnect}>{busy ? (<><Loader size={15} />Opening Meta…</>) : 'Continue to connect'}</button>
@@ -558,8 +565,8 @@ export default function Connect() {
                 <span className="hint">Server keys set but popup still won&apos;t open? Two usual culprits: (1) Meta app dashboard → Facebook Login → Settings → Authorized JavaScript origins must include your app URL{typeof window !== 'undefined' && window.location && window.location.origin ? (<> — yours right now is <b>{window.location.origin}</b> (copy it exactly, https + domain, no trailing slash)</>) : ''}; (2) popup/ad-blocker (allow popups + connect.facebook.net). Still stuck? Talk to support from Help.</span>
               </div>
             )}
-            <p className="hint">Stuck on the popup? Allow popups for this site and retry — or talk to support from Help.</p>
-            {!showManual && (isStandaloneBrowser() || isInAppBrowser() || isMobileBrowser()) && <p className="hint" style={{ marginTop: 8 }}>On a phone{isInAppBrowser() ? ' inside another app' : ''}? Popups struggle here — <button type="button" className="btn ghost sm" onClick={() => setShowManual(true)}>enter details manually instead</button> (same result, ~1 minute).</p>}
+            <p className="hint">Stuck? Allow new tabs/popups for this site and retry — or talk to support from Help.</p>
+            {!showManual && (isStandaloneBrowser() || isInAppBrowser() || isMobileBrowser()) && <p className="hint" style={{ marginTop: 8 }}>On a phone{isInAppBrowser() ? ' inside another app' : ''}? Continue opens a full Meta page in a new tab (no popup can survive here) — or <button type="button" className="btn ghost sm" onClick={() => setShowManual(true)}>enter details manually</button> (same result, ~1 minute).</p>}
             {showManual && (<div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
               <h2>Enter details manually</h2>
               <p className="desc">Same two values from your Meta app dashboard (WhatsApp → API testing) — no developer maze:</p>

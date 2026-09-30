@@ -415,6 +415,12 @@ class ApiClient {
       (await post('/api/me/telegram/health', {'repair': true}) as Map)
           .cast<String, dynamic>();
 
+  /// Meta redirect (phone) road: mints a single-use signed state and returns
+  /// the Facebook OAuth URL to open in the real browser — plus the exact
+  /// redirect URI, so support can paste it into Meta verbatim.
+  Future<Map<String, dynamic>> metaOauthStart() async =>
+      (await get('/api/me/meta/oauth/start') as Map).cast<String, dynamic>();
+
   /// WhatsApp token liveness: { connected, phone, reason } — powers the
   /// Verify WhatsApp button (dead temp tokens named here!).
   Future<Map<String, dynamic>> waHealth() async =>

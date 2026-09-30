@@ -95,6 +95,12 @@ app.post('/api/admin/logout', require('./controllers/adminController').adminLogo
 // userId that password-admin sessions don't have — mounting first lets
 // requireAdmin decide instead!). Paths: /api/admin/stats, /users, /transfers…
 app.use('/api/admin', require('./controllers/adminController').requireAdmin, require('./routes/adminRoutes'));
+// Meta OAuth redirect landing — PUBLIC by necessity (Meta's redirect is a fresh
+// navigation; intent is proven by the signed single-use state, not a cookie).
+// MUST be registered BEFORE app.use('/api', ownerRoutes): that router ends with
+// router.use(requireAuth), so anything mounted under /api after it would 401
+// first. Order is the whole security model here.
+app.get('/api/meta/oauth/callback', require('./controllers/metaOauthController').callback);
 app.use('/api', ownerRoutes); // /api/me, /api/me/business, etc.
 app.use('/api', billingRoutes.router); // POST /api/billing/initialize
 app.post('/webhook/paystack', require('./middleware/security').webhookLimiter, billingController.handlePaystackWebhook); // ← Paystack events (NGN cards)

@@ -294,7 +294,7 @@ async function deleteProduct(req, res) {
 async function getConversations(req, res) {
   const { rows } = await db.query( // inbox list: previews + flags, newest first, cap 100
     `SELECT id, customer_number, customer_name, last_message, last_reply,
-            needs_human, flag_reason, bot_paused, updated_at
+            needs_human, flag_reason, bot_paused, updated_at, channel
      FROM conversations WHERE business_id = $1
      ORDER BY updated_at DESC LIMIT 100`, // DESC = newest first (inbox order); LIMIT = don't dump the whole history; bot_paused drives Take-over badges
     [req.session.businessId]

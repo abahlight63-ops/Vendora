@@ -30,6 +30,26 @@ class ApiClient {
     defaultValue: 'https://api.velosalesai.com.ng',
   );
 
+  /// The WEB APP origin — everything the app deliberately hands off to a real
+  /// browser (checkout, referrals, and the Meta OAuth return page).
+  ///
+  /// This lived as a hardcoded literal in four different screens, and they had
+  /// already drifted: three said `vendorabot.vercel.app` while one said
+  /// `app.velosalesai.com.ng`. A customer tapping "Upgrade" on one screen and
+  /// following a referral link on another would land on two different sites,
+  /// which is exactly the class of bug a launch cannot ship. One constant, one
+  /// override: `--dart-define WEB_APP_URL=https://...`.
+  static const String webUrl = String.fromEnvironment(
+    'WEB_APP_URL',
+    defaultValue: 'https://vendorabot.vercel.app',
+  );
+
+  /// Checkout, opened externally. Single source of truth for the upgrade path.
+  static String get billingUrl => '$webUrl/billing';
+
+  /// Referral link — the browser signs in with `?ref=` prefilled.
+  static String referralUrl(String code) => '$webUrl/login?ref=$code';
+
   static const _cookieKey = 'velosalesai_session_cookie';
   String? _cookie; // raw "connect.sid=..." pair (attributes stripped)
   bool _loaded = false;

@@ -430,7 +430,7 @@ class _ReferCardState extends State<_ReferCard> {
     final r = _r;
     if (r == null) return;
     final code = '${r['code'] ?? ''}';
-    final link = 'https://vendorabot.vercel.app/login?ref=$code';
+    final link = ApiClient.referralUrl(code);
     final text =
         'I use VeloSales Ai — my WhatsApp shop answers customers 24/7. Start free with my code $code (connect + use it and we BOTH get 14 Pro days free): $link';
     List<dynamic> history = [];
@@ -514,7 +514,7 @@ class _ReferCardState extends State<_ReferCard> {
     final paying = (r['paying'] as num? ?? 0).toInt();
     final every = (r['milestoneEvery'] as num? ?? 5).toInt();
     final pct = (paying % every) / every;
-    final link = 'https://vendorabot.vercel.app/login?ref=$code'; // web login prefills + validates!
+    final link = ApiClient.referralUrl(code); // web login prefills + validates!
     final text =
         'I use VeloSales Ai — my WhatsApp shop answers customers 24/7. Start free with my code $code (connect + use it and we BOTH get 14 Pro days free): $link';
     return FadeSlideIn(

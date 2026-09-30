@@ -20,6 +20,7 @@ class ChatsScreen extends StatefulWidget {
 class _ChatsScreenState extends State<ChatsScreen> {
   List<dynamic>? _chats;
   String _filter = 'all'; // 'all' | 'needs' | 'handled'
+  String _chan = 'all'; // 'all' | 'whatsapp' | 'telegram' — mixed inboxes need a way to zoom into one channel
   String? _err;
   bool _loading = true;
 
@@ -45,16 +46,27 @@ class _ChatsScreenState extends State<ChatsScreen> {
     }
   }
 
+  /// `channel ?? 'whatsapp'` on purpose: the column defaults to whatsapp, but
+  /// rows written before it existed come back null. Treating those as WhatsApp
+  /// keeps old chats visible instead of silently vanishing behind a filter
+  /// nobody set.
+  static String _chanOf(Map c) =>
+      '${c['channel'] ?? 'whatsapp'}' == 'telegram' ? 'telegram' : 'whatsapp';
+
   List<dynamic> get _list {
     final all = _chats ?? [];
-    if (_filter == 'needs') {
-      return all.where((c) => (c as Map)['needs_human'] == true).toList();
-    }
-    if (_filter == 'handled') {
-      return all.where((c) => (c as Map)['needs_human'] != true).toList();
-    }
-    return all;
+    return all
+        .where((c) => _chanOf(c as Map) == _chan)
+        .where((c) => _filter == 'needs'
+            ? (c as Map)['needs_human'] == true
+            : _filter == 'handled'
+                ? (c as Map)['needs_human'] != true
+                : true)
+        .toList();
   }
+
+  int _chanCount(String k) =>
+      (_chats ?? []).where((c) => _chanOf(c as Map) == k).length;
 
   @override
   Widget build(BuildContext context) {
@@ -93,6 +105,35 @@ class _ChatsScreenState extends State<ChatsScreen> {
             ),
         ]),
       ),
+      // Channel zoom row — only rendered when that channel actually has chats
+      // (a dead tab is worse than no tab), and tapping the active one clears it.
+      if (_chanCount('whatsapp') > 0 || _chanCount('telegram') > 0)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+          child: Row(children: [
+            for (final k in ['whatsapp', 'telegram'])
+              if (_chanCount(k) > 0)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: TextButton(
+                    onPressed: () =>
+                        setState(() => _chan = _chan == k ? 'all' : k),
+                    style: TextButton.styleFrom(
+                        minimumSize: const Size(0, 30),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        foregroundColor:
+                            _chan == k ? scheme.primary : scheme.onSurface),
+                    child: Text(
+                        '${k == 'telegram' ? 'Telegram' : 'WhatsApp'} (${_chanCount(k)})',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: _chan == k
+                                ? FontWeight.w800
+                                : FontWeight.w400)),
+                  ),
+                ),
+          ]),
+        ),
       Expanded(
         child: _loading
             ? ListView.builder(
@@ -116,9 +157,9 @@ class _ChatsScreenState extends State<ChatsScreen> {
                       ]))
                 : _list.isEmpty
                     ? Center(
-                        child: Text(_filter == 'all'
-                            ? 'Chats appear once WhatsApp is connected.'
-                            : 'No chats match this filter.'))
+                        child: Text((_filter != 'all' || _chan != 'all')
+                            ? 'No chats match these filters — try All.'
+                            : 'Chats appear once you connect WhatsApp or Telegram.'))
                     : RefreshIndicator(
                         onRefresh: _load,
                         child: ListView.builder(
@@ -141,8 +182,36 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                           '${m['customer_name'] ?? '?'}'
                                               .substring(0, 1)
                                               .toUpperCase())),
-                                  title: Text(
-                                      '${m['customer_name'] ?? m['customer_number']}'),
+                                   title: Row(children: [
+                                     Flexible(
+                                       child: Text(
+                                           '${m['customer_name'] ?? m['customer_number']}',
+                                           overflow: TextOverflow.ellipsis),
+                                     ),
+                                     const SizedBox(width: 6),
+                                     // Channel badge — a mixed inbox that doesn't
+                                     // say which app each chat came from makes the
+                                     // owner guess before they answer.
+                                     Container(
+                                       padding: const EdgeInsets.symmetric(
+                                           horizontal: 7, vertical: 2),
+                                       decoration: BoxDecoration(
+                                         color: scheme.primary.withValues(
+                                             alpha: 0.12),
+                                         borderRadius:
+                                             BorderRadius.circular(999),
+                                       ),
+                                       child: Text(
+                                         _chanOf(m) == 'telegram'
+                                             ? 'Telegram'
+                                             : 'WhatsApp',
+                                         style: TextStyle(
+                                             fontSize: 10,
+                                             fontWeight: FontWeight.w700,
+                                             color: scheme.primary),
+                                       ),
+                                     ),
+                                   ]),
                                   subtitle: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,

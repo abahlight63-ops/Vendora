@@ -8,7 +8,7 @@ import '../api.dart';
 import '../glass.dart';
 import '../motion.dart';
 
-const _webBilling = 'https://vendorabot.vercel.app/billing'; // checkout lives in the browser (same as Billing tab!)
+final _webBilling = ApiClient.billingUrl; // NOT const: it is a getter (String.fromEnvironment is resolved at runtime) // checkout lives in the browser (same as Billing tab!)
 
 /// Delivery line for product rows: delivery · location · how-to-buy (reads
 /// the same three backend columns the web Catalog writes — one catalog!).

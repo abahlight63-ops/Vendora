@@ -243,7 +243,7 @@ class _AiScreenState extends State<AiScreen> {
             width: double.infinity,
             child: FilledButton(
               onPressed: () => launchUrl(
-                  Uri.parse('https://app.velosalesai.com.ng/billing'),
+                  Uri.parse(ApiClient.billingUrl),
                   mode: LaunchMode.externalApplication),
               child: const Text('See upgrade options'),
             ),

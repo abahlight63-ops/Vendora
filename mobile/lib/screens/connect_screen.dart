@@ -13,7 +13,7 @@ import '../api.dart';
 import '../glass.dart';
 import '../motion.dart';
 
-const _webBilling = 'https://vendorabot.vercel.app/billing'; // locked-brain upsell opens here (same as Billing tab!)
+final _webBilling = ApiClient.billingUrl; // NOT const: it is a getter (String.fromEnvironment is resolved at runtime) // locked-brain upsell opens here (same as Billing tab!)
 
 class ConnectScreen extends StatefulWidget {
   const ConnectScreen({super.key});

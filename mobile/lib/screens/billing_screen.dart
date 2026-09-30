@@ -13,7 +13,7 @@ import '../api.dart';
 import '../glass.dart';
 import '../motion.dart';
 
-const _webBilling = 'https://vendorabot.vercel.app/billing';
+final _webBilling = ApiClient.billingUrl; // NOT const: it is a getter (String.fromEnvironment is resolved at runtime)
 const _fallbackSalesEmail = 'velosales63@gmail.com';
 
 // Pro tier: the full salesperson (same list as the web Billing page).

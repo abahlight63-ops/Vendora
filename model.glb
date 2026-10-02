@@ -1,0 +1,1 @@
+{"success":false,"error":{"message":"microsoft/trellis-2 requires at least one reference image (image= param)","code":"BAD_REQUEST","timestamp":"2026-10-02T06:18:55.111Z","details":{"name":"UpstreamError","upstreamStatus":400}},"status":400}

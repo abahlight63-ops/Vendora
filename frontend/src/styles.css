@@ -1,34 +1,34 @@
-﻿/* â•â• VeloSales AI stylesheet â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   ONE global CSS file (imported once in main.jsx â€” Vite bundles it).
+/* ══ VeloSales AI stylesheet ═══════════════════════════════════════════════
+   ONE global CSS file (imported once in main.jsx — Vite bundles it).
    Authority: DESIGN.md. Every color below is a token; components never
    hard-code hex. One :root (light) + one [data-theme="dark"] block, and
    nothing else may redefine them.
 
    HOW TO READ
-   Â· Tokens        â†’ Â§1 (change one value, the whole app follows)
-   Â· Glass         â†’ Â§2  (allowed ONLY on: topbar, mobile bar, hero chips,
+   · Tokens        → §1 (change one value, the whole app follows)
+   · Glass         → §2  (allowed ONLY on: topbar, mobile bar, hero chips,
                           modals/sheets, chart tooltips, amber paywall)
-   Â· Sections      â†’ Â§3 reset Â· Â§4 layout Â· Â§5 surfaces Â· Â§6 controls
-                     Â§7 chips Â· Â§8 tables/lists Â· Â§9 chat Â· Â§10 states
-                     Â§11 toasts/sheets Â· Â§12 tour Â· Â§13 nav Â· Â§14 bell
-                     Â§15 Velo AI Â· Â§16 billing/paywall Â· Â§17 auth
-                     Â§18 landing/legal Â· Â§19 onboarding Â· Â§20 brand moments
-                     Â§21 charts Â· Â§22 misc Â· Â§23 admin (out of scope)
-                     Â§24 responsive (640 / 1024 only) Â· Â§25 reduced motion
+   · Sections      → §3 reset · §4 layout · §5 surfaces · §6 controls
+                     §7 chips · §8 tables/lists · §9 chat · §10 states
+                     §11 toasts/sheets · §12 tour · §13 nav · §14 bell
+                     §15 Velo AI · §16 billing/paywall · §17 auth
+                     §18 landing/legal · §19 onboarding · §20 brand moments
+                     §21 charts · §22 misc · §23 admin (out of scope)
+                     §24 responsive (640 / 1024 only) · §25 reduced motion
 
    WHATSAPP GREEN is not a brand color here. It survives in exactly three
    places: the channel badge, the online dot, and success states (--live).
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   ═══════════════════════════════════════════════════════════════════════ */
 /* Figtree = dense app UI. Cormorant Garamond = the serif display voice from the
    logo/BRO brand (headlines only). JetBrains Mono = the tiny uppercase labels
    (eyebrows, badges, breadcrumbs) that make the brand read "engineered". */
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§1  TOKENS â€” the only place a hex literal is allowed.
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════
+   §1  TOKENS — the only place a hex literal is allowed.
+   ═══════════════════════════════════════════════════════════════════════ */
 :root {
-  /* â”€â”€ surfaces & ink */
+  /* ── surfaces & ink */
   --bg: #F4F4F4;
   --surface: #FFFFFF;
   --surface-2: #F7F7F7;
@@ -37,7 +37,7 @@
   --ink-muted: #6B6B6B;
   --brown-900: #2E1D08;
 
-  /* â”€â”€ amber (the signature)
+  /* ── amber (the signature)
         VALUES ARE SAMPLED FROM THE BRAND MARK (public/logo-mark.png):
         the mark is champagne gold on near-black, so the ramp is gold, not
         orange. #D5B97F = mean of its brightest 15%, #241705 = its ink.
@@ -53,20 +53,20 @@
   --on-amber: #241705;
   --on-amber-soft: #241705; /* text sitting on a SOFT amber fill (--amber-300): flips in dark */
 
-  /* â”€â”€ status */
+  /* ── status */
   --live: #1F7A4D;
   --live-bg: #E6F7EA;
   --danger: #C0392B;
   --danger-bg: #FBE9E6;
   --badge: #E5372E;
 
-  /* â”€â”€ the hero card (DESIGN.md: near-black in BOTH themes + amber disc) */
+  /* ── the hero card (DESIGN.md: near-black in BOTH themes + amber disc) */
   --hero-base: #0E0E0E;
   --on-hero: #FFFFFF;
   --hero-line: rgba(255, 255, 255, 0.14);
   --hero-muted: #CFC7BA;
 
-  /* â”€â”€ type scale 12/14/16/18/22/28/40 */
+  /* ── type scale 12/14/16/18/22/28/40 */
   --fs-caption: 12px;
   --fs-sm: 14px;
   --fs-body: 16px;
@@ -83,23 +83,23 @@
   --btn-gold-grad: linear-gradient(135deg, #F3E4C0 0%, #D9BE86 50%, #B8934F 100%);
   --btn-gold-grad-hover: linear-gradient(135deg, #EBDAB0 0%, #D0B077 50%, #AC8A45 100%);
 
-  /* â”€â”€ shape */
+  /* ── shape */
   --r-banner: 12px;
   --r-card: 16px;
   --r-hero: 20px;
   --r-sheet: 28px;
   --r-pill: 999px;
 
-  /* â”€â”€ depth: borders and spacing, not shadows */
+  /* ── depth: borders and spacing, not shadows */
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.12);
 
-  /* â”€â”€ motion */
+  /* ── motion */
   --t: 200ms cubic-bezier(0.2, 0.9, 0.25, 1);
 
-  /* â”€â”€ LEGACY ALIASES. Pages reference these names directly in inline
-        styles (var(--line), var(--gold-line), var(--faint), var(--green-dark)â€¦).
+  /* ── LEGACY ALIASES. Pages reference these names directly in inline
+        styles (var(--line), var(--gold-line), var(--faint), var(--green-dark)…).
         They point at the tokens above so no page has to change. */
   --card: var(--surface);
   --line: var(--border);
@@ -164,9 +164,9 @@
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§2  GLASS â€” the four allowed surfaces. Recipe is fixed by DESIGN.md.
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════
+   §2  GLASS — the four allowed surfaces. Recipe is fixed by DESIGN.md.
+   ═══════════════════════════════════════════════════════════════════════ */
 .glass {
   background: rgba(255, 255, 255, 0.62);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
@@ -196,9 +196,9 @@
   .glass-amber { background: var(--amber-150); border-color: var(--amber-line); }
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§3  RESET & BASE
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════
+   §3  RESET & BASE
+   ═══════════════════════════════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; }
 body {
@@ -219,16 +219,16 @@ a:hover { text-decoration: underline; }
 :focus-visible { outline: 2px solid var(--amber-500); outline-offset: 2px; border-radius: 6px; }
 svg { flex: 0 0 auto; }
 /* bare <button> (accordion rows, icon buttons, toggles) must never fall back
-   to the browser's grey button chrome â€” it is unreadable in dark mode */
+   to the browser's grey button chrome — it is unreadable in dark mode */
 button { font: inherit; color: inherit; background: none; border: none; padding: 0; cursor: pointer; text-align: inherit; }
 button:disabled { cursor: not-allowed; }
 img { max-width: 100%; display: block; }
 /* Numbers are read, never decorative: tabular + 600 so columns line up. */
 .num, .stat .num, .plan-price, .hub-big, .fx-big, .pw-meter span { font-variant-numeric: tabular-nums; font-weight: 600; }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§4  LAYOUT â€” .shell = sidebar + main column. .topbar is glass and sticky.
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════
+   §4  LAYOUT — .shell = sidebar + main column. .topbar is glass and sticky.
+   ═══════════════════════════════════════════════════════════════════════ */
 .shell { display: flex; min-height: 100vh; }
 
 .sidebar {
@@ -278,7 +278,7 @@ img { max-width: 100%; display: block; }
 .page-head { margin-bottom: 28px; }
 .page-head h1 { font-size: var(--fs-h2); font-weight: 600; letter-spacing: -0.3px; line-height: 1.2; }
 .page-head p { color: var(--ink-muted); font-size: var(--fs-sm); margin-top: 6px; max-width: 640px; line-height: 1.5; }
-/* title on the left, action on the right â€” centered, not pinned to the text's first line */
+/* title on the left, action on the right — centered, not pinned to the text's first line */
 .page-head .row { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
 
 .avatar { width: 36px; height: 36px; border-radius: var(--r-pill); background: var(--amber-300); color: var(--on-amber-soft); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-sm); }
@@ -293,9 +293,9 @@ img { max-width: 100%; display: block; }
 }
 .live-dot i { width: 8px; height: 8px; border-radius: 50%; background: var(--live); }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§5  SURFACES â€” solid, 1px border, depth from spacing. No glass.
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════
+   §5  SURFACES — solid, 1px border, depth from spacing. No glass.
+   ═══════════════════════════════════════════════════════════════════════ */
 .card, .stat, .qa, .plan {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -336,12 +336,12 @@ img { max-width: 100%; display: block; }
 .err-line { display: inline-block; color: var(--danger); margin-top: 6px; }
 .feat-ic { display: inline-flex; color: var(--amber-700); }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§6  CONTROLS
+/* ═══════════════════════════════════════════════════════════════════════
+   §6  CONTROLS
    Buttons: heights 40 / 48 / 56. Fully rounded. One primary per screen.
    vertical-align:middle makes any two buttons sitting side by side in
    markup (with a text space between them) line up optically.
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   ═══════════════════════════════════════════════════════════════════════ */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   vertical-align: middle;
@@ -391,7 +391,7 @@ input:focus, textarea:focus, select:focus {
 textarea { resize: vertical; min-height: 96px; line-height: 1.5; }
 input:disabled, textarea:disabled, select:disabled { background: var(--surface-2); color: var(--ink-muted); cursor: not-allowed; }
 
-/* a text button that sits next to real buttons â€” same optical box */
+/* a text button that sits next to real buttons — same optical box */
 .skip, .mini-link, .resend-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   min-height: 40px; padding: 0 12px;
@@ -420,7 +420,7 @@ input:disabled, textarea:disabled, select:disabled { background: var(--surface-2
 .pw-meter i.on { background: var(--live); border-color: transparent; }
 .pw-meter span { font-size: var(--fs-caption); color: var(--ink-muted); }
 
-/* segmented control (System / Light / Dark) â€” pill, selected = amber-100 */
+/* segmented control (System / Light / Dark) — pill, selected = amber-100 */
 .seg { display: inline-flex; gap: 4px; padding: 4px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-pill); }
 .seg button {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
@@ -439,7 +439,7 @@ input:disabled, textarea:disabled, select:disabled { background: var(--surface-2
 .toggle.on { background: var(--amber-400); border-color: transparent; }
 .toggle.on i { transform: translateX(20px); background: var(--on-amber); }
 
-/* settings-style row: icon Â· label Â· control */
+/* settings-style row: icon · label · control */
 .set-row { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 0; }
 .set-row + .set-row { border-top: 1px solid var(--border); }
 .set-row > svg { color: var(--ink-muted); }
@@ -456,9 +456,9 @@ input:disabled, textarea:disabled, select:disabled { background: var(--surface-2
 .foot-nav .btn { flex: 0 1 auto; }
 .foot-nav .btn:last-child { margin-left: auto; }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§7  CHIPS â€” a chip is a status, never decoration.
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════
+   §7  CHIPS — a chip is a status, never decoration.
+   ═══════════════════════════════════════════════════════════════════════ */
 .pill {
   display: inline-flex; align-items: center; gap: 5px;
   font-family: var(--font-mono); font-size: var(--fs-caption); font-weight: 500; letter-spacing: 0.03em;
@@ -472,9 +472,9 @@ input:disabled, textarea:disabled, select:disabled { background: var(--surface-2
 .pill.new { background: var(--badge); color: var(--on-hero); }
 .trial-badge { flex: 0 0 auto; display: inline-flex; align-items: center; font-size: var(--fs-caption); font-weight: 600; color: var(--on-amber-soft); background: var(--amber-300); padding: 6px 10px; border-radius: var(--r-banner); }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§8  TABLES, LISTS, ROWS
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════
+   §8  TABLES, LISTS, ROWS
+   ═══════════════════════════════════════════════════════════════════════ */
 .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r-card); }
 .table-wrap table { min-width: 620px; }
 table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); background: var(--surface); }
@@ -514,9 +514,9 @@ tbody tr.rowlink:hover { background: var(--amber-100); }
 .copyrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; border: 1px solid var(--border); border-radius: var(--r-card); padding: 12px 14px; background: var(--surface); cursor: pointer; }
 .copyrow span:first-child { flex: 1; min-width: 200px; overflow-wrap: anywhere; user-select: all; color: var(--ink); font-size: var(--fs-sm); }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§9  CHAT â€” outgoing bubbles amber, WhatsApp green nowhere in here.
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════
+   §9  CHAT — outgoing bubbles amber, WhatsApp green nowhere in here.
+   ═══════════════════════════════════════════════════════════════════════ */
 .thread { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
 .bubble-in, .bubble-out { max-width: 78%; padding: 10px 14px; border-radius: var(--r-card); font-size: var(--fs-sm); line-height: 1.5; margin: 4px 0; }
 .bubble-in { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); border-top-left-radius: 6px; }
@@ -531,9 +531,9 @@ tbody tr.rowlink:hover { background: var(--amber-100); }
 .learn-box.light .reply { background: var(--surface); display: flex; gap: 8px; align-items: flex-start; }
 .learn-box.light .reply svg { color: var(--live); flex: 0 0 auto; margin-top: 2px; }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§10  STATES â€” skeletons, empty, loaders
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════
+   §10  STATES — skeletons, empty, loaders
+   ═══════════════════════════════════════════════════════════════════════ */
 .skel { position: relative; overflow: hidden; height: 15px; border-radius: var(--r-pill); background: var(--surface-2); }
 .skel::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--amber-150), transparent); animation: skelShimmer 1.4s ease-in-out infinite; }
 @keyframes skelShimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
@@ -561,9 +561,9 @@ tbody tr.rowlink:hover { background: var(--amber-100); }
 .brandgate { display: grid; place-items: center; gap: 12px; padding: 48px 20px; }
 .brandgate-name { font-weight: 600; letter-spacing: 2px; font-size: var(--fs-caption); color: var(--ink-muted); }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§11  TOASTS, MODALS, SHEETS â€” glass, with a solid fallback in Â§2.
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════
+   §11  TOASTS, MODALS, SHEETS — glass, with a solid fallback in §2.
+   ═══════════════════════════════════════════════════════════════════════ */
 .toast-wrap { position: fixed; top: 16px; right: 16px; z-index: 99; }
 .toast { display: flex; align-items: center; gap: 9px; padding: 12px 16px; border-radius: var(--r-pill); font-size: var(--fs-sm); font-weight: 500; background: var(--ink); color: var(--bg); box-shadow: var(--shadow-md); animation: toastIn 0.28s cubic-bezier(0.2, 0.9, 0.25, 1) both; }
 .toast.err { background: var(--danger); color: var(--danger-bg); }
@@ -613,9 +613,9 @@ tbody tr.rowlink:hover { background: var(--amber-100); }
 .glass-tick { flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; background: var(--live); color: var(--surface); display: inline-flex; align-items: center; justify-content: center; }
 .btn.glass-cta { width: 100%; }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§12  TOUR & CHECKLIST
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════
+   §12  TOUR & CHECKLIST
+   ═══════════════════════════════════════════════════════════════════════ */
 .tour-spot { position: absolute; z-index: 251; border-radius: var(--r-card); box-shadow: 0 0 0 3px var(--amber-500); pointer-events: none; }
 .tour-tip, .tour-card {
   position: relative; z-index: 252; width: 100%; max-width: 340px;
@@ -632,9 +632,9 @@ tbody tr.rowlink:hover { background: var(--amber-100); }
 .guide-bar { height: 8px; border-radius: var(--r-pill); background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; margin-top: 10px; }
 .guide-bar i { display: block; height: 100%; border-radius: var(--r-pill); background: var(--amber-500); transition: width var(--t); }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§13  NAV â€” drawer + floating bottom bar (glass) + footer
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════
+   §13  NAV — drawer + floating bottom bar (glass) + footer
+   ═══════════════════════════════════════════════════════════════════════ */
 .menu-btn { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 44px; height: 44px; padding: 0 11px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-pill); cursor: pointer; }
 .menu-btn span { display: block; height: 2px; border-radius: 2px; background: var(--ink); transition: transform var(--t), opacity var(--t); }
 .menu-btn:hover { border-color: var(--amber-line); }
@@ -650,9 +650,9 @@ tbody tr.rowlink:hover { background: var(--amber-100); }
 .sdot { height: 6px; flex: 1; border-radius: var(--r-pill); background: var(--surface-2); border: none; padding: 0; }
 .sdot.on { background: var(--amber-500); }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§14  NOTIFICATION BELL
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════
+   §14  NOTIFICATION BELL
+   ═══════════════════════════════════════════════════════════════════════ */
 .nbell { position: relative; }
 .nbell-btn { position: relative; width: 44px; height: 44px; border-radius: var(--r-pill); border: 1px solid transparent; background: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: border-color var(--t), background var(--t); }
 .nbell-btn:hover { background: var(--surface-2); }
@@ -679,9 +679,9 @@ tbody tr.rowlink:hover { background: var(--amber-100); }
 .nbell-main span { font-size: var(--fs-caption); color: var(--ink-muted); line-height: 1.5; }
 .nbell-main i { font-size: 11px; color: var(--ink-muted); font-style: normal; }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§15  VELO AI CHAT + MODEL PICKER
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════
+   §15  VELO AI CHAT + MODEL PICKER
+   ═══════════════════════════════════════════════════════════════════════ */
 .vai { display: flex; flex-direction: column; min-height: calc(100vh - 140px); max-width: 760px; margin: 0 auto; width: 100%; }
 .vai-hero { margin: auto; text-align: center; padding: 32px 16px; }
 .vai-logo { width: 64px; height: 64px; border-radius: var(--r-hero); background: var(--surface); border: 1px solid var(--border); }
@@ -739,9 +739,9 @@ tbody tr.rowlink:hover { background: var(--amber-100); }
 .mpick-empty { padding: 16px; text-align: center; color: var(--ink-muted); font-size: var(--fs-sm); display: flex; align-items: center; justify-content: center; gap: 8px; }
 .mpick-hint { font-size: var(--fs-caption); color: var(--ink-muted); flex: 1 1 200px; }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§16  PRICING, BILLING, PAYWALL
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════
+   §16  PRICING, BILLING, PAYWALL
+   ═══════════════════════════════════════════════════════════════════════ */
 .plan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .plan { position: relative; display: flex; flex-direction: column; padding: 24px; overflow: visible; transition: border-color var(--t); }
 .plan:hover { border-color: var(--amber-line); }
@@ -766,9 +766,9 @@ tbody tr.rowlink:hover { background: var(--amber-100); }
 .tform { display: grid; gap: 4px; margin-top: 12px; }
 .tform .btn { min-height: 48px; }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§17  AUTH â€” cream wash at the top, one solid card, no glass, no side panel
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════
+   §17  AUTH — cream wash at the top, one solid card, no glass, no side panel
+   ═══════════════════════════════════════════════════════════════════════ */
 .auth-wrap { position: relative; min-height: 100vh; display: grid; place-items: center; padding: 40px 16px; background: linear-gradient(180deg, var(--amber-100) 0%, var(--bg) 55%); }
 [data-theme="dark"] .auth-wrap { background: linear-gradient(180deg, var(--amber-150) 0%, var(--bg) 55%); }
 .auth-card { position: relative; width: 100%; max-width: 460px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sheet); box-shadow: var(--shadow-md); overflow: hidden; }
@@ -787,16 +787,16 @@ tbody tr.rowlink:hover { background: var(--amber-100); }
 .brand-chip { display: none; }
 .auth-wrap .side-note { display: block; text-align: center; margin-top: 20px; font-size: var(--fs-caption); color: var(--ink-muted); }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§18  LANDING, PUBLIC FAQ, LEGAL
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════
+   §18  LANDING, PUBLIC FAQ, LEGAL
+   ═══════════════════════════════════════════════════════════════════════ */
 .landing { background: var(--bg); color: var(--ink); min-height: 100vh; }
 .landing-inner { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
 .landing-nav { border-bottom: 1px solid var(--border); padding: 14px 0; position: sticky; top: 0; background: var(--bg); z-index: 10; }
 .landing-nav .landing-inner { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .landing-brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: 0.4px; color: var(--ink); flex: 0 0 auto; white-space: nowrap; } /* flex:0 0 auto + nowrap = never let the row squash the wordmark (a shrunken brand spills past its own box) */
 .landing-brand img { width: 32px; height: 32px; border-radius: 10px; background: var(--surface); }
-.landing-nav .btn { flex: 0 0 auto; } /* same guard for the nav CTAs â€” buttons keep their padding instead of being compressed */
+.landing-nav .btn { flex: 0 0 auto; } /* same guard for the nav CTAs — buttons keep their padding instead of being compressed */
 .landing-hero { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 32px; padding: 56px 24px 40px; align-items: center; }
 .landing-hero h1 { font-family: var(--font-display); font-size: var(--fs-h1); line-height: 1.08; letter-spacing: -0.5px; color: var(--ink); margin: 16px 0; font-weight: 500; }
 .landing-hero h1 .gold {
@@ -806,7 +806,7 @@ tbody tr.rowlink:hover { background: var(--amber-100); }
 .landing-hero p { color: var(--ink-muted); font-size: var(--fs-body); line-height: 1.5; max-width: 520px; }
 .landing-hero .hint { color: var(--ink-muted); }
 .how-thumb { border-radius: var(--r-card); overflow: hidden; margin-bottom: 16px; }
-.how-thumb img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; } /* the how-{1,2,3}.svg scenes are 4:3 â€” show them whole, never crop the words */
+.how-thumb img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; } /* the how-{1,2,3}.svg scenes are 4:3 — show them whole, never crop the words */
 .landing-phone { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-hero); padding: 18px; display: flex; flex-direction: column; gap: 4px; }
 .landing-phone-head { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--ink); font-size: var(--fs-sm); margin-bottom: 10px; }
 .landing-phone-head i { width: 9px; height: 9px; border-radius: 50%; background: var(--live); }
@@ -847,7 +847,7 @@ tbody tr.rowlink:hover { background: var(--amber-100); }
 .faq-cta { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 20px; background: var(--amber-150); border: 1px solid var(--amber-line); }
 .faq-cta .desc { color: var(--amber-700); }
 
-.legal { max-width: 760px; margin: 0 auto; overflow-wrap: anywhere; /* legal copy is full of unbreakable runs ("Gemini/Groq/TokenRouter/SambaNova/â€¦"). `anywhere` (not break-word) also shrinks min-content, so the card can never be forced wider than the screen. */ }
+.legal { max-width: 760px; margin: 0 auto; overflow-wrap: anywhere; /* legal copy is full of unbreakable runs ("Gemini/Groq/TokenRouter/SambaNova/…"). `anywhere` (not break-word) also shrinks min-content, so the card can never be forced wider than the screen. */ }
 .legal h1 { font-family: var(--font-display); font-size: calc(var(--fs-h2) * 1.1); font-weight: 500; margin-bottom: 6px; }
 .legal h3 { font-size: var(--fs-body); margin: 24px 0 6px; }
 .legal p, .legal li { color: var(--ink-muted); font-size: var(--fs-sm); }
@@ -861,9 +861,9 @@ tbody tr.rowlink:hover { background: var(--amber-100); }
 .mock .bubble { background: var(--surface-2); border-radius: var(--r-card) var(--r-card) 6px var(--r-card); padding: 10px 12px; margin-bottom: 8px; max-width: 92%; }
 .mock .bubble.ai { background: var(--amber-300); color: var(--on-amber-soft); border-radius: var(--r-card) var(--r-card) var(--r-card) 6px; align-self: flex-end; margin-left: auto; }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§19  ONBOARDING, WELCOME QUIZ, NEUMORPHIC SLIDES
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════
+   §19  ONBOARDING, WELCOME QUIZ, NEUMORPHIC SLIDES
+   ═══════════════════════════════════════════════════════════════════════ */
 .welcome { min-height: 100vh; background: var(--bg); display: grid; place-items: center; padding: 28px 16px 40px; }
 .welcome-inner { width: 100%; max-width: 880px; }
 .welcome-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
@@ -919,10 +919,10 @@ tbody tr.rowlink:hover { background: var(--amber-100); }
 .niche { display: flex; align-items: center; gap: 8px; text-align: left; padding: 14px 16px; border-radius: var(--r-card); border: 1px solid var(--border); background: var(--surface); font-size: var(--fs-sm); font-weight: 500; cursor: pointer; }
 .niche.sel { border-color: var(--amber-line); box-shadow: 0 0 0 1px var(--amber-line); }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§20  BRAND MOMENTS â€” hero card, splash, scatter logo
+/* ═══════════════════════════════════════════════════════════════════════
+   §20  BRAND MOMENTS — hero card, splash, scatter logo
    The hero is the one screen with a dark card + a cropped amber disc.
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   ═══════════════════════════════════════════════════════════════════════ */
 .dash-hero {
   position: relative; overflow: hidden;
   display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap;
@@ -946,7 +946,7 @@ tbody tr.rowlink:hover { background: var(--amber-100); }
 .dash-cta .btn { background: var(--amber-400); color: var(--on-amber); }
 .dash-cta .btn:hover { background: var(--amber-300); color: var(--on-amber-soft); }
 
-/* â”€â”€ splash */
+/* ── splash */
 .splash { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: var(--hero-base); transition: opacity 0.4s ease; overflow: hidden; }
 .splash::after { content: ""; position: absolute; top: 50%; left: 50%; width: 460px; height: 460px; margin: -230px 0 0 -230px; border-radius: 50%; pointer-events: none; background: radial-gradient(circle, var(--brand-gold) 0%, transparent 62%); opacity: 0.14; }
 .splash.out { opacity: 0; pointer-events: none; }
@@ -957,7 +957,7 @@ tbody tr.rowlink:hover { background: var(--amber-100); }
 .splash-bar i { display: block; height: 100%; width: 40%; border-radius: var(--r-pill); background: var(--brand-gold); animation: barSlide 1.2s ease-in-out infinite; }
 @keyframes barSlide { 0% { transform: translateX(-100%); } 100% { transform: translateX(450%); } }
 
-/* â”€â”€ the centred logo animation (LogoReveal.jsx)
+/* ── the centred logo animation (LogoReveal.jsx)
       Square stage; the clip keeps its own aspect inside it (contain) so a
       4:3 master never gets cropped or stretched. Poster = the brand mark,
       so the very first painted frame is already the logo (never a hole). */
@@ -968,9 +968,9 @@ tbody tr.rowlink:hover { background: var(--amber-100); }
 .scatter-logo { position: relative; display: inline-block; overflow: hidden; border-radius: 24%; flex: 0 0 auto; }
 .scatter-logo img { position: absolute; inset: 0; width: 100%; height: 100%; }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§21  CHARTS â€” amber line, soft fill, dotted gridlines
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════
+   §21  CHARTS — amber line, soft fill, dotted gridlines
+   ═══════════════════════════════════════════════════════════════════════ */
 .fx-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
 .fx-pair { font-size: var(--fs-caption); font-weight: 600; color: var(--ink-muted); }
 .fx-big { font-size: var(--fs-h2); font-weight: 600; letter-spacing: -0.5px; line-height: 1.1; }
@@ -996,9 +996,9 @@ tbody tr.rowlink:hover { background: var(--amber-100); }
 .hbar-track i { display: block; height: 100%; border-radius: var(--r-pill); background: var(--amber-500); }
 .hbar b { text-align: right; font-variant-numeric: tabular-nums; }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§22  MISC
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════
+   §22  MISC
+   ═══════════════════════════════════════════════════════════════════════ */
 .gslide { margin: 12px 0 4px; }
 .gslide-frame { border-radius: var(--r-card); overflow: hidden; border: 1px solid var(--border); background: var(--surface-2); aspect-ratio: 16 / 9; min-height: 180px; display: grid; place-items: center; }
 .gslide-frame img { width: 100%; height: 100%; object-fit: contain; display: block; }
@@ -1010,7 +1010,7 @@ tbody tr.rowlink:hover { background: var(--amber-100); }
 .gslide-dots span { width: 22px; height: 5px; border-radius: 3px; background: var(--border); }
 .gslide-dots span.on { background: var(--amber-500); }
 
-.theme-toggle { background: none; border: none; cursor: pointer; padding: 0; width: 52px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r-pill); } /* 52Ã—44 = the track's own width so it never spills, while the tap area stays a full 44px tall */
+.theme-toggle { background: none; border: none; cursor: pointer; padding: 0; width: 52px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r-pill); } /* 52×44 = the track's own width so it never spills, while the tap area stays a full 44px tall */
 .tt-track { position: relative; display: inline-flex; align-items: center; width: 52px; height: 30px; border-radius: var(--r-pill); background: var(--surface-2); border: 1px solid var(--border); transition: background var(--t); overflow: hidden; flex: 0 0 auto; }
 .theme-toggle.on .tt-track { background: var(--surface-2); }
 .tt-icon { position: absolute; font-size: 13px; line-height: 1; z-index: 1; transition: opacity var(--t); }
@@ -1031,11 +1031,11 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
 .table-wrap::-webkit-scrollbar, .nbell-pop::-webkit-scrollbar, .mpick-pop::-webkit-scrollbar,
 .vai-thread::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§23  ADMIN CONSOLE â€” OUT OF SCOPE (DESIGN.md). Preserved verbatim from
+/* ═══════════════════════════════════════════════════════════════════════
+   §23  ADMIN CONSOLE — OUT OF SCOPE (DESIGN.md). Preserved verbatim from
    the incumbent build, including its own teal-glass tokens. Do not restyle
    these with the app palette; Step 1 does not touch this surface.
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   ═══════════════════════════════════════════════════════════════════════ */
 .admin-liquid { --glass-teal: #5eead4; --glass-cyan: #22d3ee; --glass-mint: #7ef0c0; --glass-glow: 0 0 24px rgba(94, 234, 212, 0.35); position: relative; z-index: 0; }
 .admin-liquid::before {
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
@@ -1125,11 +1125,11 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
 .hub-bars i { flex: 1; border-radius: 6px 6px 3px 3px; background: var(--amber-400); }
 .hub-dots { color: var(--ink-muted); letter-spacing: 2px; }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§24  RESPONSIVE - two breakpoints only: 1024px then 640px.
+/* ═══════════════════════════════════════════════════════════════════════
+   §24  RESPONSIVE - two breakpoints only: 1024px then 640px.
    1024 = the sidebar becomes a drawer + a floating bottom bar appears.
    640  = phone layout: one column, stacked tables, bottom-sheet overlays.
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   ═══════════════════════════════════════════════════════════════════════ */
 @media (max-width: 1024px) {
   /* sidebar -> slide-in drawer; the hamburger in the topbar opens it */
   .menu-btn { display: inline-flex; }
@@ -1268,14 +1268,14 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
   .landing-hero h1 { font-size: var(--fs-h2); }
   /* on phones the nav keeps brand + theme toggle only: brand(136) + toggle(52) + gaps
      fits 342px of content, while two CTAs need ~440px. The same CTAs sit in the
-     hero, so nothing is lost â€” and the wordmark/buttons stop being squeezed. */
+     hero, so nothing is lost — and the wordmark/buttons stop being squeezed. */
   .landing-nav-cta .btn { display: none; }
   .landing .foot-links { padding-bottom: 40px; }
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Â§25  USER PREFERENCES + ADMIN RESPONSIVE (admin keeps its own tokens)
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════
+   §25  USER PREFERENCES + ADMIN RESPONSIVE (admin keeps its own tokens)
+   ═══════════════════════════════════════════════════════════════════════ */
 /* honour the OS motion setting: stop decorative motion, keep state changes */
 @media (prefers-reduced-motion: reduce) {
   .skel::after, .spinner, .orbit-loader .orbit-spin, .vai-bubble.typing span, .mock .bubble.typing span, .live-dot i, .splash-bar i, .scroll-dot i {

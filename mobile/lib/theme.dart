@@ -1,4 +1,4 @@
-﻿// â”€â”€ lib/theme.dart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── lib/theme.dart ───────────────────────────────────────────────
 // WHAT: the mobile design tokens, 1:1 with files (2)/MOBILE-DESIGN.md.
 // One dark palette, one accent (amber, so the app matches the gold logo
 // and the web app), silver-white pills/bubbles, hairline-separated cards.
@@ -15,12 +15,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 class VsTokens extends ThemeExtension<VsTokens> {
   const VsTokens();
 
-  // â”€â”€ accent: the amber set (MOBILE-DESIGN.md "Accent" table, amber column)
+  // ── accent: the amber set (MOBILE-DESIGN.md "Accent" table, amber column)
   static const Color accent = Color(0xFFF5B63A);
   static const Color accentGlow = Color(0xFFFFD27A);
   static const Color onAccent = Color(0xFF2A1A00);
 
-  // â”€â”€ screen + surfaces
+  // ── screen + surfaces
   static const Color bgTop = Color(0xFF2A332F);
   static const Color bgBottom = Color(0xFF0E1210);
   static const Color surfaceTop = Color(0xFF232A27);
@@ -31,21 +31,21 @@ class VsTokens extends ThemeExtension<VsTokens> {
   static const Color innerHighlight = Color(0x0FFFFFFF); // white @ 6%, top edge
   static const Color hairline = Color(0x14FFFFFF); // rgba(255,255,255,.08)
 
-  // â”€â”€ silver (primary actions + bot bubbles). Text on silver: onSilver.
+  // ── silver (primary actions + bot bubbles). Text on silver: onSilver.
   static const Color silverTop = Color(0xFFFFFFFF);
   static const Color silverBottom = Color(0xFFA8ADAA);
   static const Color onSilver = Color(0xFF101513);
 
-  // â”€â”€ text
+  // ── text
   static const Color text = Color(0xFFF2F4F1);
   static const Color textMuted = Color(0xFF8F9994);
   static const Color textFaint = Color(0xFF5F6965);
 
-  // â”€â”€ status (always paired with an icon or label)
+  // ── status (always paired with an icon or label)
   static const Color danger = Color(0xFFFF8A7A);
   static const Color success = Color(0xFF7FD6A0);
 
-  // â”€â”€ type
+  // ── type
   static const String fontDisplay = 'Sora'; // headlines, weight 300
   static const String fontBody = 'DMSans'; // body + UI
   static const double fsHero = 44; // 40-48 band
@@ -54,13 +54,13 @@ class VsTokens extends ThemeExtension<VsTokens> {
   static const double fsBody = 14;
   static const double fsLabel = 12;
 
-  // â”€â”€ radii
+  // ── radii
   static const double rChip = 16; // chips + inputs inside cards
   static const double rCard = 24;
   static const double rRow = 28; // rows + bottom bar
   static const double rPill = 999;
 
-  // â”€â”€ spacing scale
+  // ── spacing scale
   static const double s4 = 4;
   static const double s8 = 8;
   static const double s12 = 12;
@@ -70,7 +70,7 @@ class VsTokens extends ThemeExtension<VsTokens> {
   static const double s32 = 32;
   static const double s48 = 48;
 
-  // â”€â”€ the only soft shadow in the system: under silver pills
+  // ── the only soft shadow in the system: under silver pills
   static const List<BoxShadow> silverShadow = [
     BoxShadow(color: Color(0x59000000), blurRadius: 24, offset: Offset(0, 8)),
   ];
@@ -78,7 +78,7 @@ class VsTokens extends ThemeExtension<VsTokens> {
   static VsTokens of(BuildContext context) =>
       Theme.of(context).extension<VsTokens>() ?? const VsTokens();
 
-  // â”€â”€ gradients (the ONLY four allowed)
+  // ── gradients (the ONLY four allowed)
   static const LinearGradient bgGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
@@ -298,7 +298,7 @@ class VeloSalesTheme {
     );
   }
 
-  // â”€â”€ typography: Sora for headlines (weight 300), DM Sans for everything else
+  // ── typography: Sora for headlines (weight 300), DM Sans for everything else
   static const TextStyle _headline = TextStyle(
     fontFamily: VsTokens.fontDisplay,
     fontSize: VsTokens.fsHero,

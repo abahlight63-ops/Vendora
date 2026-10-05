@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Teaching the assistant one WhatsApp message">
+  <!-- 1/3 "Teach it once" — the LEARN message lands, the assistant confirms. -->
+  <rect width="400" height="300" rx="18" fill="#0E0E0E"/>
+  <circle cx="330" cy="52" r="46" fill="#D5B97F" opacity=".07"/>
+  <circle cx="66" cy="252" r="34" fill="#D5B97F" opacity=".05"/>
+  <!-- window chrome -->
+  <rect x="46" y="40" width="308" height="220" rx="18" fill="#141210" stroke="#2A2621"/>
+  <rect x="46" y="40" width="308" height="42" rx="18" fill="#191714"/>
+  <rect x="46" y="64" width="308" height="18" fill="#191714"/>
+  <circle cx="72" cy="61" r="9" fill="#1F7A4D"/>
+  <rect x="90" y="55" width="96" height="11" rx="5.5" fill="#3A342C"/>
+  <rect x="286" y="53" width="46" height="16" rx="8" fill="#D5B97F" opacity=".22"/>
+  <!-- the message the owner sends -->
+  <rect x="70" y="104" width="228" height="46" rx="12" fill="#262320"/>
+  <rect x="70" y="104" width="3" height="46" rx="1.5" fill="#D5B97F"/>
+  <text x="88" y="124" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="13" font-weight="600" fill="#F5F1EA">LEARN: blue gown</text>
+  <text x="88" y="140" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="13" font-weight="600" fill="#D5B97F">₦45,000</text>
+  <!-- confirmation chip -->
+  <rect x="70" y="164" width="132" height="30" rx="15" fill="#D5B97F" opacity=".14" stroke="#D5B97F" stroke-opacity=".45"/>
+  <path d="M90 179 l6 6 11 -12" stroke="#1F7A4D" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="116" y="183" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="12.5" font-weight="600" fill="#D5B97F">Price learned</text>
+  <!-- typing dots -->
+  <rect x="70" y="212" width="62" height="28" rx="12" fill="#262320"/>
+  <circle cx="88" cy="226" r="3.5" fill="#8C8377"/>
+  <circle cx="101" cy="226" r="3.5" fill="#8C8377"/>
+  <circle cx="114" cy="226" r="3.5" fill="#8C8377"/>
+  <!-- one-off caption -->
+  <rect x="248" y="206" width="106" height="12" rx="6" fill="#2A2621"/>
+  <rect x="248" y="226" width="76" height="12" rx="6" fill="#241F1A"/>
+</svg>

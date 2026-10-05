@@ -29,7 +29,7 @@ export default function Landing() { // single premium dark theme (no props — A
       <header className="landing-nav"> {/* sticky top nav (CSS) */}
         <div className="landing-inner"> {/* centered max-width container (reused per section!) */}
           <span className="landing-brand"><Logo alt="VeloSales Ai" />VELOSALES AI</span> {/* brand lockup (span, not link — already home) */}
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}> {/* right cluster: toggle + two CTAs (inline-flex rows them up) */}
+          <span className="landing-nav-cta" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}> {/* right cluster: toggle + two CTAs (hidden on phones — CSS; the hero repeats them) */}
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
             <Link className="btn ghost sm" to="/login">Sign in</Link>{' '} {/* {' '} = explicit space between inline elements (JSX collapses whitespace!) */}
             <Link className="btn sm" to="/login">Start free trial</Link> {/* primary CTA (same destination — choice of words, not paths!) */}
@@ -40,16 +40,13 @@ export default function Landing() { // single premium dark theme (no props — A
       <section className="landing-hero landing-inner"> {/* <section> = semantic landmark (SEO + screen readers); two classes: layout + container */}
         <div> {/* left: copy + CTAs */}
           <span className="pill ok">AI sales assistant for WhatsApp</span> {/* eyebrow pill */}
-          <h1>Your WhatsApp shop, open 24/7.</h1> {/* the ONE promise (biggest type on page) */}
+          <h1>Your WhatsApp shop, <span className="gold">open 24/7.</span></h1> {/* the ONE promise (biggest type on page) */}
           <p>Customers message you at midnight. VeloSales Ai answers in seconds — prices, stock, hours — in English or Pidgin. You only step in when a human touch truly matters.</p>
           <div style={{ display: 'flex', gap: 10, marginTop: 18, flexWrap: 'wrap' }}> {/* CTA row (wraps on phones) */}
             <Link className="btn" to="/login">Start free — 7 days Pro</Link>
             <a className="btn ghost" href="#how">See how it works</a> {/* plain <a href="#how"> = in-page ANCHOR jump (no router involved — scrolls to id="how" below!) */}
           </div>
           <p className="hint" style={{ marginTop: 12 }}>No card required · Set up in 15 minutes · Cancel anytime</p> {/* objection-killers (middle dots ·) */}
-          <div className="landing-hero-photo"> {/* real photo slot: save frontend/public/photos/hero.jpg (1200×800). Missing file hides itself (onError) — layout never breaks! */}
-            <img src="/photos/hero.jpg" alt="Shop owner chatting with customers on WhatsApp" loading="lazy" decoding="async" onError={(e) => { e.target.closest('.landing-hero-photo').style.display = 'none'; }} />
-          </div>
         </div>
         <div className="landing-phone"> {/* right: fake phone with sample chat (CSS bubbles + float animation!) */}
           <div className="landing-phone-head"><i />Amaka Beauty Studio <span>online</span></div> {/* <i> = green dot; shop name + online */}
@@ -63,9 +60,9 @@ export default function Landing() { // single premium dark theme (no props — A
       <p className="hint reveal" style={{ textAlign: 'center', margin: '6px 0 0' }}>Manual catalog free forever · 7-day Pro trial included · profile sync is Pro · pricing adapts to your location</p> {/* location-based pricing note (single currency shown below — never dual tags!) */}
 
       <section className="landing-inner grid3" id="how"> {/* id="how" = the anchor target from "See how it works"! grid3 = 3 columns → stack mobile */}
-        <div className="card hover-lift reveal"><div className="how-thumb"><img src="/photos/how-1.jpg" alt="Teaching the bot with a WhatsApp message" loading="lazy" decoding="async" onError={(e) => { e.target.closest('.how-thumb').style.display = 'none'; }} /></div><h2>1. Teach it once</h2><p className="desc">Send <b>LEARN: Blue gown ₦45,000</b> from your WhatsApp — or add products here. Same name always updates the price.</p></div> {/* thumbs: frontend/public/photos/how-{1,2,3}.jpg (800×600), self-hiding when missing */}
-        <div className="card hover-lift reveal"><div className="how-thumb"><img src="/photos/how-2.jpg" alt="AI replying to a customer instantly" loading="lazy" decoding="async" onError={(e) => { e.target.closest('.how-thumb').style.display = 'none'; }} /></div><h2>2. It sells while you sleep</h2><p className="desc">Every customer gets an instant, accurate answer from YOUR catalog. Never an invented price.</p></div>
-        <div className="card hover-lift reveal"><div className="how-thumb"><img src="/photos/how-3.jpg" alt="Owner closing a flagged sale" loading="lazy" decoding="async" onError={(e) => { e.target.closest('.how-thumb').style.display = 'none'; }} /></div><h2>3. You close the hot ones</h2><p className="desc">Unsure moments get flagged to your inbox + WhatsApp instantly — with the customer's words attached.</p></div>
+        <div className="card hover-lift reveal"><div className="how-thumb"><img src="/how-1.svg" alt="Teaching the assistant one WhatsApp message" loading="lazy" decoding="async" width="400" height="300" /></div><h2>1. Teach it once</h2><p className="desc">Send <b>LEARN: Blue gown ₦45,000</b> from your WhatsApp — or add products here. Same name always updates the price.</p></div> {/* thumbs: frontend/public/how-{1,2,3}.svg (400×300, brand gold on near-black — vector, ~1 kB each) */}
+        <div className="card hover-lift reveal"><div className="how-thumb"><img src="/how-2.svg" alt="The assistant answering a customer at night" loading="lazy" decoding="async" width="400" height="300" /></div><h2>2. It sells while you sleep</h2><p className="desc">Every customer gets an instant, accurate answer from YOUR catalog. Never an invented price.</p></div>
+        <div className="card hover-lift reveal"><div className="how-thumb"><img src="/how-3.svg" alt="An unsure conversation flagged for the owner" loading="lazy" decoding="async" width="400" height="300" /></div><h2>3. You close the hot ones</h2><p className="desc">Unsure moments get flagged to your inbox + WhatsApp instantly — with the customer's words attached.</p></div>
       </section>
 
       <section className="landing-inner grid3"> {/* pricing trio — ONE currency each, picked by visitor location (useCurrency hook below!) */}
@@ -74,9 +71,9 @@ export default function Landing() { // single premium dark theme (no props — A
           <p className="desc">Pay as you grow. The full AI salesperson, cancel anytime.</p>
           <Link className="btn ghost sm" to="/login">Start free trial</Link>
         </div>
-        <div className="card hover-lift reveal" style={{ borderColor: '#25d366' }}> {/* inline borderColor = featured card pops (one-off override, no new class!) */}
+        <div className="card hover-lift reveal featured"> {/* .featured = the recommended tier gets an amber edge, not a green shout */}
           <h2>Pro Plus — {cur === 'USD' ? '$10' : '₦14,999'}<small>/mo</small></h2>
-          <p className="desc">Voice notes + 2 heavy work models. <b style={{ color: '#7ef0c0' }}>Yearly saves 33%.</b></p>
+          <p className="desc">Voice notes + 2 heavy work models. <b className="featured-note">Yearly saves 33%.</b></p>
           <Link className="btn sm" to="/login">Start free trial</Link> {/* solid (not ghost) = featured plan gets the primary button (eye-flow!) */}
         </div>
         <div className="card hover-lift reveal">
@@ -87,7 +84,7 @@ export default function Landing() { // single premium dark theme (no props — A
       </section>
 
       <section className="landing-inner reveal"> {/* PRO spotlight: the bot that does real work (your premium-tier positioning!) */}
-        <div className="card hover-lift" style={{ borderColor: '#25d366' }}>
+        <div className="card hover-lift featured">
           <span className="pill ok">VeloSales Ai Pro</span>
           <h2 style={{ marginTop: 10 }}>Your AI Assistant That Actually Works For You.</h2>
           <p className="desc">Answering questions was just the interview. Pro rolls up its sleeves: tell it <b>"sold 3 bags of rice"</b> and your stock updates itself — before and after confirmed, every change logged and undoable. Supplier reorder drafts and auto-invoicing are on the way, same tier. No spreadsheets. No stock-taking Sundays. No "I thought we had more."</p>

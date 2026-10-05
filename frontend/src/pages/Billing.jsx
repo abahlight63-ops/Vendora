@@ -124,7 +124,7 @@ export default function Billing() {
       : 'Current plan'; // expired/never-paid → free IS the plan (bot keeps replying!)
     return (
       <div className="plan">
-        <span className="plan-badge" style={{ background: 'linear-gradient(135deg,#128c4a,#0b6b38)' }}>FREE FOREVER</span>
+        <span className="plan-badge">FREE FOREVER</span>
         <h2>Free</h2>
         <p className="desc">The honest starter — your bot never stops replying.</p>
         <div className="plan-price">{money(0, cur)}<small>/forever</small></div>
@@ -226,7 +226,7 @@ export default function Billing() {
       <div className="card" style={{ marginTop: 14 }}> {/* Enterprise: NO self-serve checkout — a sales conversation via form (new tab!) */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <div><h2>Enterprise</h2><p className="desc" style={{ margin: 0 }}>For chains, franchises and high-volume shops. Everything in Pro Plus, plus:</p></div>
-          <span className="plan-badge" style={{ background: 'linear-gradient(135deg,#b54708,#7a2e0e)' }}>CONTACT SALES</span>
+          <span className="plan-badge sales">CONTACT SALES</span>
         </div>
         <ul className="plan-feats" style={{ marginTop: 12 }}>{[
           'Multiple branches, one dashboard — each shop keeps its own catalog and inbox',

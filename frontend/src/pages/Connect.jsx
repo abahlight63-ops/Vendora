@@ -521,7 +521,7 @@ export default function Connect() {
                 {tgHealth.expectedUrl ? <><br />It must point at: <code>{tgHealth.expectedUrl}</code></> : null}
               </p>
             )}
-            {tgHealth && tgHealth.repaired && tgHealth.repaired.healed && <p className="hint" style={{ marginTop: 6, color: 'var(--good, #17a673)' }}>Repaired just now — your bot is delivering to us again. No queued messages were dropped.</p>}
+            {tgHealth && tgHealth.repaired && tgHealth.repaired.healed && <p className="hint" style={{ marginTop: 6, color: 'var(--good)' }}>Repaired just now — your bot is delivering to us again. No queued messages were dropped.</p>}
           </div>
         )}
       </div>

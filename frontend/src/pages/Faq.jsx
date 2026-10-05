@@ -50,7 +50,7 @@ export default function Faq() {
     <div className="faq-page"> {/* light airy theme (own scope — readable in both app themes via CSS vars!) */}
       <header className="landing-nav"><div className="landing-inner">
         <Link className="landing-brand" to="/"><Logo alt="VeloSales Ai" />VELOSALES AI</Link> {/* brand links HOME */}
-        <span><Link className="btn ghost sm" to="/login">Sign in</Link>{' '}<Link className="btn sm" to="/login">Start free trial</Link></span> {/* {' '} = explicit space (JSX collapses whitespace!) */}
+        <span className="landing-nav-cta"><Link className="btn ghost sm" to="/login">Sign in</Link>{' '}<Link className="btn sm" to="/login">Start free trial</Link></span> {/* {' '} = explicit space (JSX collapses whitespace!) — hidden on phones, .faq-cta repeats them */}
       </div></header>
       <section className="landing-inner faq-hero"> {/* centered hero: pill + headline + search */}
         <span className="pill ok">FAQ</span> {/* eyebrow pill */}

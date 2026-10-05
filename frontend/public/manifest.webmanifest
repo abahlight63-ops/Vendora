@@ -7,9 +7,15 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0d1f16",
-  "theme_color": "#0d1f16",
+  "background_color": "#0E0E0E",
+  "theme_color": "#0E0E0E",
   "icons": [
+    {
+      "src": "/logo-mark.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "/favicon-192x192.png",
       "sizes": "192x192",
@@ -23,7 +29,7 @@
       "purpose": "any"
     },
     {
-      "src": "/favicon-512x512.png",
+      "src": "/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

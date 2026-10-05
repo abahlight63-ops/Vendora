@@ -5,8 +5,12 @@
 // settings endpoint. No npm modules — api + pop.
 import { useState } from 'react'; // single form object state
 import { api, pop } from '../lib/api.js'; // api() ×2 calls; pop() animated outcomes
+import { useTheme } from '../lib/theme.js'; // appearance preference (system / light / dark) — stored in the browser, never on the server
+
+const THEMES = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']]; // the three choices, in the order people scan them
 
 export default function Settings({ biz }) { // biz = business (name/numbers/hours/tone/faq + greeting_msg/handoff_msg + guardrails!)
+  const [, , pref, setPref] = useTheme(); // theme index 3 = the stored choice; index 1 = the quick sun/moon flip
   const [f, setF] = useState({
     tone: biz?.tone || 'friendly and helpful',
     greeting: biz?.greeting_msg || '',
@@ -26,6 +30,15 @@ export default function Settings({ biz }) { // biz = business (name/numbers/hour
   return (
     <>
       <div className="page-head"><div><h1>AI settings</h1><p>Your AI's voice and guardrails. Polite by default — these make it yours.</p></div></div>
+      <div className="card">
+        <h2>Appearance</h2>
+        <p className="desc">How VeloSales Ai looks on this device. System follows your phone or laptop automatically.</p>
+        <div className="seg" role="group" aria-label="Appearance">
+          {THEMES.map(([id, label]) => (
+            <button key={id} type="button" className={pref === id ? 'on' : ''} aria-pressed={pref === id} onClick={() => setPref(id)}>{label}</button>
+          ))}
+        </div>
+      </div>
       <div className="card">
         <h2>Personality</h2>
         <p className="desc">How the AI talks to customers. Warm and respectful is built in — describe YOUR shop's style here.</p>

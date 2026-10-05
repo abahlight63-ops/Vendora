@@ -15,7 +15,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>VeloSales Ai — AI WhatsApp Sales Assistant</title>
 <meta name="description" content="VeloSales Ai turns your WhatsApp number into a 24/7 AI sales rep — instant answers in English or Pidgin, straight from your catalog." />
-<meta name="theme-color" content="#0d1f16" />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#1a1614" media="(prefers-color-scheme: dark)" />
 <meta name="referrer" content="no-referrer-when-downgrade" />
 <!-- ══ SITE OWNERSHIP VERIFICATION TAGS (Google / Bing / ad networks) ══
      WHAT: these <meta> tags prove YOU own this domain to Google Search
@@ -38,7 +39,11 @@
 <!-- <meta name="msvalidate.01" content="PASTE-BING-CODE-HERE" /> -->
 <link rel="icon" href="/favicon.ico" sizes="48x48 32x32 16x16" />
 <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png" />
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<!-- the brand mark is painted in the very first frame (splash + sidebar), so
+     warm the cache for it before React boots -->
+<link rel="preload" as="image" href="/logo-mark.png" fetchpriority="high" />
 <link rel="manifest" href="/manifest.webmanifest" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -52,6 +57,18 @@
 <meta property="og:description" content="AI sales assistant for WhatsApp. Instant answers in English or Pidgin, straight from your catalog." />
 <meta property="og:type" content="website" />
 <meta property="og:image" content="/photos/og.jpg" />
+<!-- Set the theme BEFORE first paint (mirrors lib/theme.js): one read of
+     localStorage, default 'system'. Without this the page paints light and
+     then flips — a white flash on every load for dark-mode visitors. -->
+<script>
+  (function () {
+    var pref = 'system';
+    try { var s = localStorage.getItem('velosales-theme'); if (s === 'system' || s === 'light' || s === 'dark') pref = s; } catch (e) {}
+    var dark = pref === 'dark' || (pref === 'system' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches));
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    document.documentElement.dataset.themePref = pref;
+  })();
+</script>
 </head>
 <body>
 <div id="root"></div>

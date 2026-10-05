@@ -1,7 +1,7 @@
-// ── lib/screens/ai_screen.dart ─────────────────────────────────────
-// WHAT: Velo chat (POST /api/me/ask {message, model?} →
+﻿// â”€â”€ lib/screens/ai_screen.dart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// WHAT: Velo chat (POST /api/me/ask {message, model?} â†’
 // {reply, via, model, fallback}) + model picker (GET /api/me/ai-models).
-// 402 = locked premium model, 429 = daily cap — both shown, never crash.
+// 402 = locked premium model, 429 = daily cap â€” both shown, never crash.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -27,7 +27,7 @@ class _AiMessage {
 }
 
 // Per-niche starter chips (web parity: freelancer sees gigs, baker sees
-// orders — never generic examples for the wrong hustle!). Unknown niches
+// orders â€” never generic examples for the wrong hustle!). Unknown niches
 // fall back to _defaultChips (custom "Other" entries never break!).
 const _nicheChips = {
   'Clothing, Fashion & Accessories': [
@@ -63,7 +63,7 @@ class _AiScreenState extends State<AiScreen> {
   final List<_AiMessage> _msgs = [];
   List<dynamic> _models = [];
   // Web parity: full-model default (complete answers, still free).
-  // Server resolves null → Lite, so we pin full explicitly like the web app.
+  // Server resolves null â†’ Lite, so we pin full explicitly like the web app.
   String? _model = 'gemini-flash-full';
   bool _busy = false;
   bool _testBot = false; // false = VeloSales Ai (/ask), true = shop test-bot (/playground)
@@ -78,7 +78,7 @@ class _AiScreenState extends State<AiScreen> {
   }
 
   /// Niche starters: same labels as the setup picker (exact match, else
-  /// generic — the backend ALSO seeds examples from the niche, belt + braces!).
+  /// generic â€” the backend ALSO seeds examples from the niche, belt + braces!).
   Future<void> _loadChips() async {
     try {
       final me = await ApiClient.instance.me();
@@ -87,7 +87,7 @@ class _AiScreenState extends State<AiScreen> {
       final hit = _nicheChips[niche];
       if (mounted && hit != null) setState(() => _chips = hit);
     } catch (_) {
-      // Offline → generic chips (never block the screen!).
+      // Offline â†’ generic chips (never block the screen!).
     }
   }
 
@@ -102,13 +102,13 @@ class _AiScreenState extends State<AiScreen> {
   Future<void> _loadModels() async {
     try {
       _models = await ApiClient.instance.aiModels();
-      // Backend without our default id (older server) → fall back to Auto
+      // Backend without our default id (older server) â†’ fall back to Auto
       // instead of sending an id the server calls "Unknown AI".
       final ids = {for (final m in _models) '${(m as Map)['id']}'};
       if (_model != null && !ids.contains(_model)) _model = null;
       if (mounted) setState(() {});
     } catch (_) {
-      // Models optional — default still chats.
+      // Models optional â€” default still chats.
     }
   }
 
@@ -179,7 +179,7 @@ class _AiScreenState extends State<AiScreen> {
         final reply = r['reply'];
         setState(() => _msgs.add(_AiMessage(
             false,
-            '${reply ?? r['reason'] ?? '…'}',
+            '${reply ?? r['reason'] ?? 'â€¦'}',
             reply == null ? 'handed to human' : null)));
       } else {
         final r = await ApiClient.instance.ask(text, _model, [
@@ -189,14 +189,14 @@ class _AiScreenState extends State<AiScreen> {
         final meta = [
           if (r['via'] != null) 'via ${r['via']}',
           if (r['fallback'] == true) 'fallback brain',
-        ].join(' · ');
+        ].join(' Â· ');
         final reply = '${r['reply'] ?? ''}';
         if (reply.isEmpty) {
           setState(() =>
-              _msgs.add(_AiMessage(false, '…', 'empty reply')));
+              _msgs.add(_AiMessage(false, 'â€¦', 'empty reply')));
         } else {
           _revealReply(reply, meta.isEmpty ? null : meta); // types out small-small; clears _busy when done
-          return; // skip the finally below — typing owns _busy now
+          return; // skip the finally below â€” typing owns _busy now
         }
       }
     } on ApiException catch (e) {
@@ -206,9 +206,9 @@ class _AiScreenState extends State<AiScreen> {
       }
     } catch (_) {
       setState(() =>
-          _msgs.add(_AiMessage(false, 'No connection — try again.', 'error')));
+          _msgs.add(_AiMessage(false, 'No connection â€” try again.', 'error')));
     } finally {
-      // A live typewriter owns _busy until it finishes — don't unlock early.
+      // A live typewriter owns _busy until it finishes â€” don't unlock early.
       if (_reveal == null || !_reveal!.isActive) {
         if (mounted) setState(() => _busy = false);
       }
@@ -217,7 +217,7 @@ class _AiScreenState extends State<AiScreen> {
   }
 
   /// Quota-hit upgrade card (web GlassUpsell parity): quota context lines +
-  /// billing link. The ONLY paywall affordance here — drawn, never pushy.
+  /// billing link. The ONLY paywall affordance here â€” drawn, never pushy.
   Future<void> _showUpgrade() {
     return glassSheet(
       context,
@@ -233,11 +233,11 @@ class _AiScreenState extends State<AiScreen> {
           ]),
           const SizedBox(height: 10),
           const Text(
-              '50 free chats a day — Pro never queues, and unlocks the premium brains.'),
+              '50 free chats a day â€” Pro never queues, and unlocks the premium brains.'),
           const SizedBox(height: 6),
-          const Text('• Unlimited free AIs + 50 premium chats daily'),
-          const Text('• Kimi K2, Claude + GPT-4o mini included'),
-          const Text('• Zero ads, priority support'),
+          const Text('â€¢ Unlimited free AIs + 50 premium chats daily'),
+          const Text('â€¢ Kimi K2, Claude + GPT-4o mini included'),
+          const Text('â€¢ Zero ads, priority support'),
           const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
@@ -253,7 +253,7 @@ class _AiScreenState extends State<AiScreen> {
     );
   }
 
-  /// Web parity: short/weak answer → re-ask the last question.
+  /// Web parity: short/weak answer â†’ re-ask the last question.
   Future<void> _regenerate() async {
     if (_busy || _msgs.isEmpty || _testBot) return;
     final idx = _msgs.lastIndexWhere((m) => m.mine);
@@ -278,7 +278,7 @@ class _AiScreenState extends State<AiScreen> {
             if (_testBot) {
               _model = null; // test-bot takes no model (server catalog chain)
             } else {
-              _model ??= 'gemini-flash-full'; // back to AI → restore full default
+              _model ??= 'gemini-flash-full'; // back to AI â†’ restore full default
             }
           }),
         ),
@@ -313,7 +313,7 @@ class _AiScreenState extends State<AiScreen> {
                     children: [
                       Image.asset(
                         Theme.of(context).brightness == Brightness.light
-                            ? 'assets/logo-green.png'
+                            ? 'assets/brand-mark.png'
                             : 'assets/logo-blue.png',
                         width: 72,
                         height: 72,
@@ -324,8 +324,8 @@ class _AiScreenState extends State<AiScreen> {
                               fontSize: 20, fontWeight: FontWeight.w800)),
                       const SizedBox(height: 6),
                       Text(_testBot
-                          ? 'Ask like a customer — prices, stock, delivery.'
-                          : 'Ask anything — stock, prices, advice.'),
+                          ? 'Ask like a customer â€” prices, stock, delivery.'
+                          : 'Ask anything â€” stock, prices, advice.'),
                       if (!_testBot) ...[
                         const SizedBox(height: 12),
                         Wrap(
@@ -436,7 +436,7 @@ class _AiScreenState extends State<AiScreen> {
                 maxLines: 4,
                 textInputAction: TextInputAction.send,
                 decoration:
-                    const InputDecoration(hintText: 'Ask Velo…'),
+                    const InputDecoration(hintText: 'Ask Veloâ€¦'),
                 onSubmitted: (_) => _send(),
               ),
             ),

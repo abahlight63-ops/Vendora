@@ -1,11 +1,13 @@
 // ── lib/splash.dart ────────────────────────────────────────────────
-// WHAT: the 1.5-second brand intro — mirrors Splash.jsx: Orbit V ring
-// around the logo + VELOSALES AI letterspacing + tagline + indeterminate bar,
-// then fade out. Shown while the session check runs (never shorter than
-// the web one). Ring = two arcs (primary green + gold) spinning forever.
+// WHAT: the brand intro — the gold mark on the deep charcoal gradient,
+// the wordmark in Sora 300, and a quiet indeterminate bar, then fade out.
+// Shown while the session check runs. The ring is amber, not green:
+// MOBILE-DESIGN.md allows exactly one accent and the brand is gold.
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+
+import 'theme.dart';
 
 class SplashView extends StatefulWidget {
   const SplashView({super.key});
@@ -19,7 +21,7 @@ class _SplashViewState extends State<SplashView>
   late final AnimationController _c;
   late final Animation<double> _fade;
   late final Animation<Offset> _rise;
-  late final AnimationController _orbit; // endless ring spin (Orbit V!)
+  late final AnimationController _orbit; // endless ring spin
 
   @override
   void initState() {
@@ -45,9 +47,8 @@ class _SplashViewState extends State<SplashView>
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: scheme.surfaceContainerLowest,
+      backgroundColor: Colors.transparent, // AppBackground paints the screen
       body: Center(
         child: FadeTransition(
           opacity: _fade,
@@ -64,36 +65,51 @@ class _SplashViewState extends State<SplashView>
                       turns: _orbit,
                       child: CustomPaint(
                         size: const Size(116, 116),
-                        painter: _OrbitPainter(scheme.primary),
+                        painter: _OrbitPainter(),
                       ),
                     ),
+                    // the supplied gold mark, sized down from the 1024 app icon
                     Image.asset(
-                      'assets/logo-green.png', // signature green, always
-                      width: 64,
-                      height: 64,
+                      'assets/brand-mark.png',
+                      width: 72,
+                      height: 72,
+                      filterQuality: FilterQuality.high,
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              const Text('VELOSALES AI',
-                  style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 6)),
-              const SizedBox(height: 6),
-              Text('Your WhatsApp shop, open 24/7',
-                  style: TextStyle(
-                      color: scheme.onSurface.withValues(alpha: 0.65),
-                      fontSize: 14)),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
+              const Text(
+                'VELOSALES AI',
+                style: TextStyle(
+                  fontFamily: VsTokens.fontDisplay,
+                  fontSize: 26,
+                  height: 1.05,
+                  letterSpacing: 3,
+                  fontWeight: FontWeight.w300,
+                  color: VsTokens.text,
+                  fontVariations: [FontVariation('wght', 300)],
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Your WhatsApp shop, open 24/7',
+                style: TextStyle(
+                  fontFamily: VsTokens.fontBody,
+                  fontSize: VsTokens.fsBody,
+                  height: 1.45,
+                  fontWeight: FontWeight.w400,
+                  color: VsTokens.textMuted,
+                  fontVariations: [FontVariation('wght', 400)],
+                ),
+              ),
+              const SizedBox(height: 28),
               SizedBox(
                 width: 160,
                 child: LinearProgressIndicator(
-                  color: scheme.primary,
-                  backgroundColor:
-                      scheme.primary.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(99),
+                  color: VsTokens.accent,
+                  backgroundColor: VsTokens.surfaceDeep,
+                  borderRadius: BorderRadius.circular(VsTokens.rPill),
                 ),
               ),
             ]),
@@ -104,33 +120,32 @@ class _SplashViewState extends State<SplashView>
   }
 }
 
-/// Orbit V ring: long primary arc + short gold arc + head dots.
+/// One accent ring: a long amber arc + a short accentGlow arc + a head dot.
 class _OrbitPainter extends CustomPainter {
-  final Color color;
-  const _OrbitPainter(this.color);
+  const _OrbitPainter();
 
   @override
   void paint(Canvas canvas, Size size) {
     final c = Offset(size.width / 2, size.height / 2);
     final r = size.width / 2 - 6;
-    const gold = Color(0xFFFFCF5C);
-    const mint = Color(0xFF7EF0C0);
     Offset dot(double angle) =>
         c + Offset(math.cos(angle) * r, math.sin(angle) * r);
-    final pGreen = Paint()
-      ..color = color
+    final pAmber = Paint()
+      ..color = VsTokens.accent
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5
+      ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
-    canvas.drawArc(Rect.fromCircle(center: c, radius: r), -1.2, 3.6, false, pGreen);
-    final pGold = Paint()
-      ..color = gold
+    canvas.drawArc(
+        Rect.fromCircle(center: c, radius: r), -1.2, 3.6, false, pAmber);
+    final pGlow = Paint()
+      ..color = VsTokens.accentGlow
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5
+      ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
-    canvas.drawArc(Rect.fromCircle(center: c, radius: r), 2.4, 0.9, false, pGold);
-    canvas.drawCircle(dot(2.4), 4.5, Paint()..color = mint);
-    canvas.drawCircle(dot(3.3), 4, Paint()..color = gold);
+    canvas.drawArc(
+        Rect.fromCircle(center: c, radius: r), 2.4, 0.9, false, pGlow);
+    canvas.drawCircle(dot(2.4), 4.5, Paint()..color = VsTokens.accentGlow);
+    canvas.drawCircle(dot(3.3), 4, Paint()..color = VsTokens.accent);
   }
 
   @override

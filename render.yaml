@@ -43,6 +43,8 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
+      - key: POLLINATIONS_API_KEY
+        sync: false
       - key: TELEGRAM_WEBHOOK_SECRET
         sync: false
       - key: TELEGRAM_SHARED_BOT_TOKEN

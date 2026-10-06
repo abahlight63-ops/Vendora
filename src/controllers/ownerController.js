@@ -333,6 +333,26 @@ async function playground(req, res) {
   }
 }
 
+async function art(req, res) {
+  try { // Pollinations image gen :: response is an IMAGE (not JSON) — client saves/renders bytes
+    const { prompt } = req.body || {};
+    if (!prompt || typeof prompt !== 'string' || !prompt.trim()) return res.status(400).json({ error: 'prompt required' }); // guard clause
+    const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+    const width = clamp(Number(req.body?.width) || 1024, 256, 1536); // sane bounds (Pollinations caps @1536)
+    const height = clamp(Number(req.body?.height) || 1024, 256, 1536);
+    const seed = Number.isInteger(Number(req.body?.seed)) ? Number(req.body.seed) : undefined; // deterministic = cache reuse!
+    const artSvc = require('../services/art'); // lazy require (consistent file style)
+    const { buf, type, seed: usedSeed } = await artSvc.generate({ prompt, width, height, seed });
+    res.set('content-type', type); // image/jpeg…
+    res.set('cache-control', 'private, max-age=3600'); // one hour: a client hitting the same seed twice pays once
+    res.set('x-art-seed', String(usedSeed)); // echo the seed so callers can ask again (same art, no API bill)
+    res.send(buf);
+  } catch (e) {
+    console.error('art error:', e.message);
+    res.status(502).json({ error: 'Image not generated — wait a few seconds and retry.' }); // 502: upstream, not our bug
+  }
+}
+
 async function updateSettings(req, res) {
   const { max_discount_pct, min_order_naira, greeting_msg, handoff_msg } = req.body || {}; // SmartDeal guardrails + AI voice (greeting + handoff in the owner's own words)
   const disc = Math.max(0, Math.min(50, Number(max_discount_pct) || 0)); // clamp 0–50 (Math.max lower-bounds, Math.min upper-bounds; || 0 handles NaN)
@@ -1158,6 +1178,7 @@ module.exports = { // every handler the routes file wires up (miss one here = ro
   getMessages,
   getBilling,
   playground,
+  art,
   updateSettings,
   profileSync,
   getProfileSync,

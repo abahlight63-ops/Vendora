@@ -4,6 +4,7 @@
 const express = require('express'); // Router class
 const ownerController = require('../controllers/ownerController'); // all the handler functions
 const { requireAuth } = require('../middleware/auth'); // the login guard (req.session.userId?)
+const { rateLimit } = require('../middleware/security'); // per-IP guard (art = heavy, expensive upstream work)
 
 const router = express.Router(); // the mini-app
 
@@ -23,6 +24,7 @@ router.get('/me/conversations', ownerController.getConversations); // inbox list
 router.get('/me/conversations/:id/messages', ownerController.getMessages); // full thread (ownership-checked!)
 router.get('/me/billing', ownerController.getBilling); // status + per-currency plans + transfer details
 router.post('/me/playground', ownerController.playground); // test-bot endpoint (no WhatsApp needed)
+router.post('/me/art', rateLimit({ windowMs: 60_000, max: 10, message: 'Art requests are rate-limited — wait a minute.' }), ownerController.art); // Pollinations image gen (login-guarded, per-IP capped @10/min)
 router.put('/me/settings', ownerController.updateSettings); // SmartDeal discount guardrails
 router.get('/me/profile-sync', ownerController.getProfileSync); // has the owner synced? when?
 router.post('/me/profile-sync', ownerController.profileSync); // Pro: scaffold catalog from profile text

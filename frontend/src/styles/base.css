@@ -1,0 +1,57 @@
+/* Generated from styles.css - velosales (1).md section 15 requires the
+   stylesheets to be imported in this order: tokens, base, layout,
+   components, pages. Sections below keep their original numbers. */
+/* §3 RESET & BASE */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+h1 { font-size: var(--fs-h2); line-height: 1.2; font-weight: 600;  }
+h2 { font-size: var(--fs-h4); line-height: 1.2; font-weight: 600; }
+h3 { font-size: var(--fs-h4); line-height: 1.2; font-weight: 600; }
+a { color: var(--amber-700); text-decoration: none; transition: opacity var(--t); }
+a:hover { text-decoration: underline; }
+::selection { background: var(--amber-300); color: var(--on-amber-soft); }
+:focus-visible { outline: 2px solid var(--amber-500); outline-offset: 2px; border-radius: 6px; }
+svg { flex: 0 0 auto; }
+/* bare <button> (accordion rows, icon buttons, toggles) must never fall back
+   to the browser's grey button chrome — it is unreadable in dark mode */
+button { font: inherit; color: inherit; background: none; border: none; padding: 0; cursor: pointer; text-align: inherit; }
+button:disabled { cursor: not-allowed; }
+img { max-width: 100%; display: block; }
+/* Numbers are read, never decorative: tabular + 600 so columns line up. */
+.num, .stat .num, .plan-price, .hub-big, .fx-big, .pw-meter span { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* §25 USER PREFERENCES + ADMIN RESPONSIVE (admin keeps its own tokens) */
+/* honour the OS motion setting: stop decorative motion, keep state changes */
+@media (prefers-reduced-motion: reduce) {
+  .skel::after, .spinner, .orbit-loader .orbit-spin, .vai-bubble.typing span, .mock .bubble.typing span, .live-dot i, .splash-bar i, .scroll-dot i {
+    animation: none;
+  }
+  .tour-card, .tour-tip, .pop-card, .pop-overlay, .glass-overlay, .tour-overlay, .tour-dim,
+  .toast, .drawer-backdrop, .sidebar, .quiz-step, .quiz-pop, .slide.fwd, .slide.back,
+  .auth-message.shake, .pop-card.err .pop-ring, .pop-circle, .pop-check, .pop-x, .mpick-pop, .nbell-pop {
+    animation: none; transition: none;
+  }
+  .guide-bar i, .quiz-prog i { transition: none; }
+}
+/* honour the OS transparency setting: glass collapses to solid */
+@media (prefers-reduced-transparency: reduce) {
+  .topbar, .mobile-bar, .glass, .glass-amber, .pop-card.glass, .tour-card, .tour-tip, .nbell-pop, .mpick-pop {
+    background: var(--surface); border-color: var(--border);
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+  .topbar, .mobile-bar, .glass-amber { box-shadow: var(--shadow-sm); }
+}
+@media (max-width: 639px) {
+  .admin-liquid .admin-tabs > div { display: grid; grid-template-columns: 1fr 1fr; }
+  .admin-liquid .admin-tabs .btn { width: 100%; min-height: 46px; }
+  .admin-liquid .grid2, .admin-liquid .grid3 { grid-template-columns: 1fr; }
+}

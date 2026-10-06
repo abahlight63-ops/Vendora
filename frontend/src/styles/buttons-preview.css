@@ -1,0 +1,80 @@
+/* Scoping for the temporary Button review page (spec step 3). Everything here
+   is prefixed .bp- so it cannot leak into the app, and it is deleted along with
+   pages/Buttons.jsx once the primitives are migrated. */
+
+.bp {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  padding: var(--s-6);
+}
+
+.bp-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--s-6);
+}
+
+.bp-title { font-size: var(--fs-h3); font-weight: 600; margin: 0; }
+
+.bp-toggle {
+  display: inline-flex;
+  gap: var(--s-1);
+  padding: var(--s-1);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+}
+
+.bp-toggle-btn {
+  height: 32px;
+  padding: 0 var(--s-3);
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.bp-toggle-btn.is-on { background: var(--amber-400); color: var(--on-amber); }
+
+.bp-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s-5);
+  margin-bottom: var(--s-4);
+}
+
+.bp-h2 { font-size: var(--fs-body); font-weight: 600; margin: 0 0 var(--s-1); }
+
+.bp-note { font-size: var(--fs-caption); color: var(--ink-muted); margin: 0 0 var(--s-4); }
+
+.bp-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+
+.bp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  height: 40px;
+  padding: 0 var(--s-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  font-size: 14px;
+  color: var(--ink-muted);
+}
+
+.bp-chip svg { color: var(--amber-700); }

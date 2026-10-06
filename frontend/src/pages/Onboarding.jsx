@@ -2,7 +2,7 @@
 // WHAT: AgriStock-style welcome tour — 6 swipeable slides (counter 01/06,
 // progress dots, Back/Next, Skip, image per slide with icon fallback).
 // Seen once after signup (Login routes new accounts here). Neumorphic card
-// styling scoped to .neu-* classes (dashboard keeps flat clarity!).
+// styling scoped to .slide / .img-slot classes (dashboard keeps flat clarity!).
 // React patterns: slide data array, direction-aware animation key, touch swipe,
 // SlideImg fallback chain (png → jpg → svg → icon slot).
 import { useEffect, useRef, useState } from 'react'; // useEffect = title; useRef = touch X WITHOUT re-render (mutable box!); useState = step/dir
@@ -14,8 +14,8 @@ import Ic from '../components/icons.jsx'; // slide art + row icons
 // (800×600). Missing files fall back to the icon slot automatically.
 const SLIDES = [ // slide SCRIPT: data, not JSX (add a slide = add an object!). icon = fallback art; img = BASE path (SlideImg tries extensions).
   {
-    k: 'welcome', icon: 'store', img: '/welcome-1', eyebrow: 'Welcome to VeloSales Ai', title: 'Never miss a customer again.', // k = stable key (dot buttons + animation key); eyebrow = small caps kicker
-    body: 'Your WhatsApp becomes a 24/7 shop assistant. Customers ask, VeloSales Ai answers from YOUR catalog — even at 2am.',
+    k: 'welcome', icon: 'store', img: '/welcome-1', eyebrow: 'Welcome to VeloSales AI', title: 'Never miss a customer again.', // k = stable key (dot buttons + animation key); eyebrow = small caps kicker
+    body: 'Your WhatsApp becomes a 24/7 shop assistant. Customers ask, VeloSales AI answers from YOUR catalog — even at 2am.',
     points: [['chat', 'Replies in seconds'], ['spark', 'English or Pidgin'], ['shield', 'Never invents prices']], // [icon, text] chips row
     cta: 'See how it works', // Next-button label for THIS slide (each slide sells the next!)
   },
@@ -52,18 +52,18 @@ function SlideImg({ src, icon, alt }) { // src = BASE ('/welcome-1'); tries each
   const [ext, setExt] = useState(0); // index into EXT_ORDER (0 = .png)
   if (ext >= EXT_ORDER.length) { // every format 404'd → icon placeholder (tour NEVER breaks on missing art!)
     return (
-      <div className="neu-slot">
+      <div className="img-slot">
         <Ic n={icon} s={40} />
         <b>Your image here</b>
         <span>Add {src}.png or {src}.jpg to frontend/public</span> {/* tells YOU exactly what to do (dev-facing, but only visible with no art!) */}
       </div>
     );
   }
-  return <img src={src + EXT_ORDER[ext]} alt={alt} className="neu-img" onError={() => setExt(ext + 1)} />; // string concat builds '/welcome-1.png'; onError (404) → next extension (escalation chain!)
+  return <img src={src + EXT_ORDER[ext]} alt={alt} onError={() => setExt(ext + 1)} />; // string concat builds '/welcome-1.png'; onError (404) → next extension (escalation chain!)
 }
 
 export default function Onboarding() {
-  useEffect(() => { document.title = 'VeloSales Ai — Welcome'; }, []); // tab title (mount-only)
+  useEffect(() => { document.title = 'VeloSales AI — Welcome'; }, []); // tab title (mount-only)
   const nav = useNavigate(); // Skip intro + final CTA navigation
   const [step, setStep] = useState(0); // current slide index (0–5)
   const [dir, setDir] = useState(1); // slide direction: +1 forward / -1 back (drives fwd/back CSS animation!)
@@ -75,10 +75,10 @@ export default function Onboarding() {
     setStep(next); // two setStates = one re-render (batched) with slide + animation direction in sync
   }
   return (
-    <div className="welcome neu-bg"> {/* fullscreen stage + neumorphic background tint */}
+    <div className="welcome"> {/* fullscreen stage on the flat page background (spec 6 deletes the old background tint) */}
       <div className="welcome-inner"> {/* centered column (max-width) */}
         <div className="welcome-top">
-          <span className="landing-brand"><Logo alt="VeloSales Ai" />VELOSALES AI</span> {/* brand lockup (logo + letterspaced name) */}
+          <span className="landing-brand"><Logo alt="VeloSales AI" />VELOSALES AI</span> {/* brand lockup (logo + letterspaced name) */}
           <button className="skip" onClick={() => nav('/welcome')}>Skip intro</button> {/* link-styled skip (impatient users convert too — still lands on niche setup!) */}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}> {/* counter + dots row */}
@@ -97,17 +97,16 @@ export default function Onboarding() {
             touchX.current = null; // reset for next gesture
           }}
         >
-          <div className={'slide neu-card' + (dir > 0 ? ' fwd' : ' back')} key={slide.k}> {/* key={slide.k} = THE animation trick: new key → React UNMOUNTS old slide + mounts new (fresh .fwd/.back entrance every time!). dir picks slide direction class. */}
-            <div className="slide-art neu-art"> {/* art panel: gradient + orbs + floating icons + pressed frame */}
-              <span className="orb o1" /><span className="orb o2" /> {/* ambient floating blobs (self-closing spans, pure CSS drift!) */}
+          <div className={'slide' + (dir > 0 ? ' fwd' : ' back')} key={slide.k}> {/* key={slide.k} = THE animation trick: new key → React UNMOUNTS old slide + mounts new (fresh .fwd/.back entrance every time!). dir picks slide direction class. */}
+            <div className="slide-art"> {/* art panel: hero-style illustration area (spec 9.14). The orb blobs and the neumorphic pressed frame were removed. */}
               <span className="float-ic f1"><Ic n={slide.icon} s={20} /></span> {/* bobbing icon chips: current slide icon… */}
               <span className="float-ic f2"><Ic n="chat" s={17} /></span> {/* …WhatsApp chat bubble… */}
               <span className="float-ic f3"><Ic n="spark" s={16} /></span> {/* …AI sparkle (staggered float delays in CSS!) */}
-              <div className="neu-frame"> {/* inset-shadow frame (neumorphic "pressed" look) */}
+              <div className="slide-art-frame">
                 <SlideImg src={slide.img} icon={slide.icon} alt={slide.eyebrow} /> {/* art with fallback chain (above) */}
               </div>
             </div>
-            <div className="slide-copy neu-copy"> {/* copy panel: children stagger in via nth-child CSS delays! */}
+            <div className="slide-copy"> {/* copy panel: children stagger in via nth-child CSS delays! */}
               <p className="crumb">{slide.eyebrow}</p> {/* kicker */}
               <h1>{slide.title}</h1>
               <p className="lede">{slide.body}</p> {/* lede = intro paragraph style */}
@@ -138,7 +137,7 @@ export default function Onboarding() {
         </div>
 
         <div className="foot-nav welcome-nav"> {/* bottom nav row */}
-          <button className="btn ghost neu-btn" disabled={step === 0} onClick={() => go(step - 1)}><Ic n="back" s={15} /> Back</button> {/* disabled on first slide (can't go below 0 — go() would clamp anyway: defense in depth!) */}
+          <button className="btn ghost" disabled={step === 0} onClick={() => go(step - 1)}><Ic n="back" s={15} /> Back</button> {/* disabled on first slide (can't go below 0 — go() would clamp anyway: defense in depth!) */}
           <button className="btn" onClick={() => step < SLIDES.length - 1 ? go(step + 1) : nav('/welcome')}>{slide.cta} <Ic n="next" s={15} /></button> {/* ternary: advance (per-slide CTA label!) or finish → niche setup (new accounts pick their hustle!) */}
         </div>
       </div>

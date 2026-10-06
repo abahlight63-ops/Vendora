@@ -1,0 +1,186 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   TOKENS — the only place a hex literal is allowed.
+   Source of truth: velosales (1).md section 3. Do not add tokens here that
+   the spec does not define; every other file must use var(--token).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  color-scheme: light;
+  /* surfaces */
+  --bg: #F4F4F4;
+  --surface: #FFFFFF;
+  --surface-2: #F7F7F7;
+  --border: #EBEBEB;
+  --input-border: #8C8C8C;
+  /* text */
+  --ink: #1A1A1A;
+  --ink-muted: #6B6B6B;
+  --brown-900: #3E2A0F;
+  /* amber family (signature) */
+  --amber-500: #F5B63A;
+  --amber-400: #FFC977;
+  --amber-300: #FFE3B0;
+  --amber-150: #FFF3DC;
+  --amber-100: #FFF8EC;
+  --amber-line: #F7D8A0;
+  --amber-700: #8F5B00;
+  --on-amber: #2A1A00;
+  --focus: #8F5B00;
+  --focus-glow: rgba(245, 182, 58, 0.35);
+  /* status */
+  --live: #1F7A4D;
+  --live-bg: #E6F7EA;
+  --danger: #C0392B;
+  --danger-bg: #FBE9E6;
+  --badge: #D92D20;
+  --on-badge: #FFFFFF;
+  /* hero card (dark in both themes) */
+  --hero-bg: #0E0E0E;
+  --hero-ink: #FFFFFF;
+  --hero-muted: #B8B8B8;
+  --hero-glow: rgba(245, 182, 58, 0.5);
+  /* glass */
+  --glass-bg: rgba(255, 255, 255, 0.62);
+  --glass-border: rgba(255, 255, 255, 0.7);
+  --glass-hl: rgba(255, 255, 255, 0.9);
+  --glass-shadow: rgba(62, 42, 15, 0.12);
+  --glass-amber-bg: rgba(255, 201, 119, 0.28);
+  --glass-amber-border: rgba(255, 224, 170, 0.75);
+  --glass-amber-shadow: rgba(143, 91, 0, 0.18);
+  --overlay: rgba(26, 26, 26, 0.5);
+  /* type */
+  --font: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* spacing (4px grid) */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-12: 48px;
+  --s-16: 64px;
+  /* radius */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --r-2xl: 28px;
+  --r-pill: 999px;
+  /* motion */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --t-fast: 180ms;
+  --t-base: 240ms;
+  /* layout */
+  --sidebar-w: 264px;
+  --topbar-h: 64px;
+  --content-max: 1120px;
+  --bar-clearance: 96px;
+  /* the one allowed menu/dropdown elevation (spec section 5) */
+  --shadow-menu: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  /* ─────────────────────────────────────────────────────────────────────
+     LEGACY ALIASES. Pages and old class rules still reference these older
+     names. They resolve to spec tokens above, so no page has to change in
+     this step. Retire each one as its page is rebuilt on the primitives.
+     ───────────────────────────────────────────────────────────────────── */
+  --card: var(--surface);
+  --line: var(--border);
+  --line-soft: var(--border);
+  --muted: var(--ink-muted);
+  --faint: var(--ink-muted);
+  --text-1: var(--ink);
+  --text-2: var(--ink-muted);
+  --text-3: var(--ink-muted);
+  --bg-primary: var(--bg);
+  --bg-secondary: var(--surface-2);
+  --accent: var(--amber-500);
+  --accent-hover: var(--amber-400);
+  --acc: var(--amber-500);
+  --gold: var(--amber-700);
+  --gold-bg: var(--amber-150);
+  --gold-line: var(--amber-line);
+  --brand-gold: var(--amber-500);
+  --green: var(--live);
+  --green-dark: var(--amber-700);
+  --green-soft: var(--live-bg);
+  --red: var(--danger);
+  --red-bg: var(--danger-bg);
+  --red-line: var(--danger);
+  --blue: var(--amber-700);
+  --blue-bg: var(--amber-150);
+  --ok: var(--live);
+  --good: var(--live);
+  --err: var(--danger);
+  --warn: var(--amber-700);
+  --edge: var(--border);
+
+  /* hero: older names used by components.css and pages.css */
+  --hero-base: var(--hero-bg);
+  --on-hero: var(--hero-ink);
+  --hero-line: var(--glass-border);
+
+  /* text sitting on a soft amber fill (amber-300) flips in dark */
+  --on-amber-soft: var(--brown-900);
+
+  /* radius: old role names mapped onto the spec scale */
+  --r-banner: var(--r-md);
+  --r-card: var(--r-lg);
+  --r-hero: var(--r-xl);
+  --r-sheet: var(--r-2xl);
+
+  /* type scale roles (spec section 4 lists the same eight sizes) */
+  --fs-caption: 12px;
+  --fs-sm: 14px;
+  --fs-body: 16px;
+  --fs-h4: 18px;
+  --fs-h3: 22px;
+  --fs-h2: 28px;
+  --fs-h1: 40px;
+
+  /* elevation and motion: collapsed onto the spec's single menu shadow */
+  --shadow: var(--shadow-menu);
+  --shadow-sm: var(--shadow-menu);
+  --shadow-md: var(--shadow-menu);
+  --shadow-lg: var(--shadow-menu);
+  --t: var(--t-base);
+  --t-med: var(--t-base);
+
+  /* glass tints that predate the named spec tokens */
+  --glass-teal: var(--glass-bg);
+  --reveal: var(--glass-bg);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121110;
+  --surface: #1C1A17;
+  --surface-2: #262320;
+  --border: rgba(255, 255, 255, 0.08);
+  --input-border: #7A7468;
+  --ink: #F5F1EA;
+  --ink-muted: #A8A094;
+  --brown-900: #F5F1EA;
+  --amber-500: #F5B63A;
+  --amber-400: #F5B63A;
+  --amber-300: #4A3611;
+  --amber-150: #2A2012;
+  --amber-100: #241C10;
+  --amber-line: #6B4E14;
+  --amber-700: #FFD27A;
+  --on-amber: #2A1A00;
+  --focus: #F5B63A;
+  --focus-glow: rgba(245, 182, 58, 0.3);
+  --live: #5FD38D;
+  --live-bg: #12301F;
+  --danger: #FF8A7A;
+  --danger-bg: #3A1713;
+  --glass-bg: rgba(38, 35, 32, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --glass-hl: rgba(255, 255, 255, 0.18);
+  --glass-shadow: rgba(0, 0, 0, 0.45);
+  --glass-amber-bg: rgba(245, 182, 58, 0.16);
+  --glass-amber-border: rgba(245, 182, 58, 0.35);
+  --glass-amber-shadow: rgba(0, 0, 0, 0.45);
+  --overlay: rgba(0, 0, 0, 0.6);
+}

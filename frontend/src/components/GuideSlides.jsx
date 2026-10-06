@@ -23,7 +23,7 @@ export default function GuideSlides({ slides = [], label = 'How it works', inter
     <div className="gslide" aria-label={label}>
       <div className="gslide-frame">
         {!gone && <img src={s.img} alt="" loading="lazy" onError={() => setMissing((m) => ({ ...m, [s.img]: true }))} />}
-        {gone && (<div className="gslide-ph"><b>VeloSales Ai</b><span className="hint">Guide screenshot lands here</span></div>)}
+        {gone && (<div className="gslide-ph"><b>VeloSales AI</b><span className="hint">Guide screenshot lands here</span></div>)}
       </div>
       <div className="gslide-cap"><b>{s.title}</b><span className="hint">{s.text}</span></div>
       <div className="gslide-dots" aria-hidden="true">{slides.map((_, d) => (<span key={d} className={d === n ? 'on' : ''} />))}</div>

@@ -16,7 +16,7 @@ export default function InstallApp() {
 
   async function install() {
     const out = await promptInstall(); // system dialog (the filmable moment!)
-    if (out === 'accepted') setMsg('Installed! Find VeloSales Ai on your home screen — it opens full-screen, no browser bar.');
+    if (out === 'accepted') setMsg('Installed! Find VeloSales AI on your home screen — it opens full-screen, no browser bar.');
     else if (out === 'dismissed') setMsg('Dismissed — no wahala, tap Install any time. (Chrome menu → Install app works too.)');
     else setMsg('System prompt not ready — follow the steps below instead.');
   }
@@ -27,7 +27,7 @@ export default function InstallApp() {
   return (
     <div className="card">
       <h2><Ic n="phone" s={18} /> Install as app</h2>
-      <p className="desc">VeloSales Ai installs like a store app — icon on your home screen, full-screen, works from one tap. Free, no download store needed.</p>
+      <p className="desc">VeloSales AI installs like a store app — icon on your home screen, full-screen, works from one tap. Free, no download store needed.</p>
       {standalone ? (
         <p className="hint" style={{ margin: 0 }}><b>You are IN the installed app now</b> — full-screen, home-screen icon, this is it. Nothing more to do.</p>
       ) : ready ? (
@@ -40,7 +40,7 @@ export default function InstallApp() {
           <li>Open this page in <b>Safari</b> (not Chrome — Apple rules!).</li>
           <li>Tap <b>Share</b> (square + arrow, bottom bar).</li>
           <li>Tap <b>Add to Home Screen</b> → <b>Add</b> (top-right).</li>
-          <li>Open it from the new icon — full-screen VeloSales Ai.</li>
+          <li>Open it from the new icon — full-screen VeloSales AI.</li>
         </ol>
       ) : (
         <>
@@ -48,7 +48,7 @@ export default function InstallApp() {
             <li>Open this page in <b>Chrome</b> on your phone.</li>
             <li>Tap <b>⋮ Menu</b> (top-right) → <b>Add to Home screen</b> (or <b>Install app</b> when offered).</li>
             <li>Confirm the name → <b>Install/Add</b>.</li>
-            <li>Open it from the new icon — full-screen VeloSales Ai.</li>
+            <li>Open it from the new icon — full-screen VeloSales AI.</li>
           </ol>
           <p className="hint" style={{ margin: 0 }}>No menu item yet? Use the app a day or two (Chrome offers install after a few visits) — or desktop Chrome: install icon in the address bar.</p>
           {msg ? <p className="hint" style={{ marginTop: 8 }}>{msg}</p> : null}

@@ -196,7 +196,7 @@ export default function VeloSalesAI({ biz }) {
             <Ic n="send" s={17} />
           </button>
         </div>
-        <p className="hint" style={{ textAlign: 'center', marginTop: 8 }}>VeloSales Ai can make mistakes — double-check important facts. Chats aren't saved.</p>
+        <p className="hint" style={{ textAlign: 'center', marginTop: 8 }}>VeloSales AI can make mistakes — double-check important facts. Chats aren't saved.</p>
       </div>
     </div>
   );

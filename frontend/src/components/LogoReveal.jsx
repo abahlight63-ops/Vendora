@@ -13,7 +13,7 @@ export default function LogoReveal({
   size = 168, // square stage in px (the clip is 4:3, so it letterboxes inside)
   src = '/logo-reveal.mp4',
   poster = '/logo-mark.png',
-  alt = 'VeloSales Ai',
+  alt = 'VeloSales AI',
   onReady, // fired once the clip is actually painting (App uses it to time the fade)
 }) {
   const [still, setStill] = useState(false); // true = show the static mark instead of the clip

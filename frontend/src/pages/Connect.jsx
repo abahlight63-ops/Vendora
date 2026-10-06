@@ -584,7 +584,7 @@ export default function Connect() {
             </div>)}
           </>)}
           {step === 2 && (<>
-            <h2>Link VeloSales Ai in your Meta dashboard</h2>
+            <h2>Link VeloSales AI in your Meta dashboard</h2>
             <p className="desc">Open your Meta app dashboard → WhatsApp → Configuration. Paste BOTH values below there, then tap Verify and save. Nothing here navigates away — tap any box to copy it.</p>
             <CopyRow label="Value 1 — webhook URL" value={st?.webhookUrl || ''} />
             <div style={{ marginTop: 10 }}><CopyRow label="Value 2 — verify code" value={metaProof?.verifyToken || ''} /></div>

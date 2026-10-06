@@ -26,3 +26,6 @@ mobile/*.iml
 public/uploads/
 # Unrelated side projects dropped in the folder (kept on disk, never shipped)
 BRO/
+
+# QA sweep screenshots (local verification artifacts)
+screenshots/

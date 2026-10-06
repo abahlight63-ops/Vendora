@@ -1,0 +1,232 @@
+/* Generated from styles.css - velosales (1).md section 15 requires the
+   stylesheets to be imported in this order: tokens, base, layout,
+   components, pages. Sections below keep their original numbers. */
+/* Â§4 LAYOUT â€” .shell = sidebar + main column. .topbar is glass and sticky. */
+.shell { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 250px; flex: 0 0 250px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  color: var(--ink);
+  position: sticky; top: 0; height: 100vh;
+  display: flex; flex-direction: column;
+  padding: 20px 12px;
+  overflow-y: auto;
+}
+.sidebar .logo { display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px; }
+.sidebar .logo img { width: 34px; height: 34px; border-radius: 10px; background: var(--surface); }
+.sidebar .logo span { font-weight: 700; letter-spacing: 0.4px; color: var(--brown-900); font-size: 15px; }
+.sidebar .nav-label { font-family: var(--font); font-size: var(--fs-caption); font-weight: 600; color: var(--ink-muted); padding: 16px 10px 6px;   }
+.sidebar nav { display: flex; flex-direction: column; gap: 2px; }
+.sidebar nav a {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 44px; padding: 8px 10px;
+  border: 1px solid transparent; border-radius: var(--r-pill);
+  color: var(--ink); font-weight: 500; font-size: var(--fs-sm);
+  text-decoration: none;
+  transition: background var(--t), border-color var(--t);
+}
+.sidebar nav a:hover { background: var(--surface-2); text-decoration: none; }
+.sidebar nav a.active { background: var(--amber-100); border-color: var(--amber-line); color: var(--brown-900); font-weight: 600; }
+.sidebar .foot { margin-top: auto; font-size: var(--fs-caption); color: var(--ink-muted); padding: 12px 8px 0; line-height: 1.5; border-top: 1px solid var(--border); }
+
+.main-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border);
+}
+/* the topbar is glass in both themes (Shell.jsx renders a plain .topbar) */
+.topbar { background: rgba(255, 255, 255, 0.62); -webkit-backdrop-filter: blur(24px) saturate(190%); backdrop-filter: blur(24px) saturate(190%); }
+[data-theme="dark"] .topbar { background: rgba(38, 35, 32, 0.55); }
+.topbar > div:first-child { min-width: 0; }
+.topbar h1 { font-size: var(--fs-h4); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crumb { font-family: var(--font); font-size: var(--fs-caption); color: var(--ink-muted); font-weight: 500;   }
+.top-right { display: flex; align-items: center; gap: 8px; }
+
+.page { padding: 32px 24px; max-width: 1120px; width: 100%; margin: 0 auto; }
+.page-head { margin-bottom: 28px; }
+.page-head h1 { font-size: var(--fs-h2); font-weight: 600;  line-height: 1.2; }
+.page-head p { color: var(--ink-muted); font-size: var(--fs-sm); margin-top: 6px; max-width: 640px; line-height: 1.5; }
+/* title on the left, action on the right â€” centered, not pinned to the text's first line */
+.page-head .row { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+
+.avatar { width: 36px; height: 36px; border-radius: var(--r-pill); background: var(--amber-300); color: var(--on-amber-soft); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-sm); }
+
+/* the one allowed online/connected indicator */
+.live-dot {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: var(--fs-caption); font-weight: 600;
+  color: var(--live); background: var(--live-bg);
+  border: 1px solid transparent;
+  padding: 6px 12px; border-radius: var(--r-pill); white-space: nowrap;
+}
+.live-dot i { width: 8px; height: 8px; border-radius: 50%; background: var(--live); }
+
+/* Â§13 NAV â€” drawer + floating bottom bar (glass) + footer */
+.menu-btn { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 44px; height: 44px; padding: 0 11px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-pill); cursor: pointer; }
+.menu-btn span { display: block; height: 2px; border-radius: 2px; background: var(--ink); transition: transform var(--t), opacity var(--t); }
+.menu-btn:hover { border-color: var(--amber-line); }
+.drawer-backdrop { display: none; }
+.drawer-close { display: none; margin-left: auto; width: 40px; height: 40px; border-radius: var(--r-pill); border: 1px solid var(--border); background: var(--surface); color: var(--ink); cursor: pointer; align-items: center; justify-content: center; }
+.drawer-signout { display: none; }
+
+.mobile-bar { display: none; }
+.foot-links { display: flex; justify-content: center; gap: 20px; padding: 20px 0 24px; font-size: var(--fs-caption); flex-wrap: wrap; row-gap: 8px; }
+.foot-links a { color: var(--ink-muted); }
+
+.steps { display: flex; gap: 8px; margin: 16px 0 22px; }
+.sdot { height: 6px; flex: 1; border-radius: var(--r-pill); background: var(--surface-2); border: none; padding: 0; }
+.sdot.on { background: var(--amber-500); }
+
+/* Â§24 RESPONSIVE - two breakpoints only: 1024px then 640px. */
+@media (max-width: 1023px) {
+  /* sidebar -> slide-in drawer; the hamburger in the topbar opens it */
+  .menu-btn { display: inline-flex; }
+  .sidebar {
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 120; width: 272px;
+    border-radius: 0; transform: translateX(-105%);
+    transition: transform var(--t-med); box-shadow: var(--shadow-lg);
+    overflow-y: auto;
+  }
+  .sidebar.open { transform: none; }
+  .drawer-backdrop { display: block; position: fixed; inset: 0; z-index: 110; background: rgba(18, 17, 16, 0.5); animation: popFade 0.2s ease both; }
+  .drawer-close { display: inline-flex; }
+  .drawer-signout {
+    display: flex; width: 100%; margin-top: 12px; min-height: 44px;
+    align-items: center; justify-content: center;
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--ink); border-radius: var(--r-pill); padding: 0 16px;
+    font: inherit; font-size: var(--fs-sm); font-weight: 500; cursor: pointer;
+  }
+
+  /* topbar keeps only: hamburger, title, bell, theme toggle */
+  .topbar { padding: 10px 12px; gap: 8px; }
+  .topbar > div:first-child { flex: 1; min-width: 0; }
+  .topbar h1 { font-size: var(--fs-sm); }
+  .topbar .avatar, .topbar .signout-btn, .topbar .live-dot { display: none; }
+
+  /* touch: every target clears 44px, inputs stop iOS zoom-on-focus */
+  .btn { min-height: 44px; }
+  .btn.sm { min-height: 44px; padding: 0 16px; }
+  .btn.lg { min-height: 48px; }
+  .skip, .mini-link, .del { min-height: 44px; }
+  .del, .adslot-x { width: 44px; height: 44px; }
+  input, textarea, select { font-size: 16px; }
+
+  /* bottom bar: one glass pill, clear of the home indicator */
+  .mobile-bar {
+    display: flex; position: fixed; left: 16px; right: 16px; bottom: 12px; z-index: 50;
+    height: 64px; align-items: center; justify-content: space-around;
+    border-radius: var(--r-pill); padding: 4px;
+    background: rgba(255, 255, 255, 0.62);
+    -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+  }
+  [data-theme="dark"] .mobile-bar { background: rgba(38, 35, 32, 0.55); border-color: rgba(255, 255, 255, 0.14); }
+  .mobile-bar a {
+    display: flex; flex: 1 1 0; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; height: 48px; padding: 0 4px; min-width: 0;
+    font-size: 11px; font-weight: 500; color: var(--ink-muted);
+    border: 1px solid transparent; border-radius: var(--r-pill);
+  }
+  .mobile-bar a span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  .mobile-bar a.active { background: var(--amber-100); border-color: var(--amber-line); color: var(--brown-900); font-weight: 600; }
+  [data-theme="dark"] .mobile-bar a.active { color: var(--brown-900); }
+  .foot-links { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+  .foot-links a { display: inline-flex; align-items: center; min-height: 44px; }
+
+  /* page clears the floating bar */
+  .page { padding: 24px 20px 104px; }
+  .update-banner { border-radius: var(--r-card); }
+
+  /* Grids narrow before they stack. The `body` prefix is required, not tidy:
+     main.jsx imports layout.css BEFORE components.css and pages.css, which
+     define the base .grid* rules. A media query adds no specificity, so a bare
+     `.grid3` here loses to `.grid3` in a later file. Prefixing with `body`
+     makes these win on specificity alone. */
+  body .grid4 { grid-template-columns: repeat(2, 1fr); }
+  body .grid3 { grid-template-columns: repeat(2, 1fr); }
+  body .plan-grid { grid-template-columns: repeat(2, 1fr); }
+  body .skel-grid.cols4 { grid-template-columns: repeat(2, 1fr); }
+
+  /* tables scroll sideways instead of squeezing columns into mush */
+  body .hbar { grid-template-columns: minmax(100px, 160px) 1fr 40px; }
+
+  /* popovers dock to the bottom where a thumb can reach them */
+  .toast-wrap { left: 16px; right: 16px; }
+  .toast { width: 100%; justify-content: center; }
+  .nbell-pop, .mpick-pop {
+    position: fixed; left: 12px; right: 12px; top: auto; bottom: calc(88px + env(safe-area-inset-bottom));
+    width: auto; max-width: none; max-height: 55vh;
+  }
+}
+
+@media (max-width: 639px) {
+  /* page rhythm */
+  .page { padding: 16px 16px 104px; }
+  .page-head { margin-bottom: 20px; }
+  .page-head h1 { font-size: var(--fs-h3); }
+  .page-head .row { flex-direction: column; align-items: stretch; }
+  .page-head .row .btn { align-self: flex-start; }
+  .card { padding: 18px 16px; }
+  .stat { padding: 16px; }
+  .stat .num { font-size: var(--fs-h3); }
+
+  /* One column where two would be cramped, two where four were. `body` prefix
+     for the same import-order reason as the 1024 block above. */
+  body .grid2, body .grid3, body .grid4, body .plan-grid, body .hub-duo, body .niche-grid, body .skel-grid.cols4, body .skel-grid.cols2 { grid-template-columns: 1fr; }
+
+  /* tables become stacked cards: no sideways scroll on a phone */
+  .table-wrap { border: none; overflow: visible; }
+  .table-wrap table { min-width: 0; background: none; }
+  .table-wrap thead { display: none; }
+  .table-wrap table, .table-wrap tbody, .table-wrap tr, .table-wrap td { display: block; width: 100%; }
+  .table-wrap tbody tr { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card); margin-bottom: 10px; padding: 6px 4px; }
+  .table-wrap tbody td { border: none; padding: 6px 12px; }
+  .table-wrap tbody td:last-child { padding-bottom: 10px; }
+  /* the plan-compare table keeps its columns: sideways scroll beats a lie */
+  .table-wrap.compare { border: 1px solid var(--border); border-radius: var(--r-card); overflow-x: auto; }
+  .table-wrap.compare table { display: table; min-width: 560px; }
+  .table-wrap.compare thead { display: table-header-group; }
+  .table-wrap.compare tbody { display: table-row-group; }
+  .table-wrap.compare tr { display: table-row; background: none; border: none; border-radius: 0; margin: 0; padding: 0; }
+  .table-wrap.compare th, .table-wrap.compare td { display: table-cell; width: auto; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+
+  /* overlays dock to the bottom edge */
+  .tour-overlay { place-items: end center; padding: 0; }
+  .tour-card {
+    max-width: none; width: 100%;
+    border-radius: var(--r-sheet) var(--r-sheet) 0 0; border-bottom: none;
+    padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
+    animation: sheetUp 0.3s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  }
+  @keyframes sheetUp { from { opacity: 0; transform: translateY(60px); } to { opacity: 1; transform: none; } }
+  .tour-nav .btn { min-height: 44px; }
+  .pop-overlay, .glass-overlay { place-items: end center; padding: 0; }
+  .pop-overlay > .card, .glass-overlay > .card, .modal-card { border-radius: var(--r-sheet) var(--r-sheet) 0 0; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+
+  /* hero + primary actions stack, buttons go full width */
+  .dash-hero { flex-direction: column; align-items: stretch; padding: 20px 16px; gap: 16px; }
+  .dash-hero h1 { font-size: var(--fs-h3); }
+  body .dash-cta { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .dash-cta .btn { width: 100%; }
+  .trial-strip { flex-wrap: wrap; }
+  .trial-strip a { margin-left: 0; }
+  .bubble-in, .bubble-out { max-width: 88%; }
+  body .hbar { grid-template-columns: 1fr 34px; }
+  .hbar-track { grid-column: 1 / -1; order: 3; }
+  .copyrow span:first-child { font-size: 12.5px; word-break: break-all; }
+  .gslide-frame { aspect-ratio: 4 / 3; min-height: 0; }
+  .gslide-cap b { font-size: 15px; }
+  body .landing-hero { grid-template-columns: 1fr; padding: 32px 20px 24px; }
+  .landing-hero h1 { font-size: var(--fs-h2); }
+  /* on phones the nav keeps brand + theme toggle only: brand(136) + toggle(52) + gaps
+     fits 342px of content, while two CTAs need ~440px. The same CTAs sit in the
+     hero, so nothing is lost â€” and the wordmark/buttons stop being squeezed. */
+  .landing-nav-cta .btn { display: none; }
+  .landing .foot-links { padding-bottom: 40px; }
+}

@@ -36,6 +36,7 @@ const VeloSalesAI = lazy(() => import('./pages/VeloSalesAI.jsx')); // general AI
 const Privacy = lazy(() => import('./pages/Privacy.jsx')); // public legal (no login needed)
 const Terms = lazy(() => import('./pages/Terms.jsx')); // public legal
 const Faq = lazy(() => import('./pages/Faq.jsx')); // public FAQ marketing page
+const Buttons = lazy(() => import('./pages/Buttons.jsx')); // TEMP Button review page (delete after primitives land)
 function PageFallback() { // chunk loading placeholder (scatter logo — the brand moment, same family as Splash!)
   return <div className="page"><div className="card"><BrandGate /></div></div>;
 }
@@ -73,6 +74,7 @@ export default function App() { // ROOT component (main.jsx renders this)
       <Route path="/terms" element={<Terms />} />
       <Route path="/faq" element={<Faq />} />
       <Route path="/login" element={loading ? <div className="page"><div className="card"><BrandGate /></div></div> : me ? <Navigate to="/dashboard" replace /> : <Login setMe={setMe} theme={theme} onToggleTheme={toggleTheme} />} /> {/* logged-in visiting /login → dashboard (no login-loop); loading → brand gate so we don't flash the form */}
+      <Route path="/buttons" element={<Buttons />} /> {/* TEMP spec 7.1 review page (not guarded) */}
       <Route path="/reset" element={<Reset />} /> {/* forgot-password landing (public — must NOT be Guarded: no session exists yet!) */}
       <Route path="/onboarding" element={<Onboarding me={me} />} /> {/* welcome tour (reachable logged-in OR fresh — by design) */}
       <Route path="/welcome" element={loading ? <div className="page"><div className="card"><BrandGate /></div></div> : me ? <Welcome /> : <Navigate to="/login" replace />} /> {/* niche + heard-from (new signups land here after the tour; guests → login) */}

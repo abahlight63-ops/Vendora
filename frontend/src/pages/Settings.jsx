@@ -32,7 +32,7 @@ export default function Settings({ biz }) { // biz = business (name/numbers/hour
       <div className="page-head"><div><h1>AI settings</h1><p>Your AI's voice and guardrails. Polite by default — these make it yours.</p></div></div>
       <div className="card">
         <h2>Appearance</h2>
-        <p className="desc">How VeloSales Ai looks on this device. System follows your phone or laptop automatically.</p>
+        <p className="desc">How VeloSales AI looks on this device. System follows your phone or laptop automatically.</p>
         <div className="seg" role="group" aria-label="Appearance">
           {THEMES.map(([id, label]) => (
             <button key={id} type="button" className={pref === id ? 'on' : ''} aria-pressed={pref === id} onClick={() => setPref(id)}>{label}</button>

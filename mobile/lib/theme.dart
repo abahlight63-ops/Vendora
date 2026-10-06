@@ -195,19 +195,22 @@ class VeloSalesTheme {
           color: VsTokens.text,
         ),
       ),
-      // Secondary action: deep fill, hairline, white text. Primary lives in
-      // SilverButton (needs a gradient, which ButtonStyle cannot express).
+      // Primary action: GOLD pill (the brand accent, onAccent text) per
+      // DESIGN-SYSTEM.md 6.2 — every FilledButton inherits this, so all 29
+      // existing usages become the gold CTA without touching each screen.
+      // Height 56 on forms (minimumSize below stays 48 for inline uses).
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: VsTokens.surfaceDeep,
-          foregroundColor: VsTokens.text,
-          minimumSize: const Size(0, 48),
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          textStyle: _bodyStyle(FontWeight.w500),
+          backgroundColor: VsTokens.accent,
+          foregroundColor: VsTokens.onAccent,
+          minimumSize: const Size(0, 56),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          textStyle: _bodyStyle(FontWeight.w600),
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(VsTokens.rPill)),
-            side: BorderSide(color: VsTokens.hairline),
           ),
+          elevation: 0,
+          visualDensity: VisualDensity.standard,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(

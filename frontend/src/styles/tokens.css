@@ -17,13 +17,13 @@
   --ink-muted: #6B6B6B;
   --brown-900: #3E2A0F;
   /* amber family (signature) */
-  --amber-500: #F5B63A;
-  --amber-400: #FFC977;
+  --amber-500: #F5B63A;   /* the brand gold — measured from logo.png. Primary fills. */
+  --amber-400: #FFD27A;   /* hover + glow tone. NOT a fill (washes out on cream). */
   --amber-300: #FFE3B0;
   --amber-150: #FFF3DC;
   --amber-100: #FFF8EC;
   --amber-line: #F7D8A0;
-  --amber-700: #8F5B00;
+  --amber-700: #8F5B00;   /* gold TEXT on light surfaces only — 5.7:1 */
   --on-amber: #2A1A00;
   --focus: #8F5B00;
   --focus-glow: rgba(245, 182, 58, 0.35);
@@ -161,8 +161,8 @@
   --ink: #F5F1EA;
   --ink-muted: #A8A094;
   --brown-900: #F5F1EA;
-  --amber-500: #F5B63A;
-  --amber-400: #F5B63A;
+  --amber-500: #F5B63A;   /* brand gold — full strength on dark (9.3:1) */
+  --amber-400: #FFD27A;   /* hover + glow */
   --amber-300: #4A3611;
   --amber-150: #2A2012;
   --amber-100: #241C10;

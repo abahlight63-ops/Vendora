@@ -1,81 +1,46 @@
 // ── lib/glass.dart ─────────────────────────────────────────────────
-// WHAT: the surface system — ONE place for every panel in the app.
-// Recipe per MOBILE-DESIGN.md: gradient surface, radius 24, 1px hairline
-// border, and a 1px white@6% highlight along the top edge. Blur is used
-// at most twice per screen (bottom bar, sheets) — everything else is
-// plain gradients, because BackdropFilter is expensive on weak phones.
-// Dark-first: no light/dark branching, the palette has one mode.
+// WHAT: the liquid-glass system — ONE place for every frosted surface in
+// the app (cards, app shell backdrop, bottom sheets, dialogs). Same recipe
+// everywhere: blur what is behind (BackdropFilter) + translucent surface
+// tint + hairline light edge + glossy top highlight. Light/dark aware via
+// the active ColorScheme, so the glass reads correctly in both themes.
+// No new packages — dart:ui + material only.
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 
-import 'theme.dart';
+import 'theme.dart'; // accentTeal (same glow the web app uses!)
 
-/// Blur + geometry shared by the frosted surfaces.
+/// Blur strength for cards (18) vs sheets/dialogs (22, chunkier surfaces).
 class Glass {
-  static const double cardBlur = 16; // only over an image or glow
-  static const double sheetBlur = 22; // bottom bar, sheets
-  static const double radius = VsTokens.rCard;
+  static const double cardBlur = 18;
+  static const double sheetBlur = 22;
+  static const double radius = 20;
 
-  /// Translucent glass fill (rgba white 10%).
-  static Color tint(BuildContext context) => VsTokens.surfaceGlass;
+  /// Translucent surface tint — lets the mesh backdrop shimmer through.
+  static Color tint(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Theme.of(context)
+        .colorScheme
+        .surface
+        .withValues(alpha: dark ? 0.5 : 0.62);
+  }
 
-  /// Hairline light edge (rgba white 12%).
-  static Color edge(BuildContext context) => VsTokens.glassBorder;
+  /// Hairline light edge (the bright rim that sells "glass").
+  static Color edge(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Colors.white.withValues(alpha: dark ? 0.14 : 0.55);
+  }
 
-  /// Inner top highlight (rgba white 6%).
-  static Color gloss(BuildContext context) => VsTokens.innerHighlight;
-}
-
-/// The screen itself: full-bleed bgTop → bgBottom gradient with a single
-/// diagonal lean, plus one soft accent glow in the top-right corner so the
-/// deep green-charcoal never reads flat. Painted behind every Scaffold
-/// (MaterialApp.builder in main.dart); it also stamps the light status-bar
-/// icons, so no screen has to remember to do it.
-class AppBackground extends StatelessWidget {
-  const AppBackground({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: VeloSalesTheme.overlay,
-      child: DecoratedBox(
-        decoration: const BoxDecoration(gradient: VsTokens.bgGradient),
-        child: Stack(fit: StackFit.expand, children: [
-          // one glow only — the accent stays "used sparingly"
-          Align(
-            alignment: const Alignment(0.9, -0.9),
-            child: FractionallySizedBox(
-              widthFactor: 1.1,
-              heightFactor: 0.9,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    colors: [
-                      VsTokens.accentGlow.withValues(alpha: 0.10),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ]),
-      ),
-    );
+  /// Glossy top highlight, painted OVER the tint (foregroundDecoration).
+  static Color gloss(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Colors.white.withValues(alpha: dark ? 0.05 : 0.12);
   }
 }
 
-/// Legacy name kept so main.dart keeps compiling; now the spec background.
-class GlassBackground extends AppBackground {
-  const GlassBackground({super.key});
-}
-
-/// Surface card — drop-in replacement for Card(child:, margin:).
-/// Gradient surface, radius 24, hairline border, 1px white@6% top highlight.
-/// No BackdropFilter here on purpose: blur is reserved for the bottom bar
-/// and sheets so weak phones keep their frame budget.
+/// Frosted card — drop-in replacement for Card(child:, margin:).
+/// Same default margin as Card (4 all) so layouts do not shift.
 class GlassCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry margin;
@@ -103,32 +68,34 @@ class GlassCard extends StatelessWidget {
       padding: margin,
       child: ClipRRect(
         borderRadius: r,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: VsTokens.surfaceGradient,
-            borderRadius: r,
-            border: border ??
-                Border.all(color: Glass.edge(context), width: 1),
-          ),
-          foregroundDecoration: BoxDecoration(
-            borderRadius: r,
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.center,
-              colors: [Glass.gloss(context), Colors.transparent],
+        child: BackdropFilter(
+          filter: ImageFilter.blur(
+              sigmaX: Glass.cardBlur, sigmaY: Glass.cardBlur),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Glass.tint(context),
+              borderRadius: r,
+              border: border ??
+                  Border.all(color: Glass.edge(context), width: 1),
             ),
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: onTap == null
-                ? inner
-                : InkWell(
-                    borderRadius: r,
-                    onTap: onTap,
-                    splashColor: VsTokens.accent.withValues(alpha: 0.12),
-                    highlightColor: VsTokens.accent.withValues(alpha: 0.06),
-                    child: inner,
-                  ),
+            foregroundDecoration: BoxDecoration(
+              borderRadius: r,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.center,
+                colors: [Glass.gloss(context), Colors.transparent],
+              ),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: onTap == null
+                  ? inner
+                  : InkWell(
+                      borderRadius: r,
+                      onTap: onTap,
+                      child: inner,
+                    ),
+            ),
           ),
         ),
       ),
@@ -136,7 +103,55 @@ class GlassCard extends StatelessWidget {
   }
 }
 
-/// Frosted bottom sheet — same surface as cards, chunkier blur, 28px top
+/// Mesh-gradient backdrop — brand-green glows over the theme base.
+/// Lives behind every Scaffold (MaterialApp builder in main.dart);
+/// the frosted surfaces above refract THIS, which is what makes the
+/// glass visible instead of frosted-over-flat-grey.
+class GlassBackground extends StatelessWidget {
+  const GlassBackground({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    // Brand glow: primary green melted toward web teal (same liquid family!).
+    final glow = Color.lerp(scheme.primary, VeloSalesTheme.accentTeal, 0.35) ?? scheme.primary;
+    return Stack(children: [
+      Positioned.fill(
+          child: ColoredBox(color: scheme.surfaceContainerLowest)),
+      Positioned.fill(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: const Alignment(0.9, -0.9),
+              radius: 1.1,
+              colors: [
+                glow.withValues(alpha: dark ? 0.3 : 0.16),
+                Colors.transparent,
+              ],
+            ),
+          ),
+        ),
+      ),
+      Positioned.fill(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: const Alignment(-0.9, 1.0),
+              radius: 1.2,
+              colors: [
+                glow.withValues(alpha: dark ? 0.16 : 0.1),
+                Colors.transparent,
+              ],
+            ),
+          ),
+        ),
+      ),
+    ]);
+  }
+}
+
+/// Frosted bottom sheet — same glass as cards, chunkier blur, 28px top
 /// radius. Replaces raw showModalBottomSheet for every sheet in the app.
 Future<T?> glassSheet<T>(
   BuildContext context, {

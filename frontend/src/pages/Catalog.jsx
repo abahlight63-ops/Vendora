@@ -202,7 +202,7 @@ export default function Catalog() { // no props needed (fetches everything itsel
             <div><label>How to buy</label><input value={f.howtobuy} onChange={(e) => setF({ ...f, howtobuy: e.target.value })} placeholder="e.g. Chat to order, pay on delivery" maxLength={300} /></div>
           </div>
         </div>
-        <div className="photo-box"> {/* photo box: dashed amber edge = "attachment" affordance */}
+        <div style={{ marginTop: 12, border: '1px dashed #25D366', borderRadius: 12, padding: 12, background: 'rgba(37,211,102,0.05)' }}> {/* photo box: dashed green = "attachment" affordance */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <label style={{ margin: 0 }}>Product photo {tier !== 'pro' && <LockButton title="Unlock product photos" lines={PHOTO_LINES} />}</label> {/* locked = padlock beside the label (no PRO text!); tap → upgrade card */}
             {f.photo.trim() && <button className="del" style={{ fontSize: 12 }} onClick={() => setF({ ...f, photo: '' })}>Clear</button>} {/* draft clear (no confirm — not saved yet!) */}

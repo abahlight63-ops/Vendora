@@ -42,7 +42,8 @@ export function ForexChart({ values = [], labels = [], height = 190 }) {
     <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label="Chat volume chart">
       <defs>
         <linearGradient id={'fxa' + gid} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" className="fx-area-stop-a" /><stop offset="1" className="fx-area-stop-b" />
+          <stop offset="0" stopColor="#25d366" stopOpacity="0.35" />
+          <stop offset="1" stopColor="#25d366" stopOpacity="0" />
         </linearGradient>
       </defs>
       {gridVals.map((g, i) => { // gridline + value tag (left-aligned, muted!)
@@ -66,12 +67,11 @@ export function Spark({ values = [], width = 120, height = 38 }) {
   const pts = values.map((v, i) => [X(i), Y(v)]);
   const d = smooth(pts);
   const last = pts[n - 1];
-  const up = values[n - 1] >= values[0]; // direction tint (amber rising / red falling!)
-  const dir = up ? 'up' : 'down'; // one class name, styled in styles.css (tokens only, no inline colors!)
+  const up = values[n - 1] >= values[0]; // direction tint (green up / gold down!)
   return (
     <svg viewBox={`0 0 ${width} ${height}`} style={{ width, height, display: 'block' }} role="img" aria-label="Trend sparkline">
-      <path d={d} className={'fx-spark-line ' + dir} strokeWidth="2.5" />
-      <circle cx={last[0]} cy={last[1]} r="3" className={'fx-spark-dot ' + dir} />
+      <path d={d} fill="none" stroke={up ? '#25d366' : '#f5b041'} strokeWidth="2.5" strokeLinecap="round" />
+      <circle cx={last[0]} cy={last[1]} r="3" fill={up ? '#25d366' : '#f5b041'} />
     </svg>
   );
 }

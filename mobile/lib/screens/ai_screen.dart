@@ -312,7 +312,9 @@ class _AiScreenState extends State<AiScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Image.asset(
-                        'assets/brand-mark.png',
+                        Theme.of(context).brightness == Brightness.light
+                            ? 'assets/logo-green.png'
+                            : 'assets/logo-blue.png',
                         width: 72,
                         height: 72,
                       ),

@@ -66,23 +66,10 @@ flutter:
   assets:
     - assets/logo.png
     - assets/logo-green.png
-    - assets/brand-mark.png
-    - assets/brand-mark-light.png
-    - assets/icon-512.png
 
-  # Bundled offline — no runtime font download, no extra native deps.
-  #   Sora    -> headlines, weight 300 (MOBILE-DESIGN.md Typography)
-  #   DM Sans -> body + UI, weights 400/500
-  #   Inter   -> kept: still referenced by older widgets
-  # Both new families are VARIABLE fonts, so one file covers every weight
-  # (the exact instance is picked with FontVariation('wght', n)).
+  # Inter variable font (same family as the web app's Google Fonts import).
+  # Bundled offline — no runtime fetch, no extra native deps.
   fonts:
-    - family: Sora
-      fonts:
-        - asset: assets/fonts/Sora-var.ttf
-    - family: DMSans
-      fonts:
-        - asset: assets/fonts/DMSans-var.ttf
     - family: Inter
       fonts:
         - asset: assets/fonts/Inter.ttf

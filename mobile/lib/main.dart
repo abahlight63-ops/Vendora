@@ -17,7 +17,6 @@ import 'motion.dart';
 import 'format.dart';
 import 'screens/auth_screen.dart';
 import 'screens/setup_screen.dart';
-import 'screens/tour_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/chats_screen.dart';
 import 'screens/catalog_screen.dart';
@@ -37,7 +36,6 @@ class VeloSalesApp extends StatefulWidget {
 class _VeloSalesAppState extends State<VeloSalesApp> {
   bool? _authed; // null = checking
   bool _needsSetup = false; // true = logged in but no niche yet (setup screen!)
-  bool _showTour = false; // one-time welcome tour, before setup
   ThemeMode _mode = ThemeMode.system;
 
   @override
@@ -53,32 +51,13 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
       wait,
       VeloSalesTheme.loadMode(),
       _checkAuth(),
-      _prefs(),
     ]);
     if (!mounted) return;
-    final prefs = results[3] as Map<String, bool>;
-    final needsSetup = (results[2] as List)[1] as bool;
     setState(() {
       _mode = results[1] as ThemeMode;
       _authed = (results[2] as List)[0] as bool;
-      _needsSetup = needsSetup;
-      // Tour is a one-time gift for brand-new accounts: authed + needs setup
-      // + never seen it. Returning users skip straight to their dashboard.
-      _showTour = _authed == true && needsSetup && !(prefs['tour_done'] ?? false);
+      _needsSetup = (results[2] as List)[1] as bool;
     });
-  }
-
-  /// Read the two flags the boot sequence needs from local storage.
-  Future<Map<String, bool>> _prefs() async {
-    final p = await SharedPreferences.getInstance();
-    return {'tour_done': p.getBool('velosales_tour_done') ?? false};
-  }
-
-  /// The tour finished (or was skipped) — hand off to the setup quiz.
-  Future<void> _finishTour() async {
-    final p = await SharedPreferences.getInstance();
-    await p.setBool('velosales_tour_done', true); // never nag again
-    if (mounted) setState(() => _showTour = false);
   }
 
   /// Session check + setup check in one: returns [authed, needsSetup].
@@ -126,22 +105,17 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
       home: _authed == null
           ? const SplashView()
           : _authed!
-              ? _showTour
-                  ? TourScreen(
-                      onDone: _finishTour,
-                      onSkip: _finishTour,
+              ? _needsSetup
+                  ? SetupScreen(
+                      onDone: () => setState(() => _needsSetup = false))
+                  : HomeShell(
+                      mode: _mode,
+                      onMode: _setMode,
+                      onLogout: () => setState(() {
+                        _authed = false;
+                        _needsSetup = false;
+                      }),
                     )
-                  : _needsSetup
-                      ? SetupScreen(
-                          onDone: () => setState(() => _needsSetup = false))
-                      : HomeShell(
-                          mode: _mode,
-                          onMode: _setMode,
-                          onLogout: () => setState(() {
-                            _authed = false;
-                            _needsSetup = false;
-                          }),
-                        )
               : AuthScreen(onAuthed: _onAuthed),
     );
   }

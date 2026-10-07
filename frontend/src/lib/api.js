@@ -3,7 +3,7 @@
 // Every page imports from here (one shared helper = consistent auth, errors, UX).
 // No npm modules — browser `fetch` + raw DOM for notifications (no toast library).
 
-// Shared API helpers for the VeloSales AI React frontend.
+// Shared API helpers for the VeloSales Ai React frontend.
 // SPLIT DEPLOY: same-origin by default (local dev + full-stack Render + Vercel
 // proxy — vercel.json rewrites /api/* to the Render backend, so the session
 // cookie stays FIRST-party: no CORS, no third-party-cookie blocking).

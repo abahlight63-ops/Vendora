@@ -143,8 +143,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   gradient: LinearGradient(colors: [
-                    scheme.primary.withValues(alpha: 0.42),
-                    scheme.primary.withValues(alpha: 0.14),
+                    scheme.primary.withValues(alpha: 0.22),
+                    scheme.primary.withValues(alpha: 0.06),
                   ]),
                 ),
                 child: Column(

@@ -9,7 +9,7 @@ self.addEventListener('push', (e) => { // encrypted payload arrives (server did 
   let d = {};
   try { d = (e.data && e.data.json()) || {}; } catch {} // unparseable → defaults below (never crash the worker!)
   e.waitUntil(
-    self.registration.showNotification(d.title || 'VeloSales AI', {
+    self.registration.showNotification(d.title || 'VeloSales Ai', {
       body: d.body || '',
       icon: '/logo.png?v=4', // app icon (from dist root — same origin, always cached!)
       badge: '/logo.png?v=4', // monochrome slot (Android uses it on the status bar!)

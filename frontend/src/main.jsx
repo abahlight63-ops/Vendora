@@ -10,14 +10,7 @@ import React from 'react'; // React namespace (StrictMode below comes from it)
 import { createRoot } from 'react-dom/client'; // createRoot = React 18+ mounting API (replaces old ReactDOM.render)
 import { BrowserRouter } from 'react-router-dom'; // Router using real URLs (/dashboard) via History API (needs server SPA fallback!)
 import App from './App.jsx'; // our route table + providers (default import)
-// Stylesheets in the order velosales (1).md section 15 specifies: tokens first
-// so every later file can read var(--token), then base, layout, components,
-// then page-specific rules last so they can still win without !important.
-import './styles/tokens.css';
-import './styles/base.css';
-import './styles/layout.css';
-import './styles/components.css';
-import './styles/pages.css';
+import './styles.css'; // importing CSS in JS = Vite bundles + injects it (one global stylesheet)
 import { initInstall } from './lib/install.js'; // install-as-app plumbing (worker + Chrome prompt capture — once per load!)
 
 initInstall(); // register /sw-app.js + catch beforeinstallprompt (idempotent — StrictMode-safe!)

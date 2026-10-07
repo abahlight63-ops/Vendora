@@ -39,7 +39,7 @@ export const HEARD_FROM = [
   'Other',
 ];
 
-// Per-niche VeloSales AI starter chips (freelancer sees gigs, baker sees
+// Per-niche VeloSales Ai starter chips (freelancer sees gigs, baker sees
 // orders — never generic "blue gown" examples for the wrong hustle!).
 // Unknown/custom niches fall back to DEFAULT_CHIPS (VeloSalesAI handles it).
 const NICHE_CHIPS = {

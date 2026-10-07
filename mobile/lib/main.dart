@@ -5,6 +5,7 @@
 // Run with: flutter run --dart-define API_BASE_URL=https://<backend>
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -23,6 +24,7 @@ import 'screens/catalog_screen.dart';
 import 'screens/connect_screen.dart';
 import 'screens/ai_screen.dart';
 import 'screens/billing_screen.dart';
+import 'screens/airbot_test_screen.dart';
 
 void main() => runApp(const VeloSalesApp());
 
@@ -370,6 +372,14 @@ class _HomeShellState extends State<HomeShell> {
                     ? ThemeMode.light
                     : ThemeMode.dark),
           ),
+          if (kDebugMode)
+            IconButton(
+              icon: const Icon(Icons.smart_toy_outlined),
+              tooltip: 'AirBot test (dev)',
+              onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const AirBotTestScreen())),
+            ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sign out',

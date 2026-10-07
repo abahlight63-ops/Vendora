@@ -8,6 +8,9 @@
 // size → dashboard checklist, channels → Connect hints, volume → plan hint.
 import 'package:flutter/material.dart';
 
+import '../airbot/airbot_controller.dart';
+import '../airbot/airbot_guide.dart';
+import '../airbot/airbot_types.dart';
 import '../api.dart';
 import '../glass.dart';
 import '../motion.dart';
@@ -167,6 +170,9 @@ class _SetupScreenState extends State<SetupScreen> {
     return Scaffold(
       appBar: AppBar(title: Text('Step ${_step + 1} of 5')),
       body: Column(children: [
+        // AirBot — compact companion that greets + guides each question.
+        // Runs its OWN quiet animation; taps Continue and warms back up.
+        _AirBotIntro(step: _step, onFinish: widget.onDone),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: ClipRRect(
@@ -383,5 +389,62 @@ class _SetupScreenState extends State<SetupScreen> {
                   fontSize: 13, fontWeight: FontWeight.w600)),
         ),
     ]);
+  }
+}
+
+/// AirBot companion for the setup quiz — a small, calm guide that greets
+/// the business owner, then stays quiet while they answer. Parent passes
+/// the current [step] so messages change per question; the guide itself
+/// never interrupts (bubble is dismissible, HA only after user completes).
+class _AirBotIntro extends StatefulWidget {
+  const _AirBotIntro({required this.step, required this.onFinish});
+  final int step;
+  final VoidCallback onFinish;
+  @override
+  State<_AirBotIntro> createState() => _AirBotIntroState();
+}
+
+class _AirBotIntroState extends State<_AirBotIntro> {
+  static const _perStep = [
+    'Hi! I\'m AirBot — pick your hustle and I\'ll tailor everything to it.',
+    'Great start. Rough is fine — it shapes your starting checklist.',
+    'Choose where customers reach you — I\'ll spotlight the right hookup.',
+    'A rough guess keeps the plan advice honest. Nice.',
+    'Last one, then we open your shop. This is optional — skip if you like.',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AirBotController.instance
+          .play(widget.step == 0 ? AirBotState.welcome : AirBotState.thinking);
+      AirBotController.instance.showMessage(
+          _perStep[widget.step.clamp(0, _perStep.length - 1)]);
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _AirBotIntro old) {
+    super.didUpdateWidget(old);
+    if (old.step != widget.step) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        AirBotController.instance
+          ..play(widget.step == 0 ? AirBotState.welcome : AirBotState.thinking)
+          ..showMessage(
+              _perStep[widget.step.clamp(0, _perStep.length - 1)]);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 108,
+      child: Stack(alignment: Alignment.center, children: [
+        // a stable sparkle mark behind the character (brand, subtle)
+        FadeSlideIn(delayMs: 120, child: AirBotGuide(size: AirBotSize.small)),
+      ]),
+    );
   }
 }

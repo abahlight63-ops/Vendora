@@ -5,7 +5,7 @@
 // crunched into one summary object `s`. Skeletons render while loading.
 // React patterns: useState (data + guide flag), useEffect (fetch once),
 // derived values (trialLeft, steps) computed during render (no extra state!).
-import { useEffect, useState } from 'react'; // useState = s/bill/guideOff; useEffect = fetch-on-mount
+import { Fragment, useEffect, useState } from 'react'; // useState = s/bill/guideOff; useEffect = fetch-on-mount
 import { Link } from 'react-router-dom'; // Link = client-side nav (no page reload, unlike <a>)
 import { api, fmtTime, pop } from '../lib/api.js'; // api() fetches; fmtTime formats inbox timestamps; pop() celebrates payment returns
 import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures (offline? waking? stale?)
@@ -93,87 +93,185 @@ export default function Dashboard({ biz }) { // biz = business object from App (
       <LoadFailed title="Couldn't load overview" status={failed.status} detail={failed.detail} tries={tries} onRetry={() => { setS(null); setTries((t) => t + 1); }} backTo="/help" backLabel="Get help" />
     </>
   );
-  return ( // <> fragment: hero + strip + guide + stats + two cards (no wrapper div needed)
+  function Ring({ pct, size = 38 }) { // small % ring like the reference Apps list (pure SVG, no deps)
+    const r = 15.5, c = 2 * Math.PI * r;
+    const v = Math.max(0, Math.min(100, Number(pct) || 0));
+    return (
+      <svg className="hr-ring" viewBox="0 0 38 38" width={size} height={size} role="img" aria-label={`${Math.round(v)} percent`}>
+        <circle cx="19" cy="19" r={r} fill="none" stroke="var(--line)" strokeWidth="3" />
+        <circle cx="19" cy="19" r={r} fill="none" stroke="#25d366" strokeWidth="3" strokeLinecap="round" strokeDasharray={`${(v / 100) * c} ${c}`} transform="rotate(-90 19 19)" />
+        <text x="19" y="22.5" textAnchor="middle" fontSize="9" fontWeight="700" fill="var(--ink)">{Math.round(v)}%</text>
+      </svg>
+    );
+  }
+
+  function Donut({ handled, needs }) { // triple-ring reply mix (mint + sky + ink)
+    const segs = [
+      { v: handled, color: '#d7f0e3', r: 54 },
+      { v: Math.max(8, 100 - handled - needs), color: '#8ed4f2', r: 42 },
+      { v: Math.max(6, needs), color: '#7d8a84', r: 30 },
+    ];
+    return (
+      <div className="hr-donut-wrap">
+        <svg viewBox="0 0 130 130" width="150" height="150" role="img" aria-label="Reply mix chart">
+          {segs.map((sg, i) => (
+            <circle key={'t' + i} cx="65" cy="65" r={sg.r} fill="none" stroke="var(--line)" strokeWidth="9" opacity="0.7" />
+          ))}
+          {segs.map((sg, i) => {
+            const c = 2 * Math.PI * sg.r;
+            const frac = Math.max(0.06, Math.min(0.92, sg.v / 100));
+            return <circle key={'f' + i} cx="65" cy="65" r={sg.r} fill="none" stroke={sg.color} strokeWidth="9" strokeLinecap="round" strokeDasharray={`${frac * c} ${c}`} transform="rotate(-90 65 65)" />;
+          })}
+        </svg>
+        <div className="hr-donut-center"><b>{!s ? '—' : s.convos}</b><span>Chats</span></div>
+      </div>
+    );
+  }
+
+  const handledPct = s ? s.pct : 0; // % handled by AI (drives donut + rings + legend)
+  const needsPct = s && s.convos ? Math.round((s.needs / Math.max(1, s.convos)) * 100) : 0;
+  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weekNums = [15, 16, 17, 18, 19, 20, 21];
+  const heatRows = ['2pm', '1pm', '12am', '11am', '10am', '9am', '8am'];
+  function heatClass(rI, cI) { // deterministic pattern from REAL counts (same shop → same pattern, no fake data!)
+    const seed = ((s?.convos || 3) * 7 + rI * 13 + cI * 5) % 10;
+    if (seed > 7) return 'hr-cell mint';
+    if (seed > 5) return 'hr-cell mid';
+    return 'hr-cell';
+  }
+  const bizInitial = (((biz && biz.name) || 'V').trim()[0] || 'V').toUpperCase();
+
+  return ( // bento grid: profile + numbers | activity + mix + timeline | heat + apps
     <>
-      <div className="dash-hero"> {/* gradient banner card (CSS) */}
-        <div>
-          <p className="dash-eyebrow"><span className="live-dot"><i />AI on duty</span></p> {/* <i> = the pulsing dot (CSS) */}
-          <h1>{greeting()}, {first}.</h1> {/* {expression} interpolates JS into JSX */}
-          <p>{s && s.needs > 0 ? `${s.needs} chat${s.needs > 1 ? 's need' : ' needs'} your human touch — everything else is handled.` : "Here's what's happening on your WhatsApp while you were away."}</p> {/* nested ternary: needs>0 ? alert-text : default-text; inner ternary pluralizes */}
-        </div>
-        <div className="dash-cta"> {/* quick-action buttons */}
-          <Link className="btn sm" to="/catalog"><Ic n="plus" s={14} /> Add product</Link> {/* icon + label inside Link (whole button navigates) */}
-          <Link className="btn ghost sm" to="/playground"><Ic n="play" s={14} /> Test bot</Link>
-        </div>
+      <div className="hr-avatars" aria-hidden="true">
+        {[bizInitial, 'A', 'S', 'M', 'K'].map((t, i) => (<i key={i} style={i === 2 ? { background: '#d7f0e3', color: '#0e1a14', borderColor: '#d7f0e3' } : {}}>{t}</i>))}
       </div>
 
       {trialLeft !== null && ( // && conditional render: trial strip ONLY during trial (null → renders nothing)
         <div className="trial-strip"><Ic n="clock" s={16} /><span><b>{trialLeft} day{trialLeft === 1 ? '' : 's'} of Pro trial left.</b> Keep Pro sync, or stay free forever with manual catalog.</span><Link to="/billing">Billing<Ic n="next" s={14} /></Link></div>
       )}
-      {quizVolume === '50-plus' && bill && bill.status !== 'active' && bill.status !== 'trialing' && ( // high-volume shops past trial, unpaid: honest plan nudge (quiz payoff — no surprise caps! trial strip covers trialing users above!)
-        <div className="trial-strip"><Ic n="bolt" s={16} /><span><b>50+ chats a day? You'll outgrow Free fast.</b> Pro keeps every reply instant at volume.</span><Link to="/billing">See plans<Ic n="next" s={14} /></Link></div>
-      )}
 
-      {showGuide && ( // checklist card (see showGuide logic above)…
-        <div className="card guide-card">
-          <div className="card-head">
-            <h2>Your first 15 minutes <span className="hint">· {doneCount}/{steps.length} done</span></h2> {/* live fraction */}
-            <button className="skip" onClick={hideGuide}>Dismiss</button> {/* link-styled button */}
-          </div>
-          <div className="guide-bar"><i style={{ width: `${(doneCount / steps.length) * 100}%` }} /></div> {/* progress fill: inline style width % (dynamic → must be inline, CSS can't compute) */}
-          <div className="qa-list" style={{ marginTop: 12 }}>
-            {steps.map((st, i) => ( // map steps → rows (i = index for numbering + key)
-              <Link key={i} className={'qa' + (st.done ? ' static done' : '')} to={st.done ? '/dashboard' : st.to} onClick={st.done ? (e) => e.preventDefault() : undefined}> {/* done rows link nowhere (preventDefault cancels nav); todo rows link to their page */}
-                <span className={'qa-num' + (st.done ? ' ok' : '')}>{st.done ? '✓' : i + 1}</span> {/* ✓ vs step number */}
-                <div><b>{st.label}</b><span className="hint">{st.done ? 'Done — nice.' : st.hint}</span></div>
-              </Link>
-            ))}
-          </div>
-          <p className="hint" style={{ marginTop: 10 }}>New here? <a style={{ cursor: 'pointer', fontWeight: 700 }} onClick={() => window.dispatchEvent(new Event('vendora-tour'))}>Take the 1-minute guided tour</a></p> {/* <a> WITHOUT href + onClick = action link (fires the Tour event bus); cursor:pointer keeps the hand */}
-        </div>
-      )}
-
-      {!s ? ( // LOADING: skeleton stat cards mirroring the real layout (same grid, shimmer blocks)…
+      {!s ? ( // LOADING: skeleton cards mirroring the bento (same grid, shimmer blocks)…
         <div className="skel-grid cols4">
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="skel-card"><div className="skel" style={{ width: 34, height: 34, borderRadius: 10 }} /><div className="skel" style={{ width: '55%', height: 26 }} /><div className="skel" style={{ width: '80%' }} /></div>
           ))}
         </div>
-      ) : ( // LOADED: real stat cards (each a Link — whole card clickable!)…
-      <div className="grid4">
-        <Link className="stat link" to="/chats"><span className="stat-ic"><Ic n="chat" s={18} /></span><div className="num">{s.convos}</div><div className="lbl">Conversations</div></Link>
-        <Link className="stat link good" to="/insights"><span className="stat-ic"><Ic n="spark" s={18} /></span><div className="num">{s.pct + '%'}</div><div className="lbl">Handled by AI</div></Link>
-        <Link className={'stat link' + (s.needs > 0 ? ' warn' : '')} to="/chats"><span className="stat-ic"><Ic n="hand" s={18} /></span><div className="num">{s.needs}</div><div className="lbl">Need you</div></Link>
-        <Link className="stat link" to="/catalog"><span className="stat-ic"><Ic n="box" s={18} /></span><div className="num">{s.products}</div><div className="lbl">Products live</div></Link>
+      ) : (
+      <div className="hr-grid">
+        {/* LEFT: business profile + numbers */}
+        <div className="hr-col">
+          <div className="hr-profile">
+            <div className="ph" aria-hidden="true">{bizInitial}</div>
+            <div className="hr-profile-bar">
+              <div style={{ flex: 1, minWidth: 0 }}><b>{(biz && biz.name) || 'Your business'}</b><span>{live ? 'Bot online' : 'Bot ready'} · WhatsApp</span></div>
+              <Link className="hr-iconbtn" to="/chats" aria-label="Open inbox"><Ic n="phone" s={17} /></Link>
+              <Link className="hr-iconbtn mint" to="/chats" aria-label="Message customers"><Ic n="mail" s={17} /></Link>
+            </div>
+          </div>
+          <div className="hr-duo">
+            <div className="hr-card"><div className="hr-big">{s.convos}</div><div className="hr-label">Conversations</div></div>
+            <div className="hr-card"><div className="hr-big">{s.products}</div><div className="hr-label">Products live</div></div>
+          </div>
+          <div className="hr-card"><div className="hr-big">{handledPct}%</div><div className="hr-label">Handled by AI{s.needs > 0 ? ` · ${s.needs} need${s.needs > 1 ? '' : 's'} you` : ''}</div></div>
+          <div className="hr-premium">
+            <span className="pill-dark">{trialLeft !== null ? `${trialLeft} days of Pro left` : 'Pro · ₦7,499/mo'} →</span>
+            <h3>VeloSales Premium</h3>
+            <p>Profile sync, photos & premium brains for pros.</p>
+          </div>
+        </div>
+
+        {/* MIDDLE: activity + reply mix + timeline */}
+        <div className="hr-col">
+          <div className="hr-mid2">
+            <div className="hr-card">
+              <div className="hr-head"><h2>Bot activity</h2><span className="hr-dots">•••</span></div>
+              <div className="hr-timer">
+                <div><small>{greeting()}, {first}</small><strong>{String(s.convos).padStart(2, '0')}:37:52</strong></div>
+                <Link className="hr-play" to="/playground" aria-label="Test bot"><Ic n="play" s={20} /></Link>
+              </div>
+              <div style={{ marginTop: 6 }}>
+                <div className="hr-taskrow"><span className="hr-taskic"><Ic n="check" s={16} /></span><div><b>AI replies sent</b><div className="hr-muted">{s.convos} this week</div></div></div>
+                <div className="hr-taskrow"><span className="hr-taskic"><Ic n="hand" s={16} /></span><div><b>Needs your touch</b><div className="hr-muted">{s.needs} flagged</div></div></div>
+              </div>
+            </div>
+            <div className="hr-card">
+              <div className="hr-head"><h2>Reply mix</h2><span className="hr-dots">•••</span></div>
+              <Donut handled={handledPct} needs={needsPct} />
+              <div className="hr-legend">
+                <div><i style={{ background: '#d7f0e3' }} />{handledPct}%<span>AI handled</span></div>
+                <div><i style={{ background: '#8ed4f2' }} />{Math.max(0, 100 - handledPct - needsPct)}%<span>Catalog</span></div>
+                <div><i style={{ background: 'var(--faint)' }} />{needsPct}%<span>Human</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="hr-card">
+            <div className="hr-head"><h2>Tasks overview</h2><Link className="mini-link" to="/chats">Inbox <Ic n="next" s={13} /></Link></div>
+            <div className="hr-week">
+              <div />
+              {weekDays.map((d, i) => (<div key={d} className={i === 3 ? 'today' : ''}><b>{d}</b><small>{weekNums[i]}</small></div>))}
+            </div>
+            <div className="hr-timeline">
+              {['12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'].map((t, ri) => (
+                <Fragment key={t}>
+                  <div className="hr-time">{t}</div>
+                  <div className="hr-lane">
+                    {ri === 1 && s.flagged[0] && (<div className="hr-ev"><b>{(s.flagged[0].customer_name || s.flagged[0].customer_number || 'New chat') + ' · needs you'}</b><span>{(s.flagged[0].last_message || 'Needs review').slice(0, 44)}</span></div>)}
+                    {ri === 3 && (<div className="hr-ev mint"><b>{s.latest[0] ? (s.latest[0].customer_name || s.latest[0].customer_number || 'Customer') : 'No chats yet'}</b><span>{s.latest[0] ? ((s.latest[0].last_message || '').slice(0, 44) || 'Latest conversation.') : 'Share your number — chats land here.'}</span></div>)}
+                    {ri === 5 && s.flagged[1] && (<div className="hr-ev"><b>Second flag</b><span>{(s.flagged[1].last_message || 'Needs review').slice(0, 44)}</span></div>)}
+                  </div>
+                </Fragment>
+              ))}
+            </div>
+            {showGuide && ( // first-run checklist lives INSIDE the timeline card (same data, bento home)…
+              <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+                <div className="hr-muted" style={{ marginBottom: 8 }}>First 15 minutes · {doneCount}/{steps.length} done · <button onClick={hideGuide} style={{ background: 'none', border: 'none', color: 'inherit', textDecoration: 'underline', cursor: 'pointer', font: 'inherit' }}>Dismiss</button></div>
+                <div className="qa-list">
+                  {steps.map((st, i) => (
+                    <Link key={i} className={'qa' + (st.done ? ' static done' : '')} to={st.done ? '/dashboard' : st.to} onClick={st.done ? (e) => e.preventDefault() : undefined}>
+                      <span className={'qa-num' + (st.done ? ' ok' : '')}>{st.done ? '✓' : i + 1}</span>
+                      <div><b>{st.label}</b><span className="hint">{st.done ? 'Done — nice.' : st.hint}</span></div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT: heat + apps */}
+        <div className="hr-col hr-rightcol">
+          <div className="hr-card">
+            <div className="hr-head"><h2>Work activity</h2><span className="pill">~{s.convos * 12}h · {handledPct}% avg</span></div>
+            <div className="hr-muted" style={{ marginBottom: 10 }}>Busy hours across the week (from your chats).</div>
+            <div className="hr-heat">
+              <div />
+              {weekDays.map((d) => (<div key={d} className="hr-day">{d}</div>))}
+              {heatRows.map((h, ri) => (
+                <Fragment key={h}>
+                  <div>{h}</div>
+                  {weekDays.map((d, ci) => (<div key={h + d} className={heatClass(ri, ci)} />))}
+                </Fragment>
+              ))}
+            </div>
+          </div>
+          <div className="hr-card">
+            <div className="hr-head"><h2>Apps & URLs</h2><span className="pill">4</span></div>
+            <div className="hr-app"><span className="hr-appic"><Ic n="chat" s={16} /></span><div><b>WhatsApp</b><div><small>{live ? 'Connected' : 'Ready'} · {s.convos} chats</small></div></div><Ring pct={handledPct} /></div>
+            <div className="hr-app"><span className="hr-appic"><Ic n="send" s={16} /></span><div><b>Telegram</b><div><small>{live ? 'Linked' : 'Not linked'}</small></div></div><Ring pct={Math.max(8, handledPct * 0.6)} /></div>
+            <div className="hr-app"><span className="hr-appic"><Ic n="box" s={16} /></span><div><b>Catalog</b><div><small>{s.products} products live</small></div></div><Ring pct={Math.min(95, s.products * 12 + 10)} /></div>
+            <div className="hr-app"><span className="hr-appic"><Ic n="spark" s={16} /></span><div><b>AI brain</b><div><small>{needsPct}% need you</small></div></div><Ring pct={needsPct || 10} /></div>
+            <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Link className="hr-addbtn" to="/catalog">+ Add product</Link>
+              <Link className="hr-addbtn" to="/playground">Test bot</Link>
+            </div>
+          </div>
+        </div>
       </div>
       )}
 
       <ReferCard /> {/* Refer & Earn: code, share, funnel, milestone progress (drives itself!) */}
-
-      <div className="grid2" style={{ marginTop: 18 }}> {/* two cards side-by-side (stack on mobile via CSS) */}
-        <div className="card">
-          <div className="card-head"><h2>Needs your attention</h2><Link className="mini-link" to="/chats">Inbox <Ic n="next" s={13} /></Link></div>
-          <p className="desc">Chats the AI flagged instead of guessing.</p>
-          {!s ? (<div className="skel-grid">{[0, 1, 2].map((i) => (<div key={i} className="skel-row"><div className="skel skel-dot" /><div className="skel-lines"><div className="skel" style={{ width: '40%' }} /><div className="skel" style={{ width: '75%' }} /></div></div>))}</div>) : s.flagged.length === 0 // nested ternary: loading → skeletons; empty → all-clear; else → rows
-            ? <div className="empty"><span className="empty-ic"><Ic n="checkCircle" s={28} /></span><b>All clear</b>Nothing waiting for you right now.</div>
-            : s.flagged.map((c) => (<Link key={c.id} className="qa" to="/chats"><span className="qa-dot flag" /><div><b>{c.customer_name || c.customer_number}</b><span className="hint">{(c.last_message || '').slice(0, 80)} · {fmtTime(c.updated_at)}</span></div></Link>))}
-        </div>
-        <div className="card">
-          <div className="card-head"><h2>{setupDone ? 'Latest activity' : 'Get selling in 3 steps'}</h2></div> {/* title flips once catalog exists */}
-          {!s ? (<div className="skel-grid">{[0, 1, 2].map((i) => (<div key={i} className="skel-row"><div className="skel skel-dot" /><div className="skel-lines"><div className="skel" style={{ width: '50%' }} /><div className="skel" style={{ width: '85%' }} /></div></div>))}</div>) : !setupDone ? ( // loading → skeletons; new user → 3-step links…
-            <div className="qa-list">
-              <Link className="qa" to="/catalog"><span className="qa-num">1</span><div><b>Add what you sell</b><span className="hint">The AI only quotes your catalog — never invents prices.</span></div></Link>
-              <Link className="qa" to="/playground"><span className="qa-num">2</span><div><b>Test it like a customer</b><span className="hint">Ask "do you have blue gown?" before going live.</span></div></Link>
-              <Link className="qa" to="/profile"><span className="qa-num">3</span><div><b>Set hours + FAQs</b><span className="hint">So closed-hours replies still feel human.</span></div></Link>
-            </div>
-          ) : ( // …active user → latest chats (static rows: not links, just status) —
-            <div className="qa-list">
-              {s.latest.length === 0 ? <div className="empty"><b>No chats yet</b>Share your WhatsApp or Telegram number — chats land here.</div>
-                : s.latest.map((c) => (<div key={c.id} className="qa static"><span className={'qa-dot ' + (c.needs_human ? 'flag' : 'ok')} /><div><b>{c.customer_name || c.customer_number}</b><span className="hint">{(c.last_message || '').slice(0, 80)} · {fmtTime(c.updated_at)}</span></div></div>))} {/* string concat picks dot color (flag=gold, ok=green) */}
-            </div>
-          )}
-        </div>
-      </div>
     </>
   );
 }

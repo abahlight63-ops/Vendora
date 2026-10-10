@@ -29,6 +29,19 @@ async function saveMessage(businessId, fromNumber, customerName, text) {
   return inserted.rows[0].id;
 }
 
+// Append ONE inbound message, but only once per provider id (Meta retries a
+// slow webhook with the SAME wamid — without this the customer gets double AI
+// replies). Atomic via ON CONFLICT (unique index, NULLs never conflict).
+// Returns true = first time seen (proceed), false = duplicate (stop, 200 now).
+async function logInboundOnce(conversationId, body, mediaUrl, providerMsgId) {
+  const r = await db.query(
+    `INSERT INTO messages (conversation_id, direction, body, media_url, provider_msg_id)
+     VALUES ($1, 'in', $2, $3, $4) ON CONFLICT (provider_msg_id) DO NOTHING`,
+    [conversationId, body, mediaUrl || null, providerMsgId || null] // || null: undefined → SQL NULL
+  );
+  return r.rowCount > 0; // 1 = inserted (new), 0 = conflict (Meta retry — drop it!)
+}
+
 // Append ONE message to the thread ('in' = customer wrote it, 'out' = bot sent it).
 async function logMessage(conversationId, direction, body, mediaUrl) {
   await db.query( // plain INSERT, no return needed (fire-and-remember)
@@ -47,4 +60,4 @@ async function getHistory(conversationId, limit = 10) { // default parameter: ca
   return historyRows.rows.reverse(); // .reverse() flips in place → oldest-first for the prompt
 }
 
-module.exports = { saveMessage, logMessage, getHistory }; // the chat-memory API
+module.exports = { saveMessage, logMessage, logInboundOnce, getHistory }; // the chat-memory API

@@ -44,12 +44,12 @@ async function handleInbound(req, res) {
     const meta = require('../services/channels/meta'); // Meta Cloud API sender (shop token — never logged!)
     const reply = tgCtx // ONE sender for every reply below (Telegram bot OR WhatsApp — call sites stay identical!)…
       ? async (to, msg, mediaUrl) => { // …Telegram door: photo+caption when a catalog photo matched, plain text otherwise…
-          if (mediaUrl && await telegram.sendPhoto(tgCtx.botToken, tgCtx.chatId, mediaUrl, msg)) return; // sendPhoto true = delivered (caption IS the reply — nothing more to send!)
-          return telegram.sendText(tgCtx.botToken, tgCtx.chatId, msg); // false/no-photo → plain text fallback (photo must never eat the reply!)
+          if (mediaUrl && await telegram.sendPhoto(tgCtx.botToken, tgCtx.chatId, mediaUrl, msg)) return true; // sendPhoto true = delivered (caption IS the reply — nothing more to send!)
+          return telegram.sendText(tgCtx.botToken, tgCtx.chatId, msg); // bool (false/no-photo → plain text fallback; photo must never eat the reply!)
         }
       : (business.meta_token && business.meta_phone_number_id) // …Meta door: shop token + number id…
-        ? (to, msg, mediaUrl) => meta.sendText(business.meta_token, business.meta_phone_number_id, (metaCtx && metaCtx.chatId) || String(to || '').replace(/\D/g, ''), msg, mediaUrl) // …photo-by-link + caption, text-only retry inside!
-        : async (to, msg) => { console.error(`No WhatsApp sender for business ${business.id} — Meta not connected`); }; // …no sender (Meta never connected) → log, never crash!
+        ? (to, msg, mediaUrl) => meta.sendText(business.meta_token, business.meta_phone_number_id, (metaCtx && metaCtx.chatId) || String(to || '').replace(/\D/g, ''), msg, mediaUrl) // …photo-by-link + caption, text-only retry inside! (bool)
+        : async (to, msg) => { console.error(`No WhatsApp sender for business ${business.id} — Meta not connected`); return false; }; // …no sender (Meta never connected) → log + false (caller flags it!), never crash!
 
     // ---- Owner identity: ONE check for every owner-only command ----
     // Telegram door: the linked owner id (bound once via /start link_CODE) is
@@ -241,7 +241,11 @@ async function handleInbound(req, res) {
     // Telegram are transcribed in routes/telegramRoutes.js (same Whisper engine!).
 
     const customerId = await conversationService.saveMessage(business.id, From, ProfileName || null, body); // find-or-create chat row → id
-    await conversationService.logMessage(customerId, 'in', body, mediaDataUrl); // store inbound message (ALWAYS logged — even when silent below!)
+    // Dedupe: Meta retries a slow webhook with the SAME message id — if we
+    // already logged it, the first attempt is handling/handled it. Stop here:
+    // no second AI call, no second reply. (NULL id = Telegram/legacy → always new.)
+    const seenInbound = await conversationService.logInboundOnce(customerId, body, mediaDataUrl, req.providerMsgId || null); // store inbound (ALWAYS logged — even when silent below!)
+    if (!seenInbound) return res.status(200).send(''); // duplicate delivery (retry) → silent 200, Meta stops retrying
     // ---- Takeover silence: global off OR this chat taken over → log only ----
     // Covers: dashboard toggle, inbox Take-over button, PAUSE commands above.
     // WHY log-then-return (not ignore): the owner still SEES what customers
@@ -344,8 +348,21 @@ async function handleInbound(req, res) {
           photoUrl = pickProductPhoto(catalog, body, result.reply); // name-match against what was asked + answered (first photo wins!)
         } catch (e) { console.error('photo resolve error:', e.message); }
       }
-      await reply(From, result.reply, photoUrl); // send to customer (From = customer number here)
+      const sent = await reply(From, result.reply, photoUrl); // send to customer (bool! false = customer got NOTHING)
       await conversationService.logMessage(customerId, 'out', result.reply, photoUrl); // store our reply (+ photo URL so the inbox shows what was sent!)
+      if (!sent) { // delivery FAILED (blocked number? dead token?) → flag it, page the owner, NEVER pretend it arrived
+        await db.query(
+          `UPDATE conversations SET last_reply = $1, needs_human = true, flag_reason = $2, updated_at = now() WHERE id = $3`,
+          [result.reply, 'Reply failed to send — customer did not receive it', customerId]
+        );
+        try {
+          await require('../services/notifyService').notify(business.id, {
+            title: `Reply failed to send — ${ProfileName || From}`,
+            body: `The AI wrote a reply but ${metaCtx ? 'WhatsApp' : 'Telegram'} rejected it. Open Chats to retry.`,
+            link: '/chats',
+          });
+        } catch (e) { console.error('send-fail bell error:', e.message); } // bell failing must never break the webhook!
+      } else { // delivered → count + unflag as before
       if (result.paidModel) { // paid brain answered → count it (same daily budget as the VeloSalesAI page!)
         try {
           await db.query(
@@ -359,6 +376,7 @@ async function handleInbound(req, res) {
         'UPDATE conversations SET last_reply = $1, needs_human = false, flag_reason = NULL, updated_at = now() WHERE id = $2',
         [result.reply, customerId]
       );
+      } // end delivered branch (failed branch above already flagged + paged)
     } else if (result.needsHuman) { // unsure → flag + polite handoff + owner alert (the trust engine)
       await db.query(
         `UPDATE conversations

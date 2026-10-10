@@ -82,6 +82,7 @@ function parseInbound(payload) {
     if (!msg || msg.type !== 'text' || !msg.text || !msg.text.body) return null; // text only for now (images/voice on Meta = future upgrade!)
     const contact = value.contacts && value.contacts[0];
     return {
+      id: String(msg.id || ''), // Meta message id (wamid…) — used for retry dedupe (never logged, never sent!)
       from: String(msg.from || ''), // customer digits (no whatsapp: prefix on Meta!)
       body: String(msg.text.body || ''),
       name: (contact && contact.profile && contact.profile.name) || '',

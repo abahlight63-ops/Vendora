@@ -6,8 +6,8 @@
 // SVG LESSON: viewBox = 24×24 coordinate grid; paths draw inside it;
 // strokeLinecap round = soft line ends; aria-hidden = screen readers skip decor.
 // Single SVG icon set — stroke style, inherits text color. No emojis.
-export default function Ic({ n, s = 16 }) { // export default + destructured props with default size
-  const p = { viewBox: '0 0 24 24', width: s, height: s, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }; // shared props spread into every case below ({...p} would also work)
+export default function Ic({ n, s = 20 }) { // export default + destructured props with default size
+  const p = { viewBox: '0 0 24 24', width: s, height: s, fill: 'none', stroke: 'currentColor', strokeWidth: 1.75, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }; // shared props spread into every case below ({...p} would also work)
   switch (n) {
     case 'bolt': return (<svg {...p}><path d="M13 2L4 14h6l-1 8 9-12h-6z" /></svg>);
     case 'spark': return (<svg {...p}><path d="M12 3v4M9 13h.01M15 13h.01M9.5 16.5h5" /><rect x="5" y="7" width="14" height="12" rx="3" /></svg>);

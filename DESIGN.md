@@ -5,17 +5,10 @@ specified here, ask before inventing it. Scope: `frontend/` only (not website/,
 mobile/, or Admin).
 
 ## Direction
-Dark HR-bento world exactly like pinned Image 1 (HRadar): near-black app frame
-floating on pale sage page, mint fills, triple-ring donut, heat grid, timeline,
-apps-with-rings. Applied to a WhatsApp customer-support dashboard with real
-VeloSales content — never the reference brand, names, photos, or text.
-
-- One memorable thing per screen: the bento grid on Overview (profile photo
-  card + mint timer + donut + heatmap + timeline + apps list).
-- Glass appears only on: topbar, profile bottom bar, mobile floating bar.
-- Everything readable sits on solid #1A201E cards with 1px hairlines.
-- Copy the visual language, never the brand: no Milena Page, Capture IT,
-  HRadar Premium name, illustrations, or photos.
+Warm amber-orange on clean light surfaces, with floating glass chrome, pill
+shapes and a dark glossy hero card. The look is modeled closely on the Cleva
+mobile app's visual language (palette, pills, floating nav, outlined icons,
+soft bordered cards), applied to a WhatsApp customer-support dashboard.
 
 - One memorable thing per screen: the dark hero card on Overview, the
   amber action circles under it.
@@ -41,24 +34,43 @@ VeloSales content — never the reference brand, names, photos, or text.
 Default to the system setting. Settings offers System / Light / Dark and
 remembers the choice.
 
-### Light tokens (dark-first world; light follows the same bento)
-- --page: #D3DBD9 (sage outer page)
-- --bg: #0F1312 (app frame)
-- --surface: #1A201E (cards)
-- --surface-2: #232B28 (wells, rails, lanes)
-- --border: rgba(255,255,255,0.08)
-- --ink: #EEF3F0
-- --ink-muted: #93A09A
-- --mint: #D7F0E3 (timer fill, premium fill, heat cells, rings, primary buttons)
-- --mint-ink: #0E1A14 (text on mint)
-- --sky: #8ED4F2 (donut middle ring)
-- --amber-500/400/300 remapped to mint for compat; --amber-100/150: #22302A;
-  --amber-line: rgba(215,240,227,0.28); --on-amber: #0E1A14
-- --live: #7FD6A0 on rgba(127,214,160,0.14); --danger: #FF8A7A;
-  --badge: #E5372E
+### Light tokens
+- --bg: #F4F4F4
+- --surface: #FFFFFF
+- --surface-2: #F7F7F7 (keys, inputs, quiet fills)
+- --border: #EBEBEB
+- --ink: #1A1A1A
+- --ink-muted: #6B6B6B (never on colored fills)
+- --brown-900: #3E2A0F (names, strong headings on cream)
+- --amber-500: #F5B63A (icons, focus ring, selected accents)
+- --amber-400: #FFC977 (action circles, primary button fill; text on it is dark)
+- --amber-300: #FFE3B0 (chips, outgoing chat bubble)
+- --amber-150: #FFF3DC (banners)
+- --amber-100: #FFF8EC (active nav pill fill, cream washes)
+- --amber-line: #F7D8A0 (outline on banners and active nav)
+- --amber-700: #8F5B00 (links and amber text on light, passes 4.5:1)
+- --on-amber: #2A1A00 (text and icons on amber fills)
+- --live: #1F7A4D on --live-bg: #E6F7EA (online, connected, success, WhatsApp channel)
+- --danger: #C0392B on --danger-bg: #FBE9E6; --badge: #E5372E (notification count)
 
-### Dark tokens (same as light — dark-only world)
-- Same values as above. Toggle kept working; both themes render the bento.
+### Dark tokens
+- --bg: #121110
+- --surface: #1C1A17
+- --surface-2: #262320
+- --border: rgba(255,255,255,0.08)
+- --ink: #F5F1EA
+- --ink-muted: #A8A094
+- --brown-900: #F5F1EA
+- --amber-500: #F5B63A
+- --amber-400: #F5B63A (fills keep dark text --on-amber)
+- --amber-300: #4A3611
+- --amber-150: #2A2012
+- --amber-100: #241C10
+- --amber-line: #6B4E14
+- --amber-700: #FFD27A
+- --on-amber: #2A1A00
+- --live: #5FD38D on --live-bg: #12301F
+- --danger: #FF8A7A on --danger-bg: #3A1713
 
 Dark theme is not shown in the reference app; these values are designed to match
 it. Check every text and background pair at 4.5:1 in both themes.

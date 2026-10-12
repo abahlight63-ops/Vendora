@@ -144,7 +144,7 @@ export default function Dashboard({ biz }) { // biz = business object from App (
   return ( // bento grid: profile + numbers | activity + mix + timeline | heat + apps
     <>
       <div className="hr-avatars" aria-hidden="true">
-        {[bizInitial, 'A', 'S', 'M', 'K'].map((t, i) => (<i key={i} style={i === 2 ? { background: '#d7f0e3', color: '#0e1a14', borderColor: '#d7f0e3' } : {}}>{t}</i>))}
+        {[bizInitial, 'A', 'S', 'M', 'K'].map((t, i) => (<i key={i} style={i === 2 ? { background: 'var(--mint)', color: 'var(--mint-ink)', borderColor: 'var(--mint)' } : {}}>{t}</i>))}
       </div>
 
       {trialLeft !== null && ( // && conditional render: trial strip ONLY during trial (null → renders nothing)
@@ -199,8 +199,8 @@ export default function Dashboard({ biz }) { // biz = business object from App (
               <div className="hr-head"><h2>Reply mix</h2><span className="hr-dots">•••</span></div>
               <Donut handled={handledPct} needs={needsPct} />
               <div className="hr-legend">
-                <div><i style={{ background: '#d7f0e3' }} />{handledPct}%<span>AI handled</span></div>
-                <div><i style={{ background: '#8ed4f2' }} />{Math.max(0, 100 - handledPct - needsPct)}%<span>Catalog</span></div>
+                <div><i style={{ background: 'var(--mint)' }} />{handledPct}%<span>AI handled</span></div>
+                <div><i style={{ background: 'var(--sky)' }} />{Math.max(0, 100 - handledPct - needsPct)}%<span>Catalog</span></div>
                 <div><i style={{ background: 'var(--faint)' }} />{needsPct}%<span>Human</span></div>
               </div>
             </div>

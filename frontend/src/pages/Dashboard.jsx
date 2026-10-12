@@ -37,11 +37,19 @@ export default function Dashboard({ biz }) { // biz = business object from App (
         if (dead) return;
         if (ch && ch.whatsapp && (ch.whatsapp.live || (ch.telegram && ch.telegram.connected))) setLive(true); // checklist step ticks (WhatsApp TEST passed OR Telegram on!)
         const c = convos || [], needs = c.filter((x) => x.needs_human); // || [] guards null; .filter picks flagged chats
+        const days = [0, 0, 0, 0, 0, 0, 0]; // active chats per day, last 7 days (oldest → today) for the sparkline
+        c.forEach((x) => { // updated_at = last activity (falls back to created_at, then today)
+          const t = new Date(x.updated_at || x.created_at || Date.now()).getTime();
+          if (Number.isNaN(t)) return;
+          const d = Math.floor((Date.now() - t) / 86400000);
+          if (d >= 0 && d < 7) days[6 - d] += 1;
+        });
         setS({ // crunch into ONE setState (single re-render, not three!)
           convos: c.length, // total chats
           pct: c.length ? Math.round(((c.length - needs.length) / c.length) * 100) : 100, // % handled by AI (ternary avoids divide-by-zero → 100% when empty)
           needs: needs.length, products: (products || []).length, // flagged count, catalog size
           flagged: needs.slice(0, 3), latest: c.slice(0, 3), // .slice(0,3) = first 3 for the two cards (convos already newest-first from API)
+          days, // 7-day activity sparkline source (real timestamps only)
         });
         setBill(b || null); // billing (|| null normalizes undefined)
       } catch (e) { if (!dead) setFailed({ status: 0, detail: describeNetError(e) }); } // network down / timeout → failed card (never eternal skeletons!)
@@ -93,14 +101,27 @@ export default function Dashboard({ biz }) { // biz = business object from App (
       <LoadFailed title="Couldn't load overview" status={failed.status} detail={failed.detail} tries={tries} onRetry={() => { setS(null); setTries((t) => t + 1); }} backTo="/help" backLabel="Get help" />
     </>
   );
+  function Spark({ data, w = 120, h = 34 }) { // 7-day activity sparkline (pure SVG, real counts only)
+    const max = Math.max(1, ...data);
+    const pts = data.map((v, i) => `${(i / (data.length - 1)) * (w - 4) + 2},${h - 4 - (v / max) * (h - 10)}`).join(' ');
+    const area = `2,${h - 2} ${pts} ${w - 2},${h - 2}`;
+    return (
+      <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label="Chats per day, last 7 days" style={{ display: 'block', marginTop: 8 }}>
+        <polygon points={area} style={{ fill: 'rgba(18,140,74,0.12)' }} />
+        <polyline points={pts} fill="none" style={{ stroke: 'var(--green)' }} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx={w - 2} cy={h - 4 - ((data[data.length - 1] || 0) / max) * (h - 10)} r="3" style={{ fill: 'var(--green)' }} />
+      </svg>
+    );
+  }
+
   function Ring({ pct, size = 38 }) { // small % ring like the reference Apps list (pure SVG, no deps)
     const r = 15.5, c = 2 * Math.PI * r;
     const v = Math.max(0, Math.min(100, Number(pct) || 0));
     return (
       <svg className="hr-ring" viewBox="0 0 38 38" width={size} height={size} role="img" aria-label={`${Math.round(v)} percent`}>
-        <circle cx="19" cy="19" r={r} fill="none" stroke="var(--line)" strokeWidth="3" />
+        <circle cx="19" cy="19" r={r} fill="none" style={{ stroke: 'var(--line)' }} strokeWidth="3" />
         <circle cx="19" cy="19" r={r} fill="none" stroke="#25d366" strokeWidth="3" strokeLinecap="round" strokeDasharray={`${(v / 100) * c} ${c}`} transform="rotate(-90 19 19)" />
-        <text x="19" y="22.5" textAnchor="middle" fontSize="9" fontWeight="700" fill="var(--ink)">{Math.round(v)}%</text>
+        <text x="19" y="22.5" textAnchor="middle" fontSize="9" fontWeight="700" style={{ fill: 'var(--ink)' }}>{Math.round(v)}%</text>
       </svg>
     );
   }
@@ -115,7 +136,7 @@ export default function Dashboard({ biz }) { // biz = business object from App (
       <div className="hr-donut-wrap">
         <svg viewBox="0 0 130 130" width="150" height="150" role="img" aria-label="Reply mix chart">
           {segs.map((sg, i) => (
-            <circle key={'t' + i} cx="65" cy="65" r={sg.r} fill="none" stroke="var(--line)" strokeWidth="9" opacity="0.7" />
+            <circle key={'t' + i} cx="65" cy="65" r={sg.r} fill="none" style={{ stroke: 'var(--line)' }} strokeWidth="9" opacity="0.7" />
           ))}
           {segs.map((sg, i) => {
             const c = 2 * Math.PI * sg.r;
@@ -170,8 +191,8 @@ export default function Dashboard({ biz }) { // biz = business object from App (
             </div>
           </div>
           <div className="hr-duo">
-            <div className="hr-card"><div className="hr-big">{s.convos}</div><div className="hr-label">Conversations</div></div>
-            <div className="hr-card"><div className="hr-big">{s.products}</div><div className="hr-label">Products live</div></div>
+            <div className="hr-card"><div className="hr-big">{s.convos}</div><div className="hr-label">Conversations</div><Spark data={s.days} /><div className="hr-muted">Active per day · 7 days</div></div>
+            <div className="hr-card"><div className="hr-big">{s.products}</div><div className="hr-label">Products live</div><div style={{ marginTop: 8 }}><Link className="hr-addbtn" to="/catalog">+ Add product</Link></div></div>
           </div>
           <div className="hr-card"><div className="hr-big">{handledPct}%</div><div className="hr-label">Handled by AI{s.needs > 0 ? ` · ${s.needs} need${s.needs > 1 ? '' : 's'} you` : ''}</div></div>
           <div className="hr-premium">

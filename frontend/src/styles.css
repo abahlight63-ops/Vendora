@@ -1615,3 +1615,48 @@ a.hr-iconbtn, button.hr-iconbtn { cursor: pointer; text-decoration: none; }
 .tsearch-pop button:hover, .tsearch-pop button:focus-visible { background: var(--green-soft); outline: none; }
 .tsearch-pop .hint { margin-left: auto; }
 @media (max-width: 900px) { .tsearch { display: none; } }
+
+/* ---------- inbox 3-panel (Step 4 — scoped .wx-*, desktop grid / mobile list→thread) ---------- */
+.wx-layout { display: grid; grid-template-columns: 320px minmax(0, 1fr) 280px; gap: 14px; align-items: start; }
+.wx-list, .wx-thread, .wx-side { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px; min-width: 0; box-shadow: var(--shadow-sm); }
+.wx-search { display: flex; align-items: center; gap: 8px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 999px; padding: 0 12px; height: 40px; color: var(--text-2); margin-bottom: 10px; }
+.wx-search:focus-within { border-color: var(--green); box-shadow: 0 0 0 3px rgba(18,140,74,0.15); }
+.wx-search input { border: none; background: none; outline: none; flex: 1; min-width: 0; font: inherit; font-size: 14px; color: var(--text-1); height: 100%; padding: 0; }
+.wx-search input::placeholder { color: var(--faint); }
+.wx-clear { border: none; background: none; font-size: 18px; color: var(--muted); cursor: pointer; min-width: 32px; min-height: 32px; }
+.wx-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+.wx-tab { flex: 1; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-2); border-radius: 999px; font: inherit; font-size: 12.5px; font-weight: 600; padding: 8px 4px; cursor: pointer; min-height: 40px; }
+.wx-tab b { font-weight: 700; opacity: 0.7; margin-left: 4px; }
+.wx-tab.on { background: var(--green-soft); border-color: var(--green); color: var(--green-dark); }
+.wx-chans { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.wx-chip { border: 1px solid var(--border); background: none; color: var(--muted); border-radius: 999px; font: inherit; font-size: 12px; font-weight: 600; padding: 7px 12px; cursor: pointer; min-height: 36px; }
+.wx-chip.on { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.wx-rows { display: grid; gap: 6px; max-height: 640px; overflow-y: auto; }
+.wx-row { display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left; background: none; border: 1px solid transparent; border-radius: 14px; padding: 10px 8px; cursor: pointer; font: inherit; color: var(--text-1); }
+.wx-row:hover { background: var(--bg-secondary); }
+.wx-row.sel { background: var(--green-soft); border-color: var(--green); }
+.wx-ava { position: relative; width: 42px; height: 42px; flex: 0 0 auto; border-radius: 50%; background: var(--bg-secondary); border: 1px solid var(--border); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; color: var(--text-1); }
+.wx-ava.lg { width: 64px; height: 64px; font-size: 24px; }
+.wx-dot { position: absolute; top: -1px; right: -1px; width: 12px; height: 12px; border-radius: 50%; background: var(--gold); border: 2px solid var(--card); }
+.wx-main { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.wx-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.wx-top b { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wx-top small { font-size: 11px; color: var(--faint); flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.wx-sub span { font-size: 12.5px; color: var(--muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wx-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+.wx-skel { display: flex; gap: 10px; align-items: center; padding: 10px 8px; }
+.wx-thead { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.wx-back { display: none; }
+.wx-facts { display: grid; gap: 0; border-top: 1px solid var(--line); margin-top: 4px; }
+.wx-facts div { display: flex; justify-content: space-between; gap: 10px; padding: 9px 2px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.wx-facts span { color: var(--muted); }
+@media (max-width: 1100px) { .wx-layout { grid-template-columns: 300px minmax(0, 1fr); } .wx-side { display: none; } }
+@media (max-width: 760px) {
+  .wx-layout { grid-template-columns: 1fr; }
+  .wx-side { display: none; }
+  .wx-thread { display: none; }
+  .wx-has-thread .wx-thread { display: block; }
+  .wx-has-thread .wx-list { display: none; }
+  .wx-back { display: inline-flex; }
+  .wx-rows { max-height: none; }
+}

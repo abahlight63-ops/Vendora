@@ -42,6 +42,7 @@ export default function Catalog() { // no props needed (fetches everything itsel
   const fileRef = useRef(null); // hidden <input type="file"> — the Upload-media button clicks it open
   const [failed, setFailed] = useState(null); // null | { status, detail } — products load failure (Retry card!)
   const [tries, setTries] = useState(0); // retry counter (forces reload — no page refresh!)
+  const [cq, setCq] = useState(''); // catalog text search (name, category, description — client-side, instant)
   async function load() { // reusable reload (mount + retry + every mutation — simplest correct refresh strategy)
     try {
       setFailed(null);
@@ -144,19 +145,28 @@ export default function Catalog() { // no props needed (fetches everything itsel
       <div className="card">
         <h2>Products</h2>
         <p className="desc">Tip: from your WhatsApp send <b>LEARN: Blue gown ₦45,000</b> — same result, no dashboard needed.</p> {/* <b> inside <p> = inline bold (teaches the WhatsApp shortcut!) */}
+        <div className="wx-search" style={{ maxWidth: 360 }}>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+          <input value={cq} onChange={(e) => setCq(e.target.value)} placeholder="Search products…" aria-label="Search products" />
+          {cq && <button className="wx-clear" onClick={() => setCq('')} aria-label="Clear search">×</button>}
+        </div>
         <div className="table-wrap"><table> {/* .table-wrap = horizontal scroll on small screens (responsive tables 101) */}
           <thead><tr><th></th><th>Product</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead> {/* <thead>/<th> = semantic header row (empty first <th> = photo thumb; empty last <th> = actions column; Stock = live quantity!) */}
           <tbody> {/* three states: loading → empty → rows (classic async trilogy!) */}
             {products === null ? <tr><td colSpan="6"><div className="skel-grid">{[0, 1, 2].map((i) => (<div key={i} className="skel-row"><div className="skel-lines"><div className="skel" style={{ width: '35%' }} /><div className="skel" style={{ width: '60%' }} /></div><div className="skel" style={{ width: 70 }} /><div className="skel" style={{ width: 90 }} /></div>))}</div></td></tr>
-              : products.length === 0 ? <tr><td colSpan="6"><div className="empty"><b>No products yet</b>Add your first one below — it takes 10 seconds.</div></td></tr>
-              : products.map((p) => (<tr key={p.id}> {/* key={p.id} = stable DB id (rows never shuffle wrongly!) */}
+              : (() => { // filter + completeness, computed per render (no extra state!)
+                const needle = cq.trim().toLowerCase();
+                const rows = (products || []).filter((p) => !needle || ((p.name || '') + ' ' + (p.category || '') + ' ' + (p.description || '')).toLowerCase().includes(needle));
+                if (rows.length === 0) return <tr><td colSpan="6"><div className="empty"><b>{needle ? 'No matches' : 'No products yet'}</b>{needle ? 'Clear the search — or add it below.' : 'Add your first one below — it takes 10 seconds.'}</div></td></tr>;
+                return rows.map((p) => (<tr key={p.id}> {/* key={p.id} = stable DB id (rows never shuffle wrongly!) */}
                 <td>{p.image_url ? <img src={p.image_url} alt="" width="40" height="40" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8, display: 'block' }} loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} /> : <span className="hint">—</span>}</td> {/* thumb (onError hides dead links — dashboard never shows broken-image icons!) */}
-                <td><b>{p.name}</b>{p.category ? <span className="pill" style={{ marginLeft: 6, fontSize: 11 }}>{p.category}</span> : null}<br /><span className="hint">{p.description || ''}</span>{(p.delivery_info || p.location || p.how_to_buy) ? <br /> : null}{(p.delivery_info || p.location || p.how_to_buy) ? <span className="hint">Delivery: {[p.delivery_info, p.location, p.how_to_buy].filter(Boolean).join(' · ')}</span> : null}</td> {/* category pill + description + fulfillment line (what the bot quotes!) */}
+                <td><b>{p.name}</b>{p.category ? <span className="pill" style={{ marginLeft: 6, fontSize: 11 }}>{p.category}</span> : null}{!p.price ? <span className="pill flag" style={{ marginLeft: 6, fontSize: 11 }}>needs price</span> : null}<br /><span className="hint">{p.description || ''}</span>{(p.delivery_info || p.location || p.how_to_buy) ? <br /> : null}{(p.delivery_info || p.location || p.how_to_buy) ? <span className="hint">Delivery: {[p.delivery_info, p.location, p.how_to_buy].filter(Boolean).join(' · ')}</span> : null}</td> {/* category pill + gold needs-price chip (the AI can never quote a missing price!) + description + fulfillment line */}
                 <td>{p.price || '—'}</td> {/* || '—' : null prices show dash, never "null" */}
                 <td><b>{p.quantity ?? 0}</b></td> {/* live stock count (?? 0: legacy rows show 0, never blank — WhatsApp updates land here instantly!) */}
                 <td><button className={'pill ' + (p.available ? 'ok' : 'flag')} style={{ cursor: 'pointer', border: '1px solid' }} onClick={() => toggle(p)} title="Click to toggle stock">{p.available ? 'in stock' : 'out of stock'}</button></td> {/* pill AS button: color shows state, click flips it (title = hover tooltip teaching the trick) */}
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{p.image_url && <button className="del" onClick={() => clearPhoto(p)} title="Remove photo" aria-label={'Remove photo for ' + p.name} style={{ marginRight: 6 }}><Ic n="x" s={14} /></button>}<button className="del" onClick={() => del(p.id)} title="Remove"><Ic n="trash" s={15} /></button></td> {/* photo-clear = drawn X (never an emoji!); trash = delete row */}
-              </tr>))}
+                </tr>));
+              })()}
           </tbody>
         </table></div>
       </div>

@@ -21,7 +21,7 @@ const ALL = GROUPS.flatMap((g) => g.items); // flatMap = map + flatten one level
 const TITLES = { '/dashboard': 'Overview', '/chats': 'Inbox', '/catalog': 'Catalog', '/connect': 'Connect channels', '/playground': 'Test your bot', '/insights': 'Insights', '/velosales-ai': 'Chat with Velo', '/refer-earn': 'Refer & Earn', '/billing': 'Billing', '/profile': 'Business profile', '/settings': 'AI settings', '/help': 'Help', '/onboarding': 'Get started', '/login': 'Sign in' }; // object lookup: path → human title (topbar breadcrumb + document.title)
 
 function Icon({ k }) { // tiny inline SVG set (stroke = inherits text color; no icon library installed)
-  const p = { viewBox: '0 0 24 24', width: 17, height: 17, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' }; // shared props object spread into every <svg> (currentColor = matches surrounding text)
+  const p = { viewBox: '0 0 24 24', width: 18, height: 18, fill: 'none', stroke: 'currentColor', strokeWidth: 1.75, strokeLinecap: 'round', strokeLinejoin: 'round' }; // shared props object spread into every <svg> (currentColor = matches surrounding text)
   if (k === 'overview') return (<svg {...p}><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></svg>); // {...p} = spread all shared props; each if = one icon (early returns)
   if (k === 'chats') return (<svg {...p}><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.4 8.6 8.6 0 0 1-3.9-.9L3 21l2-5.3a8.3 8.3 0 0 1-.9-3.7A8.4 8.4 0 0 1 12.5 3a8.4 8.4 0 0 1 9 8.5z" /></svg>); // speech bubble (SVG path = vector drawing commands)
   if (k === 'catalog') return (<svg {...p}><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8" /></svg>); // box/package
@@ -35,6 +35,33 @@ function Icon({ k }) { // tiny inline SVG set (stroke = inherits text color; no 
   if (k === 'x') return (<svg {...p}><path d="M18 6L6 18M6 6l12 12" /></svg>); // close (drawer + dialogs — drawn, never a text glyph)
   if (k === 'gift') return (<svg {...p}><rect x="3" y="8" width="18" height="4" rx="1" /><path d="M12 8v13M5 12v9h14v-9M12 8s-1.5-5-4.5-5S5 8 12 8zM12 8s1.5-5 4.5-5S19 8 12 8z" /></svg>); // gift box (Refer & Earn!)
   return (<svg {...p}><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 0 1 5 .2c0 1.7-2.5 2-2.5 3.6M12 17h.01" /></svg>); // default = help "?" (unknown keys never render broken)
+}
+
+function TopSearch() { // topbar page finder: filters ALL nav pages, Enter/click navigates (real nav, no fake results!)
+  const navigate = useNavigate(); // code navigation (same as logout uses)
+  const [q, setQ] = useState(''); // query text (empty = closed, no dropdown)
+  const [open, setOpen] = useState(false); // dropdown visible? (focus opens, Esc/blur closes)
+  const hits = q.trim() // trim: "  inbox " still matches…
+    ? ALL.filter(([, label]) => label.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 6) // …case-insensitive substring, max 6 (keep it scannable!)
+    : [];
+  function go(href) { setQ(''); setOpen(false); navigate(href); } // reset + go (dropdown unmounts on nav anyway via pathname effect below? no — TopSearch is separate, so reset here!)
+  return (
+    <div className="tsearch">
+      <div className="tsearch-box">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+        <input value={q} onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setOpen(false)}
+          placeholder="Search pages…" aria-label="Search pages"
+          onKeyDown={(e) => { if (e.key === 'Enter' && hits.length) go(hits[0][2]); if (e.key === 'Escape') { setQ(''); setOpen(false); e.target.blur(); } }} />
+      </div>
+      {open && hits.length > 0 && (
+        <div className="tsearch-pop" role="listbox" aria-label="Matching pages">
+          {hits.map(([k, label, href]) => (
+            <button key={k} role="option" aria-selected="false" onMouseDown={(e) => { e.preventDefault(); go(href); }}><Icon k={k} /><span>{label}</span><span className="hint">{href}</span></button> // onMouseDown (not onClick): fires BEFORE input blur closes the pop!
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Shell({ biz, children, theme = 'light', onToggleTheme = () => {}, onLogout = () => {} }) { // props: biz (business object), children (the page!), theme + toggle (defaults = safe if omitted), onLogout (App clears login state — without it /login bounces back to /dashboard!)
@@ -110,6 +137,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
               </button>
               <div><div className="crumb">VeloSales Ai / {TITLES[pathname] || 'Overview'}</div><h1>{safeName}</h1></div> {/* breadcrumb + shop name */}
             </div>
+            <TopSearch /> {/* page finder sits center (desktop only via CSS) */}
             <div className="top-right">
               <span className="live-dot"><i />AI online</span> {/* pulsing status pill (<i> = the dot, CSS) */}
               <Notifications /> {/* bell sits before theme toggle (thumb-side on mobile) */}

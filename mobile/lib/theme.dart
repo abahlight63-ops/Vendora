@@ -11,12 +11,12 @@ class VeloSalesTheme {
   static const _key = 'velosalesai_theme_mode'; // 'light' | 'dark' | 'system'
 
   // ── :root (web light default) ──
-  static const lightGreen = Color(0xFF128C4A);
-  static const lightGreenDark = Color(0xFF0B6B38);
+  static const lightGreen = Color(0xFFF97316);
+  static const lightGreenDark = Color(0xFFEA580C);
 
   // ── [data-theme="dark"] ──
-  static const darkGreen = Color(0xFF25D366);
-  static const darkGreenSoft = Color(0xFF7EF0C0);
+  static const darkGreen = Color(0xFFFB923C);
+  static const darkGreenSoft = Color(0xFFFDBA74);
 
   // ── liquid-glass glow (shared with web --glass-teal) ──
   static const accentTeal = Color(0xFF5EEAD4);

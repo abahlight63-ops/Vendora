@@ -116,7 +116,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
       <div className="shell"> {/* flex row: sidebar + main column (CSS) */}
         {menuOpen && <div className="drawer-backdrop" onClick={() => setMenuOpen(false)} />} {/* && conditional: backdrop ONLY when open; click = close */}
         <aside className={'sidebar' + (menuOpen ? ' open' : '')}> {/* .open slides the drawer in (CSS transform, mobile only) */}
-          <div className="logo"><Logo alt="VeloSales Ai" /><span>VELOSALES AI</span>
+          <div className="logo"><Logo alt="VeloSales Ai" /><span>VeloSales Ai</span>
             <button className="drawer-close" onClick={() => setMenuOpen(false)} aria-label="Close menu"><Icon k="x" /></button> {/* drawn X, mobile only (CSS) */}
           </div>
           {GROUPS.map((g) => ( // map sections → JSX (key = stable identity for React's reconciler — NEVER use array index when order can change; here labels are stable)

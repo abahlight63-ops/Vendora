@@ -1,6 +1,6 @@
 // ── frontend/src/lib/theme.js ──────────────────────────────────────
-// WHAT: dark/light mode state. Premium dark is the default; calm
-// white+blue light is one tap away (easy on sensitive eyes).
+// WHAT: dark/light mode state. Light (calm white surfaces + purple CTAs) is
+// the default per DESIGN.md; premium dark is one tap away.
 // The theme lives on <html data-theme="dark">, CSS variables react to it,
 // and localStorage remembers the choice across visits.
 // React pattern: a CUSTOM HOOK (useX function using useState/useEffect).
@@ -12,7 +12,7 @@ export function getTheme() { // read saved choice (or default). Exported for tes
     const saved = localStorage.getItem('velosales-theme'); // browser storage (survives reloads); fresh key (old vendora-theme ignored!)
     if (saved === 'dark' || saved === 'light') return saved; // whitelist: only accept our two values (ignore junk)
   } catch {} // private-mode browsers throw on localStorage — fail silently to default
-  return 'dark'; // premium dark first impression (light one tap away in the topbar!)
+  return 'light'; // light-first (DESIGN.md): calm, white surfaces, purple CTAs — dark is one tap away
 }
 
 export function useTheme() { // the hook components actually use: const [theme, toggle] = useTheme()

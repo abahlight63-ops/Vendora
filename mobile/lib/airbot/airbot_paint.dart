@@ -64,8 +64,8 @@ class AirBotPainter extends CustomPainter {
     final unit = w / 100; // scale everything from width (@100 = full box)
 
     // ── palette ──
-    final body = light ? const Color(0xFF128C4A) : const Color(0xFF25D366);
-    final bodyDark = light ? const Color(0xFF0B6B38) : const Color(0xFF0E7B4B);
+    final body = light ? const Color(0xFFF97316) : const Color(0xFFFB923C);
+    final bodyDark = light ? const Color(0xFFEA580C) : const Color(0xFFC2550A);
     final skin = light ? const Color(0xFFFFE8D6) : const Color(0xFFB98A5F);
     final hair = light ? const Color(0xFF624A3C) : const Color(0xFF8E6E5A);
     final accentGold = const Color(0xFFFFCF5C);

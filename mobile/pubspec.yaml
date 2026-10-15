@@ -66,6 +66,7 @@ flutter:
   assets:
     - assets/logo.png
     - assets/logo-green.png
+    - assets/airbot/
 
   # Inter variable font (same family as the web app's Google Fonts import).
   # Bundled offline — no runtime fetch, no extra native deps.

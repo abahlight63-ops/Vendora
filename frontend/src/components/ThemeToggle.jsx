@@ -13,10 +13,8 @@ export default function ThemeToggle({ theme, onToggle }) { // export default = `
       aria-label="Toggle dark mode" // …+ screen-reader label (accessibility: icon-only buttons MUST label themselves)
       type="button" // type="button" prevents accidental form submits if ever nested in a <form>
     >
-      <span className="tt-track">
-        <span className="tt-icon sun">☀</span>
-        <span className="tt-icon moon">☾</span>
-        <span className="tt-knob" />
+      <span className="tt-track" aria-hidden="true">
+        <span className="tt-knob">{dark ? '☾' : '☀'}</span>
       </span>
     </button>
   );

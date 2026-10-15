@@ -12,7 +12,7 @@ function seed(i, salt) { // tiny deterministic pseudo-random (0..1, stable per t
 const N = 4; // 4×4 tiles (16 pieces — chunky enough to read, light enough to animate!)
 
 export default function ScatterLogo({ size = 120, src }) {
-  const mark = src || '/logo-green.png?v=2'; // signature green, always
+  const mark = src || '/logo.svg'; // purple brand mark, always
   const cells = [];
   for (let y = 0; y < N; y++) {
     for (let x = 0; x < N; x++) {

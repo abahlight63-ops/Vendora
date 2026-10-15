@@ -272,15 +272,21 @@ class _AirBotGuideState extends State<AirBotGuide>
               const SizedBox(height: 12),
             ] else
               const SizedBox(height: 12),
-            // ── the character ──
+            // ── the character: bundled airbot PNG when present, else painter ──
             FadeTransition(
               opacity: _entrance,
-              child: CustomPaint(
-                size: box,
-                painter: AirBotPainter(
-                  pose: poseHere,
-                  light: !isDark,
-                  theme: scheme,
+              child: Image.asset(
+                'assets/airbot/airbot-character.png',
+                width: box.width,
+                height: box.height,
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) => CustomPaint(
+                  size: box,
+                  painter: AirBotPainter(
+                    pose: poseHere,
+                    light: !isDark,
+                    theme: scheme,
+                  ),
                 ),
               ),
             ),

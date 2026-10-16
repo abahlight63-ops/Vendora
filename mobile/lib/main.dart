@@ -3,28 +3,28 @@
 // runs — same timing as Splash.jsx) + light/dark themes (same tokens as
 // the web app; toggle in the top bar, persisted) + bottom-nav shell.
 // Run with: flutter run --dart-define API_BASE_URL=https://<backend>
-import 'dart:ui';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'api.dart';
+import 'brand_mark.dart';
 import 'glass.dart';
 import 'theme.dart';
 import 'splash.dart';
 import 'motion.dart';
 import 'format.dart';
+import 'widgets/sidebar.dart';
 import 'screens/auth_screen.dart';
 import 'screens/setup_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/home_screen.dart';
+import 'screens/help_screen.dart';
 import 'screens/chats_screen.dart';
 import 'screens/catalog_screen.dart';
 import 'screens/connect_screen.dart';
 import 'screens/ai_screen.dart';
 import 'screens/billing_screen.dart';
-import 'screens/airbot_test_screen.dart';
 
 void main() => runApp(const VeloSalesApp());
 
@@ -39,6 +39,8 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
   bool? _authed; // null = checking
   bool _needsSetup = false; // true = logged in but no niche yet (setup screen!)
   ThemeMode _mode = ThemeMode.system;
+  String _bizName = '';
+  String _niche = '';
 
   @override
   void initState() {
@@ -55,23 +57,27 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
       _checkAuth(),
     ]);
     if (!mounted) return;
+    final auth = results[2] as List;
     setState(() {
       _mode = results[1] as ThemeMode;
-      _authed = (results[2] as List)[0] as bool;
-      _needsSetup = (results[2] as List)[1] as bool;
+      _authed = auth[0] as bool;
+      _needsSetup = auth[1] as bool;
+      _bizName = auth[2] as String;
+      _niche = auth[3] as String;
     });
   }
 
-  /// Session check + setup check in one: returns [authed, needsSetup].
-  /// needsSetup = logged in but business_niche empty (new signup!).
+  /// Session check + setup check + the shop's own name in one call.
+  /// Returns [authed, needsSetup, businessName, niche].
   Future<List> _checkAuth() async {
     try {
       final me = await ApiClient.instance.me(); // cookie valid? (+ business row!)
       final biz = (me['business'] as Map?)?.cast<String, dynamic>();
       final niche = '${biz?['business_niche'] ?? ''}'.trim();
-      return [true, niche.isEmpty];
+      final name = '${biz?['business_name'] ?? ''}'.trim();
+      return [true, niche.isEmpty, name, niche];
     } catch (_) {
-      return [false, false];
+      return [false, false, '', ''];
     }
   }
 
@@ -83,6 +89,8 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
     setState(() {
       _authed = r[0] as bool;
       _needsSetup = r[1] as bool;
+      _bizName = r[2] as String;
+      _niche = r[3] as String;
     });
   }
 
@@ -111,6 +119,8 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
                   ? SetupScreen(
                       onDone: () => setState(() => _needsSetup = false))
                   : HomeShell(
+                      bizName: _bizName,
+                      niche: _niche,
                       mode: _mode,
                       onMode: _setMode,
                       onLogout: () => setState(() {
@@ -127,11 +137,16 @@ class HomeShell extends StatefulWidget {
   final VoidCallback onLogout;
   final ThemeMode mode;
   final ValueChanged<ThemeMode> onMode;
-  const HomeShell(
-      {super.key,
-      required this.onLogout,
-      required this.mode,
-      required this.onMode});
+  final String bizName;
+  final String niche;
+  const HomeShell({
+    super.key,
+    required this.onLogout,
+    required this.mode,
+    required this.onMode,
+    required this.bizName,
+    required this.niche,
+  });
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -142,12 +157,12 @@ class _HomeShellState extends State<HomeShell> {
   int _unread = 0;
 
   static const _titles = [
-    'Overview',
-    'Chats',
+    'Home',
+    'Inbox',
     'Catalog',
     'Connect',
     'VeloSales Ai',
-    'Billing'
+    'Billing',
   ];
 
   @override
@@ -324,18 +339,91 @@ class _HomeShellState extends State<HomeShell> {
     _refreshBell(); // this one is read now (badge drops!)
   }
 
+  void _go(int i) => setState(() => _tab = i);
+
+  /// Pages the bottom bar cannot hold open on top of the shell, so the shell —
+  /// and every tab's scroll position — survives the trip.
+  void _open(Widget page) =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+
+  Widget _sidebar() {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Sidebar(
+      businessName: widget.bizName,
+      niche: widget.niche,
+      tab: _tab,
+      primary: const [
+        SidebarItem(icon: Icons.home_outlined, label: 'Home', tab: 0),
+        SidebarItem(
+            icon: Icons.forum_outlined,
+            label: 'Inbox',
+            hint: 'Reply to your customers',
+            tab: 1),
+        SidebarItem(
+            icon: Icons.inventory_2_outlined,
+            label: 'Catalog',
+            hint: 'The only prices the bot may quote',
+            tab: 2),
+        SidebarItem(
+            icon: Icons.link_outlined,
+            label: 'Connect',
+            hint: 'WhatsApp and Telegram',
+            tab: 3),
+        SidebarItem(
+            icon: Icons.smart_toy_outlined,
+            label: 'VeloSales Ai',
+            hint: 'Ask it anything',
+            tab: 4),
+        SidebarItem(icon: Icons.payments_outlined, label: 'Billing', tab: 5),
+      ],
+      secondary: [
+        SidebarItem(
+          icon: Icons.insights_outlined,
+          label: 'Shop overview',
+          hint: 'How your bot is performing',
+          push: () => _open(DashboardScreen(onGoTab: _go)),
+        ),
+        SidebarItem(
+          icon: Icons.menu_book_outlined,
+          label: 'How to use VeloSales Ai',
+          hint: 'A short guided tour',
+          push: () => _open(HelpScreen(
+            onGoTab: (i) {
+              Navigator.of(context).pop();
+              _go(i);
+            },
+          )),
+        ),
+      ],
+      onGoTab: _go,
+      dark: dark,
+      onToggleTheme: () =>
+          widget.onMode(dark ? ThemeMode.light : ThemeMode.dark),
+      onLogout: () async {
+        await ApiClient.instance.logout();
+        widget.onLogout();
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: _sidebar(),
       appBar: AppBar(
-        title: Text(_titles[_tab]),
-        // Liquid glass: blur whatever scrolls beneath the frosted bar.
-        flexibleSpace: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: Glass.cardBlur, sigmaY: Glass.cardBlur),
-            child: const SizedBox.expand(),
+        leading: Builder(
+          builder: (c) => IconButton(
+            icon: const Icon(Icons.menu_rounded),
+            tooltip: 'Menu',
+            onPressed: () => Scaffold.of(c).openDrawer(),
           ),
         ),
+        titleSpacing: 0,
+        title: Row(children: [
+          const BrandMark(size: 24),
+          const SizedBox(width: 9),
+          Text(_titles[_tab]),
+        ]),
         actions: [
           // Bell (Notifications.jsx parity: badge + mark-read on open).
           Stack(children: [
@@ -364,75 +452,49 @@ class _HomeShellState extends State<HomeShell> {
           ]),
           IconButton(
             icon: Icon(widget.mode == ThemeMode.dark
-                ? Icons.light_mode
-                : Icons.dark_mode),
+                ? Icons.light_mode_outlined
+                : Icons.dark_mode_outlined),
             tooltip: 'Toggle theme',
             onPressed: () => widget.onMode(
                 widget.mode == ThemeMode.dark
                     ? ThemeMode.light
                     : ThemeMode.dark),
           ),
-          if (kDebugMode)
-            IconButton(
-              icon: const Icon(Icons.smart_toy_outlined),
-              tooltip: 'AirBot test (dev)',
-              onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                      builder: (_) => const AirBotTestScreen())),
-            ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Sign out',
-            onPressed: () async {
-              await ApiClient.instance.logout();
-              widget.onLogout();
-            },
-          ),
         ],
       ),
       body: IndexedStack(index: _tab, children: [
-        DashboardScreen(onGoTab: (i) => setState(() => _tab = i)),
+        HomeScreen(onGoTab: _go),
         const ChatsScreen(),
         const CatalogScreen(),
         const ConnectScreen(),
         const AiScreen(),
         const BillingScreen(),
       ]),
-      // Liquid glass: the bottom nav floats frosted over the mesh backdrop.
-      bottomNavigationBar: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: Glass.cardBlur, sigmaY: Glass.cardBlur),
-          child: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _tab > 4 ? 0 : _tab,
+        onDestinationSelected: _go,
         destinations: const [
           NavigationDestination(
-              icon: Icon(Icons.dashboard_outlined),
-              selectedIcon: Icon(Icons.dashboard),
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home_rounded),
               label: 'Home'),
           NavigationDestination(
-              icon: Icon(Icons.chat_outlined),
-              selectedIcon: Icon(Icons.chat),
-              label: 'Chats'),
+              icon: Icon(Icons.forum_outlined),
+              selectedIcon: Icon(Icons.forum_rounded),
+              label: 'Inbox'),
           NavigationDestination(
               icon: Icon(Icons.inventory_2_outlined),
-              selectedIcon: Icon(Icons.inventory_2),
+              selectedIcon: Icon(Icons.inventory_2_rounded),
               label: 'Catalog'),
           NavigationDestination(
               icon: Icon(Icons.link_outlined),
-              selectedIcon: Icon(Icons.link),
+              selectedIcon: Icon(Icons.link_rounded),
               label: 'Connect'),
           NavigationDestination(
               icon: Icon(Icons.smart_toy_outlined),
-              selectedIcon: Icon(Icons.smart_toy),
-              label: 'AI'),
-          NavigationDestination(
-              icon: Icon(Icons.payments_outlined),
-              selectedIcon: Icon(Icons.payments),
-              label: 'Billing'),
-            ],
-          ),
-        ),
+              selectedIcon: Icon(Icons.smart_toy_rounded),
+              label: 'Ai'),
+        ],
       ),
     );
   }

@@ -1,12 +1,9 @@
 // ── lib/glass.dart ─────────────────────────────────────────────────
-// WHAT: the liquid-glass system — ONE place for every frosted surface in
-// the app (cards, app shell backdrop, bottom sheets, dialogs). Same recipe
-// everywhere: blur what is behind (BackdropFilter) + translucent surface
-// tint + hairline light edge + glossy top highlight. Light/dark aware via
-// the active ColorScheme, so the glass reads correctly in both themes.
-// No new packages — dart:ui + material only.
-import 'dart:ui';
-
+// WHAT: the app's surface primitives — one place for every card, sheet and
+// dialog, so they cannot drift apart. Flat by design: a solid surface fill
+// and a hairline border, no blur and no gloss. (The name is historical; the
+// frosted-glass recipe this file used to implement is gone.)
+// Light/dark aware via the active ColorScheme.
 import 'package:flutter/material.dart';
 
 import 'theme.dart'; // accentTeal (same glow the web app uses!)

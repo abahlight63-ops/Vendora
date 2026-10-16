@@ -1,11 +1,13 @@
 // ── lib/splash.dart ────────────────────────────────────────────────
 // WHAT: the 1.5-second brand intro — mirrors Splash.jsx: Orbit V ring
-// around the logo + VELOSALES AI letterspacing + tagline + indeterminate bar,
-// then fade out. Shown while the session check runs (never shorter than
-// the web one). Ring = two arcs (primary green + gold) spinning forever.
+// around the mark + the wordmark + tagline + indeterminate bar, then fade
+// out. Shown while the session check runs (never shorter than the web one).
+// The mark is drawn from vectors (brand_mark.dart), not the retired green PNG.
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+
+import 'brand_mark.dart';
 
 class SplashView extends StatefulWidget {
   const SplashView({super.key});
@@ -67,20 +69,16 @@ class _SplashViewState extends State<SplashView>
                         painter: _OrbitPainter(scheme.primary),
                       ),
                     ),
-                    Image.asset(
-                      'assets/logo-green.png', // signature green, always
-                      width: 64,
-                      height: 64,
-                    ),
+                    BrandMark(size: 66, glow: true),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              const Text('VELOSALES AI',
+              const SizedBox(height: 18),
+              const Text('VeloSales Ai',
                   style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 6)),
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5)),
               const SizedBox(height: 6),
               Text('Your WhatsApp shop, open 24/7',
                   style: TextStyle(

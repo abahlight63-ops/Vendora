@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 
 import '../api.dart';
+import '../brand_mark.dart';
 import '../glass.dart';
 import '../motion.dart';
 
@@ -311,14 +312,8 @@ class _AiScreenState extends State<AiScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Image.asset(
-                        Theme.of(context).brightness == Brightness.light
-                            ? 'assets/logo-green.png'
-                            : 'assets/logo-blue.png',
-                        width: 72,
-                        height: 72,
-                      ),
-                      const SizedBox(height: 12),
+                      const BrandMark(size: 76, glow: true),
+                      const SizedBox(height: 16),
                       const Text('Chat with Velo',
                           style: TextStyle(
                               fontSize: 20, fontWeight: FontWeight.w800)),

@@ -64,9 +64,9 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/logo.png
-    - assets/logo-green.png
-    - assets/airbot/
+    # No raster logo: the mark is drawn from vectors (lib/brand_mark.dart).
+    # The designer's 1024px icons stay in assets/ as reference, undeclared so
+    # they are not bundled into the APK.
 
   # Manrope is the app's typeface (same family as the web build). Inter stays
   # registered only so any lingering `fontFamily: 'Inter'` call site still

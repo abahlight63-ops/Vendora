@@ -30,6 +30,44 @@ class VeloSalesTheme {
   /// Kept so existing call sites keep compiling — this is the brand accent now.
   static const accentTeal = purpleDark;
 
+  // ── brand-mark ramp ──
+  // The mark carries its own light-to-dark gradient (it is the one element
+  // allowed to), so it keeps a distinct set of steps from the flat CTA fill.
+  // Light reads a touch softer; dark steps up so the mark holds on #0B1118.
+  static Color markTop(BuildContext c) =>
+      Theme.of(c).brightness == Brightness.dark
+          ? const Color(0xFFA5B4FC)
+          : const Color(0xFF8B8CF8);
+  static Color markMid(BuildContext c) =>
+      Theme.of(c).brightness == Brightness.dark
+          ? const Color(0xFF818CF8)
+          : purple;
+  static Color markBot(BuildContext c) =>
+      Theme.of(c).brightness == Brightness.dark
+          ? const Color(0xFF6366F1)
+          : accentSolid;
+  static Color markEdge(BuildContext c) =>
+      Colors.white.withValues(alpha: Theme.of(c).brightness == Brightness.dark ? 0.30 : 0.45);
+
+  // ── soft tints ──
+  // The pastel fills the home screen's action cards use. Deliberately very
+  // light: they sit behind text, so they carry a hue, never a shade.
+  static Color tintLavender(BuildContext c) =>
+      Theme.of(c).brightness == Brightness.dark ? const Color(0xFF1E1B4B) : const Color(0xFFEEF2FF);
+  static Color tintSky(BuildContext c) =>
+      Theme.of(c).brightness == Brightness.dark ? const Color(0xFF14243D) : const Color(0xFFEAF2FE);
+  static Color tintMint(BuildContext c) =>
+      Theme.of(c).brightness == Brightness.dark ? const Color(0xFF10291F) : const Color(0xFFE9F9F1);
+
+  /// The one authored gradient in the app: the primary action fill.
+  static LinearGradient cta(BuildContext c) => LinearGradient(
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+        colors: Theme.of(c).brightness == Brightness.dark
+            ? const [Color(0xFF6366F1), Color(0xFF9333EA)]
+            : const [Color(0xFF5B5BF0), Color(0xFF9B4DF0)],
+      );
+
   static const radius = 16.0; // cards
   static const radiusSmall = 12.0; // inputs
   static const pill = 999.0; // buttons + chips

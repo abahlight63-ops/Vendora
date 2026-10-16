@@ -272,21 +272,18 @@ class _AirBotGuideState extends State<AirBotGuide>
               const SizedBox(height: 12),
             ] else
               const SizedBox(height: 12),
-            // ── the character: bundled airbot PNG when present, else painter ──
+            // ── the character: drawn, not photographed ──
+            // The bundled PNG was an AI-generated orange blob carrying the
+            // generator's watermark — off-brand, off-palette and watermarked.
+            // The painter wears the brand colours instead.
             FadeTransition(
               opacity: _entrance,
-              child: Image.asset(
-                'assets/airbot/airbot-character.png',
-                width: box.width,
-                height: box.height,
-                fit: BoxFit.contain,
-                errorBuilder: (_, _, _) => CustomPaint(
-                  size: box,
-                  painter: AirBotPainter(
-                    pose: poseHere,
-                    light: !isDark,
-                    theme: scheme,
-                  ),
+              child: CustomPaint(
+                size: box,
+                painter: AirBotPainter(
+                  pose: poseHere,
+                  light: !isDark,
+                  theme: scheme,
                 ),
               ),
             ),

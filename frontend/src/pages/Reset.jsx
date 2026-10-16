@@ -31,8 +31,7 @@ export default function Reset() {
   }
   return (
     <div className="auth-wrap"> {/* same stage as Login (visual continuity — users trust familiar screens!) */}
-      <div className="auth-glow" />
-      <div className="auth-card glass" style={{ maxWidth: 460 }}> {/* narrower card (single-purpose page!) */}
+      <div className="auth-card solo"> {/* narrower single-column card (single-purpose page!) */}
         <div className="auth-pane">
           <h1>Set a new password</h1>
           {done ? ( // success panel (form REPLACED — no resubmitting a burned token!)…

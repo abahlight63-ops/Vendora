@@ -126,8 +126,10 @@ const NICHE_SEEDS = {
  * Smart + thorough: full explanations with examples, not one-liners.
  * choiceId comes from the dropdown and is validated against the tier.
  * niche tailors examples + follow-ups to the owner's hustle (empty = generic).
+ * image (optional) = { mime, base64 } — the provider sees the photo too; the
+ * vision-less fallbacks are skipped automatically inside callChoice.
  */
-async function askGeneral(message, history, choiceId, tier, bizName, niche, shopCtx) {
+async function askGeneral(message, history, choiceId, tier, bizName, niche, shopCtx, image) {
   const aiModels = require('./aiModels');
   const shop = (bizName || '').split(' ')[0] || 'friend';
   const cleanNiche = typeof niche === 'string' ? niche.trim().slice(0, 80) : '';
@@ -199,7 +201,7 @@ VELOSALES AI FACTS: VeloSales Ai is a WhatsApp AI sales assistant for small busi
       resolved.model,
       system,
       user,
-      null,
+      image,
       chatOpts
     );
     // Stub-answer guard: a substantive question answered in ~2 sentences is a
@@ -218,7 +220,7 @@ VELOSALES AI FACTS: VeloSales Ai is a WhatsApp AI sales assistant for small busi
           resolved.model,
           system,
           `${user}\n\n(Follow-up: that answer was too brief. Answer again PROPERLY — full explanation, ordered steps, and a concrete example.)`,
-          null,
+          image,
           chatOpts
         );
         if (expanded.text && expanded.text.trim().length > answered.text.trim().length) {

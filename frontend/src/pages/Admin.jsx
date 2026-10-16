@@ -88,7 +88,7 @@ export default function Admin() {
   if (gate !== 'open') { // GATE (locked OR checking): password card (same glass style as Login — familiar!)
     return (
       <div className="auth-wrap">
-        <div className="auth-card glass" style={{ maxWidth: 420 }}>
+        <div className="auth-card solo" style={{ maxWidth: 420 }}>
           <div className="auth-pane">
             <h1>Admin only</h1> {/* plain title (no branding fanfare — obscurity is a feature here!) */}
             <p className="switch-note">{gate === 'checking' ? 'Checking access…' : 'This area is private. Enter the admin password.'}</p>

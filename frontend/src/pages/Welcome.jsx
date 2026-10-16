@@ -91,7 +91,7 @@ export default function Welcome() {
   const volCheer = VOLUMES.find((o) => o.v === volume)?.cheer;
 
   return (
-    <div className="welcome neu-bg">
+    <div className="welcome"> {/* flat light stage (the neumorphic tint is retired) */}
       <div className="welcome-inner">
         <div className="welcome-top">
           <span className="landing-brand"><Logo alt="VeloSales Ai" />VELOSALES AI</span>

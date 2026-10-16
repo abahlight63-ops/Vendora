@@ -1025,11 +1025,23 @@ const MODEL_DAILY_CAP = Number(process.env.MODEL_DAILY_CAP || 50); // per-MODEL 
 // Pro: unlimited free models (model caps still apply to shared keys!) + 50 paid chats/day.
 async function ask(req, res) {
   try { // everything inside try: AI + DB failures become JSON, never crashes
-    const { message, history, model } = req.body || {}; // message required; history optional; model = dropdown id
-    if (!message || typeof message !== 'string' || !message.trim()) { // blank/whitespace/non-string rejected…
-      return res.status(400).json({ error: 'Type a question first.' });
+    const { message, history, model, image } = req.body || {}; // message required (unless a photo rides along); history optional; model = dropdown id; image = data URL
+    // PHOTO ATTACH: the browser sends a downscaled data URL. Accept the 4 safe
+    // web formats, cap the payload, and hand the provider { mime, base64 } —
+    // exactly the shape the WhatsApp inbound-media path already uses.
+    let pic = null;
+    if (image && typeof image.dataUrl === 'string') {
+      const m = /^data:(image\/(?:jpeg|png|webp|gif));base64,([A-Za-z0-9+/=\s]+)$/.exec(image.dataUrl);
+      if (m) {
+        const b64 = m[2].replace(/\s/g, ''); // some pickers wrap base64 across lines
+        if (b64.length <= 9 * 1024 * 1024) pic = { mime: m[1], base64: b64 }; // ~6.7MB of real bytes — generous for a phone photo
+      }
     }
-    if (message.length > 2000) return res.status(400).json({ error: 'Keep it under 2000 characters.' }); // length cap = cost/abuse control (long prompts = expensive)
+    const text = typeof message === 'string' ? message.trim() : '';
+    if (!text && !pic) { // blank/whitespace/non-string rejected…
+      return res.status(400).json({ error: 'Type a question first — or attach a photo.' });
+    }
+    if (text.length > 2000) return res.status(400).json({ error: 'Keep it under 2000 characters.' }); // length cap = cost/abuse control (long prompts = expensive)
     const planService = require('../services/planService');
     const aiModels = require('../services/aiModels');
     const replyEngine = require('../services/replyEngine');
@@ -1082,7 +1094,8 @@ async function ask(req, res) {
     if (mrows[0].count >= MODEL_DAILY_CAP) { // this business maxed THIS model today (quota justice: others' share untouched!)…
       return res.status(429).json({ error: `You've used ${resolved.entry.label} 50 times today — try another AI below, fresh quota!` }); // …redirect, don't dead-end (dropdown has 7 more!)
     }
-    const result = await replyEngine.askGeneral(message.trim(), Array.isArray(history) ? history.slice(-12) : [], resolved.entry.id, tier, bizName, bizNiche, shopCtx); // Array.isArray guards tampered history; slice(-12) caps context cost; niche tailors examples + follow-ups; shopCtx grounds shop questions in REAL data!
+    const question = text || 'What do you make of this photo? Tell me how I can use it for my business.'; // photo-only send still needs a prompt for the model
+    const result = await replyEngine.askGeneral(question, Array.isArray(history) ? history.slice(-12) : [], resolved.entry.id, tier, bizName, bizNiche, shopCtx, pic); // Array.isArray guards tampered history; slice(-12) caps context cost; niche tailors examples + follow-ups; shopCtx grounds shop questions in REAL data; pic = optional photo!
     if (result.reply) { // SUCCESS → count it (only successful chats consume quota — failures are free retries!)
       await db.query( // dynamic column via ${} — SAFE here: `paid` is a boolean WE computed, not user input (never interpolate raw user text into SQL!)
         `UPDATE ai_usage SET ${paid ? 'paid_count = paid_count + 1' : 'free_count = free_count + 1'}

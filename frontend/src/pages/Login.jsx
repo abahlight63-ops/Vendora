@@ -302,11 +302,10 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
   }
 
   return (
-    <div className="auth-wrap"> {/* fullscreen gradient stage (CSS radial background) */}
-      <div className="auth-glow" /> {/* drifting light blob (self-closing div, pure CSS animation!) */}
-      <div className="auth-card glass"> {/* glassmorphism card: brand panel + form (backdrop-blur + entrance animation) */}
-        <div className="auth-side"> {/* LEFT: brand storytelling (hidden on mobile via CSS!) */}
-          <div className="brand-chip"><Logo alt="VeloSales Ai" /><span>VELOSALES AI · SALES ASSISTANT</span></div> {/* pill badge */}
+    <div className="auth-wrap"> {/* soft purple wash behind everything (see .auth-wrap::before) */}
+      <div className="auth-card"> {/* one white card: brand story + form, split by a hairline (was glass) */}
+        <div className="auth-side"> {/* LEFT: brand storytelling (compacted on mobile via CSS!) */}
+          <div className="brand-chip"><Logo alt="VeloSales Ai" width={30} height={30} /><span>VeloSales Ai · Sales assistant</span></div> {/* brand lockup */}
           <h2>Your WhatsApp shop.<br /><span className="grad">Open even while you sleep.</span></h2> {/* <br/> line break; .grad = gradient text span */}
           <p className="tagline">An AI that answers like you — prices, stock, hours — so no customer is ever ignored.</p>
           <ul className="feat"> {/* feature list with STAGGERED entrance (--d custom property = per-item delay!) */}
@@ -317,8 +316,8 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
           <DemoChat /> {/* the self-playing demo above! */}
         </div>
         <div className="auth-pane" key={mode}> {/* RIGHT: the form. key={mode} = React REMOUNTS on mode switch (fresh animations + no stale input focus — key change = new element!) */}
-          <div className="trial-banner"> {/* pulsing 7-days banner (CSS bannerPulse) */}
-            <span className="trial-badge">7 DAYS FREE</span>
+          <div className="trial-banner"> {/* quiet purple pill row (was a pulsing gold banner) */}
+            <span className="trial-badge">7 days free</span>
             <div><b>{mode === 'login' ? 'Your trial is waiting.' : 'Start selling tonight.'}</b><span>No card required · Cancel anytime</span></div> {/* headline flips with mode */}
           </div>
           {mode === 'otp' ? (<> {/* OTP screen: verify path signs in · reset path sets a NEW password (purpose flag switches it!) */}

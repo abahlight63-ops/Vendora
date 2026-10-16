@@ -41,6 +41,7 @@ app.use(secureHeaders); // locks FIRST (every response carries them, even errors
 app.use(express.urlencoded({ extended: false })); // parse HTML form bodies (Paystack/Flutterwave posts + legacy forms!)
 app.use( // parse JSON bodies…
   express.json({
+    limit: '12mb', // photos arrive as base64 data URLs (catalog images + VeloSales Ai chat attach) — the 100kb default rejects them outright!
     verify: (req, res, buf) => {
       req.rawBody = buf; // …but ALSO stash the raw bytes: Paystack's HMAC check needs them
     }, // (parsed JSON ≠ raw bytes; signatures are computed on raw bytes)

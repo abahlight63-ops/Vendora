@@ -64,13 +64,16 @@ class AirBotPainter extends CustomPainter {
     final unit = w / 100; // scale everything from width (@100 = full box)
 
     // ── palette ──
-    final body = light ? const Color(0xFFF97316) : const Color(0xFFFB923C);
-    final bodyDark = light ? const Color(0xFFEA580C) : const Color(0xFFC2550A);
-    final skin = light ? const Color(0xFFFFE8D6) : const Color(0xFFB98A5F);
-    final hair = light ? const Color(0xFF624A3C) : const Color(0xFF8E6E5A);
-    final accentGold = const Color(0xFFFFCF5C);
-    final accentTeal = light ? const Color(0xFF5EEAD4) : const Color(0xFF7EF0C0);
-    final faceLine = light ? const Color(0xFF10233A) : const Color(0xFFEAF3ED);
+    // The mascot wears the brand, not a separate costume: body = the purple,
+    // face = the lavender tint, hair = deep indigo, highlight = the pale line.
+    // The old orange/teal/gold triple is retired with the rest of that language.
+    final body = light ? const Color(0xFF6366F1) : const Color(0xFF818CF8);
+    final bodyDark = light ? const Color(0xFF4F46E5) : const Color(0xFF4338CA);
+    final skin = light ? const Color(0xFFEDE9FE) : const Color(0xFFC7D2FE);
+    final hair = light ? const Color(0xFF4338CA) : const Color(0xFF312E81);
+    final accentSoft = light ? const Color(0xFFDDD6FE) : const Color(0xFFC4B5FD);
+    final glow = light ? const Color(0xFF6366F1) : const Color(0xFF818CF8);
+    final faceLine = light ? const Color(0xFF0F172A) : const Color(0xFFF3F4F6);
 
     // every part is relative to `unit` so it scales (no hard px in paint).
 
@@ -78,8 +81,8 @@ class AirBotPainter extends CustomPainter {
     final halo = Paint()
       ..shader = RadialGradient(
         colors: [
-          accentTeal.withValues(alpha: 0.22),
-          accentTeal.withValues(alpha: 0),
+          glow.withValues(alpha: 0.22),
+          glow.withValues(alpha: 0),
         ],
       ).createShader(
           Rect.fromCircle(center: Offset(cx, h * 0.5), radius: w * 0.5));
@@ -172,13 +175,13 @@ class AirBotPainter extends CustomPainter {
             ..strokeWidth = unit * 6
             ..strokeCap = StrokeCap.round);
       // hand (gold = friendly accent)
-      canvas.drawCircle(hand, unit * 4, Paint()..color = accentGold);
+      canvas.drawCircle(hand, unit * 4, Paint()..color = accentSoft);
       // when pointing, add a little directional cue (dot trail)
       if (pose.armRot.abs() > 0.1) {
         canvas.drawCircle(
           hand + Offset(pose.armRot > 0 ? unit * 6 : -unit * 6, 0),
           2.2,
-          Paint()..color = accentGold.withValues(alpha: 0.55),
+          Paint()..color = accentSoft.withValues(alpha: 0.55),
         );
       }
     }

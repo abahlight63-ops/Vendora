@@ -378,10 +378,10 @@ class _TargetHighlightState extends State<_TargetHighlight>
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFFFCF5C), width: 2.5),
+                    border: Border.all(color: const Color(0xFF6366F1), width: 2.5),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFFFCF5C).withValues(alpha: 0.5),
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.5),
                         blurRadius: 18,
                       ),
                     ],

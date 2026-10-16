@@ -251,8 +251,8 @@ class _ToastViewState extends State<_ToastView>
           ),
           child: Material(
             color: widget.isErr
-                ? const Color(0xFF7A271A)
-                : const Color(0xFF101828),
+                ? const Color(0xFF7F1D1D)
+                : const Color(0xFF0F172A),
             borderRadius: BorderRadius.circular(11),
             elevation: 8,
             child: Padding(
@@ -265,8 +265,8 @@ class _ToastViewState extends State<_ToastView>
                         : Icons.check_circle_outline,
                     size: 18,
                     color: widget.isErr
-                        ? const Color(0xFFFFB4AB)
-                        : const Color(0xFF7EF0C0)),
+                        ? const Color(0xFFFCA5A5)
+                        : const Color(0xFF34D399)),
                 const SizedBox(width: 9),
                 Expanded(
                   child: Text(widget.msg,

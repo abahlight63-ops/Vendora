@@ -1,26 +1,40 @@
 // ── lib/theme.dart ───────────────────────────────────────────────
-// WHAT: VeloSales Ai web tokens as Flutter themes — 1:1 with
-// frontend/src/styles.css. Light = :root tokens (the web DEFAULT),
-// dark = [data-theme="dark"] overrides. Same Inter, same 12px radius,
-// same 180ms motion feel. ThemeMode persists (SharedPreferences).
+// WHAT: the app's design tokens as Flutter themes — kept 1:1 with the web
+// build (frontend/src/styles.css). Light = :root, dark = [data-theme="dark"].
+//
+// This used to be the OLD language: an "orange is green" accent, Inter, and a
+// liquid-glass scaffold (translucent surfaces over a mesh gradient). None of
+// that is the brand. It is now the web token set — one purple for every
+// primary action, green kept for success only, flat surfaces, Manrope.
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class VeloSalesTheme {
-  static const _radius = 12.0;
   static const _key = 'velosalesai_theme_mode'; // 'light' | 'dark' | 'system'
 
   // ── :root (web light default) ──
-  static const lightGreen = Color(0xFFF97316);
-  static const lightGreenDark = Color(0xFFEA580C);
+  static const purple = Color(0xFF6366F1); // the ONE primary accent
+  static const purpleDark = Color(0xFF4F46E5);
+  static const purpleSoft = Color(0xFFEEF2FF); // tinted fills (chips, bubbles)
+  static const purpleLine = Color(0xFFC7D2FE);
+  static const accentSolid = Color(0xFF4F46E5); // button fill — white text works in BOTH themes
+  static const accentSolidHover = Color(0xFF4338CA);
 
-  // ── [data-theme="dark"] ──
-  static const darkGreen = Color(0xFFFB923C);
-  static const darkGreenSoft = Color(0xFFFDBA74);
+  // green = success / online / KPI-up ONLY (never a primary action)
+  static const green = Color(0xFF10B981);
+  static const greenDark = Color(0xFF059669);
+  static const greenSoft = Color(0xFFD1FAE5);
+  static const red = Color(0xFFDC2626);
+  static const gold = Color(0xFFD97706);
 
-  // ── liquid-glass glow (shared with web --glass-teal) ──
-  static const accentTeal = Color(0xFF5EEAD4);
-  static const accentGold = Color(0xFFFFCF5C);
+  /// Kept so existing call sites keep compiling — this is the brand accent now.
+  static const accentTeal = purpleDark;
+
+  static const radius = 16.0; // cards
+  static const radiusSmall = 12.0; // inputs
+  static const pill = 999.0; // buttons + chips
+
+  static const _font = 'Manrope';
 
   static Future<ThemeMode> loadMode() async {
     final p = await SharedPreferences.getInstance();
@@ -40,46 +54,50 @@ class VeloSalesTheme {
         _key, m == ThemeMode.light ? 'light' : m == ThemeMode.dark ? 'dark' : 'system');
   }
 
-  static TextTheme _text(TextTheme base, Color body, Color muted) =>
-      base.apply(bodyColor: body, displayColor: body, fontFamily: 'Inter');
-
-  // ── eye-friendly light blue (matches the web light theme) ──
-  static const lightBlue = Color(0xFF1F6FEB);
-  static const lightBlueBg = Color(0xFFE3EEFE);
+  static TextTheme _text(TextTheme base) => base.apply(
+        fontFamily: _font,
+        bodyColor: const Color(0xFF0F172A),
+        displayColor: const Color(0xFF0F172A),
+      );
 
   static ThemeData get light {
-    const ink = Color(0xFF10233A);
-    const muted = Color(0xFF4A6A8A);
-    const line = Color(0xFFDBE7F5);
+    const ink = Color(0xFF0F172A);
+    const muted = Color(0xFF64748B);
+    const line = Color(0xFFE2E8F0);
     const bg = Color(0xFFF8FAFC);
     const card = Color(0xFFFFFFFF);
     const scheme = ColorScheme.light(
-      primary: lightBlue,
+      primary: accentSolid,
       onPrimary: Colors.white,
-      primaryContainer: lightBlueBg,
+      primaryContainer: purpleSoft,
+      onPrimaryContainer: Color(0xFF312E81),
       surface: card,
       onSurface: ink,
       surfaceContainerLowest: bg,
-      error: Color(0xFFD92D20),
+      outline: line,
+      error: red,
     );
-    return _build(scheme, bg, card, line, muted, ink);
+    return _build(scheme, bg, card, line, muted, ink, Brightness.light);
   }
 
   static ThemeData get dark {
-    const ink = Color(0xFFEAF3ED);
-    const muted = Color(0xFFA9C6B4);
-    const line = Color(0xFF1D4030);
-    const bg = Color(0xFF06110C);
-    const card = Color(0xFF0B1E14);
+    const ink = Color(0xFFF3F4F6);
+    const muted = Color(0xFF94A3B8);
+    const line = Color(0xFF1F2937);
+    const bg = Color(0xFF0B1118);
+    const card = Color(0xFF111827);
     const scheme = ColorScheme.dark(
-      primary: darkGreen,
-      onPrimary: Color(0xFF062B18),
+      primary: purple,
+      onPrimary: Colors.white,
+      primaryContainer: Color(0xFF1E1B4B),
+      onPrimaryContainer: Color(0xFFE0E7FF),
       surface: card,
       onSurface: ink,
       surfaceContainerLowest: bg,
-      error: Color(0xFFFF7A70),
+      outline: line,
+      error: Color(0xFFF87171),
     );
-    return _build(scheme, bg, card, line, muted, ink);
+    return _build(scheme, bg, card, line, muted, ink, Brightness.dark);
   }
 
   static ThemeData _build(
@@ -89,17 +107,17 @@ class VeloSalesTheme {
     Color line,
     Color muted,
     Color ink,
+    Brightness brightness,
   ) {
-    // Liquid glass: scaffolds are TRANSPARENT so the mesh gradient
-    // (GlassBackground, stacked in MaterialApp.builder) shows through —
-    // every frosted surface above refracts it. Splash keeps its own
-    // explicit background (brand moment, unaffected).
-    final frost = card.withValues(alpha: 0.72); // bar tint (blurred on top)
-    return ThemeData(
-      useMaterial3: true,
+    final base = ThemeData(brightness: brightness, useMaterial3: true, fontFamily: _font);
+    return base.copyWith(
       colorScheme: scheme,
-      scaffoldBackgroundColor: Colors.transparent,
-      textTheme: _text(ThemeData.light().textTheme, ink, muted),
+      // Flat: scaffolds paint the page colour outright. The old build left them
+      // transparent so a mesh gradient showed through — that is gone.
+      scaffoldBackgroundColor: bg,
+      canvasColor: bg,
+      dividerColor: line,
+      textTheme: _text(base.textTheme).apply(bodyColor: ink, displayColor: ink),
       // .page fade .12s → global page transition (fast fade).
       pageTransitionsTheme: const PageTransitionsTheme(builders: {
         TargetPlatform.android: _FadePageBuilder(),
@@ -109,100 +127,114 @@ class VeloSalesTheme {
         TargetPlatform.windows: _FadePageBuilder(),
       }),
       appBarTheme: AppBarTheme(
-        backgroundColor: frost, // translucent: main.dart blurs beneath it
+        backgroundColor: bg, // solid — no frost, no blur
+        surfaceTintColor: Colors.transparent,
         foregroundColor: ink,
         elevation: 0,
         scrolledUnderElevation: 0,
         // .topbar 1px bottom border (Divider under AppBar via shape).
         shape: Border(bottom: BorderSide(color: line)),
         titleTextStyle: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            color: ink),
+            fontFamily: _font, fontSize: 17, fontWeight: FontWeight.w800, color: ink),
       ),
-      // .card: 24px padding, 12px radius, 1px token border, tiny shadow.
+      // .card: 16px radius, 1px token border, no drop shadow games.
       cardTheme: CardThemeData(
         color: card,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(_radius),
+          borderRadius: BorderRadius.circular(radius),
           side: BorderSide(color: line),
         ),
       ),
-      // .btn: h40, radius 12, semibold 14.
+      // .btn: pill, semibold 14 (matches the web build).
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(0, 40),
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          minimumSize: const Size(0, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 22),
           textStyle: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 14,
-              fontWeight: FontWeight.w600),
+              fontFamily: _font, fontSize: 14, fontWeight: FontWeight.w700),
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(_radius)),
+              borderRadius: BorderRadius.circular(pill)),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(0, 40),
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          minimumSize: const Size(0, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          foregroundColor: ink,
           textStyle: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 14,
-              fontWeight: FontWeight.w600),
+              fontFamily: _font, fontSize: 14, fontWeight: FontWeight.w700),
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(_radius)),
+              borderRadius: BorderRadius.circular(pill)),
           side: BorderSide(color: line),
         ),
       ),
-      // inputs: h44, radius 12, 2px accent focus + soft ring.
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: scheme.primary,
+          textStyle: const TextStyle(
+              fontFamily: _font, fontSize: 14, fontWeight: FontWeight.w700),
+        ),
+      ),
+      // inputs: 44px, small radius, purple focus + soft ring.
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: card,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        hintStyle: TextStyle(
-            fontFamily: 'Inter', fontSize: 14, color: muted),
-        labelStyle: TextStyle(
-            fontFamily: 'Inter', fontSize: 14, color: muted),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        hintStyle: TextStyle(fontFamily: _font, fontSize: 14, color: muted),
+        labelStyle: TextStyle(fontFamily: _font, fontSize: 14, color: muted),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_radius),
+          borderRadius: BorderRadius.circular(radiusSmall),
           borderSide: BorderSide(color: line),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_radius),
+          borderRadius: BorderRadius.circular(radiusSmall),
           borderSide: BorderSide(color: scheme.primary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_radius),
+          borderRadius: BorderRadius.circular(radiusSmall),
           borderSide: BorderSide(color: scheme.error),
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: frost, // translucent: main.dart blurs beneath it
-        indicatorColor: scheme.primary.withValues(alpha: 0.15),
-      ),
-      // Sheets + dialogs paint their own glass (glass.dart) — theme stays
-      // transparent so it never covers the frost with a solid panel.
-      bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: Colors.transparent,
-        modalBackgroundColor: Colors.transparent,
+        backgroundColor: card, // solid bar, hairline above
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: scheme.primaryContainer,
         elevation: 0,
       ),
-      dialogTheme: const DialogThemeData(
-        backgroundColor: Colors.transparent,
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: card,
+        modalBackgroundColor: card,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
       ),
-      chipTheme: ThemeData.light().chipTheme.copyWith(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(999)),
-          ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: card,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
+      chipTheme: base.chipTheme.copyWith(
+        backgroundColor: card,
+        selectedColor: purpleSoft,
+        side: BorderSide(color: line),
+        labelStyle:
+            const TextStyle(fontFamily: _font, fontSize: 13, fontWeight: FontWeight.w600),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(pill)),
+      ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(11)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      listTileTheme: ListTileThemeData(
+        iconColor: muted,
+        textColor: ink,
       ),
     );
   }

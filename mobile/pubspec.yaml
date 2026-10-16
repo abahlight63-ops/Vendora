@@ -68,9 +68,13 @@ flutter:
     - assets/logo-green.png
     - assets/airbot/
 
-  # Inter variable font (same family as the web app's Google Fonts import).
-  # Bundled offline — no runtime fetch, no extra native deps.
+  # Manrope is the app's typeface (same family as the web build). Inter stays
+  # registered only so any lingering `fontFamily: 'Inter'` call site still
+  # resolves; nothing in the theme asks for it any more.
   fonts:
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-var.ttf
     - family: Inter
       fonts:
         - asset: assets/fonts/Inter.ttf

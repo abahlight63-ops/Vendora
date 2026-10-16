@@ -228,13 +228,13 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.end,
                                     children: [
-                                      // Pills: needs-you (gold) / handled (green).
+                                      // Pills: needs-you (solid brand) / handled (tinted).
                                       Container(
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 10, vertical: 3),
                                         decoration: BoxDecoration(
                                           color: needsHuman
-                                              ? const Color(0xFFFFFAEB)
+                                              ? scheme.primary
                                               : scheme.primary.withValues(
                                                   alpha: 0.12),
                                           borderRadius:
@@ -248,7 +248,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                               fontSize: 11,
                                               fontWeight: FontWeight.w700,
                                               color: needsHuman
-                                                  ? const Color(0xFFB54708)
+                                                  ? scheme.onPrimary
                                                   : scheme.primary),
                                         ),
                                       ),

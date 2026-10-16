@@ -589,10 +589,13 @@ class _Stat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final warnColor = Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFFFBBF24)
+        : const Color(0xFFB45309);
     final color = good
         ? scheme.primary
         : warn
-            ? const Color(0xFFB54708)
+            ? warnColor
             : scheme.onSurface;
     return FadeSlideIn(
       delayMs: delay,

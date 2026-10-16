@@ -11,32 +11,28 @@ import 'package:flutter/material.dart';
 
 import 'theme.dart'; // accentTeal (same glow the web app uses!)
 
-/// Blur strength for cards (18) vs sheets/dialogs (22, chunkier surfaces).
+/// Blur strength for cards vs sheets/dialogs.
+///
+/// Was 18/22 — real backdrop blur, with translucent tints so a mesh gradient
+/// shimmered through everything. That whole language is retired (the web build
+/// dropped glass too). Zero blur + solid fills means every existing surface
+/// that was frosted now reads as a plain bordered card, with no call-site
+/// changes.
 class Glass {
-  static const double cardBlur = 18;
-  static const double sheetBlur = 22;
-  static const double radius = 20;
+  static const double cardBlur = 0;
+  static const double sheetBlur = 0;
+  static const double radius = 16;
 
-  /// Translucent surface tint — lets the mesh backdrop shimmer through.
-  static Color tint(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    return Theme.of(context)
-        .colorScheme
-        .surface
-        .withValues(alpha: dark ? 0.5 : 0.62);
-  }
+  /// Solid surface — no transparency, nothing to shimmer through.
+  static Color tint(BuildContext context) =>
+      Theme.of(context).colorScheme.surface;
 
-  /// Hairline light edge (the bright rim that sells "glass").
-  static Color edge(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    return Colors.white.withValues(alpha: dark ? 0.14 : 0.55);
-  }
+  /// Hairline border — the same token line the web cards use.
+  static Color edge(BuildContext context) =>
+      Theme.of(context).colorScheme.outline;
 
-  /// Glossy top highlight, painted OVER the tint (foregroundDecoration).
-  static Color gloss(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    return Colors.white.withValues(alpha: dark ? 0.05 : 0.12);
-  }
+  /// No gloss: flat surfaces do not catch light.
+  static Color gloss(BuildContext context) => Colors.transparent;
 }
 
 /// Frosted card — drop-in replacement for Card(child:, margin:).

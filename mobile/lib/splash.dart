@@ -113,8 +113,10 @@ class _OrbitPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final c = Offset(size.width / 2, size.height / 2);
     final r = size.width / 2 - 6;
-    const gold = Color(0xFFFFCF5C);
-    const mint = Color(0xFF7EF0C0);
+    // Brand two-tone ring: the primary arc arrives via `color`; these are the
+    // two lighter steps so the orbit reads as one purple family.
+    const arcLight = Color(0xFFA5B4FC);
+    const dotC = Color(0xFF6366F1);
     Offset dot(double angle) =>
         c + Offset(math.cos(angle) * r, math.sin(angle) * r);
     final pGreen = Paint()
@@ -124,13 +126,13 @@ class _OrbitPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     canvas.drawArc(Rect.fromCircle(center: c, radius: r), -1.2, 3.6, false, pGreen);
     final pGold = Paint()
-      ..color = gold
+      ..color = arcLight
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.5
       ..strokeCap = StrokeCap.round;
     canvas.drawArc(Rect.fromCircle(center: c, radius: r), 2.4, 0.9, false, pGold);
-    canvas.drawCircle(dot(2.4), 4.5, Paint()..color = mint);
-    canvas.drawCircle(dot(3.3), 4, Paint()..color = gold);
+    canvas.drawCircle(dot(2.4), 4.5, Paint()..color = dotC);
+    canvas.drawCircle(dot(3.3), 4, Paint()..color = arcLight);
   }
 
   @override

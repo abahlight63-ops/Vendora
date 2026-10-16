@@ -35,8 +35,9 @@ class Glass {
   static Color gloss(BuildContext context) => Colors.transparent;
 }
 
-/// Frosted card — drop-in replacement for Card(child:, margin:).
-/// Same default margin as Card (4 all) so layouts do not shift.
+/// Card — flat surface, hairline token border, 16px radius.
+/// Drop-in replacement for Card(child:, margin:); same default margin (4 all)
+/// so layouts do not shift.
 class GlassCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry margin;
@@ -62,93 +63,45 @@ class GlassCard extends StatelessWidget {
         : Padding(padding: padding!, child: child);
     return Padding(
       padding: margin,
-      child: ClipRRect(
-        borderRadius: r,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(
-              sigmaX: Glass.cardBlur, sigmaY: Glass.cardBlur),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Glass.tint(context),
-              borderRadius: r,
-              border: border ??
-                  Border.all(color: Glass.edge(context), width: 1),
-            ),
-            foregroundDecoration: BoxDecoration(
-              borderRadius: r,
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.center,
-                colors: [Glass.gloss(context), Colors.transparent],
-              ),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: onTap == null
-                  ? inner
-                  : InkWell(
-                      borderRadius: r,
-                      onTap: onTap,
-                      child: inner,
-                    ),
-            ),
-          ),
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: Glass.tint(context),
+          borderRadius: r,
+          border: border ?? Border.all(color: Glass.edge(context), width: 1),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: onTap == null
+              ? inner
+              : InkWell(
+                  borderRadius: r,
+                  onTap: onTap,
+                  child: inner,
+                ),
         ),
       ),
     );
   }
 }
 
-/// Mesh-gradient backdrop — brand-green glows over the theme base.
-/// Lives behind every Scaffold (MaterialApp builder in main.dart);
-/// the frosted surfaces above refract THIS, which is what makes the
-/// glass visible instead of frosted-over-flat-grey.
+/// Flat page backdrop — simply the theme's lowest surface.
+///
+/// This used to be a mesh gradient of green/teal radial glows that frosted
+/// surfaces above it refracted. There is nothing to refract now: every surface
+/// paints a solid fill, so the backdrop is just the page colour. It stays in
+/// the tree only so the MaterialApp builder contract doesn't change.
 class GlassBackground extends StatelessWidget {
   const GlassBackground({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    // Brand glow: primary green melted toward web teal (same liquid family!).
-    final glow = Color.lerp(scheme.primary, VeloSalesTheme.accentTeal, 0.35) ?? scheme.primary;
-    return Stack(children: [
-      Positioned.fill(
-          child: ColoredBox(color: scheme.surfaceContainerLowest)),
-      Positioned.fill(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              center: const Alignment(0.9, -0.9),
-              radius: 1.1,
-              colors: [
-                glow.withValues(alpha: dark ? 0.3 : 0.16),
-                Colors.transparent,
-              ],
-            ),
-          ),
-        ),
-      ),
-      Positioned.fill(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              center: const Alignment(-0.9, 1.0),
-              radius: 1.2,
-              colors: [
-                glow.withValues(alpha: dark ? 0.16 : 0.1),
-                Colors.transparent,
-              ],
-            ),
-          ),
-        ),
-      ),
-    ]);
+    return ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerLowest);
   }
 }
 
-/// Frosted bottom sheet — same glass as cards, chunkier blur, 28px top
-/// radius. Replaces raw showModalBottomSheet for every sheet in the app.
+/// Bottom sheet — solid surface, 28px top radius. Replaces raw
+/// showModalBottomSheet for every sheet in the app.
 Future<T?> glassSheet<T>(
   BuildContext context, {
   required Widget child,
@@ -163,32 +116,20 @@ Future<T?> glassSheet<T>(
       padding: EdgeInsets.only(bottom: MediaQuery.of(c).viewInsets.bottom),
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(
-              sigmaX: Glass.sheetBlur, sigmaY: Glass.sheetBlur),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Glass.tint(c),
-              border: Border(top: BorderSide(color: Glass.edge(c))),
-            ),
-            foregroundDecoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.center,
-                colors: [Glass.gloss(c), Colors.transparent],
-              ),
-            ),
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            child: SafeArea(top: false, child: child),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Glass.tint(c),
+            border: Border(top: BorderSide(color: Glass.edge(c))),
           ),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          child: SafeArea(top: false, child: child),
         ),
       ),
     ),
   );
 }
 
-/// Frosted dialog — blurred barrier + glass card body. Replaces raw
-/// showDialog everywhere a confirmation or popup appears.
+/// Confirmation dialog — solid card body over a dimmed barrier.
 Future<T?> glassDialog<T>(
   BuildContext context, {
   required Widget child,

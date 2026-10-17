@@ -6,12 +6,17 @@ Last updated: **17 Oct 2026**. Legend: `[x]` done · `[~]` partly done · `[ ]` 
 
 ## 0. Blocked on you
 
-- [!] **The new logo you pasted is NOT in the project.** Nothing has been added
-      since 15 Oct. The only logo files present are the two old candidates from
-      yesterday — `new logo to use.webp` (teal triangle) and `new logo 2.webp`
-      (white hexagon with a V cut out). Neither is a "V check".
-      **Action:** drop the file into `frontend/public/photos/` (or anywhere in
-      the project) and tell me the filename.
+- [~] **Logo — I picked one; say the word if you disagree.** Both candidates in
+      `frontend/public/photos/` were compared side by side. I went with
+      **`new logo 2.webp`** — the white hexagon with the V cut out of it. It is
+      the one you called "a v check", it is monochrome (so it re-tints with the
+      theme instead of fighting it), and it survives being shrunk to 24px.
+      The teal one has its colour and a drop shadow baked into the bitmap, so it
+      cannot sit on a tinted surface. It is still in the folder if you want it
+      instead — the mark is one file on each side.
+      **Delivered:** `velosales-mark.png` (+ white and on-purple variants) in
+      `frontend/public/photos/`, and the mark redrawn as vectors so it is sharp
+      at any size.
 - [!] **Phone not visible to Windows.** Needed to sideload the APK. Plug in,
       unlock, choose **"Transfer files"**.
 - [!] **Google sign-in needs one thing from you.** Register an Android OAuth
@@ -25,15 +30,23 @@ Last updated: **17 Oct 2026**. Legend: `[x]` done · `[~]` partly done · `[ ]` 
 ## 1. Brand and colour
 
 - [x] Real vector brand mark drawn in code (was a green PNG on a white box)
-- [x] Purple launcher icon (was green)
+- [x] **Mark redrawn from your own logo file** — measured off the bitmap row by
+      row, redrawn as a hexagon with an inscribed inverted triangle. Web and
+      phone now draw one mark from one set of numbers.
+- [x] `velosales-mark.png` exported, plus white and on-purple variants
+- [x] Purple launcher icon re-cut from the new geometry (all five densities)
+- [x] Favicons, apple-touch icon and favicon.ico re-cut from the new geometry
 - [x] Removed the watermarked AI-generated mascot
-- [ ] **Colour psychology pass — expand past purple-only.** Build a real
-      multi-hue system: purple stays the primary action; add a warm accent
-      (amber/coral) for attention, teal for informational, green for success,
-      red for danger — each with a tint pair for light and dark, and a rule for
-      where each may appear. No more "everything is one purple".
+- [~] **Colour psychology pass — expand past purple-only.** Purple is now the
+      only brand/hover/selection colour (the old `--green` was still wired to
+      hover states, selection rings, card borders, empty-state icons, dark-mode
+      backgrounds and dark-mode skeletons all over the app — that is why it kept
+      reading green). Green now means only what it should: success, online, a
+      completed step, a KPI going up, a tick on an included feature. Amber is
+      used for attention (the trial banner, the AI "spark" mark).
+      **Still to do:** a teal "informational" hue, and a written rule for where
+      each hue may appear.
 - [ ] Apply the new hues to empty states, status pills, KPI cards, charts.
-- [ ] Final logo swap once you provide the file (mark painter is one file).
 
 ## 2. First-run experience (what a brand-new user sees)
 
@@ -42,7 +55,10 @@ Last updated: **17 Oct 2026**. Legend: `[x]` done · `[~]` partly done · `[ ]` 
       what the product does → how it makes money for you → get started.
 - [ ] **Animated loading states** — replace plain skeletons with a branded
       shimmer; add a branded spinner component used everywhere.
-- [ ] **Splash motion** — animate the mark assembling (draw-on), not just a fade.
+- [x] **Splash motion** — the mark assembles itself (three pieces fly in, sweep
+      around a ring, settle; then the wordmark types in, then the tagline).
+      Web: `components/MarkReveal.jsx`. Phone: `widgets/logo_reveal.dart`.
+      The old web splash was still dark green — that is fixed too.
 - [ ] **Empty states with personality** — illustrated, not just an icon + text.
 
 ## 3. Auth screens

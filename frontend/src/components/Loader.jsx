@@ -6,10 +6,10 @@
 // + wordmark, for every route fallback, guard and session check (the selling
 // point users recognize!). Buttons use mini <Loader size={15}/> inline.
 // No npm modules — inline SVG + CSS keyframes.
-import ScatterLogo from './ScatterLogo.jsx'; // scatter-and-assemble hero (the selling-point moment!)
+import MarkReveal from './MarkReveal.jsx'; // the assemble-itself mark (the selling-point moment!)
+import Logo from './Logo.jsx'; // inline vector mark — no bitmap in the spinner
 import { useEffect, useState } from 'react'; // useMinDisplay timer (brand beat — see below!)
 export default function Loader({ size = 40, withLogo = false }) {
-  const mark = '/logo.svg'; // purple brand mark, always (DESIGN.md §Logo)
   return (
     <span className="orbit-loader" style={{ width: size, height: size }} role="status" aria-label="Loading">
       <svg viewBox="0 0 120 120" width={size} height={size} aria-hidden="true">
@@ -24,7 +24,7 @@ export default function Loader({ size = 40, withLogo = false }) {
           <circle cx="60" cy="104" r="5" fill="#6366f1" />
         </g>
         {withLogo
-          ? <image href={mark} x="36" y="36" width="48" height="48" />
+          ? <g transform="translate(38 34)"><Logo width={44} height={51} /></g>
           : <path d="M42 44 L60 78 L78 44" fill="none" stroke="url(#orbit-g)" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" />}
       </svg>
     </span>
@@ -34,7 +34,7 @@ export default function Loader({ size = 40, withLogo = false }) {
 export function BrandGate({ size = 76, label = 'VeloSales Ai' }) { // full-page loading face (route fallbacks, guards, session checks — everywhere users wait on blank screens!)
   return (
     <div className="brandgate" role="status" aria-label="Loading">
-      <ScatterLogo size={size} />
+      <MarkReveal size={size} />
       <div className="brandgate-name">{label}</div>
     </div>
   );

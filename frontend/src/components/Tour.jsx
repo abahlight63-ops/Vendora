@@ -40,7 +40,7 @@ export default function Tour() { // default export: <Tour /> mounted once inside
     let seen = null; // localStorage read guarded (private mode throws)…
     try { seen = localStorage.getItem('vendora-tour'); } catch {} // …so try/catch (seen stays null → tour WILL show, safe default)
     if (!seen) { // first visit ever → schedule auto-start…
-      const t = setTimeout(() => { if (window.location.pathname === '/dashboard') start(); }, 1200); // 1.2s delay (splash lasts 1.5s… race is harmless: only starts ON dashboard)
+      const t = setTimeout(() => { if (window.location.pathname === '/dashboard') start(); }, 1450); // waits out the splash (1.2s) + a beat, so the tour never overlaps it
       const onTour = () => start(); // replay handler: Dashboard link + Help button dispatch 'vendora-tour'
       window.addEventListener('vendora-tour', onTour); // global event bus (CustomEvent not needed — plain Event suffices, no data carried)
       return () => { clearTimeout(t); window.removeEventListener('vendora-tour', onTour); }; // cleanup BOTH on unmount (no leaks, no double-listeners)

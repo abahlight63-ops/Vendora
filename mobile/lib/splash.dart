@@ -1,13 +1,14 @@
 // ── lib/splash.dart ────────────────────────────────────────────────
-// WHAT: the 1.5-second brand intro — mirrors Splash.jsx: Orbit V ring
-// around the mark + the wordmark + tagline + indeterminate bar, then fade
-// out. Shown while the session check runs (never shorter than the web one).
-// The mark is drawn from vectors (brand_mark.dart), not the retired green PNG.
-import 'dart:math' as math;
-
+// WHAT: the brand intro, shown while the session check runs (never shorter
+// than the web one — main.dart enforces the 1.5s floor).
+//
+// The mark assembles itself (widgets/logo_reveal.dart), the wordmark rises in
+// letter by letter, the tagline follows once the mark has settled, and a thin
+// bar sweeps underneath. Previously this was a static logo over an endless
+// spinner, which is what made it feel like a placeholder rather than a brand.
 import 'package:flutter/material.dart';
 
-import 'brand_mark.dart';
+import 'widgets/logo_reveal.dart';
 
 class SplashView extends StatefulWidget {
   const SplashView({super.key});
@@ -16,32 +17,26 @@ class SplashView extends StatefulWidget {
   State<SplashView> createState() => _SplashViewState();
 }
 
-class _SplashViewState extends State<SplashView>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c;
-  late final Animation<double> _fade;
-  late final Animation<Offset> _rise;
-  late final AnimationController _orbit; // endless ring spin (Orbit V!)
+class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
+  /// Drives only the tagline: it waits for the mark to settle before it shows.
+  late final AnimationController _tag;
 
   @override
   void initState() {
     super.initState();
-    _c = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1100));
-    _fade = CurvedAnimation(parent: _c, curve: Curves.ease);
-    _rise = Tween<Offset>(
-            begin: const Offset(0, 0.12), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _c, curve: Curves.easeOut));
-    _c.forward();
-    _orbit = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1600))
-      ..repeat();
+    _tag = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    // The reveal settles at ~1.6s; the tagline comes in just behind it.
+    Future.delayed(const Duration(milliseconds: 1450), () {
+      if (mounted) _tag.forward();
+    });
   }
 
   @override
   void dispose() {
-    _c.dispose();
-    _orbit.dispose();
+    _tag.dispose();
     super.dispose();
   }
 
@@ -50,89 +45,123 @@ class _SplashViewState extends State<SplashView>
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: scheme.surfaceContainerLowest,
-      body: Center(
-        child: FadeTransition(
-          opacity: _fade,
-          child: SlideTransition(
-            position: _rise,
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              SizedBox(
-                width: 116,
-                height: 116,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    RotationTransition(
-                      turns: _orbit,
-                      child: CustomPaint(
-                        size: const Size(116, 116),
-                        painter: _OrbitPainter(scheme.primary),
+      body: Stack(
+        children: [
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const LogoReveal(size: 112, wordmark: 'VeloSales Ai'),
+                const SizedBox(height: 20),
+                FadeTransition(
+                  opacity: CurvedAnimation(parent: _tag, curve: Curves.easeOut),
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 0.35),
+                      end: Offset.zero,
+                    ).animate(CurvedAnimation(parent: _tag, curve: Curves.easeOutCubic)),
+                    child: Text(
+                      'Your WhatsApp shop, open 24/7',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        color: scheme.onSurface.withValues(alpha: 0.58),
                       ),
                     ),
-                    BrandMark(size: 66, glow: true),
-                  ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 18),
-              const Text('VeloSales Ai',
-                  style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5)),
-              const SizedBox(height: 6),
-              Text('Your WhatsApp shop, open 24/7',
-                  style: TextStyle(
-                      color: scheme.onSurface.withValues(alpha: 0.65),
-                      fontSize: 14)),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: 160,
-                child: LinearProgressIndicator(
-                  color: scheme.primary,
-                  backgroundColor:
-                      scheme.primary.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(99),
-                ),
-              ),
-            ]),
+              ],
+            ),
           ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 68,
+            child: Center(child: _SweepBar(color: scheme.primary)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A thin indeterminate bar: a soft track with a short segment crossing it.
+/// Quieter than a Material progress bar and it matches the fixed width the
+/// web splash uses, so the two screens read as the same brand.
+class _SweepBar extends StatefulWidget {
+  final Color color;
+  const _SweepBar({required this.color});
+
+  @override
+  State<_SweepBar> createState() => _SweepBarState();
+}
+
+class _SweepBarState extends State<_SweepBar> with SingleTickerProviderStateMixin {
+  late final AnimationController _c;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1250))
+      ..repeat();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 132,
+      height: 4,
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (context, _) => CustomPaint(
+          painter: _SweepPainter(t: _c.value, color: widget.color),
         ),
       ),
     );
   }
 }
 
-/// Orbit V ring: long primary arc + short gold arc + head dots.
-class _OrbitPainter extends CustomPainter {
+class _SweepPainter extends CustomPainter {
+  final double t;
   final Color color;
-  const _OrbitPainter(this.color);
+  const _SweepPainter({required this.t, required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final c = Offset(size.width / 2, size.height / 2);
-    final r = size.width / 2 - 6;
-    // Brand two-tone ring: the primary arc arrives via `color`; these are the
-    // two lighter steps so the orbit reads as one purple family.
-    const arcLight = Color(0xFFA5B4FC);
-    const dotC = Color(0xFF6366F1);
-    Offset dot(double angle) =>
-        c + Offset(math.cos(angle) * r, math.sin(angle) * r);
-    final pGreen = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5
-      ..strokeCap = StrokeCap.round;
-    canvas.drawArc(Rect.fromCircle(center: c, radius: r), -1.2, 3.6, false, pGreen);
-    final pGold = Paint()
-      ..color = arcLight
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5
-      ..strokeCap = StrokeCap.round;
-    canvas.drawArc(Rect.fromCircle(center: c, radius: r), 2.4, 0.9, false, pGold);
-    canvas.drawCircle(dot(2.4), 4.5, Paint()..color = dotC);
-    canvas.drawCircle(dot(3.3), 4, Paint()..color = arcLight);
+    final r = Radius.circular(size.height);
+    // track
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Offset.zero & size, r),
+      Paint()..color = color.withValues(alpha: 0.16),
+    );
+
+    // The segment eases rather than travelling linearly, so it reads as
+    // breathing instead of mechanical.
+    final eased = Curves.easeInOut.transform(t);
+    final w = size.width * 0.38;
+    final x = -w + (size.width + w) * eased;
+    final seg = Rect.fromLTWH(x, 0, w, size.height);
+    canvas.save();
+    canvas.clipRRect(RRect.fromRectAndRadius(Offset.zero & size, r));
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(seg, r),
+      Paint()
+        ..shader = LinearGradient(
+          colors: [
+            color.withValues(alpha: 0),
+            color,
+            color.withValues(alpha: 0),
+          ],
+        ).createShader(seg),
+    );
+    canvas.restore();
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(_SweepPainter old) => old.t != t || old.color != color;
 }

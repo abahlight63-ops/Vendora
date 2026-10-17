@@ -31,21 +31,21 @@ class VeloSalesTheme {
   static const accentTeal = purpleDark;
 
   // ── brand-mark ramp ──
-  // The mark carries its own light-to-dark gradient (it is the one element
-  // allowed to), so it keeps a distinct set of steps from the flat CTA fill.
-  // Light reads a touch softer; dark steps up so the mark holds on #0B1118.
+  // Same three steps as the web's --lg-top/mid/bot in styles.css, so the mark
+  // is literally the same colour on both surfaces. The mark carries its own
+  // light-to-dark gradient (it is the one element allowed to).
   static Color markTop(BuildContext c) =>
       Theme.of(c).brightness == Brightness.dark
-          ? const Color(0xFFA5B4FC)
-          : const Color(0xFF8B8CF8);
+          ? const Color(0xFFC7D2FE)
+          : const Color(0xFFA5B4FC);
   static Color markMid(BuildContext c) =>
       Theme.of(c).brightness == Brightness.dark
           ? const Color(0xFF818CF8)
           : purple;
   static Color markBot(BuildContext c) =>
       Theme.of(c).brightness == Brightness.dark
-          ? const Color(0xFF6366F1)
-          : accentSolid;
+          ? const Color(0xFF4F46E5)
+          : const Color(0xFF4338CA);
   static Color markEdge(BuildContext c) =>
       Colors.white.withValues(alpha: Theme.of(c).brightness == Brightness.dark ? 0.30 : 0.45);
 

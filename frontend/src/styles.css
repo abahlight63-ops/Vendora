@@ -59,8 +59,17 @@
    lives, so the logo re-tints with the theme instead of being frozen: a flat
    mid-purple that reads on white goes muddy on near-black, so dark gets a
    lighter ramp + more inner light (glow/sheen/rim) and less cast shadow. */
-.vl-root { --lg-top: #a5b4fc; --lg-mid: #6366f1; --lg-bot: #4338ca; --lg-glow: 0.3; --lg-shadow: 0.24; --lg-bev: 0.24; --lg-sheen: 0.24; --lg-rim: 0.62; }
-[data-theme="dark"] .vl-root { --lg-top: #c7d2fe; --lg-mid: #818cf8; --lg-bot: #4f46e5; --lg-glow: 0.5; --lg-shadow: 0.16; --lg-bev: 0.34; --lg-sheen: 0.5; --lg-rim: 0.9; }
+/* The mark's colour lives HERE and nowhere else, so the logo re-tints with the
+   theme instead of being frozen: a flat mid-purple that reads on white goes
+   muddy on near-black, so dark gets a lighter ramp.
+
+   `.reveal-mark` is included alongside `.vl-root` on purpose. The splash draws
+   the mark as three pieces rather than through the Logo component, and when
+   those pieces referenced these variables without inheriting them the SVG
+   gradient fell back to BLACK — a black logo on the splash. One selector list
+   means a caller cannot forget. */
+.vl-root, .reveal-mark { --lg-top: #a5b4fc; --lg-mid: #6366f1; --lg-bot: #4338ca; --lg-glow: 0.3; --lg-shadow: 0.24; --lg-bev: 0.24; --lg-sheen: 0.24; --lg-rim: 0.62; }
+[data-theme="dark"] .vl-root, [data-theme="dark"] .reveal-mark { --lg-top: #c7d2fe; --lg-mid: #818cf8; --lg-bot: #4f46e5; --lg-glow: 0.5; --lg-shadow: 0.16; --lg-bev: 0.34; --lg-sheen: 0.5; --lg-rim: 0.9; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: var(--font); background: var(--bg-primary); color: var(--text-1); font-size: var(--fs-body); line-height: 1.5; font-weight: 400; -webkit-font-smoothing: antialiased; }
 h1 { font-size: var(--fs-h2); line-height: 1.2; font-weight: 600; letter-spacing: -0.4px; }
@@ -313,12 +322,12 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .pop-x { stroke-dasharray: 46; stroke-dashoffset: 46; animation: tickDraw 0.4s 0.4s ease forwards; }
 .pop-card.err .pop-ring { animation: errShake 0.45s 0.45s ease; }
 .pop-confetti i { position: absolute; top: 26px; left: 50%; width: 7px; height: 7px; border-radius: 2px; opacity: 0; animation: confetti 1s 0.35s ease-out forwards; }
-.pop-confetti i:nth-child(1) { background: #25d366; --x: -90px; --r: -120deg; }
+.pop-confetti i:nth-child(1) { background: var(--accent-solid); --x: -90px; --r: -120deg; }
 .pop-confetti i:nth-child(2) { background: #f5b041; --x: -55px; --r: 80deg; }
 .pop-confetti i:nth-child(3) { background: #7ab8ff; --x: -20px; --r: 200deg; }
-.pop-confetti i:nth-child(4) { background: #25d366; --x: 25px; --r: -200deg; }
+.pop-confetti i:nth-child(4) { background: var(--green); --x: 25px; --r: -200deg; }
 .pop-confetti i:nth-child(5) { background: #f5b041; --x: 60px; --r: 140deg; }
-.pop-confetti i:nth-child(6) { background: #7ab8ff; --x: 92px; --r: -80deg; }
+.pop-confetti i:nth-child(6) { background: #a78bfa; --x: 92px; --r: -80deg; }
 @keyframes confetti { 0% { opacity: 1; transform: translate(0, 0) rotate(0); } 100% { opacity: 0; transform: translate(var(--x), 70px) rotate(var(--r)); } }
 
 /* ---------- VeloSales Ai — the chat ----------
@@ -653,10 +662,10 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 [data-theme="dark"] .landing-brand { color: #fff; }
 [data-theme="dark"] .landing-hero h1 { color: #fff; }
 [data-theme="dark"] .landing-hero p { color: #b9d4c2; }
-[data-theme="dark"] .landing-hero .hint { color: #7da391; }
+[data-theme="dark"] .landing-hero .hint { color: var(--text-2); }
 [data-theme="dark"] .landing-phone { background: #10281c; border-color: rgba(255,255,255,0.12); box-shadow: none; }
 [data-theme="dark"] .landing-phone-head { color: #fff; }
-[data-theme="dark"] .landing-phone-head span { color: #7da391; }
+[data-theme="dark"] .landing-phone-head span { color: var(--text-2); }
 [data-theme="dark"] .landing-phone .bubble { background: rgba(255,255,255,0.09); color: #eaf3ed; }
 [data-theme="dark"] .landing-phone .bubble-out { background: #25d366; color: #04120c; }
 [data-theme="dark"] .landing .card { background: #10281c; border-color: rgba(255,255,255,0.1); color: #eaf3ed; box-shadow: none; }
@@ -665,7 +674,7 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .landing-pricing { display: flex; justify-content: space-between; gap: 20px; align-items: center; flex-wrap: wrap; margin: 24px 0 8px; }
 .landing-price { text-align: right; }
 .landing-price b { font-size: 32px; color: #fff; }
-.landing-price span { display: block; font-size: 13px; color: #7da391; margin-bottom: 10px; }
+.landing-price span { display: block; font-size: 13px; color: var(--text-2); margin-bottom: 10px; }
 .landing .foot-links { padding-bottom: 40px; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (max-width: 960px) { .landing-hero { grid-template-columns: 1fr; padding: 40px 20px 28px; } .landing-hero h1 { font-size: 32px; } }
@@ -814,17 +823,33 @@ button.mini-link:hover { text-decoration: underline; }
 .tt-knob { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: var(--card); color: var(--muted); display: grid; place-items: center; font-size: 12px; line-height: 1; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.22); transition: transform var(--t), background var(--t), color var(--t); }
 .theme-toggle.on .tt-knob { transform: translateX(24px); background: var(--purple); color: #fff; }
 
-/* ---------- splash ---------- */
-.splash { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: radial-gradient(900px 480px at 50% 20%, #16432c, #06110c 70%); transition: opacity 0.4s ease; }
+/* ---------- splash ----------
+   A light scene, not a dark green one — the green gradient and the var(--text-2)
+   tagline this replaces were leftovers from the retired brand. The mark
+   assembles itself in three pieces (Logo.jsx's geometry), the wordmark follows
+   letter by letter, and the bar sweeps underneath. */
+.splash { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: radial-gradient(760px 440px at 50% 28%, var(--purple-soft), var(--bg) 74%); transition: opacity 0.32s ease; }
 .splash.out { opacity: 0; pointer-events: none; }
-.splash-inner { text-align: center; animation: splashIn 0.6s ease-out both; }
-@keyframes splashIn { from { opacity: 0; transform: scale(0.9) translateY(14px); } to { opacity: 1; transform: none; } }
-.splash-logo { width: 76px; height: 76px; border-radius: 20px; background: #fff; animation: logoFloat 1.6s ease-in-out infinite alternate; box-shadow: 0 12px 40px rgba(37,211,102,0.35); }
-@keyframes logoFloat { to { transform: translateY(-8px); } }
-.splash-name { color: #fff; font-weight: 800; letter-spacing: 3px; margin-top: 14px; font-size: 20px; }
-.splash-tag { color: #7da391; font-size: 13px; margin-top: 4px; }
-.splash-bar { width: 180px; height: 5px; border-radius: 99px; background: rgba(255,255,255,0.12); margin: 18px auto 0; overflow: hidden; }
-.splash-bar i { display: block; height: 100%; width: 40%; border-radius: 99px; background: var(--accent-solid); animation: barSlide 1s ease-in-out infinite; }
+.splash-inner { text-align: center; display: flex; flex-direction: column; align-items: center; }
+.reveal-mark { position: relative; display: inline-block; flex: 0 0 auto; }
+.reveal-mark svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.reveal-mark .rv-piece { opacity: 0; transform-box: view-box; transform-origin: var(--ox) var(--oy); animation: rvAssemble 0.5s cubic-bezier(0.22, 1.15, 0.36, 1) both; animation-delay: var(--dl, 0s); }
+@keyframes rvAssemble { 0% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--dr)) scale(0.82); } 20% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+.reveal-mark .rv-ring { transform-box: view-box; transform-origin: 301px 348px; animation: rvRing 0.55s ease-out both; }
+.reveal-mark .rv-ring circle { fill: none; stroke: var(--accent-solid); stroke-width: 8; stroke-linecap: round; stroke-dasharray: 860 1860; opacity: 0.32; }
+@keyframes rvRing { 0% { transform: rotate(-50deg); opacity: 0; } 30% { opacity: 1; } 100% { transform: rotate(160deg); opacity: 0; } }
+/* Covers the hairline where the three anti-aliased pieces meet. Faded rather
+   than snapped on, so it cannot pop if a piece is still a frame off home. */
+.reveal-mark .rv-join { opacity: 0; animation: rvJoin 0.15s linear 0.65s both; }
+@keyframes rvJoin { to { opacity: 1; } }
+.reveal-mark .rv-shine { animation: rvShine 0.3s ease-out 0.5s both; }
+@keyframes rvShine { 0% { opacity: 0; transform: translateX(-190px); } 55% { opacity: 1; } 100% { opacity: 0; transform: translateX(190px); } }
+.splash-name { display: flex; color: var(--text-1); font-weight: 800; letter-spacing: -0.6px; margin-top: 18px; font-size: 25px; }
+.splash-name span { display: inline-block; opacity: 0; transform: translateY(0.5em); animation: rvLetter 0.28s cubic-bezier(0.2, 0.9, 0.25, 1.1) both; animation-delay: calc(0.32s + var(--li) * 0.02s); }
+@keyframes rvLetter { to { opacity: 1; transform: none; } }
+.splash-tag { color: var(--text-2); font-size: 13.5px; margin-top: 6px; opacity: 0; animation: rvLetter 0.28s ease-out 0.68s both; }
+.splash-bar { width: 150px; height: 4px; border-radius: 99px; background: var(--purple-soft); margin: 20px auto 0; overflow: hidden; }
+.splash-bar i { display: block; height: 100%; width: 40%; border-radius: 99px; background: var(--accent-solid); animation: barSlide 1.1s ease-in-out infinite; }
 @keyframes barSlide { 0% { transform: translateX(-100%); } 100% { transform: translateX(450%); } }
 
 /* ---------- extra motion: reveal, float, faq ---------- */
@@ -975,11 +1000,11 @@ button.mini-link:hover { text-decoration: underline; }
   .welcome-nav .btn { width: 100%; min-height: 48px; font-size: 15px; }
 }
 
-@media (prefers-reduced-motion: reduce) { .page { animation: none; } .slide.fwd, .slide.back { animation: none; } .splash-bar i, .splash-logo, .landing-phone { animation: none; } .reveal { opacity: 1; transform: none; transition: none; } }
+@media (prefers-reduced-motion: reduce) { .page { animation: none; } .slide.fwd, .slide.back { animation: none; } .splash-bar i, .landing-phone { animation: none; } .reveal-mark .rv-piece, .reveal-mark .rv-shine, .reveal-mark .rv-join, .splash-name span, .splash-tag { animation: none; opacity: 1; transform: none; } .reveal-mark .rv-ring { display: none; } .reveal { opacity: 1; transform: none; transition: none; } }
 
 /* Quiz progress + step transitions + cheers (Welcome.jsx 5-step setup). */
-.quiz-prog { height: 8px; border-radius: 99px; background: var(--line-soft, #e3e8e6); overflow: hidden; margin: 10px 0 2px; }
-.quiz-prog i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #25D366, #7ef0c0); transition: width 0.45s ease-out; }
+.quiz-prog { height: 8px; border-radius: 99px; background: var(--purple-soft); overflow: hidden; margin: 10px 0 2px; }
+.quiz-prog i { display: block; height: 100%; border-radius: 99px; background: var(--accent-solid); transition: width 0.45s ease-out; }
 .quiz-step { animation: quizIn 0.4s cubic-bezier(0.2, 0.9, 0.25, 1.1) both; } /* remounts per step (key={step}) — entrance replays! */
 @keyframes quizIn { from { opacity: 0; transform: translateX(26px) scale(0.98); } }
 .quiz-pop { animation: quizPop 0.35s ease both; } /* staggered via inline animationDelay (set in JSX!) */
@@ -990,8 +1015,8 @@ button.mini-link:hover { text-decoration: underline; }
 /* Welcome niche picker (Welcome.jsx): 2-col grid desktop, 1-col phones. */
 .niche-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
 .niche { display: flex; align-items: center; gap: 8px; text-align: left; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--edge, #e3e8e6); background: var(--card, #fff); font-size: 13.5px; font-weight: 600; cursor: pointer; }
-.niche.sel { border-color: #25D366; box-shadow: 0 0 0 1px #25D366; }
-.qa.sel { border-color: #25D366; box-shadow: 0 0 0 1px #25D366; }
+.niche.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); background: var(--purple-soft); }
+.qa.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 @media (max-width: 640px) { .niche-grid { grid-template-columns: 1fr; } }
 
 /* ── adslot-x: close/dismiss square button (reused by the Admin drawer — kept after the AdSlot cards were removed) */
@@ -1024,16 +1049,8 @@ button.mini-link:hover { text-decoration: underline; }
 .hbar b { text-align: right; }
 @media (max-width: 640px) { .hbar { grid-template-columns: 1fr 34px; } .hbar-track { grid-column: 1 / -1; order: 3; } }
 
-/* ── scatter-and-assemble logo (Splash hero: tiles explode, then snap home) ── */
-.scatter-logo { position: relative; display: inline-block; overflow: hidden; border-radius: 24%; flex: 0 0 auto; }
-.scatter-logo img { position: absolute; inset: 0; width: 100%; height: 100%; animation: scatterAsm 3s ease-in-out infinite; animation-delay: var(--dl, 0s); }
-@keyframes scatterAsm {
-  0% { transform: translate(var(--dx), var(--dy)) rotate(var(--dr)) scale(0.55); opacity: 0; }
-  32% { transform: none; opacity: 1; }
-  68% { transform: none; opacity: 1; }
-  100% { transform: translate(var(--dx), var(--dy)) rotate(var(--dr)) scale(0.55); opacity: 0; }
-}
-@media (prefers-reduced-motion: reduce) { .scatter-logo img { animation: none; } }
+/* the scatter-tiles logo is gone — the splash mark now assembles from its own
+   three pieces (see the splash section above), so there are no bitmap tiles. */
 
 /* ── invisible scrollbars (scroll still works, bars just never show) ── */
 html, body { scrollbar-width: none; -ms-overflow-style: none; }
@@ -1052,7 +1069,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
 @media (prefers-reduced-motion: reduce) { .orbit-loader .orbit-spin { animation: none; } }
 /* ── Connect guide slides (visual road cards: auto-rotating screenshots, branded placeholder until shots land) ── */
 .gslide { margin: 12px 0 4px; }
-.gslide-frame { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: #04120c; aspect-ratio: 16 / 9; min-height: 180px; display: grid; place-items: center; }
+.gslide-frame { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--bg); aspect-ratio: 16 / 9; min-height: 180px; display: grid; place-items: center; }
 .gslide-frame img { width: 100%; height: 100%; object-fit: contain; display: block; } /* contain (never cover!): portrait phone shots show WHOLE, letterboxed on dark — nothing cropped ever */
 .gslide-ph { display: grid; place-items: center; gap: 4px; padding: 20px; text-align: center; background: linear-gradient(135deg, var(--purple-soft), rgba(99,102,241,.05)); }
 .gslide-ph b { letter-spacing: 3px; font-size: 13px; }

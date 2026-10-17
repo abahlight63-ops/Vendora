@@ -7,7 +7,6 @@
 import 'package:flutter/material.dart';
 
 import '../brand_mark.dart';
-import '../theme.dart';
 import '../widgets/brand_ui.dart';
 
 class HelpScreen extends StatelessWidget {

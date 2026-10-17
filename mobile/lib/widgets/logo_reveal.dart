@@ -187,7 +187,6 @@ class _RevealPainter extends CustomPainter {
 
     // ── the settling: 0 while scattered, 1 when in place ──
     final raw = ((t - 0.34) / 0.44).clamp(0.0, 1.0);
-    final settle = Curves.easeOutBack.transform(raw); // slight overshoot
     // A group turn that unwinds as the pieces arrive.
     final groupRot = (1 - Curves.easeOutCubic.transform(raw)) * -0.14;
 

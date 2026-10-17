@@ -101,7 +101,12 @@ class BrandMark extends StatelessWidget {
   /// it is decoration, so it does not belong on every row.
   final bool glow;
 
-  const BrandMark({super.key, this.size = 34, this.glow = false});
+  /// Paint the mark flat in ONE colour instead of the purple ramp. For coloured
+  /// surfaces — the auth header is itself purple, so the ramp would vanish into
+  /// it, while a white mark still reads as the brand.
+  final Color? solid;
+
+  const BrandMark({super.key, this.size = 34, this.glow = false, this.solid});
 
   @override
   Widget build(BuildContext context) {
@@ -111,6 +116,7 @@ class BrandMark extends StatelessWidget {
       child: CustomPaint(
         painter: _MarkPainter(
           gradient: markGradient(context),
+          solid: solid,
           glow: glow ? VeloSalesTheme.markMid(context) : null,
         ),
       ),
@@ -120,9 +126,10 @@ class BrandMark extends StatelessWidget {
 
 class _MarkPainter extends CustomPainter {
   final Gradient gradient;
+  final Color? solid;
   final Color? glow;
 
-  const _MarkPainter({required this.gradient, this.glow});
+  const _MarkPainter({required this.gradient, this.solid, this.glow});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -141,15 +148,19 @@ class _MarkPainter extends CustomPainter {
       );
     }
 
-    canvas.drawPath(
-      _outline,
-      Paint()
-        ..shader = gradient.createShader(const Rect.fromLTWH(0, 0, kMarkW, kMarkH)),
-    );
+    final fill = Paint();
+    if (solid != null) {
+      fill.color = solid!;
+    } else {
+      fill.shader =
+          gradient.createShader(const Rect.fromLTWH(0, 0, kMarkW, kMarkH));
+    }
+    canvas.drawPath(_outline, fill);
 
     canvas.restore();
   }
 
   @override
-  bool shouldRepaint(_MarkPainter old) => old.gradient != gradient || old.glow != glow;
+  bool shouldRepaint(_MarkPainter old) =>
+      old.gradient != gradient || old.glow != glow || old.solid != solid;
 }

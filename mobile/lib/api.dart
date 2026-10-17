@@ -347,10 +347,10 @@ class ApiClient {
   Future<Map<String, dynamic>> metaEmbedded(
       {String? code, String? wabaId, String? phoneNumberId, String? token}) async =>
       (await post('/api/me/channels/meta/embedded', {
-        if (code != null) 'code': code,
-        if (wabaId != null) 'waba_id': wabaId,
-        if (phoneNumberId != null) 'phone_number_id': phoneNumberId,
-        if (token != null) 'token': token,
+        'code': ?code,
+        'waba_id': ?wabaId,
+        'phone_number_id': ?phoneNumberId,
+        'token': ?token,
       }) as Map)
           .cast<String, dynamic>();
 

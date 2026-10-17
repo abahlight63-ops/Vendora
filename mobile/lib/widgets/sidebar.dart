@@ -4,7 +4,6 @@
 import 'package:flutter/material.dart';
 
 import '../brand_mark.dart';
-import '../theme.dart';
 import 'brand_ui.dart';
 
 /// One row in the drawer.

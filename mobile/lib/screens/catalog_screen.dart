@@ -213,7 +213,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                     child: DropdownButtonFormField<String>(
-                        value: _cat,
+                        initialValue: _cat,
                         isExpanded: true, // long shelf names (Laptops & Computers) wrap instead of overflowing!
                         hint: const Text('Category'),
                         items: _shelves
@@ -298,7 +298,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                               width: 56,
                               height: 56,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Icon(
+                              errorBuilder: (_, _, _) => const Icon(
                                   Icons.image_not_supported_outlined),
                             ),
                           ),
@@ -373,7 +373,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                             cacheWidth:
                                                 88, // 44pt × 2x screen (tiny RAM, sharp on retina!)
                                             fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) =>
+                                            errorBuilder: (_, _, _) =>
                                                 const Icon(Icons
                                                     .image_not_supported_outlined),
                                           ),

@@ -252,7 +252,7 @@ class _HomeShellState extends State<HomeShell> {
                                   cacheWidth:
                                       88, // 44pt thumb at 2x (cheap RAM, crisp look!)
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => const Icon(
+                                  errorBuilder: (_, _, _) => const Icon(
                                       Icons.image_not_supported_outlined),
                                 ),
                               )
@@ -310,7 +310,7 @@ class _HomeShellState extends State<HomeShell> {
                 child: Image.network(
                   full['image_url'] as String,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
+                  errorBuilder: (_, _, _) =>
                       const Icon(Icons.image_not_supported_outlined),
                 ),
               ),

@@ -63,10 +63,10 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  assets:
-    # No raster logo: the mark is drawn from vectors (lib/brand_mark.dart).
-    # The designer's 1024px icons stay in assets/ as reference, undeclared so
-    # they are not bundled into the APK.
+  # No assets are bundled: the mark is drawn from vectors
+  # (lib/brand_mark.dart), and the designer's 1024px icons stay in assets/ as
+  # reference only — undeclared, so they never reach the APK.
+  # (An empty `assets:` key is not valid, hence it is a comment.)
 
   # Manrope is the app's typeface (same family as the web build). Inter stays
   # registered only so any lingering `fontFamily: 'Inter'` call site still

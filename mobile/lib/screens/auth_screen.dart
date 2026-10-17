@@ -1,10 +1,18 @@
 // ── lib/screens/auth_screen.dart ─────────────────────────────────
-// WHAT: login + signup + OTP in ONE screen (segmented modes). Mirrors the
-// web Login page flow: signup → OTP emailed → verify-otp → in. Login with
-// an unverified email drops you to OTP automatically (backend 403 pattern).
+// WHAT: login + signup + OTP + forgot, in ONE screen (segmented modes).
+// Mirrors the web Login page flow: signup → OTP emailed → verify-otp → in.
+// Login with an unverified email drops you to OTP automatically (the backend
+// answers 403 for that).
+//
+// The look is built from widgets/auth_ui.dart — a purple band with the brand
+// on it, and a white panel that rises out of it. The logic below is the same
+// calls the app always made; only the order of the mode-3 branch was wrong
+// (it fell through to "verify code"), so it is written out explicitly now.
 import 'package:flutter/material.dart';
 
 import '../api.dart';
+import '../theme.dart';
+import '../widgets/auth_ui.dart';
 
 class AuthScreen extends StatefulWidget {
   final VoidCallback onAuthed;
@@ -15,8 +23,8 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  // mode: 0 login · 1 signup · 2 otp · 3 forgot (reset link via email,
-  // opened in the browser — deep links are phase 2, the email works today!)
+  // mode: 0 login · 1 signup · 2 otp · 3 forgot (reset link via email, opened
+  // in the browser — deep links are phase 2, the email works today!)
   int _mode = 0;
   final _name = TextEditingController();
   final _email = TextEditingController();
@@ -27,11 +35,12 @@ class _AuthScreenState extends State<AuthScreen> {
   final _newPass = TextEditingController(); // forgot-code path: new password (8+ chars!)
   final _newPass2 = TextEditingController(); // forgot-code path: repeat (must match!)
   bool _forReset = false; // true = OTP screen is proving inbox for a PASSWORD RESET (submit sets password, no login!)
+  bool _agreed = false; // signup: Terms + Privacy accepted (signup only!)
   bool _busy = false;
   String? _err;
   String? _ok; // green confirmation line (link sent, code resent — success needs a voice too!)
   String? _refMsg; // live reward preview ("Reward attached…") or null
-  bool _refOk = false; // green (attached!) vs red (unknown code — signup still works!)
+  bool _refOk = false; // green (attached!) vs amber (unknown code — signup still works!)
 
   @override
   void dispose() {
@@ -82,291 +91,467 @@ class _AuthScreenState extends State<AuthScreen> {
         setState(() => _err = e.message);
       }
     } catch (e) {
-      setState(() => _err = 'No connection — check internet and retry.');
+      setState(() => _err = 'No connection — check your internet and try again.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
+  void _go(int mode) {
+    setState(() {
+      _mode = mode;
+      _err = null;
+      _ok = null;
+      if (mode != 2) _forReset = false;
+    });
+  }
+
+  /// What the primary button does, per mode. Same calls as before.
+  Future<void> _submit() async {
+    FocusScope.of(context).unfocus();
+
+    // The one gate before signup: the box, then the shop exists.
+    if (_mode == 1 && !_agreed) {
+      setState(() => _err =
+          'Tick the box to accept the Terms and Privacy Policy, then create your shop.');
+      return;
+    }
+
+    await _run(() async {
+      if (_mode == 0) {
+        await ApiClient.instance.login(_email.text.trim(), _pass.text);
+        widget.onAuthed();
+        return;
+      }
+
+      if (_mode == 1) {
+        final b = await ApiClient.instance.signup(
+          _name.text.trim(),
+          _email.text.trim(),
+          _pass.text,
+          _phone.text.trim(),
+          _ref.text.trim().isEmpty
+              ? null
+              : _ref.text.trim(), // omitted when blank = organic signup!
+        );
+        // Dev-mode auto-login (email service off) skips OTP.
+        if (!mounted) return;
+        if (b['auto'] == true) {
+          widget.onAuthed();
+        } else {
+          setState(() => _mode = 2);
+        }
+        return;
+      }
+
+      if (_mode == 2) {
+        if (_forReset) {
+          // FORGOT-CODE path: code + NEW password in one call (no login — back to sign in!).
+          if (_newPass.text.length < 8) {
+            setState(() => _err = 'New password must be at least 8 characters.');
+            return;
+          }
+          if (_newPass.text != _newPass2.text) {
+            setState(() => _err = 'Passwords don’t match — retype both.');
+            return;
+          }
+          await ApiClient.instance.resetOtp(
+              _email.text.trim(), _code.text.trim(), _newPass.text);
+          if (!mounted) return;
+          setState(() {
+            _forReset = false;
+            _mode = 0;
+            _ok = 'Password set — sign in with the new one.';
+          });
+          return;
+        }
+        await ApiClient.instance.verifyOtp(_email.text.trim(), _code.text.trim());
+        widget.onAuthed();
+        return;
+      }
+
+      // mode 3 — send the reset link to the browser.
+      await ApiClient.instance.forgot(_email.text.trim());
+      if (!mounted) return;
+      setState(() => _ok =
+          'Reset link sent — check your inbox (and spam). Open it, set a new password, then sign in here.');
+    });
+  }
+
+  /// Google/Apple are drawn on the screen but no provider is switched on yet.
+  /// Saying so plainly beats a button that silently does nothing.
+  void _notWired(String provider) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.lock_clock_outlined, size: 18, color: Colors.white),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '$provider sign-in is not switched on yet. Use your email — it works today.',
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: VeloSalesTheme.purpleDark,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+  }
+
+  String get _title => switch (_mode) {
+        0 => 'Sign in',
+        1 => 'Create An Account',
+        2 => _forReset ? 'Set a new password' : 'Verify your email',
+        _ => 'Reset your password',
+      };
+
+  String get _subtitle => switch (_mode) {
+        0 => 'Use the email and password you signed up with.',
+        1 => 'Free for 7 days, no card. Your shop is live the moment you are in.',
+        2 => _forReset
+            ? 'Enter the 6-digit code we emailed, plus the new password you want.'
+            : 'We emailed a 6-digit code to ${_email.text.trim().isEmpty ? 'your inbox' : _email.text.trim()}. It can take a minute — check spam too.',
+        _ => 'Type your account email and we will send a reset link. Open it in your browser, set a new password, then sign in here.',
+      };
+
+  String get _action => switch (_mode) {
+        0 => 'Sign in',
+        1 => 'Create my shop',
+        2 => _forReset ? 'Set new password' : 'Verify and enter',
+        _ => 'Send reset link',
+      };
+
+  String get _tagline => switch (_mode) {
+        0 => 'Welcome back — your shop never slept.',
+        1 => 'Your 24/7 shop, live in minutes.',
+        2 => _forReset ? 'Almost there — one last step.' : 'One code and you are in.',
+        _ => 'We all forget things.',
+      };
+
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final signup = _mode == 1;
+
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text('VELOSALES AI',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 6)),
-                const SizedBox(height: 6),
-                Text(
-                  _mode == 0
-                      ? 'Welcome back — your shop never slept.'
-                      : _mode == 1
-                          ? 'Open your 24/7 shop in minutes.'
-                          : _mode == 3
-                              ? 'Locked out? We all forget things.'
-                              : 'Check your inbox for the 6-digit code.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey[400]),
-                ),
-                const SizedBox(height: 24),
-                if (_mode == 0 || _mode == 1)
-                  SegmentedButton<int>(
-                    segments: const [
-                      ButtonSegment(value: 0, label: Text('Sign in')),
-                      ButtonSegment(value: 1, label: Text('Sign up')),
-                    ],
-                    selected: {_mode},
-                    onSelectionChanged: (s) =>
-                        setState(() => _mode = s.first),
-                  ),
-                const SizedBox(height: 16),
-                if (_mode == 1)
-                  TextField(
-                      controller: _name,
-                      textCapitalization: TextCapitalization.words,
-                      decoration:
-                          const InputDecoration(labelText: 'Shop name')),
-                if (_mode == 1) const SizedBox(height: 12),
-                if (_mode != 2)
-                  TextField(
-                      controller: _email,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration:
-                          const InputDecoration(labelText: 'Email')),
-                if (_mode != 2) const SizedBox(height: 12),
-                if (_mode == 0 || _mode == 1)
-                  TextField(
-                      controller: _pass,
-                      obscureText: true,
-                      decoration: InputDecoration(
-                          labelText: _mode == 1
-                              ? 'Password (min 8 chars)'
-                              : 'Password')),
-                if (_mode == 1) const SizedBox(height: 12),
-                if (_mode == 1)
-                  TextField(
-                      controller: _phone,
-                      keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(
-                          labelText: 'WhatsApp number',
-                          hintText: '0803 123 4567')),
-                if (_mode == 1) const SizedBox(height: 12),
-                if (_mode == 1)
-                  TextField(
-                      controller: _ref,
-                      textCapitalization: TextCapitalization.characters,
-                      onChanged: (_) => setState(() {
-                        _refMsg = null; // typing clears the preview (recheck on blur!)
-                        _refOk = false;
+      backgroundColor: scheme.surface,
+      body: Column(
+        children: [
+          AuthHeader(tagline: _tagline),
+          Expanded(
+            child: AuthPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AuthPanelTitle(title: _title, subtitle: _subtitle),
+                  const SizedBox(height: 22),
+                  ..._fields(),
+                  if (signup) ...[
+                    const SizedBox(height: 16),
+                    AuthCheckRow(
+                      value: _agreed,
+                      onChanged: (v) => setState(() {
+                        _agreed = v;
+                        if (v) _err = null;
                       }),
-                      onEditingComplete: _checkRef, // done typing → validate + show the reward!
-                      decoration: const InputDecoration(
-                          labelText: 'Referral code (optional)',
-                          hintText: 'e.g. AMAKA-4F2K')),
-                if (_mode == 1 && _refMsg != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(_refMsg!,
-                        style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
-                            color: _refOk ? Colors.green : Colors.orange)),
+                      label: _termsLabel(scheme),
+                    ),
+                  ],
+                  if (_err != null) ...[
+                    const SizedBox(height: 16),
+                    AuthNotice(message: _err!),
+                  ],
+                  if (_ok != null) ...[
+                    const SizedBox(height: 16),
+                    AuthNotice(message: _ok!, kind: AuthNoticeKind.done),
+                  ],
+                  const SizedBox(height: 20),
+                  AuthPrimaryButton(
+                    label: _action,
+                    busy: _busy,
+                    busyLabel: 'Please wait…',
+                    onPressed: _busy ? null : _submit,
                   ),
-                if (_mode == 2)
-                  TextField(
-                      controller: _code,
-                      keyboardType: TextInputType.number,
-                      maxLength: 6,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontSize: 28,
-                          letterSpacing: 8,
-                          fontWeight: FontWeight.bold),
-                      decoration:
-                          const InputDecoration(labelText: '6-digit code')),
-                if (_mode == 2 && _forReset) ...[
-                  const SizedBox(height: 12),
-                  TextField(
-                      controller: _newPass,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                          labelText: 'New password (min 8 chars)')),
-                  const SizedBox(height: 12),
-                  TextField(
-                      controller: _newPass2,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                          labelText: 'Repeat new password')),
+                  if (signup) ...[
+                    const SizedBox(height: 24),
+                    const AuthOrDivider(),
+                    const SizedBox(height: 18),
+                    AuthSocialRow(
+                      onGoogle: () => _notWired('Google'),
+                      onApple: () => _notWired('Apple'),
+                    ),
+                  ],
+                  const SizedBox(height: 18),
+                  _footer(),
                 ],
-                if (_mode == 3)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 6),
-                    child: Text(
-                        'Type your account email — we send a reset link (1 hour). Open it in your browser, set a new password, then sign in here.',
-                        style: TextStyle(fontSize: 12.5)),
-                  ),
-                if (_err != null) ...[
-                  const SizedBox(height: 12),
-                  Text(_err!,
-                      style: const TextStyle(color: Colors.redAccent)),
-                ],
-                if (_ok != null) ...[
-                  const SizedBox(height: 12),
-                  Text(_ok!, style: const TextStyle(color: Colors.green)),
-                ],
-                const SizedBox(height: 20),
-                FilledButton(
-                  onPressed: _busy
-                      ? null
-                      : () => _run(() async {
-                            if (_mode == 0) {
-                              await ApiClient.instance.login(
-                                  _email.text.trim(), _pass.text);
-                              widget.onAuthed();
-                            } else if (_mode == 1) {
-                              final b = await ApiClient.instance.signup(
-                                _name.text.trim(),
-                                _email.text.trim(),
-                                _pass.text,
-                                _phone.text.trim(),
-                                _ref.text.trim().isEmpty
-                                    ? null
-                                    : _ref.text.trim(), // omitted when blank = organic signup!
-                              );
-                              // Dev-mode auto-login (email service off) skips OTP.
-                              if (b['auto'] == true) {
-                                widget.onAuthed();
-                              } else if (_mode == 3) {
-                                await ApiClient.instance
-                                    .forgot(_email.text.trim());
-                                if (!mounted) return;
-                                setState(() => _ok =
-                                    'Reset link sent — check your inbox (and spam). Open it, set a password, then sign in here.');
-                            } else if (_mode == 3) {
-                                await ApiClient.instance
-                                    .forgot(_email.text.trim());
-                                if (!mounted) return;
-                                setState(() => _ok =
-                                    'Reset link sent — check your inbox (and spam). Open it, set a password, then sign in here.');
-                              } else if (_forReset) {
-                                // FORGOT-CODE path: code + NEW password in one call (no login — back to sign in!).
-                                if (_newPass.text.length < 8) {
-                                  setState(() => _err =
-                                      'New password must be at least 8 characters.');
-                                  return;
-                                }
-                                if (_newPass.text != _newPass2.text) {
-                                  setState(() => _err =
-                                      'Passwords don’t match — retype both.');
-                                  return;
-                                }
-                                await ApiClient.instance.resetOtp(
-                                    _email.text.trim(),
-                                    _code.text.trim(),
-                                    _newPass.text);
-                                if (!mounted) return;
-                                setState(() {
-                                  _forReset = false;
-                                  _mode = 0;
-                                  _ok =
-                                      'Password set — sign in with the new one.';
-                                });
-                              } else {
-                                setState(() => _mode = 2);
-                              }
-                            } else {
-                              await ApiClient.instance.verifyOtp(
-                                  _email.text.trim(), _code.text.trim());
-                              widget.onAuthed();
-                            }
-                          }),
-                  child: Text(_busy
-                      ? 'Please wait…'
-                      : _mode == 0
-                          ? 'Sign in'
-                          : _mode == 1
-                              ? 'Create shop — free trial'
-                              : _mode == 3
-                                  ? 'Send reset link'
-                                  : 'Verify & enter'),
-                ),
-                if (_mode == 2) ...[
-                  TextButton(
-                    onPressed: _busy
-                        ? null
-                        : () => _run(() async {
-                              if (_forReset) {
-                                await ApiClient.instance
-                                    .forgotOtp(_email.text.trim());
-                              } else {
-                                await ApiClient.instance
-                                    .resendOtp(_email.text.trim());
-                              }
-                            }),
-                    child: const Text('Resend code'),
-                  ),
-                  TextButton(
-                    onPressed: _busy
-                        ? null
-                        : () => _run(() async {
-                              final r = await ApiClient.instance
-                                  .otpLink(_email.text.trim());
-                              if (!mounted) return;
-                              setState(() => _ok =
-                                  '${r['message'] ?? 'Link sent — check your inbox AND spam folder.'}');
-                            }),
-                    child: const Text('Email didn\'t arrive? Send a link instead'),
-                  ),
-                ],
-                if (_mode == 0)
-                  TextButton(
-                    onPressed: () => setState(() {
-                      _mode = 3;
-                      _forReset = false;
-                    }),
-                    child: const Text('Forgot password?'),
-                  ),
-                if (_mode == 3) ...[
-                  TextButton(
-                    onPressed: _busy
-                        ? null
-                        : () => _run(() async {
-                              await ApiClient.instance
-                                  .forgotOtp(_email.text.trim());
-                              if (!mounted) return;
-                              setState(() {
-                                _forReset = true;
-                                _mode = 2;
-                              });
-                            }),
-                    child: const Text('Send a code instead'),
-                  ),
-                  TextButton(
-                    onPressed: () => setState(() => _mode = 0),
-                    child: const Text('Back to sign in'),
-                  ),
-                ],
-                if (_mode == 0 || _mode == 1)
-                  TextButton(
-                    onPressed: () =>
-                        setState(() => _mode = _mode == 0 ? 1 : 0),
-                    child: Text(_mode == 0
-                        ? 'New here? Create a shop'
-                        : 'Have an account? Sign in'),
-                  ),
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
+    );
+  }
+
+  Widget _termsLabel(ColorScheme scheme) => Text.rich(
+        TextSpan(
+          style: TextStyle(
+            fontSize: 12.5,
+            height: 1.45,
+            color: scheme.onSurface.withValues(alpha: 0.66),
+          ),
+          children: [
+            const TextSpan(text: 'I agree to the '),
+            TextSpan(
+              text: 'Terms of Service',
+              style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: scheme.onSurface.withValues(alpha: 0.88)),
+            ),
+            const TextSpan(text: ' and '),
+            TextSpan(
+              text: 'Privacy Policy',
+              style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: scheme.onSurface.withValues(alpha: 0.88)),
+            ),
+            const TextSpan(text: '.'),
+          ],
+        ),
+      );
+
+  /// The fields for the current mode, top to bottom.
+  List<Widget> _fields() {
+    final out = <Widget>[];
+    void add(Widget w, {double gap = 13}) {
+      if (out.isNotEmpty) out.add(SizedBox(height: gap));
+      out.add(w);
+    }
+
+    if (_mode == 1) {
+      add(AuthField(
+        icon: Icons.storefront_outlined,
+        hint: 'Shop name',
+        controller: _name,
+        textCapitalization: TextCapitalization.words,
+      ));
+    }
+
+    if (_mode != 2) {
+      add(AuthField(
+        icon: Icons.alternate_email_rounded,
+        hint: _mode == 3 ? 'Your account email' : 'Email address',
+        controller: _email,
+        keyboardType: TextInputType.emailAddress,
+      ));
+    }
+
+    if (_mode == 0 || _mode == 1) {
+      add(AuthField(
+        icon: Icons.lock_outline_rounded,
+        hint: _mode == 1 ? 'Password (8+ characters)' : 'Password',
+        controller: _pass,
+        obscure: true,
+      ));
+    }
+
+    if (_mode == 0) {
+      add(
+        Align(
+          alignment: Alignment.centerRight,
+          child: AuthInlineLink(
+            label: 'Forgot password?',
+            onTap: _busy ? null : () => _go(3),
+          ),
+        ),
+        gap: 4,
+      );
+    }
+
+    if (_mode == 1) {
+      add(AuthField(
+        icon: Icons.chat_outlined,
+        hint: 'WhatsApp number',
+        controller: _phone,
+        keyboardType: TextInputType.phone,
+      ));
+      add(Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AuthField(
+            icon: Icons.card_giftcard_rounded,
+            hint: 'Referral code (optional)',
+            controller: _ref,
+            textCapitalization: TextCapitalization.characters,
+            onChanged: (_) => setState(() {
+              _refMsg = null; // typing clears the preview (recheck on blur!)
+              _refOk = false;
+            }),
+            onEditingComplete: _checkRef, // done typing → validate + show the reward!
+          ),
+          if (_refMsg != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 9, left: 4, right: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    _refOk ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+                    size: 15,
+                    color: _refOk ? VeloSalesTheme.green : VeloSalesTheme.gold,
+                  ),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: Text(
+                      _refMsg!,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        height: 1.35,
+                        fontWeight: FontWeight.w600,
+                        color: _refOk
+                            ? VeloSalesTheme.greenDark
+                            : VeloSalesTheme.gold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ));
+    }
+
+    if (_mode == 2) {
+      add(AuthField(
+        icon: Icons.password_rounded,
+        hint: '6-digit code',
+        controller: _code,
+        keyboardType: TextInputType.number,
+        maxLength: 6,
+        textAlign: TextAlign.center,
+        textStyle: TextStyle(
+          fontSize: 24,
+          letterSpacing: 10,
+          fontWeight: FontWeight.w800,
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
+      ));
+      if (_forReset) {
+        add(AuthField(
+          icon: Icons.lock_outline_rounded,
+          hint: 'New password (8+ characters)',
+          controller: _newPass,
+          obscure: true,
+        ));
+        add(AuthField(
+          icon: Icons.lock_reset_rounded,
+          hint: 'Repeat new password',
+          controller: _newPass2,
+          obscure: true,
+        ));
+      }
+    }
+
+    if (_mode == 3) {
+      add(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.info_outline_rounded,
+                size: 15, color: VeloSalesTheme.gold),
+            const SizedBox(width: 7),
+            Expanded(
+              child: Text(
+                'The link lasts 1 hour. It opens in your browser, where you set the new password.',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  height: 1.4,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.58),
+                ),
+              ),
+            ),
+          ],
+        ),
+        gap: 10,
+      );
+    }
+
+    return out;
+  }
+
+  Widget _footer() {
+    if (_mode == 0) {
+      return AuthFooterPrompt(
+        prompt: 'New here?',
+        action: 'Create an account',
+        onTap: _busy ? null : () => _go(1),
+      );
+    }
+    if (_mode == 1) {
+      return AuthFooterPrompt(
+        prompt: 'Already have an account?',
+        action: 'Sign in',
+        onTap: _busy ? null : () => _go(0),
+      );
+    }
+    if (_mode == 2) {
+      return Column(
+        children: [
+          AuthInlineLink(
+            label: 'Resend code',
+            onTap: _busy
+                ? null
+                : () => _run(() async {
+                      if (_forReset) {
+                        await ApiClient.instance.forgotOtp(_email.text.trim());
+                      } else {
+                        await ApiClient.instance.resendOtp(_email.text.trim());
+                      }
+                    }),
+          ),
+          AuthInlineLink(
+            label: "Email didn't arrive? Send a link instead",
+            onTap: _busy
+                ? null
+                : () => _run(() async {
+                      final r = await ApiClient.instance.otpLink(_email.text.trim());
+                      if (!mounted) return;
+                      setState(() => _ok =
+                          '${r['message'] ?? 'Link sent — check your inbox AND spam folder.'}');
+                    }),
+          ),
+        ],
+      );
+    }
+    return Column(
+      children: [
+        AuthInlineLink(
+          label: 'Send a code instead',
+          onTap: _busy
+              ? null
+              : () => _run(() async {
+                    await ApiClient.instance.forgotOtp(_email.text.trim());
+                    if (!mounted) return;
+                    setState(() {
+                      _forReset = true;
+                      _mode = 2;
+                    });
+                  }),
+        ),
+        AuthInlineLink(
+          label: 'Back to sign in',
+          onTap: _busy ? null : () => _go(0),
+        ),
+      ],
     );
   }
 }

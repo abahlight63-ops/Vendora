@@ -6,8 +6,6 @@
 // Light/dark aware via the active ColorScheme.
 import 'package:flutter/material.dart';
 
-import 'theme.dart'; // accentTeal (same glow the web app uses!)
-
 /// Blur strength for cards vs sheets/dialogs.
 ///
 /// Was 18/22 — real backdrop blur, with translucent tints so a mesh gradient

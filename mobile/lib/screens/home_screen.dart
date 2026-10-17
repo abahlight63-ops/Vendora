@@ -67,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _bizName = '${biz['business_name'] ?? ''}'.trim();
         _niche = '${biz['business_niche'] ?? ''}'.trim();
         _needsYou = convos
-            .where((e) => (e as Map)['needs_human'] == true || (e as Map)['needs_human'] == 1)
+            .where((e) => e['needs_human'] == true || e['needs_human'] == 1)
             .length;
         _recent = threads.take(3).toList();
         _loading = false;

@@ -63,16 +63,23 @@ Last updated: **17 Oct 2026**. Legend: `[x]` done · `[~]` partly done · `[ ]` 
 
 ## 3. Auth screens
 
-- [ ] **Rebuild sign-in / sign-up to the reference:**
-      centred title + subtitle · labelled fields with rounded grey pill inputs
-      · password reveal toggle · "Remember me" checkbox + red "Forgot password?"
-      · full-width dark pill primary button · "OR" divider · "Continue with
-      Google" · "Continue with Apple" · centred footer link.
-- [ ] **OTP screen** — 4 boxes with focus, Continue button, "Resend OTP".
-- [ ] **Google sign-in** — button + native flow wired to the existing
-      `/api/auth/google` endpoint (blocked on the SHA-1 registration above).
-- [ ] **Apple sign-in** — button present; needs an Apple developer account to
-      actually function. Flag rather than fake.
+- [~] **Sign-up + sign-in rebuilt to the reference** (phone, one
+      screen for all four modes). Drawn from `widgets/auth_ui.dart`:
+      purple band with the mark and wordmark · white sheet with a 30px top
+      radius rising 26px over it · "Create An Account" · one icon-led field per
+      row (leading icon, hairline divider, focus glow) · password reveal ·
+      terms checkbox · full-width solid purple button with an in-button spinner
+      · "Or sign up with" + circular Google/Apple buttons · footer switch.
+      Errors / success / hints are three styled notices (`AuthNotice`).
+      **Left:** the web side still uses the older centred-card layout.
+- [ ] **Google sign-in** — the button is on the screen and says so when tapped;
+      it needs the SHA-1 registration above before it can do anything.
+- [ ] **Apple sign-in** — same: present, and honest about not being live.
+- [!] **Terms of Service / Privacy Policy pages do not exist yet** — the
+      checkbox labels them but there is nothing to link to. Say the word and I
+      will write both pages.
+- [x] **OTP is part of the same screen** — 6-digit code (capped, centred,
+      letter-spaced), plus the new-password pair on the reset-code path.
 
 ## 4. VeloSales Ai chat
 

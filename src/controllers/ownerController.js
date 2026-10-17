@@ -46,7 +46,7 @@ async function getMe(req, res) {
             b.bot_enabled, b.personal_contacts, b.plan_tier,
             b.business_niche, b.heard_from, b.catalog_size, b.channels, b.daily_volume,
             b.referral_code, b.bonus_pro_until,
-            b.greeting_msg, b.handoff_msg,
+            b.greeting_msg, b.handoff_msg, b.avatar_url,
             b.subscription_status, b.subscription_expires, b.trial_started_at,
             b.trial_warned, b.trial_expiry_notified
      FROM businesses b WHERE b.id = $1`, // b = alias; WHERE session id (never a client id!)
@@ -261,6 +261,17 @@ async function upsertProduct(req, res, next) {
   }
 }
 
+// ── one place that turns a saved upload into a public URL ────────────────
+// Cloudinary hands back a permanent https URL; a local save only has a
+// filename, so we build an ABSOLUTE url from the request (Meta/Telegram fetch
+// these server-side — a bare path would be useless to them).
+function publicUploadUrl(req, saved) {
+  if (saved.url) return saved.url; // cloud (permanent — survives redeploys!)
+  const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '') // explicit public host wins (set it on Railway/Render!)…
+    || `${req.protocol}://${req.get('host')}`; // …else build from this request (right in local dev!)
+  return `${base}/uploads/${saved.localFile}`;
+}
+
 // Upload media: host an owner-picked product photo (Catalog "Upload media"
 // button). Body: { filename, dataUrl } where dataUrl is a
 // "data:image/…;base64,…" string (no new deps — JSON, not multipart!).
@@ -271,14 +282,39 @@ async function uploadProductPhoto(req, res) {
   try {
     const media = require('../services/mediaStore');
     const saved = await media.saveUpload({ dataUrl, prefix: 'biz', businessId: req.session.businessId, allowVideo: false });
-    if (saved.url) return res.json({ url: saved.url }); // cloud (permanent!)
-    const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '') // explicit public host wins (set it on Railway/Render!)…
-      || `${req.protocol}://${req.get('host')}`; // …else build from this request (right in local dev!)
-    return res.json({ url: `${base}/uploads/${saved.localFile}` }); // absolute URL: Meta/Telegram fetch it server-side!
+    return res.json({ url: publicUploadUrl(req, saved) }); // absolute URL: Meta/Telegram fetch it server-side!
   } catch (e) {
     if (e && e.status === 400) return res.status(400).json({ error: e.message });
     console.error('product-photo upload error:', e.message);
     return res.status(500).json({ error: 'Could not save photo — try again.' });
+  }
+}
+
+// Upload the owner's own profile picture (Settings → the pencil on the profile
+// card). Body: { dataUrl } — the same "data:image/…;base64,…" JSON the product
+// photo takes, so the whole app has ONE upload path, not two. A JSON `null`
+// (or an empty string) clears it, which is what "Remove photo" sends.
+//
+// The picture is small when it arrives on purpose — both clients shrink it to
+// 256px before sending — so what we store is tens of KB, and we can keep the
+// URL on the business row instead of standing up a second storage service.
+async function uploadAvatar(req, res) {
+  const { dataUrl } = req.body || {};
+  const businessId = req.session.businessId;
+  try {
+    if (dataUrl === null || dataUrl === '') { // explicit clear — never a silent no-op!
+      await db.query('UPDATE businesses SET avatar_url = NULL WHERE id = $1', [businessId]);
+      return res.json({ avatar_url: null });
+    }
+    const media = require('../services/mediaStore');
+    const saved = await media.saveUpload({ dataUrl, prefix: 'avatar', businessId, allowVideo: false });
+    const url = publicUploadUrl(req, saved);
+    await db.query('UPDATE businesses SET avatar_url = $1 WHERE id = $2', [url, businessId]);
+    return res.json({ avatar_url: url });
+  } catch (e) {
+    if (e && e.status === 400) return res.status(400).json({ error: e.message });
+    console.error('avatar upload error:', e.message);
+    return res.status(500).json({ error: 'Could not save your photo — try again.' });
   }
 }
 
@@ -1186,6 +1222,7 @@ module.exports = { // every handler the routes file wires up (miss one here = ro
   referralExtra,
   upsertProduct,
   uploadProductPhoto,
+  uploadAvatar,
   deleteProduct,
   getConversations,
   getMessages,

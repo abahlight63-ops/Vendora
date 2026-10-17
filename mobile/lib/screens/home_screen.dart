@@ -64,7 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
         });
 
       setState(() {
-        _bizName = '${biz['business_name'] ?? ''}'.trim();
+        _bizName = '${biz['name'] ?? biz['business_name'] ?? ''}'.trim(); // `name` is the real column; business_name only exists in the admin/auth joins
         _niche = '${biz['business_niche'] ?? ''}'.trim();
         _needsYou = convos
             .where((e) => e['needs_human'] == true || e['needs_human'] == 1)

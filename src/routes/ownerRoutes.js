@@ -19,6 +19,7 @@ router.get('/me/referral', ownerController.referralStats); // Refer & Earn card 
 router.get('/me/referral/extra', ownerController.referralExtra); // Refer & Earn page (history + leaderboard!)
 router.post('/me/products', ownerController.upsertProduct); // POST = add/update one product
 router.post('/me/product-photo', ownerController.uploadProductPhoto); // Upload media: host a file-picker image, get back a URL
+router.post('/me/avatar', ownerController.uploadAvatar); // Upload my profile picture (Settings); body { dataUrl } — null clears it
 router.delete('/me/products/:id', ownerController.deleteProduct); // :id = URL param (req.params.id)
 router.get('/me/conversations', ownerController.getConversations); // inbox list (latest 100)
 router.get('/me/conversations/:id/messages', ownerController.getMessages); // full thread (ownership-checked!)

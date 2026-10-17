@@ -340,6 +340,10 @@ ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_phone_number_id TEXT NOT NU
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_verify_token TEXT NOT NULL DEFAULT '';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_waba_id TEXT NOT NULL DEFAULT '';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS whatsapp_last_inbound_at TIMESTAMPTZ;
+-- The owner's profile picture (Settings → avatar). Stored as a hosted URL, the
+-- same way product photos are, so it survives redeploys when Cloudinary is set
+-- up. NULL = never uploaded, and the clients fall back to the name's initial.
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 -- Retire legacy Twilio rows: shops that already moved to Meta stop claiming 'twilio'.
 UPDATE businesses SET wa_channel = 'meta' WHERE wa_channel = 'twilio' AND meta_phone_number_id <> '';
 UPDATE businesses SET wa_channel = 'meta' WHERE wa_channel <> 'meta';

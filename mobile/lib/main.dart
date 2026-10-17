@@ -25,6 +25,7 @@ import 'screens/catalog_screen.dart';
 import 'screens/connect_screen.dart';
 import 'screens/ai_screen.dart';
 import 'screens/billing_screen.dart';
+import 'screens/settings_screen.dart';
 
 void main() => runApp(const VeloSalesApp());
 
@@ -74,7 +75,7 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
       final me = await ApiClient.instance.me(); // cookie valid? (+ business row!)
       final biz = (me['business'] as Map?)?.cast<String, dynamic>();
       final niche = '${biz?['business_niche'] ?? ''}'.trim();
-      final name = '${biz?['business_name'] ?? ''}'.trim();
+      final name = '${biz?['name'] ?? biz?['business_name'] ?? ''}'.trim(); // the business row calls it `name` (business_name is only an alias in the admin/auth joins)
       return [true, niche.isEmpty, name, niche];
     } catch (_) {
       return [false, false, '', ''];
@@ -155,6 +156,7 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _tab = 0;
   int _unread = 0;
+  String? _avatar; // the owner's picture (null = the brand mark stands in)
 
   static const _titles = [
     'Home',
@@ -169,6 +171,32 @@ class _HomeShellState extends State<HomeShell> {
   void initState() {
     super.initState();
     _bootExtras();
+    _loadAvatar();
+  }
+
+  /// The drawer's identity chip. Quiet on failure: no picture is not an error,
+  /// the brand mark simply stays.
+  Future<void> _loadAvatar() async {
+    try {
+      final me = await ApiClient.instance.me();
+      final b = (me['business'] as Map).cast<String, dynamic>();
+      if (!mounted) return;
+      setState(() => _avatar = b['avatar_url'] as String?);
+    } catch (_) {/* keep whatever we had */}
+  }
+
+  /// Settings is pushed (like the dashboard) so the shell and every tab's
+  /// scroll position survive — and so a photo uploaded there can refresh the
+  /// drawer the moment we come back.
+  Future<void> _openSettings() async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => SettingsScreen(
+        mode: widget.mode,
+        onMode: widget.onMode,
+        onGoTab: _go,
+      ),
+    ));
+    _loadAvatar();
   }
 
   /// Shell parity: bell unread count + "VeloSales Ai updated" toast when the
@@ -351,6 +379,7 @@ class _HomeShellState extends State<HomeShell> {
     return Sidebar(
       businessName: widget.bizName,
       niche: widget.niche,
+      avatarUrl: _avatar,
       tab: _tab,
       primary: const [
         SidebarItem(icon: Icons.home_outlined, label: 'Home', tab: 0),
@@ -382,6 +411,12 @@ class _HomeShellState extends State<HomeShell> {
           label: 'Shop overview',
           hint: 'How your bot is performing',
           push: () => _open(DashboardScreen(onGoTab: _go)),
+        ),
+        SidebarItem(
+          icon: Icons.settings_outlined,
+          label: 'Settings',
+          hint: 'Your picture, plan and preferences',
+          push: _openSettings,
         ),
         SidebarItem(
           icon: Icons.menu_book_outlined,

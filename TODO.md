@@ -63,21 +63,25 @@ Last updated: **17 Oct 2026**. Legend: `[x]` done · `[~]` partly done · `[ ]` 
 
 ## 3. Auth screens
 
-- [~] **Sign-up + sign-in rebuilt to the reference** (phone, one
-      screen for all four modes). Drawn from `widgets/auth_ui.dart`:
-      purple band with the mark and wordmark · white sheet with a 30px top
-      radius rising 26px over it · "Create An Account" · one icon-led field per
-      row (leading icon, hairline divider, focus glow) · password reveal ·
-      terms checkbox · full-width solid purple button with an in-button spinner
-      · "Or sign up with" + circular Google/Apple buttons · footer switch.
-      Errors / success / hints are three styled notices (`AuthNotice`).
-      **Left:** the web side still uses the older centred-card layout.
+- [x] **Sign-up + sign-in rebuilt to the reference** — both sides.
+      **Phone:** one screen for all four modes, drawn from `widgets/auth_ui.dart`
+      (purple band with the mark and wordmark · white sheet with a 30px top
+      radius rising 26px over it · one icon-led field per row · password reveal ·
+      full-width solid purple button with an in-button spinner · footer switch).
+      **Web:** rebuilt as the dark split-screen — a near-black frame with a
+      purple brand card on the left (mark + "Get started with us" + a 3-step
+      rail) and the form on the same near-black on the right. Controls are
+      rounded rects to match the reference; the rest of the app keeps pills.
+      Errors / success / hints are styled notices on both.
 - [ ] **Google sign-in** — the button is on the screen and says so when tapped;
       it needs the SHA-1 registration above before it can do anything.
-- [ ] **Apple sign-in** — same: present, and honest about not being live.
-- [!] **Terms of Service / Privacy Policy pages do not exist yet** — the
-      checkbox labels them but there is nothing to link to. Say the word and I
-      will write both pages.
+      **Web** also needs `GOOGLE_CLIENT_ID` set on the backend plus the
+      authorised JS origins.
+- [x] **Apple sign-in removed** (owner call: Google only). There is no Apple
+      button on either client, and no half-built code behind one.
+- [!] **Terms of Service / Privacy Policy pages do not exist yet on the phone** —
+      the web has both (`Terms.jsx` / `Privacy.jsx`); the phone's checkbox names
+      them but has nothing to link to. Say the word and I will write both.
 - [x] **OTP is part of the same screen** — 6-digit code (capped, centred,
       letter-spaced), plus the new-password pair on the reset-code path.
 
@@ -125,9 +129,41 @@ Last updated: **17 Oct 2026**. Legend: `[x]` done · `[~]` partly done · `[ ]` 
 
 ## 9. Remaining screens for parity with the web app
 
-- [ ] Insights · Refer & Earn · Settings · Profile · Notifications as a page
+- [x] **Settings — the account hub, web and phone.** Profile card (your picture,
+      shop name, WhatsApp handle, a pencil) over two tinted row groups: the
+      switches you actually own (*Assistant replies* — the real kill-switch;
+      *Phone alerts* on web, *Dark mode* on the phone) and the doors
+      (plan & billing, business details, AI settings, how-to).
+      **Your profile picture is real** — pick a file, it is centre-cropped to a
+      256px square in the browser/on the device, uploaded, and the hosted URL
+      comes back on `/api/me` so the topbar and drawer show it too.
+      The old AI-voice page moved to `/ai-settings` (one page, one job).
+- [ ] Insights · Refer & Earn · Profile · Notifications as a page
 - [ ] Connect screen polish
 - [ ] Catalog screen polish
+
+---
+
+## 10. Decisions recorded so you know why
+
+- **Found and fixed a real bug while previewing the phone app:** the drawer and
+  the home greeting read `business_name`, which is only an alias the *admin* and
+  *auth* queries add. The business row from `/api/me` calls it `name`, so the
+  drawer said **"Your shop"** instead of your shop's name and the greeting said
+  "Good evening, there." Both now read `name` (with the old key kept as a
+  fallback). Two files: `mobile/lib/main.dart`, `mobile/lib/screens/home_screen.dart`.
+- **"Remember me" was deliberately left off the sign-in form.** The session
+  cookie already lasts 7 days (`maxAge` in `src/server.js`), so the checkbox
+  would change nothing — and a control that does nothing is worse than no
+  control. Say the word and I will make it real (short session by default,
+  7 days only when ticked).
+- **The switch colours are purple, not green.** In the reference screenshot the
+  toggle is green because green *is* that app's brand colour. Ours is purple, so
+  the ON state is purple — and green stays reserved for success/online, as the
+  colour rule says.
+- **Settings has no dead controls.** Every row goes somewhere real
+  (`/billing`, `/profile`, `/ai-settings`, `/help`) or flips something real
+  (`bot_enabled`). There are no switches that only move on screen.
 
 ---
 

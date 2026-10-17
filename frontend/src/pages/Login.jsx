@@ -116,10 +116,11 @@ function GoogleButton({ busy, setBusy, fail, afterAuth, setMe, setOtpEmail, swit
       </div>
     );
   }
-  return ( // THE BUTTON (white Google style: G logo + text, full-width like our CTA)…
-    <div style={{ marginTop: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0 12px' }}><span style={{ flex: 1, height: 1, background: 'var(--line)' }} /><span className="hint">or</span><span style={{ flex: 1, height: 1, background: 'var(--line)' }} /></div> {/* divider with lines (flex:1 rules grow to fill!) */}
-      <button className="btn ghost login-cta" disabled={busy || gBusy} onClick={start} style={{ background: '#fff' }}><svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.3-2.3H12v4.5h6.5c-.1 1.1-.8 2.7-2.4 3.8l-.1.1 3.5 2.7.2.1c2.2-2 3.8-5 3.8-8.9z" /><path fill="#34A853" d="M12 24c3.2 0 6-1.1 7.9-2.9l-3.8-2.9c-1 .7-2.4 1.2-4.1 1.2-3.1 0-5.8-2.1-6.8-5l-.1.1-3.6 2.8v.1C3.5 21.5 7.5 24 12 24z" /><path fill="#FBBC05" d="M5.2 14.4c-.2-.7-.4-1.5-.4-2.4s.1-1.7.4-2.4l-.1-.1-3.5-2.7-.1.1C.5 8.9 0 10.4 0 12s.5 3.1 1.5 4.5l3.7-2.1z" /><path fill="#EA4335" d="M12 4.7c1.8 0 3 .8 3.7 1.4l3.3-3.2C17.9 1.1 15.2 0 12 0 7.5 0 3.5 2.5 1.5 6.9l3.7 2.8c1-2.9 3.7-5 6.8-5z" /></svg>{gBusy ? 'Waiting for Google…' : 'Continue with Google'}</button> {/* inline G logo paths (brand colors — Google's own mark, no library!); label flips while popup open */}
+  return ( // THE BUTTON — full width, above the form, with the "or" rule UNDER it (reference order: alternative first, then the long way round)
+    <div>
+      <button type="button" className="social-btn" disabled={busy || gBusy} onClick={start}>
+        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.3-2.3H12v4.5h6.5c-.1 1.1-.8 2.7-2.4 3.8l-.1.1 3.5 2.7.2.1c2.2-2 3.8-5 3.8-8.9z" /><path fill="#34A853" d="M12 24c3.2 0 6-1.1 7.9-2.9l-3.8-2.9c-1 .7-2.4 1.2-4.1 1.2-3.1 0-5.8-2.1-6.8-5l-.1.1-3.6 2.8v.1C3.5 21.5 7.5 24 12 24z" /><path fill="#FBBC05" d="M5.2 14.4c-.2-.7-.4-1.5-.4-2.4s.1-1.7.4-2.4l-.1-.1-3.5-2.7-.1.1C.5 8.9 0 10.4 0 12s.5 3.1 1.5 4.5l3.7-2.1z" /><path fill="#EA4335" d="M12 4.7c1.8 0 3 .8 3.7 1.4l3.3-3.2C17.9 1.1 15.2 0 12 0 7.5 0 3.5 2.5 1.5 6.9l3.7 2.8c1-2.9 3.7-5 6.8-5z" /></svg>{gBusy ? 'Waiting for Google…' : 'Continue with Google'}{/* inline G logo paths (Google's own mark, no library!) */}</button>
+      <div className="or-row">or</div>
     </div>
   );
 }
@@ -304,22 +305,26 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
   return (
     <div className="auth-wrap"> {/* soft purple wash behind everything (see .auth-wrap::before) */}
       <div className="auth-card"> {/* one white card: brand story + form, split by a hairline (was glass) */}
-        <div className="auth-side"> {/* LEFT: brand storytelling (compacted on mobile via CSS!) */}
-          <div className="brand-chip"><Logo alt="VeloSales Ai" width={30} height={30} /><span>VeloSales Ai · Sales assistant</span></div> {/* brand lockup */}
-          <h2>Your WhatsApp shop.<br /><span className="grad">Open even while you sleep.</span></h2> {/* <br/> line break; .grad = gradient text span */}
-          <p className="tagline">An AI that answers like you — prices, stock, hours — so no customer is ever ignored.</p>
-          <ul className="feat"> {/* feature list with STAGGERED entrance (--d custom property = per-item delay!) */}
-            <li style={{ '--d': '0.05s' }}><b className="feat-ic"><Ic n="bolt" /></b><span>Replies in seconds, in English or Pidgin</span></li> {/* style={{'--d'}} sets a CSS VARIABLE from JS (React allows custom props in style objects!) */}
-            <li style={{ '--d': '0.15s' }}><b className="feat-ic"><Ic n="spark" /></b><span>Learns your catalog from one LEARN: message</span></li>
-            <li style={{ '--d': '0.25s' }}><b className="feat-ic"><Ic n="hand" /></b><span>Hands off to you the moment a human is needed</span></li>
-          </ul>
-          <DemoChat /> {/* the self-playing demo above! */}
+        <div className="auth-side"> {/* LEFT: the brand card — the bright end of the page */}
+          <div className="side-lockup"><Logo alt="VeloSales Ai" height={34} /><span>VeloSales Ai</span></div> {/* mark + wordmark (the mark re-points its ramp at white here) */}
+          <h2>Get started with us</h2>
+          <p className="tagline">Complete these easy steps to register your account.</p>
+          <ol className="steps"> {/* the rail: what actually happens, in order */}
+            <li>
+              <span className="rail"><i className="line" /><i className="dot" /></span>
+              <div className="step-card"><b><i className="s-ic">🛍️</i>Create your account</b><span>Your shop name, an email and a password. That is the whole form.</span></div>
+            </li>
+            <li>
+              <span className="rail"><i className="line" /><i className="dot" /></span>
+              <div className="step-card"><b><i className="s-ic">💬</i>Connect WhatsApp</b><span>Link the number your customers already message you on.</span></div>
+            </li>
+            <li>
+              <span className="rail"><i className="line" /><i className="dot" /></span>
+              <div className="step-card"><b><i className="s-ic">🤖</i>Teach it your catalog</b><span>Send one LEARN: message and it starts replying for you.</span></div>
+            </li>
+          </ol>
         </div>
         <div className="auth-pane" key={mode}> {/* RIGHT: the form. key={mode} = React REMOUNTS on mode switch (fresh animations + no stale input focus — key change = new element!) */}
-          <div className="trial-banner"> {/* quiet purple pill row (was a pulsing gold banner) */}
-            <span className="trial-badge">7 days free</span>
-            <div><b>{mode === 'login' ? 'Your trial is waiting.' : 'Start selling tonight.'}</b><span>No card required · Cancel anytime</span></div> {/* headline flips with mode */}
-          </div>
           {mode === 'otp' ? (<> {/* OTP screen: verify path signs in · reset path sets a NEW password (purpose flag switches it!) */}
             <h1>{otpPurpose === 'reset' ? 'Set a new password' : 'Check your email'}</h1>
             <p className="switch-note">We sent a 6-digit code to <b>{otpEmail}</b>. It expires in 10 minutes.{otpPurpose === 'reset' ? ' Enter it with your new password below.' : ''}</p>
@@ -354,8 +359,9 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
             <p className="hint" style={{ textAlign: 'center', marginTop: 8 }}>Link or code — same inbox, same 10-minute code window. Pick whichever arrives first.</p>
             <p className="auth-toggle"><a onClick={() => switchMode('login')}>Back to sign in</a></p>
           </>) : (<> {/* login/signup form (existing — wrapped so otp/forgot replace it!) */}
-          <h1>{mode === 'login' ? 'Welcome back' : 'Create your account'}</h1> {/* ternaries everywhere = one form, two personalities */}
-          <p className="switch-note">{mode === 'login' ? 'Your assistant has been holding the fort.' : 'Join shops answering customers 24/7.'}</p>
+          <h1>{mode === 'login' ? 'Sign in to VeloSales Ai' : 'Create your account'}</h1> {/* ternaries everywhere = one form, two personalities */}
+          <p className="switch-note">{mode === 'login' ? 'Enter your details to sign in to your account.' : 'Join shops answering customers 24/7.'}</p>
+          {(mode === 'login' || mode === 'signup') && <GoogleButton busy={busy} setBusy={setBusy} fail={fail} afterAuth={afterAuth} setMe={setMe} setOtpEmail={setOtpEmail} switchMode={switchMode} setMsg={setMsg} setMsgErr={setMsgErr} />} {/* social login ABOVE the form (reference order: the quick way first, then the long one) */}
           {mode === 'signup' && (<> {/* && conditional BLOCK: signup-only fields (fragment groups 3 field sets without wrapper div!) */}
             <label>Business name</label><input value={f.name} onChange={set('name')} placeholder="Amaka Beauty Studio" autoComplete="organization" /> {/* autoComplete hints = browser autofill + password managers work (UX + a11y!) */}
             <label>Business WhatsApp</label><input value={f.wa} onChange={set('wa')} onBlur={() => { const n = normalizePhone(f.wa); if (n) setF({ ...f, wa: prettyPhone(n) }); }} placeholder="0803 123 4567" spellCheck="false" inputMode="tel" /> {/* onBlur pretty-prints ("0803…" → "0803 123 4567"); inputMode="tel" = phone keyboard on mobile! */}
@@ -374,8 +380,12 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
           {mode === 'signup' && f.password.length > 0 && ( // strength meter: signup + non-empty only…
             <div className="pw-meter"><i className={pwScore >= 1 ? 'on' : ''} /><i className={pwScore >= 2 ? 'on' : ''} /><i className={pwScore >= 3 ? 'on' : ''} /><span>{pwScore >= 2 ? 'Strong enough' : 'Keep typing…'}</span></div>
           )}
+          {mode === 'login' && <div className="auth-under"><a onClick={() => switchMode('forgot')}>Forgot password?</a></div>} {/* reference puts this opposite the password row. There is no "remember me" beside it: the session already lasts 7 days, and a checkbox that changes nothing would be a lie. */}
           <button className="btn login-cta" disabled={busy} onClick={mode === 'login' ? login : signup}>{busy ? (<><Loader size={15} />Please wait…</>) : mode === 'login' ? 'Sign in →' : 'Start my free trial →'}</button> {/* disabled while busy (double-submit lock); mini orbit + label (busy? then mode?) */}
-          {(mode === 'login' || mode === 'signup') && <GoogleButton busy={busy} setBusy={setBusy} fail={fail} afterAuth={afterAuth} setMe={setMe} setOtpEmail={setOtpEmail} switchMode={switchMode} setMsg={setMsg} setMsgErr={setMsgErr} />} {/* social login under BOTH forms (one component, both modes!) */}
+          <div className="trial-banner"> {/* BELOW the action, so the title is the first thing read (was a big pill above it) */}
+            <span className="trial-badge">7 days free</span>
+            <div><b>{mode === 'login' ? 'Your trial is waiting.' : 'Start selling tonight.'}</b><span>No card required · Cancel anytime</span></div> {/* headline flips with mode */}
+          </div>
           {needsVerify && (
             <div className="otp-help" style={{ marginTop: 12 }}>
               <b>📧 No verification mail?</b>
@@ -391,7 +401,6 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
           </div>
           <p className="auth-hint">Secure card checkout — only after your free days<br /><a href="/faq">FAQ</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p> {/* trust footer + legal links (plain <a href> = full navigation, fine for public pages) */}
           </>)} {/* close the login/signup wrapper (otp/forgot branches above replace it!) */}
-          {mode === 'login' && <p className="auth-toggle"><a onClick={() => switchMode('forgot')}>Forgot password?</a></p>} {/* && conditional: forgot link ONLY on login (signup users don't have passwords to forget yet!) */}
         </div>
       </div>
     </div>

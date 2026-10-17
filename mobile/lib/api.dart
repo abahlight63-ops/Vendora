@@ -388,6 +388,20 @@ class ApiClient {
     return (b as Map).cast<String, dynamic>();
   }
 
+  /// Profile picture: send a data URL (the Settings screen centre-crops and
+  /// shrinks the pick to 256 first, so this is tens of KB). `null` clears it —
+  /// the same explicit-null rule the product photo uses.
+  Future<String?> uploadAvatar(String? dataUrl) async {
+    final r = await post('/api/me/avatar', {'dataUrl': dataUrl});
+    return (r as Map)['avatar_url'] as String?;
+  }
+
+  /// The assistant's kill-switch: instant global silence or resume.
+  Future<bool> toggleBot(bool enabled) async {
+    final r = await post('/api/me/bot', {'enabled': enabled});
+    return ((r as Map)['bot_enabled'] as bool?) ?? enabled;
+  }
+
   /// Welcome setup: 5-question quiz (niche required, rest skippable).
   /// Only the setup screen calls this. Empty strings = skipped (backend
   /// stores NULL — same rule as the web quiz!).

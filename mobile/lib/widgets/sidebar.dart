@@ -28,6 +28,7 @@ class SidebarItem {
 class Sidebar extends StatelessWidget {
   final String businessName;
   final String niche;
+  final String? avatarUrl; // the owner's picture (null/empty = the brand mark)
   final int tab;
   final List<SidebarItem> primary;
   final List<SidebarItem> secondary;
@@ -43,6 +44,7 @@ class Sidebar extends StatelessWidget {
     super.key,
     required this.businessName,
     required this.niche,
+    this.avatarUrl,
     required this.tab,
     required this.primary,
     required this.secondary,
@@ -72,7 +74,7 @@ class Sidebar extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
               child: Row(children: [
-                const BrandMark(size: 38),
+                _DrawerAvatar(url: avatarUrl),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -210,6 +212,34 @@ class Sidebar extends StatelessWidget {
               Icon(Icons.chevron_right_rounded, size: 20, color: scheme.primary),
           ]),
         ),
+      ),
+    );
+  }
+}
+
+/// The drawer's identity chip: the owner's own picture once they have set one,
+/// and the brand mark until then. Never an empty grey circle — a failed load
+/// falls back to the mark rather than leaving a hole.
+class _DrawerAvatar extends StatelessWidget {
+  const _DrawerAvatar({this.url});
+
+  final String? url;
+
+  @override
+  Widget build(BuildContext context) {
+    if (url == null || url!.isEmpty) return const BrandMark(size: 38);
+    return Container(
+      width: 38,
+      height: 38,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Image.network(
+        url!,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => const BrandMark(size: 38),
       ),
     );
   }

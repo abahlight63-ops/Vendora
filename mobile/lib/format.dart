@@ -40,6 +40,15 @@ String greeting() {
   return 'Good evening';
 }
 
+/// 'whatsapp:+2348031234567' → '0803 123 4567' — the same display rule as the
+/// web's phone.js. Shown to the owner, so it reads like the number they know.
+String prettyPhone(dynamic wa) {
+  final d = '${wa ?? ''}'.replaceFirst(RegExp(r'^whatsapp:'), '');
+  final ng = RegExp(r'^\+234\d{10}$');
+  if (ng.hasMatch(d)) return '0${d.substring(4, 7)} ${d.substring(7, 10)} ${d.substring(10)}';
+  return d.isEmpty ? '—' : d;
+}
+
 /// Trial countdown in days (Dashboard.jsx trialLeft math).
 int? trialDaysLeft(dynamic trialEnds) {
   final t = _parse(trialEnds);

@@ -113,6 +113,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _dirty = true);
   }
 
+  /// Pull-to-refresh is a reload, not a save: if the form has unsaved edits,
+  /// ask before quietly throwing them away.
+  Future<void> _refresh() async {
+    if (_dirty) {
+      final go = await showDialog<bool>(
+        context: context,
+        builder: (c) => AlertDialog(
+          title: const Text('Reload and lose your edits?'),
+          content: const Text(
+              'The fields will go back to what is saved. Your saved profile is untouched.'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(c).pop(false),
+                child: const Text('Keep editing')),
+            FilledButton(
+                onPressed: () => Navigator.of(c).pop(true),
+                child: const Text('Reload')),
+          ],
+        ),
+      );
+      if (go != true || !mounted) return;
+    }
+    setState(() => _err = null);
+    await _load();
+  }
+
   Future<void> _toggleBot() async {
     setState(() => _botBusy = true);
     try {
@@ -182,7 +208,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           : _err != null
               ? EmptyState('Could not load your profile', _err!, retry: _load)
               : RefreshIndicator(
-                  onRefresh: _load,
+                  onRefresh: _refresh,
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                     children: [

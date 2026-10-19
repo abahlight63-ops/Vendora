@@ -29,6 +29,7 @@ import 'screens/refer_earn_screen.dart';
 import 'screens/ai_settings_screen.dart';
 import 'screens/insights_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
 
 void main() => runApp(const VeloSalesApp());
@@ -451,6 +452,12 @@ class _HomeShellState extends State<HomeShell> {
           label: 'Refer & Earn',
           hint: 'Invite sellers — you both win',
           push: () => _open(const ReferEarnScreen()),
+        ),
+        SidebarItem(
+          icon: Icons.storefront_outlined,
+          label: 'Business profile',
+          hint: 'What the AI knows about your shop',
+          push: () => _open(const ProfileScreen()),
         ),
         SidebarItem(
           icon: Icons.psychology_outlined,

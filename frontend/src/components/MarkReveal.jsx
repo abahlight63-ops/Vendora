@@ -1,18 +1,22 @@
 // ── frontend/src/components/MarkReveal.jsx ─────────────────────────
 // WHAT: the brand mark assembling itself — the one authored motion in the app.
 //
-// The reference animation works like this: the parts arrive scattered and
-// spinning, sweep around a centre they are not yet part of, converge, and snap
-// into the finished mark. This is that, built from OUR geometry: the mark
-// genuinely IS three triangles (see MARK_PIECES in Logo.jsx), so it can come
-// apart and go back together for real rather than being a clipped bitmap.
+// Every move here is taken from the owner's reference animation (the logo
+// reveal in logo animations.mp4): the parts arrive from outside the frame,
+// curve in on a flight path that unwinds, spin as they travel, and snap into
+// the finished mark while the outline draws itself around them with sweeping
+// arcs. Then the mark settles and takes a pass of light.
 //
-// Replaces the old ScatterLogo, which cut a raster PNG into 4×4 tiles and flung
-// them around. That read as a photo being jumbled, not as a mark being drawn.
+// It is built from OUR geometry: the mark genuinely IS three triangles (see
+// MARK_PIECES in Logo.jsx), so it can come apart and go back together for real
+// rather than being a clipped bitmap. Only the choreography is borrowed, and
+// the one move that really carries the reference — the wordmark dropping in
+// letter by letter with a spring — lives in styles.css (.splash-name span).
 //
-// Timing is compressed for the web splash, which is deliberately short (1.2s
-// total) so the app feels instant. The phone's splash is longer and runs the
-// same sequence with more room (mobile/lib/widgets/logo_reveal.dart).
+// Timing is compressed for the web splash (2.3s, against the reference's 4.5s)
+// so the app still feels instant. Same order, same beats, fewer frames. The
+// phone runs the identical sequence at the identical speed, drawn by hand in
+// mobile/lib/widgets/logo_reveal.dart.
 import { MARK_PIECES } from './Logo.jsx';
 
 export default function MarkReveal({ size = 112, className = '' }) {
@@ -45,9 +49,11 @@ export default function MarkReveal({ size = 112, className = '' }) {
           </clipPath>
         </defs>
 
-        {/* The ring the pieces sweep around before they belong to it. */}
+        {/* The outline drawing itself: two arcs sweeping round the centre the
+            pieces are converging on, at two different speeds and weights. */}
         <g className="rv-ring">
-          <circle cx="301" cy="348" r="424" />
+          <circle className="rv-arc-a" cx="301" cy="348" r="424" />
+          <circle className="rv-arc-b" cx="301" cy="348" r="490" />
         </g>
 
         {/* The finished mark, revealed only once the pieces are home. Three
@@ -57,22 +63,29 @@ export default function MarkReveal({ size = 112, className = '' }) {
             the pieces while they are still apart. */}
         <path className="rv-join" d={MARK_PIECES.map((p) => p.d).join(' ')} fillRule="evenodd" fill="url(#rv-g)" />
 
-        {MARK_PIECES.map((p, i) => (
-          <g
-            key={i}
-            className="rv-piece"
-            style={{
-              '--ox': `${p.ox}px`,
-              '--oy': `${p.oy}px`,
-              '--dx': `${p.dx}px`,
-              '--dy': `${p.dy}px`,
-              '--dr': `${p.rot}deg`,
-              '--dl': `${(i * 0.05).toFixed(2)}s`,
-            }}
-          >
-            <path d={p.d} fill="url(#rv-g)" />
-          </g>
-        ))}
+        {/* Everything that flies in sits inside the orbit group, so the whole
+            flight path is turned and unwinds as they land. */}
+        <g className="rv-orbit">
+          {MARK_PIECES.map((p, i) => (
+            <g
+              key={i}
+              className="rv-piece"
+              style={{
+                '--ox': `${p.ox}px`,
+                '--oy': `${p.oy}px`,
+                // FLIGHT_PATH: the artwork's own offsets are small (the pieces
+                // travel barely 28px at this size), so they are scaled up for
+                // the entrance — an arrival you can actually see.
+                '--dx': `${p.dx * 2.4}px`,
+                '--dy': `${p.dy * 2.4}px`,
+                '--dr': `${p.rot * 2}deg`,
+                '--dl': `${(0.1 + i * 0.09).toFixed(2)}s`,
+              }}
+            >
+              <path d={p.d} fill="url(#rv-g)" />
+            </g>
+          ))}
+        </g>
 
         {/* A light crossing the finished mark. */}
         <g clipPath="url(#rv-clip)">

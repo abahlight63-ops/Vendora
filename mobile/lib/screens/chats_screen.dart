@@ -589,12 +589,7 @@ class _ThreadScreenState extends State<ThreadScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 18)),
                     child: _sending
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2),
-                          )
+                        ? const OrbitLoader(size: 17, color: Colors.white)
                         : const Text('Send',
                             style: TextStyle(fontSize: 13)),
                   ),

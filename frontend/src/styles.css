@@ -25,6 +25,9 @@
   --green: #10b981; --green-dark: #059669; --green-soft: #d1fae5; --green-line: #a7f3d0;
   --ink: #0f172a; --muted: #64748b; --faint: #94a3b8;
   --line: #e2e8f0; --line-soft: #f1f5f9;
+  /* the skeleton pair: a flat plate + the brand's light crossing it. Tokens so
+     the dark theme gets its own values instead of a washed-out copy. */
+  --skel-base: #eaeef6; --skel-sheen: rgba(99, 102, 241, 0.19);
   --bg: #f8fafc; --card: #ffffff;
   --gold: #d97706; --gold-bg: #fffbeb; --gold-line: #fcd34d;
   --red: #dc2626; --red-bg: #fef2f2; --red-line: #fca5a5;
@@ -187,11 +190,14 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .qa .hint { display: block; }
 .empty { padding: 30px 18px; text-align: center; color: var(--muted); font-size: 14px; }
 .empty b { display: block; color: var(--ink); margin-bottom: 5px; }
-/* skeleton preloaders: shimmer shapes that mirror real layouts */
-.skel { position: relative; overflow: hidden; height: 15px; border-radius: 7px; background: var(--line-soft); }
-.skel::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.65), transparent); animation: skelShimmer 1.4s ease-in-out infinite; }
+/* skeleton preloaders: shapes that mirror the real layout, with the brand's
+   light travelling across them. The sweep is purple — a white sweep over grey
+   is the generic "loading block" everyone has seen a thousand times, and the
+   base is a token pair so dark mode is designed rather than washed out. */
+.skel { position: relative; overflow: hidden; height: 15px; border-radius: 7px; background: var(--skel-base); }
+.skel::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, var(--skel-sheen) 50%, transparent 70%); animation: skelShimmer 1.6s cubic-bezier(0.45, 0, 0.25, 1) infinite; }
 @keyframes skelShimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
-[data-theme="dark"] .skel::after { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent); }
+@media (prefers-reduced-motion: reduce) { .skel::after { animation: none; content: none; } }
 .skel-grid { display: grid; gap: 14px; }
 .skel-grid.cols4 { grid-template-columns: repeat(4, 1fr); }
 .skel-grid.cols2 { grid-template-columns: 1fr 1fr; }
@@ -324,8 +330,7 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .login-cta { width: 100%; margin-top: 22px; font-size: 15px; min-height: 52px; padding: 14px 18px; border-radius: 13px;
   background: linear-gradient(90deg, #5b5bf0, #9b4df0); box-shadow: 0 18px 34px -18px rgba(99, 102, 241, 0.9); }
 .login-cta:hover:not(:disabled) { background: linear-gradient(90deg, #5252ea, #8f42e6); }
-.spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.4); border-top-color: #fff; animation: spin 0.7s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
+/* the old white ring spinner is gone — there is one spinner (Loader.jsx) */
 
 .auth-toggle { color: var(--muted); font-size: 14px; text-align: center; margin-top: 16px; }
 .auth-toggle a { cursor: pointer; font-weight: 700; }
@@ -905,6 +910,7 @@ button.mini-link:hover { text-decoration: underline; }
 .slide-copy { padding: 38px 34px; }
 .slide-copy .crumb { color: var(--purple-dark); font-weight: 700; font-size: 12.5px; }
 .slide-copy h1 { font-size: 28px; letter-spacing: -0.8px; line-height: 1.18; margin: 10px 0 12px; font-weight: 800; color: var(--ink); }
+.slide-copy h1 { animation: none; } /* the words themselves carry the entrance (see .wv-word) — a block fade on top of a cascade looks like a mistake */
 .slide-copy .lede { color: var(--muted); font-size: 15px; line-height: 1.55; }
 .slide-points { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
 .slide-points span { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; background: var(--purple-soft); color: var(--purple-dark); border: 1px solid var(--purple-line); padding: 7px 12px; border-radius: var(--r-pill); }
@@ -913,6 +919,67 @@ button.mini-link:hover { text-decoration: underline; }
 .slide-copy > *:nth-child(3) { animation-delay: 0.1s; }
 .slide-copy > *:nth-child(4) { animation-delay: 0.15s; }
 .slide-copy > *:nth-child(5) { animation-delay: 0.2s; }
+
+/* ══ ONBOARDING ART: a phone doing the job (Onboarding.jsx) ══════════════
+   The tour used to show a 2MB AI stock photo per slide. It now shows the
+   product: a customer's message typing itself, then the answer landing from
+   the real catalog. Nothing here is decorative — every bubble is a thing the
+   assistant actually does, which is what makes a welcome tour teach. */
+.slide-art.wv-art { position: relative; background: linear-gradient(180deg, var(--purple-soft), var(--bg) 92%); padding: 32px 26px; display: grid; place-items: center; overflow: hidden; }
+.wv-glow { position: absolute; width: 360px; height: 360px; border-radius: 50%; background: radial-gradient(circle, rgba(99, 102, 241, 0.26), transparent 68%); }
+.wv-phone { position: relative; width: 100%; max-width: 296px; min-height: 336px; background: var(--card); border: 1px solid var(--line); border-radius: 24px; padding: 14px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 26px 60px -26px rgba(15, 23, 42, 0.34), 0 2px 0 rgba(255, 255, 255, 0.6) inset; }
+.wv-head { display: flex; align-items: center; gap: 9px; padding-bottom: 11px; border-bottom: 1px solid var(--line-soft); }
+.wv-av { width: 34px; height: 34px; border-radius: 50%; background: var(--card); border: 1px solid var(--line); display: grid; place-items: center; flex: none; }
+.wv-who { display: flex; flex-direction: column; line-height: 1.25; flex: 1; min-width: 0; }
+.wv-who b { font-size: 12.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wv-on { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; color: var(--muted); }
+.wv-on i { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+.wv-time { font-size: 10.5px; color: var(--faint); flex: none; }
+.wv-thread { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.wv-in, .wv-out, .wv-own { max-width: 90%; font-size: 12.5px; line-height: 1.5; padding: 9px 11px; }
+.wv-in { background: var(--line-soft); color: var(--ink); border-radius: 14px 14px 14px 5px; }
+.wv-out { align-self: flex-end; background: var(--purple-soft); color: var(--ink); border: 1px solid var(--purple-line); border-radius: 14px 14px 5px 14px; animation: wvPop 0.34s cubic-bezier(0.2, 0.9, 0.25, 1.15) both; }
+.wv-own { align-self: flex-end; background: var(--accent-solid); color: #fff; border-radius: 14px 14px 5px 14px; font-weight: 600; }
+.wv-ack { display: flex; align-items: flex-start; gap: 6px; font-size: 11px; line-height: 1.45; color: var(--green-dark); font-weight: 600; animation: wvPop 0.34s ease both; }
+.wv-ack svg { flex: none; margin-top: 1px; }
+.wv-note { font-size: 10px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; color: var(--faint); }
+.wv-meta { display: flex; align-items: center; gap: 5px; font-size: 10.5px; color: var(--muted); animation: wvPop 0.34s ease both; }
+.wv-meta svg { color: var(--green); }
+.wv-rows { display: flex; flex-direction: column; gap: 8px; }
+.wv-row { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 11px; font-size: 11.5px; color: var(--ink); animation: wvRowIn 0.42s cubic-bezier(0.2, 0.9, 0.25, 1) both; }
+.wv-row b { flex: 1; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wv-row > span { color: var(--muted); flex: none; }
+.wv-row > svg { color: var(--green); flex: none; }
+.wv-num { width: 18px; height: 18px; border-radius: 50%; background: var(--purple-soft); color: var(--purple-dark); font-size: 10px; font-weight: 800; display: grid; place-items: center; flex: none; }
+.wv-tag { font-size: 9.5px !important; background: var(--line-soft); color: var(--muted) !important; border-radius: var(--r-pill); padding: 2px 7px; }
+.wv-plan { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 12px; }
+.wv-plan b { display: block; font-size: 12.5px; color: var(--ink); }
+.wv-plan span { font-size: 10.5px; color: var(--muted); }
+.wv-plan em { font-style: normal; font-weight: 800; font-size: 14px; color: var(--ink); flex: none; }
+.wv-plan em small { font-size: 9.5px; font-weight: 600; color: var(--muted); }
+.wv-plan.now { border-color: var(--purple-line); background: var(--purple-soft); }
+.wv-plan.now em { color: var(--purple-dark); }
+.wv-foot { display: flex; align-items: center; gap: 5px; font-size: 10.5px; color: var(--muted); }
+.wv-foot svg { flex: none; color: var(--purple); }
+@keyframes wvPop { from { opacity: 0; transform: translateY(7px) scale(0.97); } }
+@keyframes wvRowIn { from { opacity: 0; transform: translateY(8px); } }
+
+/* the headline cascade + the typed body */
+.wv-word { display: inline-block; margin-right: 0.26em; opacity: 0; animation: wvWord 0.42s cubic-bezier(0.2, 0.9, 0.25, 1) both; }
+@keyframes wvWord { from { opacity: 0; transform: translateY(9px) rotate(1.5deg); } to { opacity: 1; transform: none; } }
+.wv-lede { min-height: 5.6em; } /* reserve the paragraph's height so the chips below never jump while it types */
+.wv-caret { display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: -0.14em; background: var(--purple); animation: wvBlink 1s steps(1) infinite; }
+@keyframes wvBlink { 50% { opacity: 0; } }
+@media (max-width: 760px) {
+  .slide-art.wv-art { padding: 22px 16px; }
+  .wv-phone { max-width: 268px; min-height: 0; }
+  .wv-lede { min-height: 0; }
+  .wv-glow { width: 260px; height: 260px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wv-word, .wv-out, .wv-ack, .wv-meta, .wv-row, .wv-caret { animation: none; opacity: 1; }
+  .wv-caret { display: none; }
+}
 .learn-box.light { background: var(--purple-soft); color: var(--ink); border: 1px solid var(--purple-line); font-family: var(--font); }
 .learn-box.light .reply { background: var(--card); border: 1px dashed var(--purple-line); color: var(--ink); display: flex; gap: 8px; align-items: flex-start; }
 .learn-box.light .reply svg { color: var(--accent); flex: 0 0 auto; margin-top: 2px; }
@@ -934,6 +1001,7 @@ button.mini-link:hover { text-decoration: underline; }
   --green: #34d399; --green-dark: #6ee7b7; --green-soft: #052e22; --green-line: #065f46;
   --ink: #f3f4f6; --muted: #94a3b8; --faint: #64748b;
   --line: #1f2937; --line-soft: #111827;
+  --skel-base: #161f2e; --skel-sheen: rgba(129, 140, 248, 0.16);
   --bg: #0b1118; --card: #111827;
   --gold: #fbbf24; --gold-bg: #2a1f08; --gold-line: #6b4d16;
   --red: #f87171; --red-bg: #2b1210; --red-line: #6e2a24;
@@ -957,7 +1025,7 @@ button.mini-link:hover { text-decoration: underline; }
 [data-theme="dark"] .live-dot { background: var(--green-soft); border-color: var(--green-line); color: var(--green-dark); }
 [data-theme="dark"] .bubble-out { background: var(--purple-soft); border-color: var(--purple-line); color: #e0e7ff; }
 [data-theme="dark"] .stat-ic { background: var(--purple-soft); }
-[data-theme="dark"] .skel { background: var(--card); }
+[data-theme="dark"] .skel { background: var(--skel-base); }
 [data-theme="dark"] .slide { background: var(--card); border-color: var(--line); }
 [data-theme="dark"] .slide-copy h1 { color: var(--ink); }
 [data-theme="dark"] .welcome { background: var(--bg); }
@@ -978,31 +1046,64 @@ button.mini-link:hover { text-decoration: underline; }
 .theme-toggle.on .tt-knob { transform: translateX(24px); background: var(--purple); color: #fff; }
 
 /* ---------- splash ----------
-   A light scene, not a dark green one — the green gradient and the var(--text-2)
-   tagline this replaces were leftovers from the retired brand. The mark
-   assembles itself in three pieces (Logo.jsx's geometry), the wordmark follows
-   letter by letter, and the bar sweeps underneath. */
-.splash { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: radial-gradient(760px 440px at 50% 28%, var(--purple-soft), var(--bg) 74%); transition: opacity 0.32s ease; }
+   The brand's one authored moment, and it is copied move for move from the
+   owner's reference animation (logo animations.mp4). The reference runs like
+   this, and so does this — just at app speed instead of film speed:
+
+     0.10–1.00s   the parts orbit in from outside, each one spinning
+     0.36–1.05s   the outline draws itself as two sweeping arcs
+     0.92s        the seam closes and the mark is finally whole
+     1.00–1.40s   it settles with a small overshoot; light crosses it
+     1.10–1.88s   the wordmark DROPS in, one letter at a time
+
+   The drop is the part everyone remembers: each letter falls from above,
+   overshoots its baseline and springs back (cubic-bezier with y > 1). The
+   reference holds the same pose for four and a half seconds; a splash that
+   long is a delay, so the sequence is compressed, never reordered. */
+.splash { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: radial-gradient(760px 440px at 50% 28%, var(--purple-soft), var(--bg) 74%); transition: opacity 0.34s ease; }
 .splash.out { opacity: 0; pointer-events: none; }
 .splash-inner { text-align: center; display: flex; flex-direction: column; align-items: center; }
 .reveal-mark { position: relative; display: inline-block; flex: 0 0 auto; }
 .reveal-mark svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.reveal-mark .rv-piece { opacity: 0; transform-box: view-box; transform-origin: var(--ox) var(--oy); animation: rvAssemble 0.5s cubic-bezier(0.22, 1.15, 0.36, 1) both; animation-delay: var(--dl, 0s); }
-@keyframes rvAssemble { 0% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--dr)) scale(0.82); } 20% { opacity: 1; } 100% { opacity: 1; transform: none; } }
-.reveal-mark .rv-ring { transform-box: view-box; transform-origin: 301px 348px; animation: rvRing 0.55s ease-out both; }
-.reveal-mark .rv-ring circle { fill: none; stroke: var(--accent-solid); stroke-width: 8; stroke-linecap: round; stroke-dasharray: 860 1860; opacity: 0.32; }
-@keyframes rvRing { 0% { transform: rotate(-50deg); opacity: 0; } 30% { opacity: 1; } 100% { transform: rotate(160deg); opacity: 0; } }
-/* Covers the hairline where the three anti-aliased pieces meet. Faded rather
-   than snapped on, so it cannot pop if a piece is still a frame off home. */
-.reveal-mark .rv-join { opacity: 0; animation: rvJoin 0.15s linear 0.65s both; }
+
+/* The orbit the pieces arrive on: the whole flight path is turned, then
+   unwinds as they land, so they curve in instead of sliding in straight. */
+.reveal-mark .rv-orbit { transform-box: view-box; transform-origin: 301px 348px; animation: rvOrbit 0.9s cubic-bezier(0.32, 0.86, 0.24, 1) both; }
+@keyframes rvOrbit { from { transform: rotate(-34deg) scale(0.84); } to { transform: none; } }
+
+/* Each piece, thrown in from outside the frame. 0.72 scale at the start so the
+   arrival is a size change too, which is what makes it read as "coming from
+   somewhere" rather than "fading up". */
+.reveal-mark .rv-piece { opacity: 0; transform-box: view-box; transform-origin: var(--ox) var(--oy); animation: rvAssemble 0.72s cubic-bezier(0.3, 0.68, 0.3, 1.1) both; animation-delay: var(--dl, 0s); }
+@keyframes rvAssemble {
+  0% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--dr)) scale(0.72); }
+  16% { opacity: 1; }
+  100% { opacity: 1; transform: none; }
+}
+
+/* Two arcs, drawing then sweeping on. In the reference the outline is not
+   faded in — it is drawn. */
+.reveal-mark .rv-ring { transform-box: view-box; transform-origin: 301px 348px; animation: rvRing 1.05s cubic-bezier(0.4, 0.05, 0.2, 1) both; }
+.reveal-mark .rv-ring circle { fill: none; stroke: var(--accent-solid); stroke-width: 26; stroke-linecap: round; }
+.reveal-mark .rv-ring .rv-arc-a { stroke-dasharray: 620 2044; opacity: 0.62; } /* 2πr = 2664 at r = 424 */
+.reveal-mark .rv-ring .rv-arc-b { stroke-dasharray: 360 2719; opacity: 0.34; } /* 2πr = 3079 at r = 490 */
+@keyframes rvRing { 0% { transform: rotate(-118deg); opacity: 0; } 14% { opacity: 1; } 74% { opacity: 1; } 100% { transform: rotate(98deg); opacity: 0; } }
+
+/* The hairline three anti-aliased triangles always leave where they meet. It
+   waits until they are exactly home (0.92s) so it cannot pop behind them. */
+.reveal-mark .rv-join { opacity: 0; animation: rvJoin 0.2s linear 0.92s both; }
 @keyframes rvJoin { to { opacity: 1; } }
-.reveal-mark .rv-shine { animation: rvShine 0.3s ease-out 0.5s both; }
-@keyframes rvShine { 0% { opacity: 0; transform: translateX(-190px); } 55% { opacity: 1; } 100% { opacity: 0; transform: translateX(190px); } }
+
+.reveal-mark .rv-shine { animation: rvShine 0.4s ease-out 1s both; }
+@keyframes rvShine { 0% { opacity: 0; transform: translateX(-210px); } 55% { opacity: 1; } 100% { opacity: 0; transform: translateX(210px); } }
+
+/* The wordmark. 12 letters, 42ms apart, each falling 0.85em and springing
+   past its baseline on the way in. */
 .splash-name { display: flex; color: var(--text-1); font-weight: 800; letter-spacing: -0.6px; margin-top: 18px; font-size: 25px; }
-.splash-name span { display: inline-block; opacity: 0; transform: translateY(0.5em); animation: rvLetter 0.28s cubic-bezier(0.2, 0.9, 0.25, 1.1) both; animation-delay: calc(0.32s + var(--li) * 0.02s); }
-@keyframes rvLetter { to { opacity: 1; transform: none; } }
-.splash-tag { color: var(--text-2); font-size: 13.5px; margin-top: 6px; opacity: 0; animation: rvLetter 0.28s ease-out 0.68s both; }
-.splash-bar { width: 150px; height: 4px; border-radius: 99px; background: var(--purple-soft); margin: 20px auto 0; overflow: hidden; }
+.splash-name span { display: inline-block; opacity: 0; transform: translateY(-0.85em) scale(0.94); animation: rvDrop 0.32s cubic-bezier(0.2, 1.55, 0.42, 1) both; animation-delay: calc(1.1s + var(--li) * 0.042s); }
+@keyframes rvDrop { 0% { opacity: 0; transform: translateY(-0.85em) scale(0.94); } 45% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+.splash-tag { color: var(--text-2); font-size: 13.5px; margin-top: 6px; opacity: 0; animation: rvDrop 0.3s cubic-bezier(0.2, 1.4, 0.42, 1) 1.52s both; }
+.splash-bar { width: 150px; height: 4px; border-radius: 99px; background: var(--purple-soft); margin: 20px auto 0; overflow: hidden; opacity: 0; animation: rvJoin 0.3s linear 1.55s both; } /* appears with the wordmark, not before it — during the assembly it read as a stray dash */
 .splash-bar i { display: block; height: 100%; width: 40%; border-radius: 99px; background: var(--accent-solid); animation: barSlide 1.1s ease-in-out infinite; }
 @keyframes barSlide { 0% { transform: translateX(-100%); } 100% { transform: translateX(450%); } }
 
@@ -1172,7 +1273,7 @@ button.mini-link:hover { text-decoration: underline; }
   .welcome-nav .btn { width: 100%; min-height: 48px; font-size: 15px; }
 }
 
-@media (prefers-reduced-motion: reduce) { .page { animation: none; } .slide.fwd, .slide.back { animation: none; } .splash-bar i, .landing-phone { animation: none; } .reveal-mark .rv-piece, .reveal-mark .rv-shine, .reveal-mark .rv-join, .splash-name span, .splash-tag { animation: none; opacity: 1; transform: none; } .reveal-mark .rv-ring { display: none; } .reveal { opacity: 1; transform: none; transition: none; } }
+@media (prefers-reduced-motion: reduce) { .page { animation: none; } .slide.fwd, .slide.back { animation: none; } .splash-bar i, .landing-phone { animation: none; } .reveal-mark .rv-piece, .reveal-mark .rv-orbit, .reveal-mark .rv-shine, .reveal-mark .rv-join, .splash-name span, .splash-tag { animation: none; opacity: 1; transform: none; } .reveal-mark .rv-ring { display: none; } .reveal { opacity: 1; transform: none; transition: none; } }
 
 /* Quiz progress + step transitions + cheers (Welcome.jsx 5-step setup). */
 .quiz-prog { height: 8px; border-radius: 99px; background: var(--purple-soft); overflow: hidden; margin: 10px 0 2px; }
@@ -1234,8 +1335,12 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
 .table-wrap::-webkit-scrollbar, .nbell-pop::-webkit-scrollbar, .mpick-pop::-webkit-scrollbar,
 .vai-view::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
-/* ── Orbit V loader (the ONE branded spinner: splash, fallbacks, gates) ── */
-.orbit-loader { display: inline-flex; flex: 0 0 auto; }
+/* ── the orbit (the ONE spinner: buttons, gates, every full-page wait) ──
+   Colours come from three custom properties so the same spinner works on white
+   and on the brand purple. Inside a .btn the ring takes currentColor: a purple
+   orbit on a purple button is an invisible orbit. */
+.orbit-loader { --orb-a: #818cf8; --orb-b: #6366f1; --orb-dot: #a5b4fc; display: inline-flex; flex: 0 0 auto; }
+.btn .orbit-loader { --orb-a: currentColor; --orb-b: currentColor; --orb-dot: currentColor; }
 .orbit-loader .orbit-spin { transform-origin: 60px 60px; animation: orbitRot 1.4s linear infinite; }
 @keyframes orbitRot { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .orbit-loader .orbit-spin { animation: none; } }

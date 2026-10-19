@@ -1,140 +1,481 @@
 // ── frontend/src/pages/Onboarding.jsx ────────────────────────────
-// WHAT: AgriStock-style welcome tour — 6 swipeable slides (counter 01/06,
-// progress dots, Back/Next, Skip, image per slide with icon fallback).
-// Seen once after signup (Login routes new accounts here). Neumorphic card
-// styling scoped to .neu-* classes (dashboard keeps flat clarity!).
-// React patterns: slide data array, direction-aware animation key, touch swipe,
-// SlideImg fallback chain (png → jpg → svg → icon slot).
-import { useEffect, useRef, useState } from 'react'; // useEffect = title; useRef = touch X WITHOUT re-render (mutable box!); useState = step/dir
-import Logo from '../components/Logo.jsx'; // theme-aware brand mark (blue dark / green light!)
-import { Link, useNavigate } from 'react-router-dom'; // Link = in-slide links (plans/checklist); useNavigate = Skip + Finish
-import Ic from '../components/icons.jsx'; // slide art + row icons
+// WHAT: the welcome tour — six slides, one idea each, seen once after signup.
+//
+// The old version put a 2MB AI stock photo on every slide and let the copy sit
+// still underneath it. Two problems with that: photographs of smiling people
+// sell nothing here, and "AI-generated" is the exact look we are avoiding. So
+// the art is now the product itself — a phone that TYPES a customer's question
+// and then answers it from the catalog. It teaches the thing it is advertising.
+//
+// The motion is the point:
+//   · the headline arrives word by word (a cascade, not a fade)
+//   · the body types itself out behind a caret, so you read it as it is written
+//   · inside the phone, the customer's message types, then the answer lands
+//   · the whole slide is swipeable / arrow-key navigable, and the art restarts
+//
+// Everything is deferred to prefers-reduced-motion at the CSS layer, and the
+// typing hook below returns the finished string when that is set — the page
+// must be readable without a single frame of animation.
+import { useEffect, useRef, useState } from 'react';
+import Logo from '../components/Logo.jsx';
+import { Link, useNavigate } from 'react-router-dom';
+import Ic from '../components/icons.jsx';
 
-// Drop ChatGPT-generated art at frontend/public/welcome-1.png … welcome-6.png
-// (800×600). Missing files fall back to the icon slot automatically.
-const SLIDES = [ // slide SCRIPT: data, not JSX (add a slide = add an object!). icon = fallback art; img = BASE path (SlideImg tries extensions).
+const SLIDES = [
   {
-    k: 'welcome', icon: 'store', img: '/welcome-1', eyebrow: 'Welcome to VeloSales Ai', title: 'Never miss a customer again.', // k = stable key (dot buttons + animation key); eyebrow = small caps kicker
+    k: 'welcome',
+    eyebrow: 'Welcome to VeloSales Ai',
+    title: 'Never miss a customer again.',
     body: 'Your WhatsApp becomes a 24/7 shop assistant. Customers ask, VeloSales Ai answers from YOUR catalog — even at 2am.',
-    points: [['chat', 'Replies in seconds'], ['spark', 'English or Pidgin'], ['shield', 'Never invents prices']], // [icon, text] chips row
-    cta: 'See how it works', // Next-button label for THIS slide (each slide sells the next!)
+    art: 'chat1',
+    points: [
+      ['chat', 'Replies in seconds'],
+      ['spark', 'English or Pidgin'],
+      ['shield', 'Never invents prices'],
+    ],
+    cta: 'See how it works',
   },
   {
-    k: 'flow', icon: 'chat', img: '/welcome-2', eyebrow: 'How it works', title: 'Message in. Sale out.',
-    body: 'Customer writes naturally. The AI checks your real products, prices and hours — then replies like your best sales rep.',
-    demo: true, cta: 'Teach it your products', // demo flag = render the mini chat sample below
+    k: 'flow',
+    eyebrow: 'How it works',
+    title: 'Message in. Sale out.',
+    body: 'The customer writes like a human. The AI checks your real products, prices and hours — then answers like your best sales rep.',
+    art: 'chat2',
+    cta: 'Teach it your products',
   },
   {
-    k: 'learn', icon: 'spark', img: '/welcome-3', eyebrow: 'The LEARN trick · Free forever', title: 'Teach it with one message.',
-    body: 'From YOUR WhatsApp number, paste the same ad you put on your status. Same product sent again simply updates the price.',
-    code: true, cta: 'Unlock Pro powers', // code flag = render the LEARN: sample box
+    k: 'learn',
+    eyebrow: 'The LEARN trick · Free forever',
+    title: 'Teach it with one message.',
+    body: 'From YOUR WhatsApp number, send the same ad you put on your status. Send the same product again and it simply updates the price.',
+    art: 'chat3',
+    cta: 'Unlock Pro powers',
   },
   {
-    k: 'sync', icon: 'shield', img: '/welcome-4', eyebrow: 'Pro · Profile sync', title: 'Verified against your profile.',
-    body: 'Pro scaffolds your whole catalog from your WhatsApp Business profile — then verifies every "is it available?" against it.',
-    points: [['box', 'Auto-scaffold catalog'], ['checkCircle', 'Verified answers'], ['bolt', 'SYNC: from WhatsApp']],
+    k: 'sync',
+    eyebrow: 'Pro · Profile sync',
+    title: 'Verified against your profile.',
+    body: 'Pro builds your whole catalog from your WhatsApp Business profile, then checks every "is it available?" against it. Nothing is guessed.',
+    art: 'sync',
     cta: 'See the plans',
   },
   {
-    k: 'plans', icon: 'card', img: '/welcome-5', eyebrow: 'Free vs Pro', title: 'Free forever. Pro when ready.',
-    body: 'Manual catalog stays free forever. Pro adds profile sync, product photos and zero ads — from ₦7,499 / $5 per month. Pro Plus adds voice notes + heavy work models.',
-    plans: true, cta: 'Almost done', // plans flag = free-vs-pro rows (Pro row LINKS to /billing!)
+    k: 'plans',
+    eyebrow: 'Free vs Pro',
+    title: 'Free forever. Pro when ready.',
+    body: 'A manual catalog stays free forever. Pro adds profile sync, product photos and priority answers — from ₦7,499 / $5 a month.',
+    art: 'plans',
+    cta: 'Almost done',
   },
   {
-    k: 'ready', icon: 'checkCircle', img: '/welcome-6', eyebrow: "You're set", title: 'Start selling tonight.',
-    body: 'Your 7-day Pro trial is running — profile sync included. Add 3–5 products, test the bot like a customer, then connect WhatsApp. Manual catalog stays free forever.',
-    checklist: true, cta: 'Open my dashboard', // checklist flag = first-action links (Catalog, Test bot)
+    k: 'ready',
+    eyebrow: "You're set",
+    title: 'Start selling tonight.',
+    body: 'Your 7-day Pro trial is running, profile sync included. Add 3–5 products, test the bot like a customer, then connect WhatsApp.',
+    art: 'ready',
+    cta: 'Open my dashboard',
   },
 ];
 
-const EXT_ORDER = ['.png', '.jpg', '.jpeg', '.svg']; // tried in order: your art first (any format!), our SVG placeholders last
-function SlideImg({ src, icon, alt }) { // src = BASE ('/welcome-1'); tries each extension until one loads
-  const [ext, setExt] = useState(0); // index into EXT_ORDER (0 = .png)
-  if (ext >= EXT_ORDER.length) { // every format 404'd → icon placeholder (tour NEVER breaks on missing art!)
-    return (
-      <div className="slide-slot">
-        <Ic n={icon} s={40} />
-        <b>Your image here</b>
-        <span>Add {src}.png or {src}.jpg to frontend/public</span> {/* tells YOU exactly what to do (dev-facing, but only visible with no art!) */}
-      </div>
-    );
+/** True when the person asked the OS to calm animation down. */
+function calm() {
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
   }
-  return <img src={src + EXT_ORDER[ext]} alt={alt} className="slide-img" onError={() => setExt(ext + 1)} />; // string concat builds '/welcome-1.png'; onError (404) → next extension (escalation chain!)
+}
+
+/**
+ * Types `text` out one character at a time, restarting whenever the string
+ * changes (i.e. on every slide). Returns [visible, done].
+ *
+ * `enabled` is passed by the caller so a slide can type its body only after
+ * its headline has landed — two typing runs at once is noise, not life.
+ */
+function useTyped(text, speed = 12, enabled = true) {
+  const [n, setN] = useState(0);
+  const quiet = useRef(false);
+
+  useEffect(() => {
+    quiet.current = calm();
+    if (!enabled) {
+      setN(0);
+      return undefined;
+    }
+    if (quiet.current) {
+      setN(text.length);
+      return undefined;
+    }
+    setN(0);
+    let i = 0;
+    const t = setInterval(() => {
+      i += 1;
+      setN(i);
+      if (i >= text.length) clearInterval(t);
+    }, speed);
+    return () => clearInterval(t);
+  }, [text, speed, enabled]);
+
+  return [text.slice(0, n), n >= text.length && enabled];
+}
+
+/** The headline, arriving one word at a time. */
+function Words({ text, delay = 0 }) {
+  return (
+    <>
+      {text.split(' ').map((w, i) => (
+        <span
+          key={i}
+          className="wv-word"
+          style={{ animationDelay: `${(delay + i * 0.055).toFixed(2)}s` }}
+        >
+          {w}
+        </span>
+      ))}
+    </>
+  );
+}
+
+/** A blinking caret while a line is still being written. */
+function Caret({ on }) {
+  if (!on) return null;
+  return <span className="wv-caret" aria-hidden="true" />;
+}
+
+/* ── the art: a phone doing the job ─────────────────────────────────
+   One frame, several scripts. The customer's message types; the answer
+   lands after it. Both restart whenever `play` changes (the slide key). */
+function PhoneArt({ variant }) {
+  // the first message types; the rest of the script follows it
+  const [lead, setLead] = useState('');
+  const [stage, setStage] = useState(0);
+
+  useEffect(() => {
+    setStage(0);
+    setLead('');
+    if (variant === 'sync' || variant === 'plans' || variant === 'ready') {
+      setStage(1);
+      return undefined;
+    }
+    const script = {
+      chat1: 'Good evening! Do you have the blue gown?',
+      chat2: 'How much for 3? And do you deliver to Yaba?',
+      chat3: 'LEARN: New stock! Blue gown ₦45,000',
+    }[variant] || '';
+    if (calm()) {
+      setLead(script);
+      setStage(2);
+      return undefined;
+    }
+    let i = 0;
+    const t = setInterval(() => {
+      i += 1;
+      setLead(script.slice(0, i));
+      if (i >= script.length) {
+        clearInterval(t);
+        // a beat of "reading", then the assistant answers
+        setTimeout(() => setStage(2), 520);
+      }
+    }, 34);
+    return () => clearInterval(t);
+  }, [variant]);
+
+  const typing = stage === 0;
+
+  return (
+    <div className="wv-phone" aria-hidden="true">
+      <div className="wv-head">
+        <span className="wv-av">
+          <Logo size={19} />
+        </span>
+        <div className="wv-who">
+          <b>Adaeze Fabrics</b>
+          <span className="wv-on">
+            <i /> online
+          </span>
+        </div>
+        <span className="wv-time">9:41</span>
+      </div>
+
+      {variant === 'chat1' && (
+        <div className="wv-thread">
+          <p className="wv-in">{lead}<Caret on={typing} /></p>
+          {stage === 2 && (
+            <>
+              <p className="wv-out">
+                Yes — the blue gown is ₦45,000, in stock. Want me to reserve it
+                for tomorrow?
+              </p>
+              <p className="wv-meta">
+                <Ic n="checkCircle" s={13} /> checked 12 products · 9am–7pm
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
+      {variant === 'chat2' && (
+        <div className="wv-thread">
+          <p className="wv-in">{lead}<Caret on={typing} /></p>
+          {stage === 2 && (
+            <>
+              <p className="wv-out">
+                3 gowns come to ₦126,000. Delivery to Yaba is free and lands
+                tomorrow before noon.
+              </p>
+              <p className="wv-meta">
+                <Ic n="checkCircle" s={13} /> matched 3 items · free delivery
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
+      {variant === 'chat3' && (
+        <div className="wv-thread">
+          <p className="wv-note">You, from your own WhatsApp</p>
+          <p className="wv-own">{lead}<Caret on={typing} /></p>
+          {stage === 2 && (
+            <>
+              <p className="wv-ack">
+                <Ic n="checkCircle" s={13} /> Catalog updated — 1 item. I'll use
+                this from now on.
+              </p>
+              <p className="wv-out">Yes — ₦45,000, in stock.</p>
+            </>
+          )}
+        </div>
+      )}
+
+      {variant === 'sync' && (
+        <div className="wv-rows">
+          <p className="wv-note">Scaffolded from your profile</p>
+          {[
+            ['Blue Ankara gown', '₦45,000'],
+            ['Two-piece set', '₦38,500'],
+            ['Head wrap', '₦7,500'],
+            ['Bridal lace', '₦92,000'],
+          ].map(([name, price], i) => (
+            <div className="wv-row" key={name} style={{ animationDelay: `${0.1 + i * 0.09}s` }}>
+              <Ic n="checkCircle" s={15} />
+              <b>{name}</b>
+              <span>{price}</span>
+            </div>
+          ))}
+          <p className="wv-foot">
+            <Ic n="shield" s={13} /> verified before every answer
+          </p>
+        </div>
+      )}
+
+      {variant === 'plans' && (
+        <div className="wv-rows">
+          <div className="wv-plan">
+            <div>
+              <b>Free</b>
+              <span>Manual catalog · AI replies</span>
+            </div>
+            <em>₦0</em>
+          </div>
+          <div className="wv-plan now">
+            <div>
+              <b>Pro</b>
+              <span>Profile sync · photos · priority</span>
+            </div>
+            <em>₦7,499<small>/mo</small></em>
+          </div>
+          <p className="wv-foot">Cancel anytime — the manual catalog never expires.</p>
+        </div>
+      )}
+
+      {variant === 'ready' && (
+        <div className="wv-rows">
+          <p className="wv-note">Three things, then you're live</p>
+          {[
+            ['Add 3–5 products', 'Catalog'],
+            ['Test the bot yourself', 'Test bot'],
+            ['Connect WhatsApp', 'Connect'],
+          ].map(([name, where], i) => (
+            <div className="wv-row" key={name} style={{ animationDelay: `${0.1 + i * 0.1}s` }}>
+              <span className="wv-num">{i + 1}</span>
+              <b>{name}</b>
+              <span className="wv-tag">{where}</span>
+            </div>
+          ))}
+          <p className="wv-foot">
+            <Ic n="bolt" s={13} /> most shops finish in one evening
+          </p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Onboarding() {
-  useEffect(() => { document.title = 'VeloSales Ai — Welcome'; }, []); // tab title (mount-only)
-  const nav = useNavigate(); // Skip intro + final CTA navigation
-  const [step, setStep] = useState(0); // current slide index (0–5)
-  const [dir, setDir] = useState(1); // slide direction: +1 forward / -1 back (drives fwd/back CSS animation!)
-  const touchX = useRef(null); // touch-start X (useRef = mutable WITHOUT re-render — perfect for gesture tracking!)
-  const slide = SLIDES[step]; // current slide object (shorthand used 10× below)
-  function go(n) { // clamped navigation with direction tracking…
-    const next = Math.max(0, Math.min(SLIDES.length - 1, n)); // Math.max/min CLAMP: 0 ≤ next ≤ 5 (can't overshoot either end!)
-    setDir(next >= step ? 1 : -1); // direction = comparing target vs current (>= handles dot-jumps forward AND backward!)
-    setStep(next); // two setStates = one re-render (batched) with slide + animation direction in sync
+  useEffect(() => {
+    document.title = 'VeloSales Ai — Welcome';
+  }, []);
+  const nav = useNavigate();
+  const [step, setStep] = useState(0);
+  const [dir, setDir] = useState(1);
+  const touchX = useRef(null);
+  const slide = SLIDES[step];
+
+  // headline must land before the body starts typing
+  const [headlineDone, setHeadlineDone] = useState(calm());
+  useEffect(() => {
+    setHeadlineDone(calm());
+    if (calm()) return undefined;
+    const t = setTimeout(() => setHeadlineDone(true), 90 + slide.title.split(' ').length * 55 + 260);
+    return () => clearTimeout(t);
+  }, [step, slide.title]);
+
+  const [body, bodyDone] = useTyped(slide.body, 11, headlineDone);
+
+  function go(n) {
+    const next = Math.max(0, Math.min(SLIDES.length - 1, n));
+    if (next === step) return;
+    setDir(next > step ? 1 : -1);
+    setStep(next);
   }
+
+  // arrow keys: a tour should not require aiming at a button
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'ArrowRight') go(step + 1);
+      if (e.key === 'ArrowLeft') go(step - 1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
   return (
-    <div className="welcome"> {/* fullscreen stage — flat light background (neumorphic tint retired) */}
-      <div className="welcome-inner"> {/* centered column (max-width) */}
+    <div className="welcome">
+      <div className="welcome-inner">
         <div className="welcome-top">
-          <span className="landing-brand"><Logo alt="VeloSales Ai" />VELOSALES AI</span> {/* brand lockup (logo + letterspaced name) */}
-          <button className="skip" onClick={() => nav('/welcome')}>Skip intro</button> {/* link-styled skip (impatient users convert too — still lands on niche setup!) */}
-        </div>
-        <div className="slide-bar" role="tablist" aria-label="Tour progress"> {/* filled segments: progress at a glance, still clickable to jump */}
-          {SLIDES.map((s, i) => <button key={s.k} role="tab" aria-selected={i === step} aria-label={s.eyebrow} className={'sbar' + (i <= step ? ' on' : '')} onClick={() => go(i)} />)}
+          <span className="landing-brand">
+            <Logo alt="VeloSales Ai" />
+            VELOSALES AI
+          </span>
+          <button className="skip" onClick={() => nav('/welcome')}>
+            Skip intro
+          </button>
         </div>
 
-        <div // swipe zone: touch handlers on the STAGE (not the slide — survives re-renders!)
+        <div className="slide-bar" role="tablist" aria-label="Tour progress">
+          {SLIDES.map((s, i) => (
+            <button
+              key={s.k}
+              role="tab"
+              aria-selected={i === step}
+              aria-label={s.eyebrow}
+              className={'sbar' + (i <= step ? ' on' : '')}
+              onClick={() => go(i)}
+            />
+          ))}
+        </div>
+
+        <div
           className="slide-stage"
-          onTouchStart={(e) => { touchX.current = e.touches[0].clientX; }} // touches[0] = first finger; store X (no setState = no re-render mid-gesture!)
-          onTouchEnd={(e) => { // finger lifted → measure horizontal travel…
-            if (touchX.current === null) return; // guard: no start recorded (multi-touch edge)
-            const dx = e.changedTouches[0].clientX - touchX.current; // changedTouches = fingers that LEFT (end event has no .touches!)
-            if (dx < -50) go(step + 1); // swipe LEFT 50px+ = next (natural "push pages away" gesture)
-            else if (dx > 50) go(step - 1); // swipe RIGHT 50px+ = back (go() clamps at ends — safe!)
-            touchX.current = null; // reset for next gesture
+          onTouchStart={(e) => {
+            touchX.current = e.touches[0].clientX;
+          }}
+          onTouchEnd={(e) => {
+            if (touchX.current === null) return;
+            const dx = e.changedTouches[0].clientX - touchX.current;
+            if (dx < -50) go(step + 1);
+            else if (dx > 50) go(step - 1);
+            touchX.current = null;
           }}
         >
-          <div className={'slide' + (dir > 0 ? ' fwd' : ' back')} key={slide.k}> {/* key={slide.k} = THE animation trick: new key → React UNMOUNTS old slide + mounts new (fresh .fwd/.back entrance every time!). dir picks slide direction class. */}
-            <div className="slide-art"> {/* art panel: tinted well + one rounded image */}
-              <div className="slide-frame"> {/* inset panel — hairline + surface, no shadow games */}
-                <SlideImg src={slide.img} icon={slide.icon} alt={slide.eyebrow} /> {/* art with fallback chain (above) */}
-              </div>
+          <div className={'slide' + (dir > 0 ? ' fwd' : ' back')} key={slide.k}>
+            <div className="slide-art wv-art">
+              <div className="wv-glow" />
+              <PhoneArt variant={slide.art} />
             </div>
-            <div className="slide-copy"> {/* copy panel: children stagger in via nth-child CSS delays! */}
-              <p className="crumb">{slide.eyebrow}</p> {/* kicker */}
-              <h1>{slide.title}</h1>
-              <p className="lede">{slide.body}</p> {/* lede = intro paragraph style */}
-              {slide.points && ( // points chips (slides 0 + 3 only — && conditional on the FLAG!)
-                <div className="slide-points">{slide.points.map(([ic, t]) => <span key={t}><Ic n={ic} s={15} />{t}</span>)}</div>
-              )}
-              {slide.demo && ( // mini customer↔AI chat sample (slide 1)…
-                <div className="learn-box light">Customer: "Abeg, do you have blue gown?"<div className="reply">AI: "Yes — blue gown ₦45,000, in stock. Want me to reserve it?"</div></div>
-              )}
-              {slide.code && ( // LEARN: sample (slide 2)…
-                <div className="learn-box light">LEARN: New stock! Blue gown ₦45,000<div className="reply"><Ic n="checkCircle" s={14} /> Catalog updated — I'll now use this to answer customers.</div></div>
-              )}
-              {slide.plans && ( // Free-vs-Pro rows (slide 4 — Pro row is a real LINK!)…
-                <div className="qa-list">
-                  <div className="qa static"><Ic n="checkCircle" s={17} /><div><b>Free forever</b><span className="hint">Manual catalog + AI replies</span></div></div> {/* div (not Link) = non-clickable row (.static kills hover) */}
-                  <Link className="qa" to="/billing"><Ic n="bolt" s={17} /><div><b>Pro — from ₦7,499/mo</b><span className="hint">Profile sync · photos · no ads · priced in your currency</span></div></Link> {/* clickable upsell row → billing (Billing page shows the exact local price!) */}
+
+            <div className="slide-copy">
+              <p className="crumb">{slide.eyebrow}</p>
+              <h1>
+                <Words text={slide.title} delay={0.06} />
+              </h1>
+              <p className="lede wv-lede">
+                {body}
+                <Caret on={headlineDone && !bodyDone} />
+              </p>
+
+              {slide.points && (
+                <div className="slide-points">
+                  {slide.points.map(([ic, t]) => (
+                    <span key={t}>
+                      <Ic n={ic} s={15} />
+                      {t}
+                    </span>
+                  ))}
                 </div>
               )}
-              {slide.checklist && ( // first-action checklist (slide 5)…
+
+              {slide.k === 'plans' && (
                 <div className="qa-list">
-                  <Link className="qa" to="/catalog"><Ic n="box" s={17} /><div><b>Add your products</b><span className="hint">3–5 to start is plenty</span></div></Link>
-                  <Link className="qa" to="/connect"><Ic n="plug" s={17} /><div><b>Connect WhatsApp + Telegram</b><span className="hint">TEST to LIVE in minutes</span></div></Link>
-                  <Link className="qa" to="/playground"><Ic n="play" s={17} /><div><b>Test like a customer</b><span className="hint">Ask for prices, then chaos</span></div></Link>
+                  <div className="qa static">
+                    <Ic n="checkCircle" s={17} />
+                    <div>
+                      <b>Free forever</b>
+                      <span className="hint">Manual catalog + AI replies</span>
+                    </div>
+                  </div>
+                  <Link className="qa" to="/billing">
+                    <Ic n="bolt" s={17} />
+                    <div>
+                      <b>Pro — from ₦7,499/mo</b>
+                      <span className="hint">
+                        Profile sync · photos · priority · priced in your currency
+                      </span>
+                    </div>
+                  </Link>
+                </div>
+              )}
+
+              {slide.k === 'ready' && (
+                <div className="qa-list">
+                  <Link className="qa" to="/catalog">
+                    <Ic n="box" s={17} />
+                    <div>
+                      <b>Add your products</b>
+                      <span className="hint">3–5 to start is plenty</span>
+                    </div>
+                  </Link>
+                  <Link className="qa" to="/connect">
+                    <Ic n="plug" s={17} />
+                    <div>
+                      <b>Connect WhatsApp + Telegram</b>
+                      <span className="hint">TEST to LIVE in minutes</span>
+                    </div>
+                  </Link>
+                  <Link className="qa" to="/playground">
+                    <Ic n="play" s={17} />
+                    <div>
+                      <b>Test like a customer</b>
+                      <span className="hint">Ask for prices, then chaos</span>
+                    </div>
+                  </Link>
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        <div className="foot-nav welcome-nav"> {/* bottom nav row */}
-          <button className="btn ghost" disabled={step === 0} onClick={() => go(step - 1)}><Ic n="back" s={15} /> Back</button> {/* disabled on first slide (can't go below 0 — go() would clamp anyway: defense in depth!) */}
-          <button className="btn" onClick={() => step < SLIDES.length - 1 ? go(step + 1) : nav('/welcome')}>{slide.cta} <Ic n="next" s={15} /></button> {/* ternary: advance (per-slide CTA label!) or finish → niche setup (new accounts pick their hustle!) */}
+        <div className="foot-nav welcome-nav">
+          <button className="btn ghost" disabled={step === 0} onClick={() => go(step - 1)}>
+            <Ic n="back" s={15} /> Back
+          </button>
+          <button
+            className="btn"
+            onClick={() => (step < SLIDES.length - 1 ? go(step + 1) : nav('/welcome'))}
+          >
+            {slide.cta} <Ic n="next" s={15} />
+          </button>
         </div>
       </div>
     </div>

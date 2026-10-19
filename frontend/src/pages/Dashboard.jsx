@@ -192,12 +192,36 @@ export default function Dashboard({ biz }) { // biz = business object from App (
         <div className="trial-strip"><Ic n="clock" s={16} /><span><b>{trialLeft} day{trialLeft === 1 ? '' : 's'} of Pro trial left.</b> Keep Pro sync, or stay free forever with manual catalog.</span><Link to="/billing">Billing<Ic n="next" s={14} /></Link></div>
       )}
 
-      {!s ? ( // LOADING: skeleton tiles mirroring the layout
-        <div className="ov-skels">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="ov-stat"><div className="skel" style={{ width: '45%', height: 12 }} /><div className="skel" style={{ width: '60%', height: 30, marginTop: 12 }} /><div className="skel" style={{ width: '75%', marginTop: 12 }} /></div>
-          ))}
-        </div>
+      {!s ? ( // LOADING: the skeleton mirrors the whole page, not just the tiles
+        <>
+          <div className="ov-skels">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="ov-stat"><div className="skel" style={{ width: '45%', height: 12 }} /><div className="skel" style={{ width: '60%', height: 30, marginTop: 12 }} /><div className="skel" style={{ width: '75%', marginTop: 12 }} /></div>
+            ))}
+          </div>
+          <div className="ov-grid">
+            {[0, 1].map((i) => (
+              <div key={i} className="ov-card">
+                <div className="skel" style={{ width: 110, height: 14 }} />
+                <div className="skel" style={{ width: 168, height: 11, marginTop: 10 }} />
+                <div className="skel" style={{ height: 188, marginTop: 18, borderRadius: 12 }} />
+              </div>
+            ))}
+          </div>
+          <div className="ov-grid">
+            {[0, 1].map((i) => (
+              <div key={i} className="ov-card">
+                <div className="skel" style={{ width: 148, height: 14, marginBottom: 6 }} />
+                {[0, 1, 2].map((r) => (
+                  <div key={r} className="skel-row">
+                    <div className="skel skel-dot" />
+                    <div className="skel-lines"><div className="skel" style={{ width: '52%', height: 12 }} /><div className="skel" style={{ width: '82%', height: 10 }} /></div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </>
       ) : (
         <>
           <div className="ov-stats">

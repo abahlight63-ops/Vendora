@@ -218,10 +218,7 @@ class _SetupScreenState extends State<SetupScreen> {
                     ? null
                     : () => _save(advance: _step < 4), // last step saves!
                 icon: _busy
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const OrbitLoader(size: 17, color: Colors.white)
                     : Icon(_step < 4 ? Icons.arrow_forward : Icons.check),
                 label: Text(_busy
                     ? 'Saving…'

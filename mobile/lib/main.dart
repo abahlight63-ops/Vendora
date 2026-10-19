@@ -50,8 +50,10 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
   }
 
   Future<void> _boot() async {
-    // Web parity: splash never shorter than 1.5s (Splash.jsx timing).
-    final wait = Future.delayed(const Duration(milliseconds: 1500));
+    // Web parity: the splash holds for the full reveal. The wordmark's last
+    // letter lands at 1.88s, so the floor is 2s — anything shorter cuts the
+    // one authored moment in the app in half.
+    final wait = Future.delayed(const Duration(milliseconds: 2000));
     final results = await Future.wait([
       wait,
       VeloSalesTheme.loadMode(),

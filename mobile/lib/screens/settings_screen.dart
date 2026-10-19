@@ -255,10 +255,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             child: Center(
               child: _photoBusy
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const OrbitLoader(size: 17)
                   : Icon(Icons.edit_outlined, size: 19, color: muted),
             ),
           ),

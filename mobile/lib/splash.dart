@@ -1,11 +1,13 @@
 // ── lib/splash.dart ────────────────────────────────────────────────
-// WHAT: the brand intro, shown while the session check runs (never shorter
-// than the web one — main.dart enforces the 1.5s floor).
+// WHAT: the brand intro, shown while the session check runs.
 //
-// The mark assembles itself (widgets/logo_reveal.dart), the wordmark rises in
-// letter by letter, the tagline follows once the mark has settled, and a thin
-// bar sweeps underneath. Previously this was a static logo over an endless
-// spinner, which is what made it feel like a placeholder rather than a brand.
+// The mark assembles itself (widgets/logo_reveal.dart), the wordmark drops in
+// letter by letter, the tagline follows once the wordmark is on its way, and a
+// thin bar sweeps underneath. The choreography and its timings are the same
+// numbers as the web splash, so both clients show one animation.
+//
+// main.dart holds this screen for 2s — long enough for the last letter to land
+// at 1.88s. A splash that cuts the wordmark in half is worse than no splash.
 import 'package:flutter/material.dart';
 
 import 'widgets/logo_reveal.dart';
@@ -18,7 +20,8 @@ class SplashView extends StatefulWidget {
 }
 
 class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
-  /// Drives only the tagline: it waits for the mark to settle before it shows.
+  /// Drives the tagline and the progress bar: both wait until the wordmark is
+  /// on its way down before they appear, so the eye has one thing at a time.
   late final AnimationController _tag;
 
   @override
@@ -26,10 +29,11 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
     super.initState();
     _tag = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 700),
+      duration: const Duration(milliseconds: 320),
     );
-    // The reveal settles at ~1.6s; the tagline comes in just behind it.
-    Future.delayed(const Duration(milliseconds: 1450), () {
+    // The wordmark starts dropping at 1.10s and lands at 1.88s; the tagline
+    // joins at 1.52s, exactly as the web splash does it.
+    Future.delayed(const Duration(milliseconds: 1520), () {
       if (mounted) _tag.forward();
     });
   }
@@ -56,8 +60,9 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
                 FadeTransition(
                   opacity: CurvedAnimation(parent: _tag, curve: Curves.easeOut),
                   child: SlideTransition(
+                    // Drops in from above, like the wordmark above it.
                     position: Tween<Offset>(
-                      begin: const Offset(0, 0.35),
+                      begin: const Offset(0, -0.35),
                       end: Offset.zero,
                     ).animate(CurvedAnimation(parent: _tag, curve: Curves.easeOutCubic)),
                     child: Text(
@@ -76,7 +81,12 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
             left: 0,
             right: 0,
             bottom: 68,
-            child: Center(child: _SweepBar(color: scheme.primary)),
+            child: FadeTransition(
+              // The bar is a loading affordance, not part of the logo: during
+              // the assembly it read as a stray dash under the mark.
+              opacity: _tag,
+              child: Center(child: _SweepBar(color: scheme.primary)),
+            ),
           ),
         ],
       ),

@@ -12,6 +12,7 @@
 import 'package:flutter/material.dart';
 
 import '../brand_mark.dart';
+import '../motion.dart';
 import '../theme.dart';
 import 'brand_ui.dart';
 
@@ -395,14 +396,7 @@ class AuthPrimaryButton extends StatelessWidget {
             ? Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.2,
-                      valueColor: AlwaysStoppedAnimation(Colors.white),
-                    ),
-                  ),
+                  const OrbitLoader(size: 18, color: Colors.white),
                   const SizedBox(width: 11),
                   Text(
                     busyLabel ?? label,

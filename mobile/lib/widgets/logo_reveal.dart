@@ -1,17 +1,28 @@
 // ── lib/widgets/logo_reveal.dart ─────────────────────────────────
 // WHAT: the brand mark assembling itself.
 //
-// The reference animation works like this: the parts arrive scattered and
-// spinning, sweep around a centre they are not yet part of, then converge and
-// snap into the finished mark, and finally the wordmark comes in letter by
-// letter. This is that sequence built from OUR geometry — the mark already is
-// three separate triangles (brand_mark.dart), so it can genuinely come apart
-// and come back together rather than just fading in.
+// This is the owner's reference animation (logo animations.mp4) rebuilt from
+// OUR geometry. The reference is a watermelon built out of seeds and rind
+// strokes; ours is a hexagon built out of three triangles — but the sequence
+// is the same, beat for beat, and so are the numbers:
 //
-// Timeline (fraction of the run):
-//   0.00–0.40  pieces orbit in, ring sweeping; wordmark absent
-//   0.34–0.78  pieces converge and settle with a slight overshoot
-//   0.62–1.00  wordmark letters rise in, staggered
+//   0.10–1.00s  the three pieces orbit in from outside the frame, each one
+//               spinning and scaling up as it travels (the flight path itself
+//               is turned 34° and unwinds as they land, so they curve in)
+//   0.00–1.05s  the outline draws itself as two arcs sweeping round the centre
+//   0.92s       the seam closes: the mark is whole for the first time
+//   1.00–1.40s  a pass of light crosses it
+//   1.10–1.88s  the wordmark DROPS in, one letter at a time, each falling from
+//               above its baseline and springing past it on the way home
+//
+// The letters are the signature move — the reference's wordmark is not faded
+// in, it is dropped in, glyph by glyph, with an overshoot. A fade would be
+// cheaper and would look like a different animation.
+//
+// The web splash runs the identical timeline (frontend/src/styles.css, the
+// `.splash` block) at the identical speed, so both clients show one animation,
+// not two cousins of one. Keep kRevealMs and the constants below in step with
+// it.
 //
 // It is one authored moment, used once — on the splash. Do not put it on a
 // loading state that fires often; a reveal that repeats is a delay.
@@ -21,6 +32,31 @@ import 'package:flutter/material.dart';
 
 import '../brand_mark.dart';
 import '../theme.dart';
+
+/// Length of the whole sequence. The web splash uses 2300ms too.
+const int kRevealMs = 2300;
+
+// ── the beats, in milliseconds ──
+const double _assembleFirst = 100; // first piece leaves its start point
+const double _assembleStagger = 90; // between pieces
+const double _assembleDur = 720; // per piece, start to home
+const double _orbitDur = 900; // the flight path unwinding
+const double _ringDur = 1050; // arcs drawing and sweeping
+const double _joinAt = 920; // pieces are exactly home
+const double _shineAt = 1000;
+const double _shineDur = 400;
+const double _dropFirst = 1100; // first letter starts falling
+const double _dropStagger = 42;
+const double _dropDur = 320;
+
+// The same curves the CSS uses — a cubic-bezier is a cubic-bezier.
+const _arrive = Cubic(0.3, 0.68, 0.3, 1.1); // the piece flight (+ a little spring)
+const _drop = Cubic(0.2, 1.55, 0.42, 1); // the letter drop (overshoots, hard)
+const _ringCurve = Cubic(0.4, 0.05, 0.2, 1);
+const _orbitCurve = Cubic(0.32, 0.86, 0.24, 1);
+
+double _at(double ms, double start, double dur) =>
+    dur <= 0 ? (ms >= start ? 1 : 0) : ((ms - start) / dur).clamp(0.0, 1.0);
 
 class LogoReveal extends StatefulWidget {
   /// Height of the mark, in logical pixels.
@@ -48,15 +84,17 @@ class LogoReveal extends StatefulWidget {
   State<LogoReveal> createState() => _LogoRevealState();
 }
 
-class _LogoRevealState extends State<LogoReveal> with SingleTickerProviderStateMixin {
+class _LogoRevealState extends State<LogoReveal>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _c;
-
-  static const _run = Duration(milliseconds: 2100);
 
   @override
   void initState() {
     super.initState();
-    _c = AnimationController(vsync: this, duration: _run);
+    _c = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: kRevealMs),
+    );
     if (widget.once) {
       _c.forward().whenComplete(() {
         if (mounted && widget.onSettled != null) widget.onSettled!();
@@ -79,7 +117,7 @@ class _LogoRevealState extends State<LogoReveal> with SingleTickerProviderStateM
     return AnimatedBuilder(
       animation: _c,
       builder: (context, _) {
-        final t = _c.value;
+        final ms = _c.value * kRevealMs;
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -88,7 +126,7 @@ class _LogoRevealState extends State<LogoReveal> with SingleTickerProviderStateM
               height: widget.size,
               child: CustomPaint(
                 painter: _RevealPainter(
-                  t: t,
+                  t: _c.value,
                   gradient: markGradient(context),
                   soft: VeloSalesTheme.markMid(context),
                   ring: Theme.of(context).colorScheme.primary,
@@ -103,7 +141,11 @@ class _LogoRevealState extends State<LogoReveal> with SingleTickerProviderStateM
                   for (var i = 0; i < letters.length; i++)
                     _Letter(
                       ch: letters[i],
-                      p: staggerProgress(t, i, letters.length, from: 0.62, to: 1.0),
+                      p: _at(
+                        ms,
+                        _dropFirst + i * _dropStagger,
+                        _dropDur,
+                      ),
                       size: widget.size * 0.235,
                     ),
                 ],
@@ -116,6 +158,9 @@ class _LogoRevealState extends State<LogoReveal> with SingleTickerProviderStateM
   }
 }
 
+/// One glyph of the wordmark: falls from above the baseline, overshoots it,
+/// springs back. The fade is deliberately quicker than the fall — a letter you
+/// cannot see yet cannot be seen to fall.
 class _Letter extends StatelessWidget {
   final String ch;
   final double p;
@@ -126,10 +171,11 @@ class _Letter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final fall = _drop.transform(p);
     return Opacity(
-      opacity: Curves.easeOut.transform(p),
+      opacity: (p / 0.45).clamp(0.0, 1.0),
       child: Transform.translate(
-        offset: Offset(0, (1 - Curves.easeOutCubic.transform(p)) * size * 0.7),
+        offset: Offset(0, -(1 - fall) * size * 0.85),
         child: Text(
           ch,
           style: TextStyle(
@@ -158,22 +204,25 @@ class _RevealPainter extends CustomPainter {
     required this.ring,
   });
 
-  /// Where each piece flies in from, and how far round it is spun.
-  /// Order matches kMarkPieces: cap, left wing, right wing.
+  /// Where each piece lives, and where it flies in from. Order matches
+  /// kMarkPieces: cap, left wing, right wing. The offsets are the artwork's
+  /// own numbers scaled up (×2.4) for the entrance — an arrival you can
+  /// actually see at 112px.
   static const _home = <Offset>[
     Offset(301, 126), // cap centroid
     Offset(100, 466), // left wing centroid
     Offset(502, 466), // right wing centroid
   ];
   static const _from = <Offset>[
-    Offset(0, -190),
-    Offset(-185, 80),
-    Offset(185, 80),
+    Offset(0, -456),
+    Offset(-444, 192),
+    Offset(444, 192),
   ];
-  static const _spin = <double>[-0.30, 0.26, -0.26]; // radians
+  static const _spin = <double>[-0.593, 0.524, -0.524]; // radians (−34°, +30°, −30°)
 
   @override
   void paint(Canvas canvas, Size size) {
+    final ms = t * kRevealMs;
     final s = size.height / kMarkH;
     canvas.save();
     // Work in the artwork's own coordinate space, so the numbers above are the
@@ -185,40 +234,37 @@ class _RevealPainter extends CustomPainter {
     final outline = markOutlinePath();
     final pieces = markPiecePaths();
 
-    // ── the settling: 0 while scattered, 1 when in place ──
-    final raw = ((t - 0.34) / 0.44).clamp(0.0, 1.0);
-    // A group turn that unwinds as the pieces arrive.
-    final groupRot = (1 - Curves.easeOutCubic.transform(raw)) * -0.14;
-
-    // ── the sweeping ring, gone by the time the mark is whole ──
-    final ringFade = (1 - ((t - 0.10) / 0.42).clamp(0.0, 1.0));
+    // ── the outline drawing itself: two arcs, sweeping ──
+    final ringP = _ringCurve.transform((ms / _ringDur).clamp(0.0, 1.0));
+    final ringIn = (ms / 140).clamp(0.0, 1.0);
+    final ringOut = ((ms - (_ringDur - 260)) / 260).clamp(0.0, 1.0);
+    final ringFade = ringIn * (1 - ringOut);
     if (ringFade > 0.01) {
       final centre = Offset(kMarkW / 2, kMarkH / 2);
-      final r = math.max(kMarkW, kMarkH) * 0.62;
-      final begin = t * math.pi * 2.4;
+      final angle = (-118 + 216 * ringP) * math.pi / 180;
       final paint = Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 7
-        ..strokeCap = StrokeCap.round
-        ..color = ring.withValues(alpha: 0.30 * ringFade);
+        ..strokeWidth = 26
+        ..strokeCap = StrokeCap.round;
+      // 620 of 2664 (84°) and 360 of 3079 (42°) — the CSS dash lengths.
       canvas.drawArc(
-        Rect.fromCircle(center: centre, radius: r),
-        begin,
-        math.pi * 1.45,
+        Rect.fromCircle(center: centre, radius: 424),
+        angle,
+        math.pi * 0.467,
         false,
-        paint,
+        paint..color = ring.withValues(alpha: 0.62 * ringFade),
       );
       canvas.drawArc(
-        Rect.fromCircle(center: centre, radius: r * 1.14),
-        -begin * 0.7,
-        math.pi * 0.9,
+        Rect.fromCircle(center: centre, radius: 490),
+        -angle * 0.7,
+        math.pi * 0.233,
         false,
-        paint..color = ring.withValues(alpha: 0.16 * ringFade),
+        paint..color = ring.withValues(alpha: 0.34 * ringFade),
       );
     }
 
     // ── the soft halo, which blooms as the mark closes ──
-    final halo = Curves.easeOut.transform(((t - 0.55) / 0.45).clamp(0.0, 1.0));
+    final halo = Curves.easeOut.transform(_at(ms, _joinAt, 700));
     if (halo > 0.01) {
       canvas.drawPath(
         outline,
@@ -228,28 +274,34 @@ class _RevealPainter extends CustomPainter {
       );
     }
 
-    // ── the pieces ──
+    // ── the orbit: the whole flight path is turned, then unwinds ──
+    final orbit = _orbitCurve.transform((ms / _orbitDur).clamp(0.0, 1.0));
+    final groupRot = -0.593 * (1 - orbit); // −34°
+    final groupScale = 0.84 + 0.16 * orbit;
+
     canvas.save();
     canvas.translate(kMarkW / 2, kMarkH / 2);
+    canvas.scale(groupScale);
     canvas.rotate(groupRot);
     canvas.translate(-kMarkW / 2, -kMarkH / 2);
 
     // The pieces fade up as they arrive. The alpha goes on a LAYER, not on the
     // paint: a paint that carries a shader ignores its own colour, so setting
     // the colour there would silently do nothing.
-    final op = ((t - 0.20) / 0.22).clamp(0.0, 1.0);
+    final layer =
+        ((ms - _assembleFirst) / 160).clamp(0.0, 1.0).toDouble();
     canvas.saveLayer(
       Rect.fromLTWH(-300, -300, kMarkW + 600, kMarkH + 600),
-      Paint()..color = Colors.white.withValues(alpha: op),
+      Paint()..color = Colors.white.withValues(alpha: layer),
     );
 
     for (var i = 0; i < pieces.length; i++) {
-      final p = staggerProgress(t, i, pieces.length, from: 0.30, to: 0.80);
-      final e = Curves.easeOutBack.transform(p);
+      final p = _at(ms, _assembleFirst + i * _assembleStagger, _assembleDur);
+      final e = _arrive.transform(p);
       final home = _home[i];
       final off = Offset.lerp(_from[i], Offset.zero, e)!;
       final rot = _spin[i] * (1 - e);
-      final sc = 0.80 + 0.20 * e;
+      final sc = 0.72 + 0.28 * e;
 
       canvas.save();
       canvas.translate(home.dx + off.dx, home.dy + off.dy);
@@ -258,31 +310,36 @@ class _RevealPainter extends CustomPainter {
       canvas.translate(-home.dx, -home.dy);
       canvas.drawPath(
         pieces[i],
-        Paint()..shader = gradient.createShader(const Rect.fromLTWH(0, 0, kMarkW, kMarkH)),
+        Paint()
+          ..shader = gradient.createShader(
+            const Rect.fromLTWH(0, 0, kMarkW, kMarkH),
+          ),
       );
       canvas.restore();
     }
 
     canvas.restore(); // the pieces layer
-    canvas.restore(); // the group rotation
+    canvas.restore(); // the orbit
 
     // ── close the seams ──
     // Three filled triangles that share edges are anti-aliased independently,
-    // so where they meet they leave a hairline. By 0.80 the pieces are exactly
-    // home (the settle finishes at 0.78), so redrawing the mark as the single
-    // even-odd path here cannot pop — it is pixel-identical except for the
-    // hairlines it removes.
-    if (t >= 0.80) {
+    // so where they meet they leave a hairline. By 0.92s the pieces are exactly
+    // home, so redrawing the mark as the single even-odd path here cannot pop
+    // — it is pixel-identical except for the hairlines it removes.
+    if (ms >= _joinAt) {
       canvas.drawPath(
         outline,
-        Paint()..shader = gradient.createShader(const Rect.fromLTWH(0, 0, kMarkW, kMarkH)),
+        Paint()
+          ..shader = gradient.createShader(
+            const Rect.fromLTWH(0, 0, kMarkW, kMarkH),
+          ),
       );
     }
 
     // ── the light that crosses the finished mark ──
-    final sweep = ((t - 0.78) / 0.22).clamp(0.0, 1.0);
+    final sweep = _at(ms, _shineAt, _shineDur);
     if (sweep > 0 && sweep < 1) {
-      final x = -0.5 + sweep * 2.0;
+      final x = -0.5 + Curves.easeOut.transform(sweep) * 2.0;
       canvas.save();
       canvas.clipPath(outline);
       final w = kMarkW * 0.55;
@@ -306,20 +363,4 @@ class _RevealPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_RevealPainter old) => old.t != t;
-}
-
-/// Same stagger maths as the reveal, exposed for other sequential entrances.
-double staggerProgress(
-  double t,
-  int i,
-  int n, {
-  required double from,
-  required double to,
-}) {
-  final span = to - from;
-  final step = n <= 1 ? 0.0 : span * 0.55 / (n - 1);
-  final start = from + step * i;
-  final local = span * 0.45;
-  if (local <= 0) return t >= start ? 1 : 0;
-  return ((t - start) / local).clamp(0.0, 1.0);
 }

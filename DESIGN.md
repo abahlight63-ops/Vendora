@@ -26,6 +26,15 @@ semantically) plus the founder's Flowify reference for the marketing surfaces
 (light background, white cards, pill buttons, generous border-radius, big
 headlines, sentence case).
 
+### Parity — one product, two clients
+Every visual decision lands on **both** the web app (`frontend/`) and the phone
+app (`mobile/`), in the same review pass. Login and sign-up are the only
+exception: the phone uses a native auth flow, the web a page. If a page has a
+different shape on the phone (a list instead of a table, a bottom sheet instead
+of a popover), the words, order, states and emphasis still match — and so does
+every empty, loading and error state. A screen that exists on one client only is
+a bug, not a bonus.
+
 ### Colour — the reasoning (locked 2026-10, from the reference video)
 
 - **Indigo is authority.** It reads as competent, calm and expensive, and it is
@@ -191,6 +200,23 @@ Check every text/background pair at 4.5:1 in both themes.
 ### Modals, sheets, toasts
 - Modals/sheets: surface, 16px radius, grabber on mobile sheets, dimmed page.
   Toasts confirm lightweight actions only — never for critical errors.
+- Anything that ends a session asks first: "Sign out of VeloSales Ai?" with the
+  reassuring line that the shop keeps answering, then Stay / Sign out. Both
+  clients use the same words. The dialog is not red — leaving is routine, and a
+  red alarm would punish a normal tap.
+
+### Welcome tour (web + phone)
+- Six slides, one idea each, shown once after sign-up, then never unprompted.
+  Order on both clients: splash → tour → 5-question setup → dashboard.
+- The art is the product: a phone that types the customer's message, then lands
+  the answer. No stock photography — a smiling stranger teaches nothing.
+- Copy types itself behind a caret; the art replays from the first frame when
+  the slide is revisited or the art is tapped (phone says so in 10.5px type).
+- Each slide ends with one honest footnote (free plan, no card, cancel anytime)
+  — never a fake claim. Progress is six segments, plus "n of 6".
+- The primary action is full-width on slide 1 and shares the row with Back
+  afterwards; never a lone pill pinned to one side.
+- Replayable from Help → "See the tour again" (phone) whenever someone asks.
 
 ### Empty states
 - Outline icon, one line saying what is empty, one primary button saying what
@@ -228,10 +254,12 @@ Check every text/background pair at 4.5:1 in both themes.
       reply-mix donut, and the purple logo/icon set.
 - [x] 4. Shell retint + the app's one dropdown + Refer & Earn (web + phone).
 - [ ] 5. Inbox: 3-panel desktop, list->thread mobile, AI/human toggle. **← NEXT**
-- [ ] 6. Catalog, Connect, Playground.
-- [ ] 7. Insights (incl. the inactivity record), Billing (billing card +
-      history), AI settings (the model picker).
-- [ ] 8. Login, Onboarding, Welcome, Notifications, Help install icon.
+- [ ] 6. Catalog, Connect, Playground. (Connect + Catalog shipped on both
+      clients; Playground not re-reviewed.)
+- [x] 7. Insights (incl. the inactivity record), Billing (billing card +
+      history), AI settings (the model picker) — web and phone.
+- [x] 8. Login, Onboarding, Welcome, Notifications, Help install icon — web and
+      phone (the phone gained its own six-slide welcome tour, Oct 2026).
 - [ ] 9. Landing, FAQ, Privacy, Terms.
 - [ ] 10. `website/` marketing site — port to these tokens (still the old green).
 

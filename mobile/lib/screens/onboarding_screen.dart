@@ -263,7 +263,7 @@ class _SlideView extends StatelessWidget {
               minHeight: (box.maxHeight - 24).clamp(0.0, double.infinity)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               GestureDetector(
                   onTap: onLeadTap,
@@ -582,6 +582,10 @@ class _PhoneArtState extends State<_PhoneArt> {
     final scheme = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
+      // Reserve the height of a full exchange. Without this the card grows when
+      // the answer lands and shoves the copy down mid-sentence — the one thing
+      // a reading page must never do.
+      constraints: const BoxConstraints(minHeight: 236),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         gradient: LinearGradient(

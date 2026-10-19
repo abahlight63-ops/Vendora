@@ -17,7 +17,7 @@ import '../motion.dart';
 
 // Same labels as the web picker (frontend/src/lib/niches.js) — the backend
 // stores them verbatim, so both apps MUST spell them identically.
-const _niches = [
+const kNiches = [ // shared with the Business profile editor
   'Clothing, Fashion & Accessories',
   'Beauty, Cosmetics & Personal Care',
   'Handmade Crafts & Artisanal Goods',
@@ -333,9 +333,9 @@ class _SetupScreenState extends State<SetupScreen> {
             mainAxisSpacing: 10,
             childAspectRatio: 1.6,
           ),
-          itemCount: _niches.length,
+          itemCount: kNiches.length,
           itemBuilder: (c, i) {
-            final n = _niches[i];
+            final n = kNiches[i];
             final sel = _niche == n;
             return FadeSlideIn(
               delayMs: (i * 35).clamp(0, 400),

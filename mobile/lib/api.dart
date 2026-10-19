@@ -231,6 +231,11 @@ class ApiClient {
   Future<Map<String, dynamic>> billing() async =>
       (await get('/api/me/billing') as Map).cast<String, dynamic>();
 
+  /// SmartDeal guardrails + the assistant's own words
+  /// (PUT /api/me/settings — discount %, min order, greeting, handoff).
+  Future<Map<String, dynamic>> updateSettings(Map<String, dynamic> fields) async =>
+      (await put('/api/me/settings', fields) as Map).cast<String, dynamic>();
+
   Future<List<dynamic>> products() async =>
       List<dynamic>.from(await get('/api/me/products'));
 

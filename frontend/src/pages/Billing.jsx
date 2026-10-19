@@ -242,9 +242,9 @@ export default function Billing() {
       {/* ── receipts + how you pay ───────────────────────────────────── */}
       <div className="bill-bottom">
         <div className="card">
-          <div className="card-head"><h2>Billing history</h2><span className="hint">{history.length} receipt{history.length === 1 ? '' : 's'}</span></div>
+          <div className="card-head"><h2>Billing history</h2><span className="hint">{history.length} record{history.length === 1 ? '' : 's'}</span></div>
           {history.length === 0 ? (
-            <div className="empty"><b>No payments yet</b>Every payment you make lands here with its receipt — including failed attempts, so nothing is ever a surprise.</div>
+            <div className="empty"><b>No payments yet</b>Every attempt lands here with its result — including failed ones, so nothing is ever a surprise.</div>
           ) : (
             <div className="table-wrap" style={{ marginTop: 10 }}>
               <table>

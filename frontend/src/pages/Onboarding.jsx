@@ -34,6 +34,7 @@ const SLIDES = [
       ['shield', 'Never invents prices'],
     ],
     cta: 'See how it works',
+    foot: 'Free plan forever. No card needed to start.',
   },
   {
     k: 'flow',
@@ -42,6 +43,7 @@ const SLIDES = [
     body: 'The customer writes like a human. The AI checks your real products, prices and hours — then answers like your best sales rep.',
     art: 'chat2',
     cta: 'Teach it your products',
+    foot: 'Every answer cites a real product from your catalog.',
   },
   {
     k: 'learn',
@@ -50,6 +52,7 @@ const SLIDES = [
     body: 'From YOUR WhatsApp number, send the same ad you put on your status. Send the same product again and it simply updates the price.',
     art: 'chat3',
     cta: 'Unlock Pro powers',
+    foot: 'Works on the free plan, with a manual catalog.',
   },
   {
     k: 'sync',
@@ -58,6 +61,7 @@ const SLIDES = [
     body: 'Pro builds your whole catalog from your WhatsApp Business profile, then checks every "is it available?" against it. Nothing is guessed.',
     art: 'sync',
     cta: 'See the plans',
+    foot: 'Pro only. Your catalog stays yours if you cancel.',
   },
   {
     k: 'plans',
@@ -66,6 +70,7 @@ const SLIDES = [
     body: 'A manual catalog stays free forever. Pro adds profile sync, product photos and priority answers — from ₦7,499 / $5 a month.',
     art: 'plans',
     cta: 'Almost done',
+    foot: 'Switch or cancel any time — no contract.',
   },
   {
     k: 'ready',
@@ -74,6 +79,7 @@ const SLIDES = [
     body: 'Your 7-day Pro trial is running, profile sync included. Add 3–5 products, test the bot like a customer, then connect WhatsApp.',
     art: 'ready',
     cta: 'Open my dashboard',
+    foot: 'Most shops connect WhatsApp the same day.',
   },
 ];
 
@@ -358,9 +364,14 @@ export default function Onboarding() {
             <Logo alt="VeloSales Ai" />
             VELOSALES AI
           </span>
-          <button className="skip" onClick={() => nav('/welcome')}>
-            Skip intro
-          </button>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 14 }}>
+            <span className="hint" style={{ fontSize: 12.5, fontWeight: 600 }}>
+              {step + 1} of {SLIDES.length}
+            </span>
+            <button className="skip" onClick={() => nav('/welcome')}>
+              Skip intro
+            </button>
+          </span>
         </div>
 
         <div className="slide-bar" role="tablist" aria-label="Tour progress">
@@ -462,6 +473,8 @@ export default function Onboarding() {
                   </Link>
                 </div>
               )}
+
+              {slide.foot ? <p className="slide-foot">{slide.foot}</p> : null}
             </div>
           </div>
         </div>

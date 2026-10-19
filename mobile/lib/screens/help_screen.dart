@@ -7,13 +7,18 @@
 import 'package:flutter/material.dart';
 
 import '../brand_mark.dart';
+import '../theme.dart';
 import '../widgets/brand_ui.dart';
 
 class HelpScreen extends StatelessWidget {
   /// Optional jump into a tab, so a step can take you where it describes.
   final ValueChanged<int>? onGoTab;
 
-  const HelpScreen({super.key, this.onGoTab});
+  /// Replays the six-slide welcome tour. Optional: the Help page still works
+  /// when someone opens it from a context with nowhere to push a route.
+  final VoidCallback? onReplayTour;
+
+  const HelpScreen({super.key, this.onGoTab, this.onReplayTour});
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +60,43 @@ class HelpScreen extends StatelessWidget {
             ]),
           ),
 
-          const SizedBox(height: 30),
+          const SizedBox(height: 26),
+          const _InstallCard(),
+          if (onReplayTour != null) ...[
+            const SizedBox(height: 12),
+            SoftPanel(
+              padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+              child: Row(children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: scheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.play_circle_outline_rounded,
+                      size: 21, color: scheme.primary),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('See the tour again',
+                            style: TextStyle(
+                                fontSize: 13.5, fontWeight: FontWeight.w800)),
+                        Text('Six slides — what the bot does, and why',
+                            style: TextStyle(fontSize: 11.5)),
+                      ]),
+                ),
+                TextButton(
+                  onPressed: onReplayTour,
+                  child: const Text('Play', style: TextStyle(fontSize: 12.5)),
+                ),
+              ]),
+            ),
+          ],
+          const SizedBox(height: 26),
           const SectionLabel('Set it up once'),
           _Step(
             n: 1,
@@ -140,6 +181,208 @@ class HelpScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Install-as-app, the phone twin of the web Help card.
+///
+/// The glyph is an arrow into a tray, never a handset: a phone icon on this
+/// button reads as "call us" or "mobile version", which is the opposite of
+/// what it does. The art drops our icon into a little home screen once, then a
+/// pulse ring breathes slowly around it — motion that explains, then rests.
+class _InstallCard extends StatefulWidget {
+  const _InstallCard();
+
+  @override
+  State<_InstallCard> createState() => _InstallCardState();
+}
+
+class _InstallCardState extends State<_InstallCard>
+    with TickerProviderStateMixin {
+  late final AnimationController _drop;
+  late final AnimationController _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _drop = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 900))
+      ..forward();
+    _pulse = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 2600))
+      ..repeat();
+  }
+
+  @override
+  void dispose() {
+    _drop.dispose();
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final dropCurve =
+        CurvedAnimation(parent: _drop, curve: Curves.easeOutBack);
+
+    return SoftPanel(
+      padding: const EdgeInsets.all(16),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SizedBox(
+          width: 96,
+          height: 124,
+          child: Stack(clipBehavior: Clip.none, children: [
+            // the home screen
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: scheme.outline),
+                ),
+                padding: const EdgeInsets.fromLTRB(9, 18, 9, 9),
+                child: Column(children: [
+                  Container(
+                    width: 26,
+                    height: 3,
+                    decoration: BoxDecoration(
+                        color: scheme.outline,
+                        borderRadius: BorderRadius.circular(99)),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: GridView.count(
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 4,
+                      mainAxisSpacing: 4,
+                      crossAxisSpacing: 4,
+                      children: [
+                        for (var i = 0; i < 12; i++)
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: scheme.outline.withValues(alpha: i % 3 == 0 ? 0.45 : 0.22),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+            // our icon, dropping in
+            Positioned(
+              left: 29,
+              top: 44,
+              child: ScaleTransition(
+                scale: Tween<double>(begin: 0.35, end: 1).animate(dropCurve),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    gradient: VeloSalesTheme.cta(context),
+                    borderRadius: BorderRadius.circular(11),
+                    boxShadow: [
+                      BoxShadow(
+                          color: scheme.primary.withValues(alpha: 0.4),
+                          blurRadius: 14,
+                          offset: const Offset(0, 7)),
+                    ],
+                  ),
+                  child: const Center(
+                      child: BrandMark(size: 17, onRail: true)),
+                ),
+              ),
+            ),
+            // breathing ring
+            Positioned(
+              left: 20,
+              top: 35,
+              child: AnimatedBuilder(
+                animation: _pulse,
+                builder: (_, _) {
+                  final t = Curves.easeOut.transform(_pulse.value);
+                  return Container(
+                    width: 56 + 16 * t,
+                    height: 56 + 16 * t,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: scheme.primary
+                            .withValues(alpha: 0.35 * (1 - _pulse.value)),
+                        width: 2,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ]),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Row(children: [
+              Icon(Icons.system_update_alt_rounded,
+                  size: 18, color: VeloSalesTheme.purpleDark),
+              SizedBox(width: 7),
+              Expanded(
+                child: Text('Install as app',
+                    style: TextStyle(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2)),
+              ),
+            ]),
+            const SizedBox(height: 6),
+            Text(
+              'Keep VeloSales Ai on your home screen — full-screen, one tap, no browser bar. '
+              'Works from Chrome today; the store build is coming.',
+              style: TextStyle(
+                  fontSize: 12.5,
+                  height: 1.5,
+                  color: scheme.onSurface.withValues(alpha: 0.66)),
+            ),
+            const SizedBox(height: 10),
+            _installStep('1', 'Open this site in Chrome.'),
+            _installStep('2', 'Menu (⋮) → Add to Home screen.'),
+            _installStep('3', 'Confirm — then open it from the new icon.'),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  Widget _installStep(String n, String text) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(
+          width: 18,
+          height: 18,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: scheme.primaryContainer,
+            shape: BoxShape.circle,
+          ),
+          child: Text(n,
+              style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: scheme.primary)),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(text,
+              style: TextStyle(
+                  fontSize: 12,
+                  height: 1.4,
+                  color: scheme.onSurface.withValues(alpha: 0.72))),
+        ),
+      ]),
     );
   }
 }

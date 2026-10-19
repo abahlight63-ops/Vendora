@@ -70,6 +70,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
   const { pathname } = useLocation(); // destructure current path from router (re-renders on navigation)
   const navigate = useNavigate(); // navigate('/login') = go there in code (after logout)
   const [menuOpen, setMenuOpen] = useState(false); // mobile drawer open? (desktop sidebar always visible via CSS)
+  const [confirmOut, setConfirmOut] = useState(false); // the sign-out confirmation (one tap away from losing your chat list)
   const [updateBanner, setUpdateBanner] = useState(null); // {version} while the 2-min NEW window is open (null = hidden!)
   useEffect(() => { document.title = 'VeloSales Ai — ' + (TITLES[pathname] || 'Overview'); }, [pathname]); // side-effect: browser tab title follows route (|| fallback)
   useEffect(() => { setMenuOpen(false); }, [pathname]); // auto-close drawer on every navigation (pick a link → drawer vanishes)
@@ -129,7 +130,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
           ))}
           <div className="foot">
             <div className="foot-note">AI replies 24/7 so you never miss a sale.<br />© 2026 VeloSales Ai</div>
-            <button className="drawer-signout" onClick={logout}><Icon k="logout" /><span>Sign out</span></button> {/* mobile-only: the topbar has no room for it on a phone, so the drawer carries it */}
+            <button className="drawer-signout" onClick={() => { setMenuOpen(false); setConfirmOut(true); }}><Icon k="logout" /><span>Sign out</span></button> {/* mobile-only: the topbar has no room for it on a phone, so the drawer carries it */}
           </div> {/* margin-top:auto in CSS pins this block to the bottom of the drawer */}
         </aside>
         <div className="main-col"> {/* right column: topbar + scrolling page */}
@@ -148,7 +149,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
               {biz?.avatar_url
                 ? <img className="avatar avatar-img" src={biz.avatar_url} alt={safeName} title={safeName} /> // the owner's own picture (Settings → pencil); falls back to the initial below
                 : <div className="avatar" title={safeName}>{initial}</div>} {/* title = hover tooltip */}
-              <button className="btn ghost sm signout-btn" onClick={logout}>Sign out</button> {/* ghost = outline style; sm = small; .signout-btn hides on phones (drawer carries sign-out instead) */}
+              <button className="btn ghost sm signout-btn" onClick={() => setConfirmOut(true)}>Sign out</button> {/* ghost = outline style; sm = small; .signout-btn hides on phones (drawer carries sign-out instead) */}
             </div>
           </header>
           <main className="page">
@@ -167,6 +168,25 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
       </nav>
       <div className="foot-links"><NavLink to="/help">Help</NavLink><NavLink to="/faq">FAQ</NavLink><NavLink to="/privacy">Privacy</NavLink><NavLink to="/terms">Terms</NavLink></div> {/* legal links (public FAQ/privacy/terms need no login) */}
       <Tour /> {/* coachmarks overlay (renders null until triggered) */}
+      {confirmOut && (
+        // A confirmation, not a punishment: nothing here is styled red, because
+        // signing out is a normal thing to do — it just should not be an
+        // accident one millimetre from a thumb.
+        <div className="pop-overlay confirm-back" role="presentation" onClick={() => setConfirmOut(false)}>
+          <div className="confirm-card" role="dialog" aria-modal="true" aria-labelledby="confirm-out-title" onClick={(e) => e.stopPropagation()}>
+            <span className="confirm-ic"><Icon k="logout" s={20} /></span>
+            <h2 id="confirm-out-title">Sign out of VeloSales Ai?</h2>
+            <p className="desc">
+              Your shop keeps working — the AI answers every customer whether this
+              tab is open or not. You will need your login to come back.
+            </p>
+            <div className="confirm-actions">
+              <button className="btn ghost" onClick={() => setConfirmOut(false)} autoFocus>Stay signed in</button>
+              <button className="btn danger" onClick={() => { setConfirmOut(false); logout(); }}>Sign out</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -200,7 +200,7 @@ export default function Insights() { // no props (self-sufficient)
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
-        <div className="card-head"><h2>Top reasons humans were needed</h2><Link className="mini-link" to="/chats">Open inbox</Link></div>
+        <div className="card-head"><h2>Top reasons humans were needed</h2></div>
         <p className="desc">Fix these in your catalog or FAQs and the AI handles more alone.</p>
         {d.top.length === 0 ? <div className="empty"><b>No flags yet</b>When the AI is unsure, the reason shows up here.</div> : (
           <div className="hbars" style={{ marginTop: 10 }}>

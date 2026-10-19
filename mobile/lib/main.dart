@@ -26,6 +26,9 @@ import 'screens/connect_screen.dart';
 import 'screens/ai_screen.dart';
 import 'screens/billing_screen.dart';
 import 'screens/refer_earn_screen.dart';
+import 'screens/ai_settings_screen.dart';
+import 'screens/insights_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/settings_screen.dart';
 
 void main() => runApp(const VeloSalesApp());
@@ -40,14 +43,32 @@ class VeloSalesApp extends StatefulWidget {
 class _VeloSalesAppState extends State<VeloSalesApp> {
   bool? _authed; // null = checking
   bool _needsSetup = false; // true = logged in but no niche yet (setup screen!)
+  // Starts true so a returning owner never flashes the tour for one frame while
+  // the preference loads. The boot read is what turns it off for new accounts.
+  bool _seenTour = true;
   ThemeMode _mode = ThemeMode.system;
   String _bizName = '';
   String _niche = '';
+
+  static const _tourKey = 'velosalesai_seen_tour_v1';
 
   @override
   void initState() {
     super.initState();
     _boot();
+  }
+
+  /// The welcome tour runs once per install, before the setup quiz — the same
+  /// order as the web (tour → 5 questions → dashboard).
+  Future<bool> _loadSeenTour() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getBool(_tourKey) ?? false;
+  }
+
+  Future<void> _finishTour() async {
+    final p = await SharedPreferences.getInstance();
+    await p.setBool(_tourKey, true);
+    if (mounted) setState(() => _seenTour = true);
   }
 
   Future<void> _boot() async {
@@ -59,6 +80,7 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
       wait,
       VeloSalesTheme.loadMode(),
       _checkAuth(),
+      _loadSeenTour(),
     ]);
     if (!mounted) return;
     final auth = results[2] as List;
@@ -68,6 +90,7 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
       _needsSetup = auth[1] as bool;
       _bizName = auth[2] as String;
       _niche = auth[3] as String;
+      _seenTour = results[3] as bool;
     });
   }
 
@@ -120,8 +143,10 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
           ? const SplashView()
           : _authed!
               ? _needsSetup
-                  ? SetupScreen(
-                      onDone: () => setState(() => _needsSetup = false))
+                  ? (_seenTour
+                      ? SetupScreen(
+                          onDone: () => setState(() => _needsSetup = false))
+                      : OnboardingScreen(onDone: _finishTour))
                   : HomeShell(
                       bizName: _bizName,
                       niche: _niche,
@@ -416,10 +441,22 @@ class _HomeShellState extends State<HomeShell> {
           push: () => _open(DashboardScreen(onGoTab: _go)),
         ),
         SidebarItem(
+          icon: Icons.query_stats_outlined,
+          label: 'Insights',
+          hint: 'Chats, quiet customers, busy hours',
+          push: () => _open(const InsightsScreen()),
+        ),
+        SidebarItem(
           icon: Icons.card_giftcard_outlined,
           label: 'Refer & Earn',
           hint: 'Invite sellers — you both win',
           push: () => _open(const ReferEarnScreen()),
+        ),
+        SidebarItem(
+          icon: Icons.psychology_outlined,
+          label: 'AI settings',
+          hint: 'Who answers, and how it sounds',
+          push: () => _open(const AiSettingsScreen()),
         ),
         SidebarItem(
           icon: Icons.settings_outlined,
@@ -436,6 +473,13 @@ class _HomeShellState extends State<HomeShell> {
               Navigator.of(context).pop();
               _go(i);
             },
+            onReplayTour: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => OnboardingScreen(
+                  onDone: () => Navigator.of(context).pop(),
+                ),
+              ),
+            ),
           )),
         ),
       ],
@@ -444,6 +488,27 @@ class _HomeShellState extends State<HomeShell> {
       onToggleTheme: () =>
           widget.onMode(dark ? ThemeMode.light : ThemeMode.dark),
       onLogout: () async {
+        // Confirm first: signing out is normal, but it should not happen to a
+        // thumb that meant "Settings" one row above.
+        final out = await showDialog<bool>(
+          context: context,
+          builder: (c) => AlertDialog(
+            icon: const Icon(Icons.logout_rounded),
+            title: const Text('Sign out?'),
+            content: const Text(
+                'Your shop keeps working — the AI answers every customer whether '
+                'the app is open or not. You will need your login to come back.'),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.of(c).pop(false),
+                  child: const Text('Stay signed in')),
+              FilledButton(
+                  onPressed: () => Navigator.of(c).pop(true),
+                  child: const Text('Sign out')),
+            ],
+          ),
+        );
+        if (out != true || !mounted) return;
         await ApiClient.instance.logout();
         widget.onLogout();
       },

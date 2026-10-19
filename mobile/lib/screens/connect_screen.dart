@@ -12,7 +12,10 @@ import 'package:url_launcher/url_launcher.dart';
 import '../api.dart';
 import '../glass.dart';
 import '../motion.dart';
+import '../theme.dart';
 import '../widgets/app_select.dart';
+import '../widgets/brand_ui.dart';
+import 'ai_settings_screen.dart';
 
 /// The three names an owner is allowed to see. The engine behind a tier is an
 /// implementation detail that changes with price and availability — the tier is
@@ -436,6 +439,18 @@ class _ConnectScreenState extends State<ConnectScreen> {
     showToast(context, 'Copied.');
   }
 
+  /// The one body style for step copy. Used everywhere below so a step reads
+  /// the same whether it is about Meta, Telegram or the test message.
+  TextStyle get _bodyStyle => TextStyle(
+      fontSize: 12.5,
+      height: 1.45,
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.66));
+
+  /// A step heading. Heavier than body copy and slightly tight, so the eye can
+  /// find "Step 2 of 3" while scrolling without reading the paragraph under it.
+  TextStyle get _stepStyle => const TextStyle(
+      fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: -0.2);
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -452,6 +467,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
       return EmptyState("Couldn't load your channels", _err!, retry: _load);
     }
     final webhook = '${_st?['webhookUrl'] ?? ''}';
+    final scheme = Theme.of(context).colorScheme;
     // Dropdown guard: saved brain missing from the fetched list (empty/failed
     // models) → null, never a crash ("exactly one item with value"!).
     final brainIds = {
@@ -485,29 +501,53 @@ class _ConnectScreenState extends State<ConnectScreen> {
     }
     return RefreshIndicator(
       onRefresh: () => _load(silent: true), // RefreshIndicator spins itself (no skeleton flash!)
-      child: ListView(padding: const EdgeInsets.all(16), children: [
+      child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 28), children: [
+        // The sentence that explains the page before the controls start. Every
+        // other line here assumes the reader knows why they are here.
+        Text(
+          'Plug in your channels once — the AI answers from then on. '
+          '${_waLive || _tgOn ? 'You can switch brains or run a test any time.' : 'Pick one road below and you are two minutes from live.'}',
+          style: TextStyle(
+              fontSize: 13.5,
+              height: 1.5,
+              color: scheme.onSurface.withValues(alpha: 0.62)),
+        ),
+        const SizedBox(height: 14),
         // Status board.
         GlassCard(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Wrap(spacing: 8, runSpacing: 8, children: [
-              Chip(
-                avatar: Icon(
-                    _waLive ? Icons.check_circle : Icons.circle_outlined,
-                    size: 16),
-                label: Text('WhatsApp: ${_waLive ? 'LIVE' : 'OFF'}'),
-              ),
-              Chip(
-                avatar: Icon(_tgOn ? Icons.check_circle : Icons.circle_outlined,
-                    size: 16),
-                label: Text('Telegram: ${_tgOn ? 'LIVE' : 'OFF'}'),
-              ),
-              if ('${_wa['number'] ?? ''}'.isNotEmpty)
-                Text('Shop number: ${_wa['number']}',
-                    style: const TextStyle(fontSize: 12)),
-              if (_wa['metaConnected'] == true)
-                const Text('Meta linked — no credentials needed from you.',
-                    style: TextStyle(fontSize: 12)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Expanded(
+                  child: _ChannelPill(
+                    on: _waLive,
+                    label: 'WhatsApp',
+                    sub: _waLive ? 'LIVE' : 'OFF',
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _ChannelPill(
+                    on: _tgOn,
+                    label: 'Telegram',
+                    sub: _tgOn ? 'LIVE' : 'OFF',
+                  ),
+                ),
+              ]),
+              if ('${_wa['number'] ?? ''}'.isNotEmpty ||
+                  _wa['metaConnected'] == true) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _wa['metaConnected'] == true
+                      ? 'Shop number ${_wa['number'] ?? ''} · linked through Meta — no credentials needed from you.'
+                      : 'Shop number ${_wa['number']}',
+                  style: TextStyle(
+                      fontSize: 12,
+                      height: 1.45,
+                      color: scheme.onSurface.withValues(alpha: 0.6)),
+                ),
+              ],
             ]),
           ),
         ),
@@ -522,7 +562,15 @@ class _ConnectScreenState extends State<ConnectScreen> {
                   const Text('Connection health',
                       style: TextStyle(
                           fontSize: 16, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
+                  Text(
+                    'A saved token is not proof Telegram and Meta can still reach us. One tap checks the real thing.',
+                    style: TextStyle(
+                        fontSize: 12.5,
+                        height: 1.45,
+                        color: scheme.onSurface.withValues(alpha: 0.6)),
+                  ),
+                  const SizedBox(height: 10),
                   Wrap(spacing: 8, runSpacing: 8, children: [
                     OutlinedButton(
                         onPressed: _busy ? null : _waVerify,
@@ -539,58 +587,63 @@ class _ConnectScreenState extends State<ConnectScreen> {
                               style: const TextStyle(fontSize: 13))),
                   ]),
                   if ((_waHealth ?? '').isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text('WhatsApp: $_waHealth',
-                        style: const TextStyle(fontSize: 12)),
+                    const SizedBox(height: 8),
+                    _HealthLine(label: 'WhatsApp', text: _waHealth!),
                   ],
                   if ((_tgHealth ?? '').isNotEmpty) ...[
                     const SizedBox(height: 6),
-                    Text('Telegram: $_tgHealth',
-                        style: const TextStyle(fontSize: 12)),
+                    _HealthLine(label: 'Telegram', text: _tgHealth!),
                   ],
                 ]),
           ),
         ),
         const SizedBox(height: 12),
-        // Road picker.
+        // Road picker: two big cards, not two chips. The road IS the decision
+        // on this page, so it gets the weight of a decision.
+        Row(children: [
+          Expanded(
+            child: _RoadCard(
+              icon: Icons.chat_bubble_outline_rounded,
+              title: 'Meta',
+              sub: 'Official WhatsApp',
+              tag: 'FREE',
+              on: _road == 'meta',
+              onTap: () => setState(() {
+                _road = 'meta';
+                _step = 1;
+              }),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _RoadCard(
+              icon: Icons.send_outlined,
+              title: 'Telegram',
+              sub: 'BotFather bot',
+              tag: 'FREE · 1 MIN',
+              on: _road == 'telegram',
+              onTap: () => setState(() {
+                _road = 'telegram';
+                _step = 1;
+              }),
+            ),
+          ),
+        ]),
+        const SizedBox(height: 12),
         GlassCard(
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Pick your road',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 8),
-                  Wrap(spacing: 8, children: [
-                    ChoiceChip(
-                        label: const Text('Meta (free)'),
-                        selected: _road == 'meta',
-                        onSelected: (_) {
-                          setState(() {
-                            _road = 'meta';
-                            _step = 1;
-                          });
-                        }),
-                    ChoiceChip(
-                        label: const Text('Telegram'),
-                        selected: _road == 'telegram',
-                        onSelected: (_) {
-                          setState(() {
-                            _road = 'telegram';
-                            _step = 1;
-                          });
-                        }),
-                  ]),
-                  const SizedBox(height: 12),
                   if (_road == 'meta') _metaFlow(webhook),
                   if (_road == 'telegram') _telegramFlow(),
                 ]),
           ),
         ),
         const SizedBox(height: 12),
-        // Brain picker.
+        // Brain picker: one tap to change, and the deep control lives in AI
+        // settings — the same sentence the web Connect card uses.
         GlassCard(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -601,10 +654,14 @@ class _ConnectScreenState extends State<ConnectScreen> {
                       style:
                           TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 4),
-                  const Text(
-                      'Locked brains need their plan — tap to see options.',
-                      style: TextStyle(fontSize: 12)),
-                  const SizedBox(height: 8),
+                  Text(
+                    'Fast, Normal or Smart — the same choice you make in AI settings. Pick it here for speed; open AI settings for the full picture (voice, greeting, discounts).',
+                    style: TextStyle(
+                        fontSize: 12.5,
+                        height: 1.45,
+                        color: scheme.onSurface.withValues(alpha: 0.6)),
+                  ),
+                  const SizedBox(height: 10),
                   AppSelect(
                     value: brainValue,
                     placeholder: 'Pick a speed',
@@ -612,6 +669,18 @@ class _ConnectScreenState extends State<ConnectScreen> {
                     sheetTitle: 'Which AI answers WhatsApp?',
                     options: tierOptions,
                     onChanged: (v) => _saveBrain(v),
+                  ),
+                  const SizedBox(height: 6),
+                  TextButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const AiSettingsScreen()),
+                    ),
+                    style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 6)),
+                    icon: const Icon(Icons.tune_rounded, size: 16),
+                    label: const Text('Open AI settings',
+                        style: TextStyle(fontSize: 12.5)),
                   ),
                 ]),
           ),
@@ -623,12 +692,12 @@ class _ConnectScreenState extends State<ConnectScreen> {
   Widget _metaFlow(String webhook) {
     if (_step == 1) {
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Step 1 of 3 — link your WhatsApp number',
-            style: TextStyle(fontWeight: FontWeight.w700)),
+        Text('Step 1 of 3 — link your WhatsApp number',
+            style: _stepStyle),
         const SizedBox(height: 4),
-        const Text(
+        Text(
             'Fastest: tap Continue — your browser opens the official Meta page, you sign in, pick your number, and it links itself. Nothing to copy. (The old popup cannot work inside an installed app — that is why it kept failing.)',
-            style: TextStyle(fontSize: 12)),
+            style: _bodyStyle),
         const SizedBox(height: 8),
         FilledButton(
             onPressed: _busy || _awaitingMeta ? null : _metaOauth,
@@ -637,17 +706,17 @@ class _ConnectScreenState extends State<ConnectScreen> {
                 : (_awaitingMeta ? 'Waiting for Meta…' : 'Continue to Meta'))),
         if (_awaitingMeta) ...[
           const SizedBox(height: 6),
-          const Text(
+          Text(
               'Finish in the browser tab that just opened. This screen updates itself the moment your number is linked.',
-              style: TextStyle(fontSize: 12)),
+              style: _bodyStyle),
         ],
         if ((_err ?? '').isNotEmpty) ...[
           const SizedBox(height: 6),
-          Text(_err!, style: const TextStyle(fontSize: 12)),
+          Text(_err!, style: _bodyStyle),
         ],
         const SizedBox(height: 10),
-        const Text('Or paste both values (from Meta app → WhatsApp → API testing):',
-            style: TextStyle(fontSize: 12)),
+        Text('Or paste both values (from Meta app → WhatsApp → API testing):',
+            style: _bodyStyle),
         const SizedBox(height: 8),
         TextField(
             controller: _phoneId,
@@ -667,12 +736,12 @@ class _ConnectScreenState extends State<ConnectScreen> {
     }
     if (_step == 2) {
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Step 2 of 3 — link our app to Meta',
-            style: TextStyle(fontWeight: FontWeight.w700)),
+        Text('Step 2 of 3 — link our app to Meta',
+            style: _stepStyle),
         const SizedBox(height: 4),
-        const Text(
+        Text(
             'In Meta: WhatsApp → Configuration → paste BOTH → Verify and save.',
-            style: TextStyle(fontSize: 12)),
+            style: _bodyStyle),
         const SizedBox(height: 8),
         _copyRow('Webhook URL', webhook),
         if ((_verifyToken ?? '').isNotEmpty)
@@ -689,12 +758,12 @@ class _ConnectScreenState extends State<ConnectScreen> {
   Widget _telegramFlow() {
     if (_step == 1) {
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Step 1 of 2 — get a free token from Telegram',
-            style: TextStyle(fontWeight: FontWeight.w700)),
+        Text('Step 1 of 2 — get a free token from Telegram',
+            style: _stepStyle),
         const SizedBox(height: 4),
-        const Text(
+        Text(
             'Open Telegram → search @BotFather → /newbot → name it → username ending in "bot" → copy the token (like 123456789:ABCdef…) and paste it below. Keep it private — anyone with it can control your bot.',
-            style: TextStyle(fontSize: 12)),
+            style: _bodyStyle),
         const SizedBox(height: 8),
         TextField(
             controller: _tgToken,
@@ -704,15 +773,15 @@ class _ConnectScreenState extends State<ConnectScreen> {
             onPressed: _busy ? null : _tgConnect,
             child: Text(_busy ? 'Checking…' : 'Connect bot')),
         const SizedBox(height: 4),
-        const Text('We check the token with Telegram instantly.',
-            style: TextStyle(fontSize: 12)),
+        Text('We check the token with Telegram instantly.',
+            style: _bodyStyle),
         const SizedBox(height: 12),
-        const Text('Or skip BotFather — shared bot (Pro)',
-            style: TextStyle(fontWeight: FontWeight.w700)),
+        Text('Or skip BotFather — shared bot (Pro)',
+            style: _stepStyle),
         const SizedBox(height: 4),
-        const Text(
+        Text(
             'Pro shops ride our house bot: one tap, no tokens, nothing to revoke. Free plan? Your own bot above stays free forever.',
-            style: TextStyle(fontSize: 12)),
+            style: _bodyStyle),
         const SizedBox(height: 8),
         FilledButton.tonal(
             onPressed: _busy ? null : _tgSharedConnect,
@@ -724,12 +793,12 @@ class _ConnectScreenState extends State<ConnectScreen> {
         _tgShared != null || ((_st?['telegram'] as Map?)?['shared'] == true);
     if (sharedOn) {
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Shared bot is live — give customers this link',
-            style: TextStyle(fontWeight: FontWeight.w700)),
+        Text('Shared bot is live — give customers this link',
+            style: _stepStyle),
         const SizedBox(height: 4),
-        const Text(
+        Text(
             'Anyone who opens it once is bound to your shop forever. Owner commands stay in your dashboard.',
-            style: TextStyle(fontSize: 12)),
+            style: _bodyStyle),
         const SizedBox(height: 8),
         if ((_tgShared ?? '').isNotEmpty)
           Text(_tgShared!, style: const TextStyle(fontSize: 13)),
@@ -752,11 +821,11 @@ class _ConnectScreenState extends State<ConnectScreen> {
       ]);
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('Telegram is live — link yourself (optional)',
-          style: TextStyle(fontWeight: FontWeight.w700)),
+      Text('Telegram is live — link yourself (optional)',
+          style: _stepStyle),
       const SizedBox(height: 4),
-      const Text('Owner commands (LEARN:, PAUSE) work from your phone after linking.',
-          style: TextStyle(fontSize: 12)),
+      Text('Owner commands (LEARN:, PAUSE) work from your phone after linking.',
+          style: _bodyStyle),
       const SizedBox(height: 8),
       FilledButton.tonal(
           onPressed: _busy ? null : _tgLink,
@@ -770,36 +839,222 @@ class _ConnectScreenState extends State<ConnectScreen> {
 
   Widget _testStep() {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('Send TEST — we watch for it live',
-          style: TextStyle(fontWeight: FontWeight.w700)),
+      Text('Send TEST — we watch for it live',
+          style: _stepStyle),
       const SizedBox(height: 4),
       Text(
           'From ANY phone, message ${_wa['number'] ?? 'your shop number'}. The moment it lands, you go LIVE.',
-          style: const TextStyle(fontSize: 12)),
+          style: _bodyStyle),
       const SizedBox(height: 10),
       FilledButton(
           onPressed: _testing ? null : _startWatch,
           child: Text(_testing ? 'Watching… send it now' : 'Start watching')),
       const SizedBox(height: 8),
-      const Text(
+      Text(
           'Still waiting? Wrong number messaged · webhook not saved · token expired. Stuck? Talk to support from Help.',
-          style: TextStyle(fontSize: 12)),
+          style: _bodyStyle),
     ]);
   }
 
   Widget _copyRow(String label, String value) {
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.only(top: 8),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: scheme.outline),
+        ),
+        child: Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(label.toUpperCase(),
+                  style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.8,
+                      color: scheme.onSurface.withValues(alpha: 0.45))),
+              const SizedBox(height: 2),
+              Text(value,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12.5)),
+            ]),
+          ),
+          IconButton(
+            icon: const Icon(Icons.copy_rounded, size: 18),
+            tooltip: 'Copy $label',
+            onPressed: () => _copy(value),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// One channel, one honest state. A dot and a word — the old Material chips
+/// dragged the platform's grey default styling onto a purple page.
+class _ChannelPill extends StatelessWidget {
+  final bool on;
+  final String label;
+  final String sub;
+  const _ChannelPill({required this.on, required this.label, required this.sub});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color =
+        on ? VeloSalesTheme.greenDark : scheme.onSurface.withValues(alpha: 0.5);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: on
+            ? VeloSalesTheme.green.withValues(alpha: 0.10)
+            : scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+            color: on
+                ? VeloSalesTheme.green.withValues(alpha: 0.35)
+                : scheme.outline),
+      ),
       child: Row(children: [
+        Container(
+            width: 9,
+            height: 9,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 8),
         Expanded(
-            child: Text('$label: $value',
-                style: const TextStyle(fontSize: 12))),
-        IconButton(
-          icon: const Icon(Icons.copy, size: 18),
-          tooltip: 'Copy $label',
-          onPressed: () => _copy(value),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style:
+                    const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+            Text(sub,
+                style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                    color: color)),
+          ]),
         ),
       ]),
+    );
+  }
+}
+
+/// One health result as a quiet labelled line, instead of a raw "WhatsApp: …"
+/// string with default text styling.
+class _HealthLine extends StatelessWidget {
+  final String label;
+  final String text;
+  const _HealthLine({required this.label, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('$label ',
+          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+      Expanded(
+        child: Text(text,
+            style: TextStyle(
+                fontSize: 12.5,
+                height: 1.4,
+                color: scheme.onSurface.withValues(alpha: 0.66))),
+      ),
+    ]);
+  }
+}
+
+/// A road is a decision, so it gets a card with an icon, a name, what it is and
+/// what it costs — not a ChoiceChip.
+class _RoadCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String sub;
+  final String tag;
+  final bool on;
+  final VoidCallback onTap;
+
+  const _RoadCard({
+    required this.icon,
+    required this.title,
+    required this.sub,
+    required this.tag,
+    required this.on,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Pressable(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 170),
+        padding: const EdgeInsets.all(13),
+        decoration: BoxDecoration(
+          color:
+              on ? scheme.primaryContainer.withValues(alpha: 0.6) : scheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+              color: on ? scheme.primary : scheme.outline,
+              width: on ? 1.5 : 1),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(icon,
+                size: 20,
+                color: on
+                    ? scheme.primary
+                    : scheme.onSurface.withValues(alpha: 0.6)),
+            const Spacer(),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              width: 19,
+              height: 19,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: on ? scheme.primary : Colors.transparent,
+                border: Border.all(
+                    color: on ? scheme.primary : scheme.outline, width: 1.7),
+              ),
+              child: on
+                  ? const Icon(Icons.check_rounded, size: 12, color: Colors.white)
+                  : null,
+            ),
+          ]),
+          const SizedBox(height: 10),
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.2)),
+          const SizedBox(height: 1),
+          Text(sub,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style:
+                  TextStyle(fontSize: 11, color: scheme.onSurface.withValues(alpha: 0.6))),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color: scheme.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(tag,
+                style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.4,
+                    color: scheme.primary)),
+          ),
+        ]),
+      ),
     );
   }
 }

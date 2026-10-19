@@ -30,11 +30,11 @@ class VeloSalesTheme {
   static const rail2 = Color(0xFF221A56);
   static const rail3 = Color(0xFF1A1443);
   static const railInk = Color(0xFFF4F2FE);
-  static const railMuted = Color(0xFFB4AEDE);
-  static const railFaint = Color(0xFF847CB8);
-  static const railLine = Color(0x1AFFFFFF); // rgba(255,255,255,.10)
-  static const railHover = Color(0x14FFFFFF); // .08
-  static const railActive = Color(0x26FFFFFF); // .15
+  static const railMuted = Color(0xFFC6C0EA);
+  static const railFaint = Color(0xFF9C95CB);
+  static const railLine = Color(0x1FFFFFFF); // rgba(255,255,255,.12)
+  static const railHover = Color(0x1AFFFFFF); // .10
+  static const railActive = Color(0x2BFFFFFF); // .17
   static const railGrad = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,

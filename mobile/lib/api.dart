@@ -315,15 +315,19 @@ class ApiClient {
   /// VeloSales Ai chat → { reply, via, model, fallback }.
   /// history = prior bubbles oldest-first [{from: 'you'|'ai', text}…],
   /// EXCLUDING the current message (web parity: context without duplication).
+  /// image = {'dataUrl': 'data:image/jpeg;base64,…'} from the photo picker —
+  /// the same JSON shape the browser sends, so the server has one photo path.
   Future<Map<String, dynamic>> ask(
     String message, [
     String? model,
     List<Map<String, String>>? history,
+    Map<String, String>? image,
   ]) async =>
       (await post('/api/me/ask', {
         'message': message,
         ...?model == null ? null : {'model': model},
         ...?history == null ? null : {'history': history},
+        ...?image == null ? null : {'image': image},
       }) as Map)
           .cast<String, dynamic>();
 

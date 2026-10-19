@@ -34,6 +34,7 @@ function Icon({ k }) { // tiny inline SVG set (stroke = inherits text color; no 
   if (k === 'settings') return (<svg {...p}><circle cx="12" cy="12" r="3" /><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z" /></svg>); // gear
   if (k === 'aisettings') return (<svg {...p}><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h10M18 18h2" /><circle cx="16" cy="6" r="2" /><circle cx="10" cy="12" r="2" /><circle cx="16" cy="18" r="2" /></svg>); // sliders (AI settings — the assistant's dials)
   if (k === 'x') return (<svg {...p}><path d="M18 6L6 18M6 6l12 12" /></svg>); // close (drawer + dialogs — drawn, never a text glyph)
+  if (k === 'logout') return (<svg {...p}><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><path d="M10 16l4-4-4-4" /><path d="M14 12H3" /></svg>); // door + arrow leaving it (sign out — never a bare X, which reads "close panel")
   if (k === 'gift') return (<svg {...p}><rect x="3" y="8" width="18" height="4" rx="1" /><path d="M12 8v13M5 12v9h14v-9M12 8s-1.5-5-4.5-5S5 8 12 8zM12 8s1.5-5 4.5-5S19 8 12 8z" /></svg>); // gift box (Refer & Earn!)
   return (<svg {...p}><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 0 1 5 .2c0 1.7-2.5 2-2.5 3.6M12 17h.01" /></svg>); // default = help "?" (unknown keys never render broken)
 }
@@ -126,9 +127,10 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
               <nav>{g.items.map(([k, label, href]) => (<NavLink key={k} to={href} onClick={() => setMenuOpen(false)}><Icon k={k} /><span>{label}</span></NavLink>))}</nav> {/* NavLink adds .active on current route (CSS highlights); destructure [k,label,href] per row */}
             </div>
           ))}
-          <div className="foot">AI replies 24/7 so you never miss a sale.<br />© 2026 VeloSales Ai
-            <button className="drawer-signout" onClick={logout}>Sign out</button> {/* mobile-only: topbar sign-out hides on phones, so the drawer carries it */}
-          </div> {/* <br/> = line break element; margin-top:auto in CSS pins it bottom */}
+          <div className="foot">
+            <div className="foot-note">AI replies 24/7 so you never miss a sale.<br />© 2026 VeloSales Ai</div>
+            <button className="drawer-signout" onClick={logout}><Icon k="logout" /><span>Sign out</span></button> {/* mobile-only: the topbar has no room for it on a phone, so the drawer carries it */}
+          </div> {/* margin-top:auto in CSS pins this block to the bottom of the drawer */}
         </aside>
         <div className="main-col"> {/* right column: topbar + scrolling page */}
           <header className="topbar"> {/* sticky header (CSS position:sticky) */}

@@ -13,6 +13,16 @@
 // COLOUR: the shape ships no colour of its own. styles.css sets --lg-* on
 // .vl-root (light) and [data-theme="dark"] .vl-root (dark), so the mark
 // re-tints with the theme instead of being frozen at one value.
+//
+// GRADIENT IDS ARE PER-INSTANCE, and that is not a detail. An SVG gradient
+// lives in the document, not in the element: `url(#vl-g)` resolves to the
+// FIRST element with that id anywhere on the page. With one hard-coded id,
+// every mark on a screen (sidebar, chat orb, each answer's avatar) painted
+// itself with whichever gradient happened to come first — so a recoloured
+// instance silently rendered in the wrong colour. React's useId keeps each
+// instance's own defs, so the CSS variables above always win.
+import { useId } from 'react';
+
 const D =
   'M301 0 L602 189 L602 513 L301 696 L0 513 L0 189 Z ' +
   'M0 189 L602 189 L301 696 Z';
@@ -29,6 +39,9 @@ export default function Logo({
 }) {
   const h = height ?? size ?? 34;
   const w = width ?? h * MARK_ASPECT;
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, ''); // ":r1:" → "r1" (CSS-safe fragment)
+  const gid = `vlg-${uid}`;
+  const sid = `vls-${uid}`;
 
   return (
     <svg
@@ -42,7 +55,7 @@ export default function Logo({
     >
       <defs>
         <linearGradient
-          id="vl-g"
+          id={gid}
           gradientUnits="userSpaceOnUse"
           x1="301"
           y1="0"
@@ -53,13 +66,13 @@ export default function Logo({
           <stop offset=".5" style={{ stopColor: 'var(--lg-mid)' }} />
           <stop offset="1" style={{ stopColor: 'var(--lg-bot)' }} />
         </linearGradient>
-        <linearGradient id="vl-sheen" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={sid} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#fff" style={{ stopOpacity: 'var(--lg-sheen)' }} />
           <stop offset=".55" stopColor="#fff" stopOpacity="0" />
         </linearGradient>
       </defs>
-      <path d={D} fillRule="evenodd" fill="url(#vl-g)" />
-      <path d={D} fillRule="evenodd" fill="url(#vl-sheen)" />
+      <path d={D} fillRule="evenodd" fill={`url(#${gid})`} />
+      <path d={D} fillRule="evenodd" fill={`url(#${sid})`} />
     </svg>
   );
 }

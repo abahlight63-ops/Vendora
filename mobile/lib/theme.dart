@@ -13,12 +13,34 @@ class VeloSalesTheme {
   static const _key = 'velosalesai_theme_mode'; // 'light' | 'dark' | 'system'
 
   // ── :root (web light default) ──
-  static const purple = Color(0xFF6366F1); // the ONE primary accent
-  static const purpleDark = Color(0xFF4F46E5);
-  static const purpleSoft = Color(0xFFEEF2FF); // tinted fills (chips, bubbles)
-  static const purpleLine = Color(0xFFC7D2FE);
-  static const accentSolid = Color(0xFF4F46E5); // button fill — white text works in BOTH themes
-  static const accentSolidHover = Color(0xFF4338CA);
+  // Locked to the founder's reference dashboard (2026-10): indigo is authority,
+  // amber is money/attention, green is only ever "it worked". Same values as
+  // frontend/src/styles.css — if one changes, change both.
+  static const purple = Color(0xFF5B4BD6); // the ONE primary accent
+  static const purpleDark = Color(0xFF4938B4);
+  static const purpleSoft = Color(0xFFEFEBFE); // tinted fills (chips, bubbles)
+  static const purpleLine = Color(0xFFCFC6F8);
+  static const accentSolid = Color(0xFF4F3FC7); // button fill — white text works in BOTH themes
+  static const accentSolidHover = Color(0xFF4133A4);
+
+  // ── the rail (drawer chrome) ──
+  // The drawer is the phone's sidebar, so it wears the same deep-indigo wash the
+  // web rail does — brand + nav on a dark frame, content on light paper.
+  static const rail1 = Color(0xFF352A7F);
+  static const rail2 = Color(0xFF221A56);
+  static const rail3 = Color(0xFF1A1443);
+  static const railInk = Color(0xFFF4F2FE);
+  static const railMuted = Color(0xFFB4AEDE);
+  static const railFaint = Color(0xFF847CB8);
+  static const railLine = Color(0x1AFFFFFF); // rgba(255,255,255,.10)
+  static const railHover = Color(0x14FFFFFF); // .08
+  static const railActive = Color(0x26FFFFFF); // .15
+  static const railGrad = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [rail1, rail2, rail3],
+    stops: [0.0, 0.58, 1.0],
+  );
 
   // green = success / online / KPI-up ONLY (never a primary action)
   static const green = Color(0xFF10B981);
@@ -36,16 +58,16 @@ class VeloSalesTheme {
   // light-to-dark gradient (it is the one element allowed to).
   static Color markTop(BuildContext c) =>
       Theme.of(c).brightness == Brightness.dark
-          ? const Color(0xFFC7D2FE)
-          : const Color(0xFFA5B4FC);
+          ? const Color(0xFFCFC7FD)
+          : const Color(0xFFA89DF7);
   static Color markMid(BuildContext c) =>
       Theme.of(c).brightness == Brightness.dark
-          ? const Color(0xFF818CF8)
+          ? const Color(0xFF8B7FF0)
           : purple;
   static Color markBot(BuildContext c) =>
       Theme.of(c).brightness == Brightness.dark
-          ? const Color(0xFF4F46E5)
-          : const Color(0xFF4338CA);
+          ? const Color(0xFF5B4BD6)
+          : const Color(0xFF4B3BB2);
   static Color markEdge(BuildContext c) =>
       Colors.white.withValues(alpha: Theme.of(c).brightness == Brightness.dark ? 0.30 : 0.45);
 
@@ -53,9 +75,9 @@ class VeloSalesTheme {
   // The pastel fills the home screen's action cards use. Deliberately very
   // light: they sit behind text, so they carry a hue, never a shade.
   static Color tintLavender(BuildContext c) =>
-      Theme.of(c).brightness == Brightness.dark ? const Color(0xFF1E1B4B) : const Color(0xFFEEF2FF);
+      Theme.of(c).brightness == Brightness.dark ? const Color(0xFF221C4D) : const Color(0xFFEFEBFE);
   static Color tintSky(BuildContext c) =>
-      Theme.of(c).brightness == Brightness.dark ? const Color(0xFF14243D) : const Color(0xFFEAF2FE);
+      Theme.of(c).brightness == Brightness.dark ? const Color(0xFF14243D) : const Color(0xFFEAF0FE);
   static Color tintMint(BuildContext c) =>
       Theme.of(c).brightness == Brightness.dark ? const Color(0xFF10291F) : const Color(0xFFE9F9F1);
 
@@ -64,8 +86,8 @@ class VeloSalesTheme {
         begin: Alignment.centerLeft,
         end: Alignment.centerRight,
         colors: Theme.of(c).brightness == Brightness.dark
-            ? const [Color(0xFF6366F1), Color(0xFF9333EA)]
-            : const [Color(0xFF5B5BF0), Color(0xFF9B4DF0)],
+            ? const [Color(0xFF8B7FF0), Color(0xFF6D5CE0)]
+            : const [Color(0xFF6A59DF), Color(0xFF4A3AB8)],
       );
 
   static const radius = 16.0; // cards
@@ -94,21 +116,21 @@ class VeloSalesTheme {
 
   static TextTheme _text(TextTheme base) => base.apply(
         fontFamily: _font,
-        bodyColor: const Color(0xFF0F172A),
-        displayColor: const Color(0xFF0F172A),
+        bodyColor: const Color(0xFF171532),
+        displayColor: const Color(0xFF171532),
       );
 
   static ThemeData get light {
-    const ink = Color(0xFF0F172A);
-    const muted = Color(0xFF64748B);
-    const line = Color(0xFFE2E8F0);
-    const bg = Color(0xFFF8FAFC);
+    const ink = Color(0xFF171532);
+    const muted = Color(0xFF6B6885);
+    const line = Color(0xFFE7E5F0);
+    const bg = Color(0xFFF7F6FB);
     const card = Color(0xFFFFFFFF);
     const scheme = ColorScheme.light(
       primary: accentSolid,
       onPrimary: Colors.white,
       primaryContainer: purpleSoft,
-      onPrimaryContainer: Color(0xFF312E81),
+      onPrimaryContainer: Color(0xFF2B2168),
       surface: card,
       onSurface: ink,
       surfaceContainerLowest: bg,
@@ -119,16 +141,16 @@ class VeloSalesTheme {
   }
 
   static ThemeData get dark {
-    const ink = Color(0xFFF3F4F6);
-    const muted = Color(0xFF94A3B8);
-    const line = Color(0xFF1F2937);
-    const bg = Color(0xFF0B1118);
-    const card = Color(0xFF111827);
+    const ink = Color(0xFFF2F1FA);
+    const muted = Color(0xFFA5A1C0);
+    const line = Color(0xFF272346);
+    const bg = Color(0xFF0E0C1D);
+    const card = Color(0xFF181530);
     const scheme = ColorScheme.dark(
-      primary: purple,
+      primary: Color(0xFF8B7FF0),
       onPrimary: Colors.white,
-      primaryContainer: Color(0xFF1E1B4B),
-      onPrimaryContainer: Color(0xFFE0E7FF),
+      primaryContainer: Color(0xFF221C4D),
+      onPrimaryContainer: Color(0xFFDDD8FF),
       surface: card,
       onSurface: ink,
       surfaceContainerLowest: bg,

@@ -1,6 +1,9 @@
 # DESIGN.md — VeloSales AI
 
-Read this file before any UI work and follow it strictly. Scope: `frontend/` only.
+Read this file before any UI work and follow it strictly. Scope: `frontend/` and
+`mobile/` — the two clients are one product, so every rule here binds both.
+Web tokens live in `frontend/src/styles.css`; the phone's copies live in
+`mobile/lib/theme.dart` and must hold the same values.
 If something is not specified here, ask before inventing it.
 
 **Mode:** Operate (dashboard, inbox, catalog, tools) + Persuade (landing/legal).
@@ -13,13 +16,31 @@ diamond, side bars. Source artwork is the designer vector kit in `files (2)/`
 ## Direction — "Premium Nigerian SaaS"
 
 One visual system across every screen. Clean, generous whitespace, subtle
-shadows, rounded everything, purple primary. No liquid-glass overlay, no
+shadows, rounded everything, indigo primary. No liquid-glass overlay, no
 neumorphism, no random gradients, no stacked identical cards. Real shop data
 only — no fake charts, no invented numbers.
 
-The look comes from the founder's Flowify reference: light background, white
-cards, purple CTAs, pill buttons, generous border-radius, small green success
-badges, big headlines, sentence case.
+The look comes from the founder's reference dashboard (a dark-indigo rail,
+white cards floating on a faintly lilac canvas, amber and green used only
+semantically) plus the founder's Flowify reference for the marketing surfaces
+(light background, white cards, pill buttons, generous border-radius, big
+headlines, sentence case).
+
+### Colour — the reasoning (locked 2026-10, from the reference video)
+
+- **Indigo is authority.** It reads as competent, calm and expensive, and it is
+  the only hue that stays legible as text on white *and* as a fill under white
+  text. So it owns every action the owner should take, and nothing else does.
+- **The rail is deep indigo.** Dark chrome turns the nav into a frame; white
+  content on a faintly lilac canvas becomes "the paper". The eye lands on the
+  numbers and the inbox, not on the chrome. It also survives phone glare far
+  better than a white column.
+- **The canvas is warm off-white, not blue-white.** Clinical blue-white reads
+  machine-made. A 2° shift toward violet ties the page to the brand for free.
+- **Amber is money and attention** — the colour of a Naira note and of a warning
+  lamp. It means "a decision is needed". It never means "something broke".
+- **Green is only ever "it worked"**: success, online, KPI up, a tick.
+- **Red is failure and destruction.** Never decoration.
 
 - **One memorable thing per screen.** Overview leads with the north-star metric
   card; Inbox leads with the thread; Catalog leads with completeness.
@@ -36,24 +57,32 @@ Tokens live in `:root` (light) and `[data-theme="dark"]`. New work uses tokens
 only. No hex literals outside token blocks.
 
 ### Light tokens
-- --purple: #6366f1 (primary CTA, active nav, focus)
-- --purple-dark: #4f46e5 (hover/pressed)
-- --purple-soft: #eef2ff (outbound chat, info chips)
-- --ink: #0f172a; --muted: #64748b; --faint: #94a3b8
-- --line: #e2e8f0; --line-soft: #f1f5f9 (borders, dividers)
-- --bg: #f8fafc (page); --card: #ffffff (cards, forms, menus)
+- --purple: #5b4bd6 (primary accent, focus) · --purple-dark: #4938b4 (hover/pressed)
+- --purple-soft: #efebfe (active nav, outbound chat, info chips) · --purple-line: #cfc6f8
+- --accent-solid: #4f3fc7 · --accent-solid-hover: #4133a4 (white text on both, both themes)
+- --rail-1 #352a7f → --rail-2 #221a56 → --rail-3 #1a1443 (the sidebar/drawer gradient,
+  top-lit so the brand reads as nearest). Rail ink/muted/faint/line/hover/active:
+  #f4f2fe / #b4aede / #847cb8 / rgba(255,255,255,.10) / .08 / .15
+- --ink: #171532; --muted: #6b6885; --faint: #9693ac
+- --line: #e7e5f0; --line-soft: #f2f1f8 (borders, dividers)
+- --bg: #f7f6fb (page); --card: #ffffff (cards, forms, menus)
 - --green: #10b981 on --green-soft: #d1fae5; --green-dark: #059669 (success, KPI-up)
 - --gold: #d97706 on --gold-bg: #fffbeb; --gold-line: #fcd34d (needs attention, never errors)
 - --red: #dc2626 on --red-bg: #fef2f2; --red-line: #fca5a5 (failed, destructive only)
 - --blue: #2563eb on --blue-bg: #eff6ff (info, links)
 
 ### Dark tokens
-- --purple: #818cf8 (never dimmed below 4.5:1), --purple-soft: #1e1b4b
-- --ink: #f3f4f6; --muted: #94a3b8; --faint: #64748b
-- --line: #1f2937; --line-soft: #111827
-- --bg: #0b1118; --card: #111827
+- --purple: #8b7ff0 (never dimmed below 4.5:1), --purple-soft: #221c4d
+- --ink: #f2f1fa; --muted: #a5a1c0; --faint: #6f6b8c
+- --line: #272346; --line-soft: #1c1934
+- --bg: #0e0c1d; --card: #181530
+- rail drops a shade below the page (--rail-1 #2b2269 → --rail-3 #120e33)
 - --green: #34d399; --gold: #fbbf24 on #2a1f08; --red: #f87171 on #2b1210; --blue: #60a5fa
 - Dark is designed, not inverted: surface separation via borders, softer shadows.
+
+The mark's ramp (`.vl-root`) lives in the same two blocks; the rail is dark in
+BOTH themes, so a mark sitting on it uses the dark ramp via
+`.sidebar .vl-root` (declared after the theme blocks so source order wins).
 
 Check every text/background pair at 4.5:1 in both themes.
 
@@ -98,10 +127,22 @@ Check every text/background pair at 4.5:1 in both themes.
   fill (purple-on-purple disappears); put it on a surface.
 
 ### Shell
-- Left sidebar 232px: brand (logo mark + "VeloSales Ai"), grouped nav, footer.
+- Left sidebar 232px, deep-indigo rail (top-lit gradient), grouped nav, footer.
+  Brand + nav rows sit ON the rail; the rail is dark in both themes.
 - Topbar: breadcrumb + business name, centered page search, right cluster
   (AI status pill, notifications bell, theme toggle, avatar, sign out).
-- Mobile: slide-out drawer + 5-item bottom bar + footer legal links.
+- Mobile: slide-out drawer (same indigo rail) + 5-item bottom bar + footer links.
+
+### Dropdowns
+- ONE control, everywhere: `frontend/src/components/Select.jsx` (web) and
+  `mobile/lib/widgets/app_select.dart` (phone). A native `<select>` or
+  `DropdownButtonFormField` hands the menu to the operating system and looks a
+  decade older than the rest of the app — never use one for a real choice.
+- Web opens a card (14px radius, one shadow, a tick on the current choice);
+  phone opens a bottom sheet with full-width rows, a hint line and a lock.
+- Keyboard/web: Enter/Space opens, ↑/↓ moves, Enter picks, Esc closes.
+- Anything that picks an AI brain shows the TIER (Fast / Normal / Smart).
+  The engine's real name never reaches the UI.
 
 ### Dashboard Overview (built first)
 - Hero: greeting + business name + primary "Test bot" action.
@@ -185,12 +226,14 @@ Check every text/background pair at 4.5:1 in both themes.
 - [x] 2. Shell: sidebar, topbar with search + status, floating mobile bar.
 - [x] 3. Dashboard Overview + brand mark: hero, real KPIs, 7-day activity,
       reply-mix donut, and the purple logo/icon set.
-- [ ] 4. Inbox: 3-panel desktop, list->thread mobile, AI/human toggle. **← NEXT**
-- [ ] 5. Catalog, Connect, Playground.
-- [ ] 6. Insights, Billing, Profile, Settings.
-- [ ] 7. Login, Onboarding, Welcome, Notifications, Refer & Earn, Help.
-- [ ] 8. Landing, FAQ, Privacy, Terms.
-- [ ] 9. `website/` marketing site — port to these tokens (still the old green).
+- [x] 4. Shell retint + the app's one dropdown + Refer & Earn (web + phone).
+- [ ] 5. Inbox: 3-panel desktop, list->thread mobile, AI/human toggle. **← NEXT**
+- [ ] 6. Catalog, Connect, Playground.
+- [ ] 7. Insights (incl. the inactivity record), Billing (billing card +
+      history), AI settings (the model picker).
+- [ ] 8. Login, Onboarding, Welcome, Notifications, Help install icon.
+- [ ] 9. Landing, FAQ, Privacy, Terms.
+- [ ] 10. `website/` marketing site — port to these tokens (still the old green).
 
 After each step: `npm run build` + detector clean + user reviews on phone and
 desktop before the next step. Keep all behavior and API calls unchanged.

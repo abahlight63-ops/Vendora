@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 
 import '../brand_mark.dart';
+import '../theme.dart';
 import 'brand_ui.dart';
 
 /// One row in the drawer.
@@ -56,9 +57,11 @@ class Sidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Drawer(
-      backgroundColor: scheme.surface,
+      // The rail: the phone's sidebar wears the same deep-indigo wash as the
+      // web's, so the two clients are unmistakably one product. Everything
+      // inside therefore uses the rail tokens, not the page scheme.
+      backgroundColor: VeloSalesTheme.rail2,
       surfaceTintColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
@@ -66,94 +69,97 @@ class Sidebar extends StatelessWidget {
           bottomRight: Radius.circular(24),
         ),
       ),
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ── who you are ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
-              child: Row(children: [
-                _DrawerAvatar(url: avatarUrl),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        businessName.isEmpty ? 'Your shop' : businessName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 15.5,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.3),
-                      ),
-                      if (niche.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(niche,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: scheme.onSurface.withValues(alpha: 0.55))),
+      child: DecoratedBox(
+        decoration: const BoxDecoration(gradient: VeloSalesTheme.railGrad),
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ── who you are ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+                child: Row(children: [
+                  _DrawerAvatar(url: avatarUrl),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          businessName.isEmpty ? 'Your shop' : businessName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 15.5,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.3,
+                              color: VeloSalesTheme.railInk),
+                        ),
+                        if (niche.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(niche,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: VeloSalesTheme.railMuted)),
+                        ],
                       ],
-                    ],
-                  ),
-                ),
-              ]),
-            ),
-            Divider(height: 1, color: scheme.outline),
-
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-                children: [
-                  ...primary.map((i) => _row(context, i)),
-                  const SizedBox(height: 14),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(10, 0, 10, 6),
-                    child: Text(
-                      'LEARN AND MANAGE',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.1,
-                        color: scheme.onSurface.withValues(alpha: 0.42),
-                      ),
                     ),
                   ),
-                  ...secondary.map((i) => _row(context, i)),
-                ],
+                ]),
               ),
-            ),
+              const Divider(height: 1, color: VeloSalesTheme.railLine),
 
-            Divider(height: 1, color: scheme.outline),
-            _row(
-              context,
-              SidebarItem(
-                icon: dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-                label: dark ? 'Light theme' : 'Dark theme',
-                push: onToggleTheme,
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                  children: [
+                    ...primary.map((i) => _row(context, i)),
+                    const SizedBox(height: 14),
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(10, 0, 10, 6),
+                      child: Text(
+                        'LEARN AND MANAGE',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.1,
+                          color: VeloSalesTheme.railFaint,
+                        ),
+                      ),
+                    ),
+                    ...secondary.map((i) => _row(context, i)),
+                  ],
+                ),
               ),
-            ),
-            _row(
-              context,
-              SidebarItem(
-                icon: Icons.logout_rounded,
-                label: 'Sign out',
-                push: onLogout,
+
+              const Divider(height: 1, color: VeloSalesTheme.railLine),
+              _row(
+                context,
+                SidebarItem(
+                  icon: dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                  label: dark ? 'Light theme' : 'Dark theme',
+                  push: onToggleTheme,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-          ],
+              _row(
+                context,
+                SidebarItem(
+                  icon: Icons.logout_rounded,
+                  label: 'Sign out',
+                  push: onLogout,
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _row(BuildContext context, SidebarItem item) {
-    final scheme = Theme.of(context).colorScheme;
     final selected = item.tab != null && item.tab == tab;
     final tint = item.highlight || selected;
 
@@ -173,14 +179,16 @@ class Sidebar extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
-            color: selected ? scheme.primaryContainer : Colors.transparent,
+            color: selected ? VeloSalesTheme.railActive : Colors.transparent,
             borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+                color: selected ? VeloSalesTheme.railLine : Colors.transparent),
           ),
           child: Row(children: [
             Icon(
               item.icon,
               size: 21,
-              color: tint ? scheme.primary : scheme.onSurface.withValues(alpha: 0.70),
+              color: tint ? Colors.white : VeloSalesTheme.railMuted,
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -192,24 +200,25 @@ class Sidebar extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 14.5,
                       fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                      color: tint ? scheme.primary : scheme.onSurface,
+                      color: tint ? Colors.white : VeloSalesTheme.railInk,
                     ),
                   ),
                   if (item.hint != null) ...[
                     const SizedBox(height: 2),
                     Text(
                       item.hint!,
-                      style: TextStyle(
+                      style: const TextStyle(
                           fontSize: 11.5,
                           height: 1.3,
-                          color: scheme.onSurface.withValues(alpha: 0.48)),
+                          color: VeloSalesTheme.railFaint),
                     ),
                   ],
                 ],
               ),
             ),
             if (selected)
-              Icon(Icons.chevron_right_rounded, size: 20, color: scheme.primary),
+              const Icon(Icons.chevron_right_rounded,
+                  size: 20, color: Colors.white),
           ]),
         ),
       ),
@@ -227,19 +236,19 @@ class _DrawerAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (url == null || url!.isEmpty) return const BrandMark(size: 38);
+    if (url == null || url!.isEmpty) return const BrandMark(size: 38, onRail: true);
     return Container(
       width: 38,
       height: 38,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        border: Border.all(color: VeloSalesTheme.railLine),
       ),
       child: Image.network(
         url!,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => const BrandMark(size: 38),
+        errorBuilder: (_, _, _) => const BrandMark(size: 38, onRail: true),
       ),
     );
   }

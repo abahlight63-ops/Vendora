@@ -10,6 +10,7 @@ import { api, pop, toast } from '../lib/api.js'; // api() save; pop() big succes
 import { normalizePhone, prettyPhone } from '../lib/phone.js'; // live phone help: normalize (validate) + pretty (display)
 import { NICHES } from '../lib/niches.js'; // lane picker (same list as Welcome — catalog shelves + AI suggestions follow it!)
 import Ic from '../components/icons.jsx'; // check icon for the "Saved as …" line
+import Select from '../components/Select.jsx'; // the app's one dropdown (see that file for why it is not a <select>)
 import Loader from '../components/Loader.jsx'; // mini orbit in the alerts buttons
 
 // ── the row icons (drawn here, no icon package — same house style as Settings) ──
@@ -93,7 +94,7 @@ export default function Profile({ biz }) { // biz prop = business from App's use
             </div>
             <div className="set-row form">
               <span className="set-ic w"><RowIc k="cash" /></span>
-              <div className="set-main"><label>Billing currency</label><select value={f.currency} onChange={set('currency')}><option value="NGN">Naira (₦)</option><option value="USD">US Dollar ($)</option></select><span className="hint">Auto-set from your number — change anytime.</span></div> {/* <select> dropdown: value mirrors state, <option value> = stored codes */}
+              <div className="set-main"><label>Billing currency</label><Select value={f.currency} onChange={(v) => setF({ ...f, currency: v })} options={[{ value: 'NGN', label: 'Naira (₦)', hint: 'Nigerian cards and bank transfer' }, { value: 'USD', label: 'US Dollar ($)', hint: 'International cards' }]} label="Billing currency" /><span className="hint">Auto-set from your number — change anytime.</span></div> {/* one control for every choice in the app — see components/Select.jsx */}
             </div>
             <div className="set-row form">
               <span className="set-ic s"><RowIc k="globe" /></span>
@@ -101,7 +102,7 @@ export default function Profile({ biz }) { // biz prop = business from App's use
             </div>
             <div className="set-row form">
               <span className="set-ic"><RowIc k="tag" /></span>
-              <div className="set-main"><label>What you sell</label><select value={f.niche} onChange={set('niche')}>{nicheOpts.map((n) => (<option key={n} value={n}>{n}</option>))}</select><span className="hint">Your lane — catalog shelves + AI suggestions follow it.</span></div> {/* lane switch (catalog categories + VeloSales Ai chips reshape on save!) */}
+              <div className="set-main"><label>What you sell</label><Select value={f.niche} onChange={(v) => setF({ ...f, niche: v })} options={nicheOpts} label="What you sell" /><span className="hint">Your lane — catalog shelves + AI suggestions follow it.</span></div> {/* lane switch (catalog categories + VeloSales Ai chips reshape on save!) */}
             </div>
             <div className="set-row form">
               <span className="set-ic m"><RowIc k="voice" /></span>

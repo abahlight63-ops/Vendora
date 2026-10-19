@@ -12,6 +12,18 @@ import 'package:url_launcher/url_launcher.dart';
 import '../api.dart';
 import '../glass.dart';
 import '../motion.dart';
+import '../widgets/app_select.dart';
+
+/// The three names an owner is allowed to see. The engine behind a tier is an
+/// implementation detail that changes with price and availability — the tier is
+/// the promise we actually keep ("Fast / Normal / Smart"), so no provider name
+/// ever reaches the UI.
+String _tierOf(Map m) {
+  final b = '${m['badge'] ?? ''}'.toLowerCase();
+  if (b.contains('fast')) return 'Fast';
+  if (b.contains('smart') || b.contains('premium') || b.contains('deep')) return 'Smart';
+  return 'Normal';
+}
 
 final _webBilling = ApiClient.billingUrl; // NOT const: it is a getter (String.fromEnvironment is resolved at runtime) // locked-brain upsell opens here (same as Billing tab!)
 
@@ -353,8 +365,8 @@ class _ConnectScreenState extends State<ConnectScreen> {
     }
     setState(() => _brain = id);
     try {
-      final r = await ApiClient.instance.whatsappModel(id);
-      if (mounted) showToast(context, 'WhatsApp brain: ${r['label'] ?? id}');
+      await ApiClient.instance.whatsappModel(id);
+      if (mounted) showToast(context, 'WhatsApp brain: ${found == null ? 'set' : _tierOf(found)}');
     } on ApiException {
       if (mounted) _upsell(); // 402 → locked (downgraded plan?) → upgrade card!
     } catch (_) {
@@ -448,6 +460,29 @@ class _ConnectScreenState extends State<ConnectScreen> {
     };
     final brainValue =
         (_brain != null && brainIds.contains(_brain)) ? _brain : null;
+    // The owner picks a TIER, never an engine. Two free models can share a tier;
+    // we keep the saved one at the top so its row maps back to the real id.
+    final tierOptions = <AppSelectOption>[];
+    final seenTiers = <String>{};
+    final orderedModels = <dynamic>[
+      ..._models.where((m) => m is Map && '${m['id']}' == brainValue),
+      ..._models,
+    ];
+    for (final m in orderedModels) {
+      if (m is! Map) continue;
+      final tier = _tierOf(m);
+      if (!seenTiers.add(tier)) continue;
+      tierOptions.add(AppSelectOption(
+        value: '${m['id']}',
+        label: tier,
+        hint: tier == 'Fast'
+            ? 'Quick, short replies'
+            : tier == 'Smart'
+                ? 'Deepest answers, a little slower'
+                : 'Balanced — the everyday default',
+        locked: m['locked'] == true,
+      ));
+    }
     return RefreshIndicator(
       onRefresh: () => _load(silent: true), // RefreshIndicator spins itself (no skeleton flash!)
       child: ListView(padding: const EdgeInsets.all(16), children: [
@@ -570,19 +605,13 @@ class _ConnectScreenState extends State<ConnectScreen> {
                       'Locked brains need their plan — tap to see options.',
                       style: TextStyle(fontSize: 12)),
                   const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    initialValue: brainValue,
-                    decoration: const InputDecoration(
-                        labelText: 'WhatsApp brain'),
-                    items: [
-                      for (final m in _models)
-                        DropdownMenuItem(
-                          value: '${(m as Map)['id']}',
-                          child: Text(
-                              '${m['label'] ?? m['id']}${m['locked'] == true ? ' (Locked)' : ''}'),
-                        ),
-                    ],
-                    onChanged: _saveBrain,
+                  AppSelect(
+                    value: brainValue,
+                    placeholder: 'Pick a speed',
+                    label: 'WhatsApp brain',
+                    sheetTitle: 'Which AI answers WhatsApp?',
+                    options: tierOptions,
+                    onChanged: (v) => _saveBrain(v),
                   ),
                 ]),
           ),

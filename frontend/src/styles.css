@@ -17,30 +17,48 @@
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* ── DESIGN TOKENS (semantic — components reference THESE, never raw hex) */
-  /* purple = the ONE primary action colour (buttons, active nav, focus —
-     see DESIGN.md §Tokens). Logo is recoloured to this family. */
-  --purple: #6366f1; --purple-dark: #4f46e5; --purple-soft: #eef2ff; --purple-line: #c7d2fe;
+  /* ── COLOUR SYSTEM (locked from the founder's reference dashboard, 2026-10) ──
+     The psychology, in one place, because every screen inherits it:
+     · INDIGO is authority — it reads as competent, calm and expensive, and it
+       is the only colour that stays legible as text on white AND as a fill
+       under white text. It owns every action the user should take.
+     · A DEEP-INDIGO RAIL (--rail-*) turns the nav into a frame instead of a
+       competing white column. Dark chrome = "the tool". White content on a
+       faintly lilac canvas = "the paper". The eye lands on numbers, not chrome.
+     · WARM OFF-WHITE canvas (--bg) with white cards keeps the "floating paper"
+       feel of the reference. Clinical blue-white reads machine-made; a 2° shift
+       toward violet ties the canvas to the brand for free.
+     · AMBER is money and attention (the colour of a Naira note, of a warning
+       lamp) — used for "needs a decision", never for "something broke".
+     · GREEN is only ever "it worked": success, online, KPI up, a tick.
+     · RED is reserved for failure and destruction. Never decoration. */
+  --purple: #5b4bd6; --purple-dark: #4938b4; --purple-soft: #efebfe; --purple-line: #cfc6f8;
+  /* the rail (sidebar / drawer) — deep indigo, top-lit like the reference */
+  --rail-1: #352a7f; --rail-2: #221a56; --rail-3: #1a1443;
+  --rail-ink: #f4f2fe; --rail-muted: #b4aede; --rail-faint: #847cb8;
+  --rail-line: rgba(255, 255, 255, 0.10); --rail-hover: rgba(255, 255, 255, 0.08);
+  --rail-active: rgba(255, 255, 255, 0.15);
+  --rail-shadow: 0 18px 50px rgba(23, 17, 58, 0.28);
   /* green = success / online / KPI-up ONLY (never a primary action) */
   --green: #10b981; --green-dark: #059669; --green-soft: #d1fae5; --green-line: #a7f3d0;
-  --ink: #0f172a; --muted: #64748b; --faint: #94a3b8;
-  --line: #e2e8f0; --line-soft: #f1f5f9;
+  --ink: #171532; --muted: #6b6885; --faint: #9693ac;
+  --line: #e7e5f0; --line-soft: #f2f1f8;
   /* the skeleton pair: a flat plate + the brand's light crossing it. Tokens so
      the dark theme gets its own values instead of a washed-out copy. */
-  --skel-base: #eaeef6; --skel-sheen: rgba(99, 102, 241, 0.19);
-  --bg: #f8fafc; --card: #ffffff;
+  --skel-base: #ecebf5; --skel-sheen: rgba(91, 75, 214, 0.18);
+  --bg: #f7f6fb; --card: #ffffff;
   --gold: #d97706; --gold-bg: #fffbeb; --gold-line: #fcd34d;
   --red: #dc2626; --red-bg: #fef2f2; --red-line: #fca5a5;
   --blue: #2563eb; --blue-bg: #eff6ff;
   /* highlight tints (purple family — used by Overview + Welcome artwork) */
-  --mint: #eef2ff; --mint-ink: #312e81; --sky: #c7d2fe;
+  --mint: #efebfe; --mint-ink: #2b2168; --sky: #cfc6f8;
   /* semantic aliases */
   --bg-primary: var(--bg); --bg-secondary: var(--line-soft);
   --surface: var(--card); --border: var(--line);
   --text-1: var(--ink); --text-2: var(--muted); --text-3: var(--faint);
   --accent: var(--purple); --accent-hover: var(--purple-dark);
   /* solid fills (buttons) stay dark enough for white text in BOTH themes */
-  --accent-solid: #4f46e5; --accent-solid-hover: #4338ca;
+  --accent-solid: #4f3fc7; --accent-solid-hover: #4133a4;
   --ok: var(--green); --err: var(--red); --warn: var(--gold);
   /* type scale (1.25 ratio): 12 caption / 14 body-sm / 16 body / 20 h4 / 25 h3 / 31 h2 / 39 h1 */
   --fs-caption: 12px; --fs-sm: 14px; --fs-body: 16px;
@@ -71,8 +89,11 @@
    those pieces referenced these variables without inheriting them the SVG
    gradient fell back to BLACK — a black logo on the splash. One selector list
    means a caller cannot forget. */
-.vl-root, .reveal-mark { --lg-top: #a5b4fc; --lg-mid: #6366f1; --lg-bot: #4338ca; --lg-glow: 0.3; --lg-shadow: 0.24; --lg-bev: 0.24; --lg-sheen: 0.24; --lg-rim: 0.62; }
-[data-theme="dark"] .vl-root, [data-theme="dark"] .reveal-mark { --lg-top: #c7d2fe; --lg-mid: #818cf8; --lg-bot: #4f46e5; --lg-glow: 0.5; --lg-shadow: 0.16; --lg-bev: 0.34; --lg-sheen: 0.5; --lg-rim: 0.9; }
+.vl-root, .reveal-mark { --lg-top: #a89df7; --lg-mid: #6a59df; --lg-bot: #4b3bb2; --lg-glow: 0.3; --lg-shadow: 0.24; --lg-bev: 0.24; --lg-sheen: 0.24; --lg-rim: 0.62; }
+[data-theme="dark"] .vl-root, [data-theme="dark"] .reveal-mark { --lg-top: #cfc7fd; --lg-mid: #8b7ff0; --lg-bot: #5b4bd6; --lg-glow: 0.5; --lg-shadow: 0.16; --lg-bev: 0.34; --lg-sheen: 0.5; --lg-rim: 0.9; }
+/* The rail is dark in BOTH themes, so the mark sitting on it always uses the
+   dark ramp. Declared after the theme blocks so it wins on source order. */
+.sidebar .vl-root, .sidebar .reveal-mark { --lg-top: #d3d8ff; --lg-mid: #8f97f5; --lg-bot: #5b4bd6; --lg-glow: 0.55; --lg-shadow: 0.14; --lg-bev: 0.36; --lg-sheen: 0.55; --lg-rim: 0.95; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: var(--font); background: var(--bg-primary); color: var(--text-1); font-size: var(--fs-body); line-height: 1.5; font-weight: 400; -webkit-font-smoothing: antialiased; }
 h1 { font-size: var(--fs-h2); line-height: 1.2; font-weight: 600; letter-spacing: -0.4px; }
@@ -86,16 +107,21 @@ a:hover { text-decoration: underline; }
    .topbar sticky top (stays while page scrolls). .page = centered max-width column.
    Lesson: sticky needs a non-overflow-hidden ancestor, else it silently fails! */
 .shell { display: flex; min-height: 100vh; }
-.sidebar { width: 232px; flex: 0 0 232px; background: var(--card); border-right: 1px solid var(--line); color: var(--ink); position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; padding: 18px 14px; }
+/* The rail: a top-lit indigo column. The gradient is not decoration — it is
+   what makes the top of the rail (brand + first nav group) read as nearer than
+   the bottom (footer), so the eye starts at the brand and walks down. */
+.sidebar { width: 232px; flex: 0 0 232px; background: linear-gradient(178deg, var(--rail-1) 0%, var(--rail-2) 58%, var(--rail-3) 100%); border-right: 0; color: var(--rail-ink); position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; padding: 18px 14px; }
 .sidebar .logo { display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px; }
 .sidebar .logo svg { flex: 0 0 auto; }
-.sidebar .logo span { font-weight: 700; letter-spacing: -0.2px; color: var(--ink); font-size: 15.5px; }
-.sidebar .nav-label { font-size: 12px; font-weight: 600; color: var(--faint); padding: 16px 12px 6px; }
+.sidebar .logo span { font-weight: 700; letter-spacing: -0.2px; color: #fff; font-size: 15.5px; }
+.sidebar .nav-label { font-size: 12px; font-weight: 600; color: var(--rail-faint); padding: 16px 12px 6px; }
 .sidebar nav { display: flex; flex-direction: column; gap: 2px; }
-.sidebar nav a { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: var(--r-sm); color: var(--muted); font-weight: 500; font-size: 14px; text-decoration: none; transition: background var(--t), color var(--t); }
-.sidebar nav a:hover { background: var(--line-soft); color: var(--ink); text-decoration: none; }
-.sidebar nav a.active { background: var(--purple-soft); color: var(--purple-dark); font-weight: 600; }
-.sidebar .foot { margin-top: auto; font-size: 12px; color: var(--faint); padding: 12px 10px 4px; line-height: 1.5; border-top: 1px solid var(--line); }
+.sidebar nav a { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: var(--r-sm); color: var(--rail-muted); font-weight: 500; font-size: 14px; text-decoration: none; transition: background var(--t), color var(--t); }
+.sidebar nav a:hover { background: var(--rail-hover); color: #fff; text-decoration: none; }
+.sidebar nav a.active { background: var(--rail-active); color: #fff; font-weight: 600; box-shadow: inset 0 0 0 1px var(--rail-line); }
+.sidebar nav a svg { flex: none; }
+.sidebar .foot { margin-top: auto; font-size: 12px; color: var(--rail-faint); padding: 12px 10px 4px; line-height: 1.5; border-top: 1px solid var(--rail-line); }
+.sidebar .foot a { color: var(--rail-muted); }
 .main-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .topbar { position: sticky; top: 0; z-index: 20; background: var(--card); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 28px; }
 .topbar h1 { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; }
@@ -444,7 +470,7 @@ body:has(.vai) .foot-links { display: none; } /* the chat is an app surface — 
 /* empty state — the orb is the app's single hero highlight (DESIGN.md allows
    one), and the mark rides it in white exactly as the reference does */
 .vai-hero { margin: auto; flex: 0 0 auto; width: 100%; max-width: 660px; padding: 26px 16px 30px; text-align: center; animation: fadeSlide 0.42s ease both; }
-.vai-orb { width: 76px; height: 76px; margin: 0 auto 20px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(155deg, #818cf8 0%, #6366f1 38%, #4338ca 100%); box-shadow: 0 16px 32px -10px rgba(79, 70, 229, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.28); }
+.vai-orb { width: 76px; height: 76px; margin: 0 auto 20px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(155deg, #8b7ff0 0%, #5b4bd6 38%, #4f3fc7 100%); box-shadow: 0 16px 32px -10px rgba(79, 63, 199, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.28); }
 .vai-orb .vl-root, .vai-think-orb .vl-root { --lg-top: #fff; --lg-mid: #fff; --lg-bot: #fff; --lg-sheen: 0; } /* white mark on the ramp */
 .vai-hero h1 { font-size: 27px; font-weight: 800; letter-spacing: -0.7px; margin: 0 0 8px; color: var(--ink); }
 .vai-hero > p { color: var(--muted); font-size: 14.5px; margin: 0 auto; max-width: 430px; line-height: 1.6; }
@@ -498,7 +524,7 @@ body:has(.vai) .foot-links { display: none; } /* the chat is an app surface — 
 /* thinking — the mark exhaling. It answers the send and stops the moment the
    answer starts, so it reads as a state, not as decoration. */
 .vai-think { display: flex; align-items: center; gap: 13px; animation: bubbleIn 0.26s ease both; }
-.vai-think-orb { width: 30px; height: 30px; flex: 0 0 auto; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(150deg, #a5b4fc 0%, #6366f1 52%, #4338ca 100%); animation: thinkPulse 1.7s ease-in-out infinite; }
+.vai-think-orb { width: 30px; height: 30px; flex: 0 0 auto; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(150deg, #b3aaf9 0%, #6a59df 52%, #4b3bb2 100%); animation: thinkPulse 1.7s ease-in-out infinite; }
 .vai-think-txt { font-size: 13.5px; font-weight: 700; background: linear-gradient(90deg, var(--faint) 0%, var(--faint) 38%, var(--purple-dark) 50%, var(--faint) 62%, var(--faint) 100%); background-size: 220% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 1.6s linear infinite; }
 @keyframes thinkPulse { 0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.45); } 55% { transform: scale(1.06); box-shadow: 0 0 0 11px rgba(99, 102, 241, 0); } }
 @keyframes shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
@@ -646,7 +672,7 @@ body:has(.vai) .foot-links { display: none; } /* the chat is an app surface — 
 .menu-btn span { display: block; height: 2px; border-radius: 2px; background: var(--ink); transition: transform 0.2s ease, opacity 0.2s ease; }
 .menu-btn:hover { border-color: var(--accent); }
 .drawer-backdrop { display: none; }
-.drawer-close { display: none; margin-left: auto; background: var(--line-soft); border: 1px solid var(--line); color: var(--ink); width: 32px; height: 32px; border-radius: var(--r-sm); cursor: pointer; font-size: 14px; }
+.drawer-close { display: none; margin-left: auto; background: var(--rail-hover); border: 1px solid var(--rail-line); color: #fff; width: 32px; height: 32px; border-radius: var(--r-sm); cursor: pointer; font-size: 14px; }
 
 /* ── RESPONSIVE: .menu-btn hidden on desktop, shown ≤960px where .sidebar becomes
    a fixed slide-in drawer (.open = translateX(0) + transition animates it).
@@ -678,7 +704,7 @@ body:has(.vai) .foot-links { display: none; } /* the chat is an app surface — 
   .menu-btn { display: inline-flex; }
   .sidebar { display: flex; position: fixed; top: 0; left: 0; bottom: 0; z-index: 120; width: 270px; height: auto; transform: translateX(-105%); transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.25, 1); box-shadow: 20px 0 60px rgba(0,0,0,0.35); } /* height:auto = let top:0/bottom:0 decide — the desktop 100vh left a 40px strip of footer links showing under the open drawer */
   .sidebar.open { transform: none; }
-  .drawer-backdrop { display: block; position: fixed; inset: 0; z-index: 110; background: rgba(6, 17, 12, 0.55); animation: popFade 0.25s ease both; }
+  .drawer-backdrop { display: block; position: fixed; inset: 0; z-index: 110; background: rgba(16, 12, 40, 0.52); animation: popFade 0.25s ease both; }
   .drawer-close { display: inline-flex; align-items: center; justify-content: center; }
   .page { padding: 16px 16px 96px; }
   .topbar { padding: 12px 16px; gap: 8px; }
@@ -997,16 +1023,18 @@ button.mini-link:hover { text-decoration: underline; }
 }
 /* ---------- dark theme — designed, not inverted (DESIGN.md §Tokens) ---------- */
 [data-theme="dark"] {
-  --purple: #818cf8; --purple-dark: #a5b4fc; --purple-soft: #1e1b4b; --purple-line: #3730a3;
+  --purple: #8b7ff0; --purple-dark: #a99ffa; --purple-soft: #221c4d; --purple-line: #3b3187;
   --green: #34d399; --green-dark: #6ee7b7; --green-soft: #052e22; --green-line: #065f46;
-  --ink: #f3f4f6; --muted: #94a3b8; --faint: #64748b;
-  --line: #1f2937; --line-soft: #111827;
-  --skel-base: #161f2e; --skel-sheen: rgba(129, 140, 248, 0.16);
-  --bg: #0b1118; --card: #111827;
+  --ink: #f2f1fa; --muted: #a5a1c0; --faint: #6f6b8c;
+  --line: #272346; --line-soft: #1c1934;
+  --skel-base: #1d1a35; --skel-sheen: rgba(139, 127, 240, 0.16);
+  --bg: #0e0c1d; --card: #181530;
   --gold: #fbbf24; --gold-bg: #2a1f08; --gold-line: #6b4d16;
   --red: #f87171; --red-bg: #2b1210; --red-line: #6e2a24;
   --blue: #60a5fa; --blue-bg: #0e2138;
-  --mint: #1e1b4b; --mint-ink: #e0e7ff; --sky: #3730a3;
+  --mint: #221c4d; --mint-ink: #ddd8ff; --sky: #3b3187;
+  /* the rail drops a shade below the page so the frame still reads as a frame */
+  --rail-1: #2b2269; --rail-2: #1a1444; --rail-3: #120e33;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
@@ -1149,16 +1177,17 @@ button.mini-link:hover { text-decoration: underline; }
   .drawer-signout {
     display: flex; align-items: center; justify-content: center; gap: 8px;
     width: 100%; min-height: 46px; margin-top: 12px; padding: 12px 14px;
-    background: var(--line-soft); border: 1px solid var(--line); color: var(--ink);
+    background: var(--rail-hover); border: 1px solid var(--rail-line); color: #fff;
     border-radius: 12px; font: inherit; font-size: 13.5px; font-weight: 700;
     cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s;
   }
   .drawer-signout svg { flex: none; }
-  .drawer-signout:hover, .drawer-signout:focus-visible { background: var(--red-bg); border-color: var(--red-line); color: var(--red); }
+  .drawer-signout:hover, .drawer-signout:focus-visible { background: rgba(220, 38, 38, 0.22); border-color: rgba(252, 165, 165, 0.5); color: #ffe1e1; }
   .drawer-signout:active { transform: translateY(1px); }
-  /* dark: --line-soft (6% white) all but disappears on the drawer, so lift the
-     resting fill just enough to read as a control without becoming a button. */
-  [data-theme="dark"] .drawer-signout { background: rgba(255, 255, 255, 0.09); border-color: rgba(255, 255, 255, 0.16); }
+  /* the drawer is as dark as the desktop rail in both themes, so its sign-out
+     control uses the rail tokens instead of surface ones (it used to be
+     white-on-white in light mode — i.e. invisible). */
+  [data-theme="dark"] .drawer-signout { background: var(--rail-hover); border-color: var(--rail-line); }
   .nbell-btn { width: 38px; height: 38px; }
   .tt-track { width: 52px; height: 28px; }
   .tt-knob { width: 20px; height: 20px; }
@@ -1339,7 +1368,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
    Colours come from three custom properties so the same spinner works on white
    and on the brand purple. Inside a .btn the ring takes currentColor: a purple
    orbit on a purple button is an invisible orbit. */
-.orbit-loader { --orb-a: #818cf8; --orb-b: #6366f1; --orb-dot: #a5b4fc; display: inline-flex; flex: 0 0 auto; }
+.orbit-loader { --orb-a: #a89df7; --orb-b: #5b4bd6; --orb-dot: #cfc7fd; display: inline-flex; flex: 0 0 auto; }
 .btn .orbit-loader { --orb-a: currentColor; --orb-b: currentColor; --orb-dot: currentColor; }
 .orbit-loader .orbit-spin { transform-origin: 60px 60px; animation: orbitRot 1.4s linear infinite; }
 @keyframes orbitRot { to { transform: rotate(360deg); } }
@@ -1413,7 +1442,7 @@ a.ov-stat:hover { border-color: var(--purple-line); box-shadow: var(--shadow-md)
 
 .ov-bars { display: flex; align-items: flex-end; gap: 10px; height: 168px; margin-top: auto; padding-top: 18px; }
 .ov-bar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 8px; height: 100%; }
-.ov-bar i { width: 100%; max-width: 40px; border-radius: 8px 8px 4px 4px; background: #c7d2fe; transition: background var(--t); }
+.ov-bar i { width: 100%; max-width: 40px; border-radius: 8px 8px 4px 4px; background: var(--purple-line); transition: background var(--t); }
 .ov-bar i.on { background: linear-gradient(180deg, var(--purple), var(--purple-dark)); }
 [data-theme="dark"] .ov-bar i { background: #3730a3; }
 .ov-bar span { font-size: 11.5px; color: var(--faint); font-weight: 600; }
@@ -1632,4 +1661,128 @@ a.ov-stat:hover { border-color: var(--purple-line); box-shadow: var(--shadow-md)
   .set-foot { justify-content: stretch; }
   .set-foot .btn { width: 100%; }
   .set-faq .faq-a p { padding-left: 15px; }
+}
+
+/* ══ SELECT — the app's ONE dropdown ══════════════════════════════════════
+   A native <select> renders the operating system's menu: on Windows a grey
+   box with the OS's own highlight, on Android an unstyleable popup. It looked
+   like a form from 2009 next to pill buttons, so every dropdown in the app is
+   now this control: a real button that opens a card with the options in it.
+   Owned by components/Select.jsx. */
+.sel { position: relative; display: block; width: 100%; }
+.sel-btn {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px;
+  padding: 0 12px 0 14px; text-align: left; cursor: pointer;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  color: var(--ink); font: inherit; font-size: 14.5px; font-weight: 500;
+  transition: border-color var(--t), box-shadow var(--t), background var(--t);
+}
+.sel-btn:hover:not(:disabled) { border-color: var(--purple-line); }
+.sel-btn:focus-visible, .sel.open .sel-btn { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--purple-soft); }
+.sel-btn:disabled { opacity: 0.55; cursor: default; }
+.sel-val { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sel-val.ph { color: var(--faint); font-weight: 400; }
+.sel-btn .sel-chev { flex: none; color: var(--faint); transition: transform 0.2s ease, color 0.2s ease; }
+.sel.open .sel-chev { transform: rotate(180deg); color: var(--accent); }
+/* the pop: a surface, not a menu — 14px radius, real border, one soft shadow */
+.sel-pop {
+  position: absolute; z-index: 60; top: calc(100% + 6px); left: 0; right: 0;
+  max-height: 290px; overflow-y: auto; padding: 6px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: var(--shadow-lg); animation: selIn 0.14s ease-out both;
+}
+.sel-pop.up { top: auto; bottom: calc(100% + 6px); }
+@keyframes selIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.sel-opt {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 10px 10px 12px;
+  background: none; border: 0; border-radius: 10px; cursor: pointer; text-align: left;
+  color: var(--ink); font: inherit; font-size: 14px; font-weight: 500;
+}
+.sel-opt[data-active="1"] { background: var(--line-soft); }
+.sel-opt[aria-selected="true"] { background: var(--purple-soft); color: var(--purple-dark); font-weight: 600; }
+.sel-opt-main { flex: 1; min-width: 0; }
+.sel-opt-main i { display: block; font-style: normal; font-size: 12px; font-weight: 500; color: var(--muted); margin-top: 2px; }
+.sel-opt[aria-selected="true"] .sel-opt-main i { color: var(--purple-dark); opacity: 0.8; }
+.sel-tick { flex: none; color: var(--accent); opacity: 0; }
+.sel-opt[aria-selected="true"] .sel-tick { opacity: 1; }
+.sel-group { padding: 10px 12px 4px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--faint); }
+.sel-empty { padding: 12px; font-size: 13px; color: var(--muted); }
+[data-theme="dark"] .sel-pop { background: var(--card); border-color: var(--line); }
+
+/* ══ REFER & EARN ═════════════════════════════════════════════════════════
+   The one screen allowed a full indigo wash, because it is the only screen
+   that is entirely about the brand asking a favour. Everything below it is
+   white cards on the canvas, like the rest of the app. */
+.re-hero {
+  position: relative; overflow: hidden; display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(240px, 1fr); gap: 20px;
+  padding: 26px 28px; border-radius: 22px;
+  background: linear-gradient(140deg, var(--rail-1) 0%, var(--rail-2) 62%, var(--rail-3) 100%);
+  color: #fff; box-shadow: var(--rail-shadow);
+}
+.re-hero::after { /* one soft light in the corner — the rail's trick, reused */
+  content: ''; position: absolute; top: -140px; right: -80px; width: 340px; height: 340px;
+  border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,0.18), transparent 68%); pointer-events: none;
+}
+.re-hero.is-skel { background: var(--line-soft); box-shadow: none; }
+.re-hero.is-skel::after { display: none; }
+.re-hero-main { position: relative; z-index: 1; min-width: 0; }
+.re-eyebrow { font-size: 11.5px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--rail-muted); }
+.re-code { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
+.re-code code { font-family: var(--font); font-size: clamp(28px, 4vw, 42px); font-weight: 800; letter-spacing: 0.05em; color: #fff; }
+.re-ic-btn { width: 34px; height: 34px; flex: none; border-radius: 10px; display: grid; place-items: center; background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.2); color: #fff; cursor: pointer; transition: background var(--t); }
+.re-ic-btn:hover { background: rgba(255, 255, 255, 0.22); }
+.re-hero-line { margin-top: 10px; font-size: 13.5px; line-height: 1.6; color: #d6d1f4; max-width: 54ch; }
+.re-hero-line b { color: #fff; }
+.re-hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.re-hero .btn.re-share { background: #fff; border-color: transparent; color: var(--rail-2); }
+.re-hero .btn.re-share:hover { background: #f1efff; }
+.re-hero .btn.re-ghost { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.26); color: #fff; }
+.re-hero .btn.re-ghost:hover { background: rgba(255, 255, 255, 0.2); }
+.re-hero-side { position: relative; z-index: 1; align-self: center; padding: 16px 18px; border-radius: 16px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); }
+.re-earn-lbl { font-size: 11.5px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--rail-muted); }
+.re-earn { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px; font-size: 30px; font-weight: 800; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; }
+.re-earn-flag { font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; background: var(--gold-line); color: #6b4d16; padding: 3px 8px; border-radius: 999px; }
+.re-bar { height: 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.18); margin-top: 12px; overflow: hidden; }
+.re-bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #fcd34d, #f59e0b); transition: width 0.5s cubic-bezier(0.2, 0.9, 0.25, 1); }
+.re-earn-sub { margin-top: 8px; font-size: 12.5px; line-height: 1.5; color: #cdc7ee; }
+
+.re-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+.re-stats + .grid3 { margin-top: 16px; }
+.re-stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 18px; box-shadow: var(--shadow-sm); }
+.re-stat-lbl { font-size: 11.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.re-stat-num { display: block; margin-top: 8px; font-size: 28px; font-weight: 800; letter-spacing: -0.6px; font-variant-numeric: tabular-nums; }
+.re-stat-num.good { color: var(--green-dark); }
+.re-stat-sub { display: block; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
+
+.re-reward { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 20px; box-shadow: var(--shadow-sm); }
+.re-reward-ic { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; background: var(--purple-soft); color: var(--purple-dark); }
+.re-reward-ic.gold { background: var(--gold-bg); color: var(--gold); }
+.re-reward h3 { margin-top: 12px; font-size: 15.5px; font-weight: 700; }
+.re-reward p { margin-top: 6px; font-size: 13.5px; line-height: 1.55; color: var(--muted); }
+
+.re-rows { margin-top: 4px; }
+.re-row { display: flex; align-items: center; gap: 12px; padding: 12px 10px; border-radius: 12px; border-bottom: 1px solid var(--line-soft); }
+.re-row:last-child { border-bottom: 0; }
+.re-row:hover { background: var(--line-soft); }
+.re-row.lead { background: var(--purple-soft); border-bottom-color: transparent; }
+.re-row-ic { width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--purple-soft); color: var(--purple-dark); }
+.re-row-ic.gold { background: var(--gold-bg); color: var(--gold); }
+.re-row-main { flex: 1; min-width: 0; }
+.re-row-main b { display: block; font-size: 14px; font-weight: 700; }
+.re-row-main span { display: block; margin-top: 2px; font-size: 12.5px; color: var(--muted); }
+.re-medal { width: 26px; height: 26px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--line-soft); color: var(--muted); font-size: 12px; font-weight: 800; }
+.re-medal.m1 { background: linear-gradient(150deg, #fcd34d, #f59e0b); color: #6b4d16; }
+.re-medal.m2 { background: linear-gradient(150deg, #e2e8f0, #b8c2d0); color: #475467; }
+.re-medal.m3 { background: linear-gradient(150deg, #f0c9a8, #d09a6a); color: #6b4423; }
+
+@media (max-width: 900px) {
+  .re-hero { grid-template-columns: 1fr; padding: 22px 20px; }
+  .re-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) {
+  .re-code code { font-size: 30px; }
+  .re-hero-actions .btn { width: 100%; }
+  .re-hero-side { padding: 14px; }
+  .re-earn { font-size: 26px; }
 }

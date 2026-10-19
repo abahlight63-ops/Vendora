@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../api.dart';
 import '../glass.dart';
 import '../motion.dart';
+import '../widgets/app_select.dart';
 
 final _webBilling = ApiClient.billingUrl; // NOT const: it is a getter (String.fromEnvironment is resolved at runtime) // checkout lives in the browser (same as Billing tab!)
 
@@ -212,14 +213,14 @@ class _CatalogScreenState extends State<CatalogScreen> {
                             labelText: _detailHint))),
                 const SizedBox(width: 8),
                 Expanded(
-                    child: DropdownButtonFormField<String>(
-                        initialValue: _cat,
-                        isExpanded: true, // long shelf names (Laptops & Computers) wrap instead of overflowing!
-                        hint: const Text('Category'),
-                        items: _shelves
-                            .map((s) => DropdownMenuItem(
-                                value: s, child: Text(s)))
-                            .toList(),
+                    child: AppSelect(
+                        value: _cat,
+                        placeholder: 'Category',
+                        sheetTitle: 'Which shelf?',
+                        options: [
+                          for (final s in _shelves)
+                            AppSelectOption(value: s, label: s),
+                        ],
                         onChanged: (v) => setState(() => _cat = v),
                       )),
               ]),

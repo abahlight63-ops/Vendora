@@ -106,7 +106,12 @@ class BrandMark extends StatelessWidget {
   /// it, while a white mark still reads as the brand.
   final Color? solid;
 
-  const BrandMark({super.key, this.size = 34, this.glow = false, this.solid});
+  /// Force the lighter ramp for a permanently dark surface (the drawer rail).
+  /// In light mode the normal ramp is tuned for white paper and goes muddy on
+  /// deep indigo, so the rail opts into the dark-theme ramp instead.
+  final bool onRail;
+
+  const BrandMark({super.key, this.size = 34, this.glow = false, this.solid, this.onRail = false});
 
   @override
   Widget build(BuildContext context) {
@@ -115,7 +120,14 @@ class BrandMark extends StatelessWidget {
       height: size,
       child: CustomPaint(
         painter: _MarkPainter(
-          gradient: markGradient(context),
+          gradient: onRail
+              ? const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: [0, 0.5, 1],
+                  colors: [Color(0xFFD3D8FF), Color(0xFF8F97F5), Color(0xFF5B4BD6)],
+                )
+              : markGradient(context),
           solid: solid,
           glow: glow ? VeloSalesTheme.markMid(context) : null,
         ),

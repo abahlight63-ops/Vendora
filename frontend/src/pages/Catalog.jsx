@@ -13,6 +13,7 @@ import { categoriesFor, detailHintFor, learnExampleFor } from '../lib/niches.js'
 import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures
 import LoadFailed from '../components/LoadFailed.jsx'; // branded failed card + Retry (never eternal skeletons!)
 import Ic from '../components/icons.jsx'; // trash + close glyphs
+import Select from '../components/Select.jsx'; // the app's one dropdown (native <select> menus looked dated)
 import Loader from '../components/Loader.jsx'; // mini orbit in sync/upload buttons
 import LockButton from '../components/LockButton.jsx'; // padlock → upgrade card (the ONLY paywall affordance!)
 
@@ -200,7 +201,7 @@ export default function Catalog() { // no props needed (fetches everything itsel
         </div>
         <div className="grid2" style={{ marginTop: 10 }}> {/* stock + shelf side by side (stacks on mobile via CSS) */}
           <div><label>Number in stock</label><input type="number" min="0" step="1" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} placeholder="e.g. 20" inputMode="numeric" /></div> {/* whole units only (backend floors + rejects negatives!) */}
-          <div><label>Category</label><select value={f.cat} onChange={(e) => setF({ ...f, cat: e.target.value })}><option value="">No category</option>{shelves.map((s) => (<option key={s} value={s}>{s}</option>))}</select></div> {/* niche shelves: THIS hustle's sections only! */}
+          <div><label>Category</label><Select value={f.cat} onChange={(v) => setF({ ...f, cat: v })} options={[{ value: '', label: 'No category' }, ...shelves.map((s) => ({ value: s, label: s }))]} label="Category" emptyText="No shelves for this niche yet" /></div> {/* niche shelves: THIS hustle's sections only! */}
         </div>
         <label style={{ marginTop: 10 }}>Details (optional)</label>
         <input value={f.desc} onChange={(e) => setF({ ...f, desc: e.target.value })} placeholder={detailHintFor(niche)} />

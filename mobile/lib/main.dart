@@ -25,6 +25,7 @@ import 'screens/catalog_screen.dart';
 import 'screens/connect_screen.dart';
 import 'screens/ai_screen.dart';
 import 'screens/billing_screen.dart';
+import 'screens/refer_earn_screen.dart';
 import 'screens/settings_screen.dart';
 
 void main() => runApp(const VeloSalesApp());
@@ -413,6 +414,12 @@ class _HomeShellState extends State<HomeShell> {
           label: 'Shop overview',
           hint: 'How your bot is performing',
           push: () => _open(DashboardScreen(onGoTab: _go)),
+        ),
+        SidebarItem(
+          icon: Icons.card_giftcard_outlined,
+          label: 'Refer & Earn',
+          hint: 'Invite sellers — you both win',
+          push: () => _open(const ReferEarnScreen()),
         ),
         SidebarItem(
           icon: Icons.settings_outlined,

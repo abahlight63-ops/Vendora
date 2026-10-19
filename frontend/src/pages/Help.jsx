@@ -18,7 +18,7 @@ const FAQS = [ // [question, answer] pairs — content lives HERE, markup below 
   ['Does it speak Pidgin?', 'Yes — it mirrors the customer. Pidgin in, Pidgin out. Formal English in, formal out.'],
   ['How do I test without WhatsApp?', 'Open Test bot, type like a customer: prices, stock, hours, then something you don\'t sell.'],
   ['How does billing work?', 'Manual catalog is free forever. The 7-day trial unlocks the full Pro plan (countdown shown, bell warns before it ends); after that, pricing follows your location automatically on a secure card checkout. Never paused — free keeps replying from your manual catalog.'],
-  ['Which AI answers my customers?', 'Whichever brain you pick on the Connect page — Gemini Flash by default, with automatic free backups if one is slow or down. You never have to touch anything after picking.'],
+  ['Which AI answers my customers?', 'Whichever tier you choose in AI settings — Fast, Normal or Smart. Normal is the default, and if that tier is ever busy a backup engine answers automatically, so a customer never waits. Change it any time; nothing else needs touching.'],
   ['What does profile sync do?', 'Pro only: paste your WhatsApp Business profile text (or send SYNC: + the text from your owner number) and the AI builds your catalog from it, then verifies customer questions against it.'],
   ['Can I get a refund?', "First payment within 7 days if the service genuinely failed you — message us here with details. Duplicate charges are always refunded in full."], // double quotes dodge the apostrophe problem (pick quote style per string!)
   ['How do I cancel?', "Just stop paying — you drop to free at period end, nothing deleted. To erase everything, ask us here and it's gone within 14 days."],
@@ -27,7 +27,7 @@ const FAQS = [ // [question, answer] pairs — content lives HERE, markup below 
   ['How do I install the app?', 'See the Install card at the top of this page — one tap on Android/desktop Chrome (system confirm included), Share → Add to Home Screen on iPhone Safari. Icon on your home screen, full-screen, no app store.'],
   ['How do I connect Telegram?', 'Open the Connect page and pick Telegram: message @BotFather → /newbot → name it → paste the token here. Then get your link code so owner commands work from your phone. Free, about a minute.'],
   ['Do voice notes work?', 'Yes — on Pro. Customers send voice notes on WhatsApp or Telegram, the bot transcribes them with Whisper and answers like normal text. Free tier gets a polite handoff instead.'],
-  ['Which AI should I pick?', 'Fast (GPT-OSS 20B, Gemini Lite, VeloSales Ai Fast) for speed, Smart (Meta 70B, Gemini Flash, VeloSales Ai Smart) for quality. Backup AI always works when others are busy. Premium (Kimi K2, Claude, GPT) is Pro-only — tap one to see what you get.'],
+  ['Which AI should I pick?', 'Fast answers prices, stock and hours quickest — best when customers are in a hurry. Normal is the everyday balance and what most shops keep. Smart takes longer but handles bargaining, long questions and writing jobs best. You can switch any time in AI settings; a backup engine always covers if one is busy.'],
 ];
 
 // ── the row icons (drawn here, no icon package — same house style as Settings) ──

@@ -54,6 +54,11 @@ export default function Ic({ n, s = 16 }) { // export default + destructured pro
     /* sign out — a door and an arrow leaving it (never a bare "X", which reads
        as "close this panel") */
     case 'logout': return (<svg {...p}><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><path d="M10 16l4-4-4-4" /><path d="M14 12H3" /></svg>);
+    /* install — an arrow dropping into a tray. Deliberately NOT a phone: a
+       phone glyph on an "Install app" button reads as "call us" or "mobile
+       version", which is the opposite of what the button does. */
+    case 'install': return (<svg {...p}><path d="M12 3v10M8.5 9.5L12 13l3.5-3.5" /><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" /></svg>);
+    case 'download': return (<svg {...p}><path d="M12 3v12M7.5 10.5L12 15l4.5-4.5" /><path d="M4 20h16" /></svg>);
     default: return (<svg {...p}><circle cx="12" cy="12" r="9" /></svg>);
   }
 }

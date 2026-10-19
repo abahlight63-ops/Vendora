@@ -1,13 +1,17 @@
 // ── frontend/src/pages/Billing.jsx ─────────────────────────────────
-// WHAT: subscriptions HQ — status banner (+ trial countdown), Free card +
-// Pro/Pro Plus tier cards (monthly/yearly in the shop's currency), a Compare
-// plans table (what each tier actually gets), Enterprise contact card.
+// WHAT: subscriptions HQ. Top: the CURRENT PLAN card (what you're on, what it
+// renews for, when) beside a USAGE summary (reply allowance, cycle, renewal).
+// Then Free/Pro/Pro Plus tiers (monthly/yearly in the shop's currency), the
+// billing-history table (Paid/Failed pills) and the payment-method card.
+// Then the Compare-plans table and the Enterprise card.
 // CARD ONLY: the checkout route is picked by LOCATION on the backend — brand
-// names never appear in this UI (shoppers pay on a secure checkout page;
-// logos live there, not here). Enterprise opens a form in a NEW TAB (never a
+// names never appear in this UI (shoppers pay on a secure checkout page; logos
+// live there, not here). Enterprise opens a form in a NEW TAB (never a
 // mailto — owners fill + we reply; the address stays private).
 // FLOWS: pay() → provider session → redirect. All money via money() helper
 // (NGN ₦ / USD $). Backend is source of truth for prices (display fallbacks!).
+// HISTORY: rendered only from rows the server actually sends. No invented
+// receipts — an empty table says so, honestly.
 import { useEffect, useState } from 'react'; // useState = bill/busy/period; useEffect = load on mount
 import { api, fmtDate, pop } from '../lib/api.js'; // api() calls; fmtDate = expiry dates; pop() = big animated outcomes
 import { money } from '../lib/money.js'; // money(n, 'NGN'|'USD') formatter
@@ -118,12 +122,17 @@ export default function Billing() {
   const amt = (p) => money(p?.amount ?? 0, cur); // helper: canonical amount → formatted (?. + ?? = bulletproof against EITHER shape!)
   const trialLeft = bill?.trial_days_left; // whole days left (number when trialing, null otherwise!)
 
+  const planName = bill?.tier === 'plus' ? 'Pro Plus' : bill?.tier === 'pro' ? 'Pro' : 'Free'; // the tier this shop is on
+  const renewal = status === 'active' ? fmtDate(bill?.expires) : status === 'trialing' ? fmtDate(bill?.trial_ends) : '—'; // what the date actually means depends on where you are
+  const allowance = bill?.tier === 'plus' ? 'Unlimited' : bill?.tier === 'pro' ? '500 per day' : '50 per day'; // the real per-tier reply cap (matches the server)
+  const history = Array.isArray(bill?.history) ? bill.history : Array.isArray(bill?.invoices) ? bill.invoices : []; // only rows the server truly sent
+
   const freeCard = () => { // FREE tier card (₦0/$0 — no checkout exists; cancelling = just stop paying!)
     const label = status === 'active' ? 'Paid plan active — free is your fallback'
       : status === 'trialing' ? 'Free waits for you after the trial'
       : 'Current plan'; // expired/never-paid → free IS the plan (bot keeps replying!)
     return (
-      <div className="plan">
+      <div className={'plan' + (bill && !bill.tier ? ' on-plan' : '')}>
         <span className="plan-badge" style={{ background: 'linear-gradient(135deg,#128c4a,#0b6b38)' }}>FREE FOREVER</span>
         <h2>Free</h2>
         <p className="desc">The honest starter — your bot never stops replying.</p>
@@ -152,9 +161,10 @@ export default function Billing() {
     const price = tier[period]; // selected period's price object
     const planKey = `${tierKey}_${period}`; // backend plan key: pro_monthly, pro_yearly, plus_monthly, plus_yearly
     const feats = tierKey === 'plus' ? [...PRO_FEATS.slice(0, 4), ...PLUS_EXTRAS, ...PRO_FEATS.slice(4)] : PRO_FEATS; // Plus shows Pro core + extras inline (no "see above" hunting!)
+    const onPlan = !!(bill && bill.tier === tierKey && status === 'active'); // already paying for THIS tier?
     return (
-      <div className={'plan' + (isHot ? ' hot' : '')}> {/* .hot = highlighted border + badge (CSS) */}
-        {badge && <span className="plan-badge">{badge}</span>}
+      <div className={'plan' + (isHot ? ' hot' : '') + (onPlan ? ' on-plan' : '')}> {/* .hot = highlighted border + badge (CSS); .on-plan = where you already are */}
+        {onPlan ? <span className="plan-badge on">YOUR PLAN</span> : badge && <span className="plan-badge">{badge}</span>}
         <h2>{tierKey === 'plus' ? 'Pro Plus' : 'Pro'}</h2>
         <p className="desc">{tierKey === 'plus' ? 'Voice notes, heavy work models, full speed.' : 'The full AI salesperson for your shop.'}</p>
         <div className="plan-price">{amt(price)}<small>/{period === 'monthly' ? 'month' : 'year'}</small></div>
@@ -171,18 +181,39 @@ export default function Billing() {
     <>
       <div className="page-head"><div><h1>Billing</h1><p>Free forever, Pro, Pro Plus — or Enterprise. Cancel anytime, your catalog stays yours.</p></div></div>
 
-      <div className="card"> {/* subscription status banner (+ live trial countdown!) */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}> {/* inline flex (title left, pills right, wraps on phones) */}
-          <div><h2>Your subscription</h2><p className="desc" style={{ margin: 0 }}>{statusLine}</p></div>
-          <span style={{ display: 'inline-flex', gap: 6 }}> {/* pill cluster: currency + tier + status */}
-            <span className="pill info">{cur === 'USD' ? 'USD $' : 'NGN ₦'}</span> {/* currency badge (ternary text) */}
-            {bill?.tier && <span className={'pill ' + (bill.tier === 'pro' ? 'ok' : 'info')}>{bill.tier === 'pro' ? 'PRO' : 'FREE'}</span>} {/* && conditional: tier pill only when loaded */}
-            <span className={'pill ' + pill}>{status}</span> {/* status pill (color var above) */}
-          </span>
+      {/* ── where you are + what it costs you, side by side ──────────── */}
+      <div className="bill-top">
+        <div className="card bill-plan">
+          <div className="bill-plan-head">
+            <div>
+              <span className="bill-lab">Current plan</span>
+              <h2 className="bill-tier">{planName}</h2>
+              <p className="desc" style={{ margin: '4px 0 0' }}>{statusLine}</p>
+            </div>
+            <span className="bill-pills">
+              <span className="pill info">{cur === 'USD' ? 'USD $' : 'NGN ₦'}</span>
+              <span className={'pill ' + pill}>{status === '…' ? 'loading' : status}</span>
+            </span>
+          </div>
+          {status === 'trialing' && trialLeft != null && trialLeft > 0 && ( // countdown strip (only while trialing — disappears after!)
+            <div className="trial-strip" style={{ marginTop: 14, marginBottom: 0 }}><Ic n="clock" s={16} /><span><b>{trialLeft} day{trialLeft === 1 ? '' : 's'} of Pro trial left.</b> Keep Pro sync, photos + premium AIs — or stay free forever with manual catalog.</span></div>
+          )}
+          <div className="bill-actions">
+            <button className="btn" disabled={!!busy} onClick={() => pay(period === 'monthly' ? 'pro_monthly' : 'pro_yearly')}>{status === 'active' ? 'Renew now' : 'Upgrade to Pro'}</button>
+            <a className="btn ghost" href="#plans">Compare plans</a>
+          </div>
         </div>
-        {status === 'trialing' && trialLeft != null && trialLeft > 0 && ( // countdown strip (only while trialing — disappears after!)
-          <div className="trial-strip" style={{ marginTop: 12, marginBottom: 0 }}><Ic n="clock" s={16} /><span><b>{trialLeft} day{trialLeft === 1 ? '' : 's'} of Pro trial left.</b> Keep Pro sync, photos + premium AIs — or stay free forever with manual catalog.</span></div>
-        )}
+
+        <div className="card bill-usage">
+          <span className="bill-lab">This plan, in numbers</span>
+          <div className="bill-rows">
+            <div className="bill-row"><span>Bot replies</span><b>{allowance}</b></div>
+            <div className="bill-row"><span>Billing cycle</span><b>{status === 'trialing' ? 'Trial' : status === 'active' ? 'Monthly or yearly' : 'Free — no charge'}</b></div>
+            <div className="bill-row"><span>{status === 'trialing' ? 'Trial ends' : status === 'active' ? 'Renews on' : 'Next charge'}</span><b>{renewal}</b></div>
+            <div className="bill-row"><span>Paid so far</span><b>{history.length ? money(history.filter((h) => (h.status || h.state) === 'paid' || (h.status || h.state) === 'successful').reduce((n, h) => n + (Number(h.amount) || 0), 0), cur) : '—'}</b></div>
+          </div>
+          <p className="hint" style={{ marginTop: 12 }}>Your catalog, inbox and chat history are yours forever — on any plan.</p>
+        </div>
       </div>
 
       <div className="card"> {/* Free-vs-Pro explainer (kills "what do I get?" doubts) */}
@@ -195,7 +226,7 @@ export default function Billing() {
         <p className="hint" style={{ marginTop: 10 }}>Your 7 days are a full Pro trial — after that, manual catalog keeps working free.</p>
       </div>
 
-      <div className="card" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}> {/* billing-period toggle */}
+      <div className="card" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }} id="plans"> {/* billing-period toggle */}
         <b style={{ marginRight: 4 }}>Billing period:</b>
         <button className={'btn sm' + (period === 'monthly' ? '' : ' ghost')} disabled={!!busy} onClick={() => setPeriod('monthly')}>Monthly</button>
         <button className={'btn sm' + (period === 'yearly' ? '' : ' ghost')} disabled={!!busy} onClick={() => setPeriod('yearly')}>Yearly</button>
@@ -206,6 +237,56 @@ export default function Billing() {
         {freeCard()}
         {tierCard('pro', pro, false, null)}
         {tierCard('plus', plus, true, 'MOST POWER')}
+      </div>
+
+      {/* ── receipts + how you pay ───────────────────────────────────── */}
+      <div className="bill-bottom">
+        <div className="card">
+          <div className="card-head"><h2>Billing history</h2><span className="hint">{history.length} receipt{history.length === 1 ? '' : 's'}</span></div>
+          {history.length === 0 ? (
+            <div className="empty"><b>No payments yet</b>Every payment you make lands here with its receipt — including failed attempts, so nothing is ever a surprise.</div>
+          ) : (
+            <div className="table-wrap" style={{ marginTop: 10 }}>
+              <table>
+                <thead><tr><th>Date</th><th>Plan</th><th>Amount</th><th>Status</th></tr></thead>
+                <tbody>
+                  {history.map((h, i) => {
+                    const st = String(h.status || h.state || 'paid').toLowerCase();
+                    const ok = st === 'paid' || st === 'successful' || st === 'success';
+                    return (
+                      <tr key={h.id || h.reference || i}>
+                        <td>{fmtDate(h.date || h.created_at || h.paid_at)}</td>
+                        <td><b>{h.description || h.plan || 'Subscription'}</b></td>
+                        <td>{money(Number(h.amount) || 0, h.currency || cur)}</td>
+                        <td><span className={'pill ' + (ok ? 'ok' : st === 'pending' ? 'flag' : 'off')}>{ok ? 'Paid' : st === 'pending' ? 'Pending' : 'Failed'}</span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className="card">
+          <div className="card-head"><h2>Payment method</h2></div>
+          <div className="pay-card">
+            <div className="pay-card-head">
+              <span className="pay-chip" />
+              <span className="pay-brand">{bill?.card_brand ? String(bill.card_brand).toUpperCase() : 'CARD'}</span>
+            </div>
+            <div className="pay-num">{bill?.card_last4 ? `•••• •••• •••• ${bill.card_last4}` : 'No card on file'}</div>
+            <div className="pay-foot">
+              <span>{bizNameSafe(bill)}</span>
+              <span>{bill?.card_expiry || '—'}</span>
+            </div>
+          </div>
+          <p className="hint" style={{ marginTop: 12 }}>Payments happen on a secure checkout page — we never see or store your card details. Your bank sends the receipt.</p>
+          <div className="bill-actions">
+            <button className="btn" disabled={!!busy} onClick={() => pay(`pro_${period}`)}>{busy ? (<><Loader size={15} />Starting…</>) : 'Make a payment'}</button>
+            <a className="btn ghost" href="/help">Payment help</a>
+          </div>
+        </div>
       </div>
 
       <div className="card" style={{ marginTop: 14 }}> {/* Compare plans: what each tier actually gets (kills "what am I paying for?" doubts) */}
@@ -243,4 +324,10 @@ export default function Billing() {
       <p className="hint" style={{ marginTop: 12 }}>Secure card checkout — {cur === 'USD' ? 'international cards welcome' : 'all Nigerian cards + bank channels'}. Activation is instant.</p>
     </>
   );
+}
+
+// The card-face name line: the shop's own name if we have it, so the payment
+// card looks like the owner's, not like a payment provider's.
+function bizNameSafe(bill) {
+  return (bill && (bill.business_name || bill.name)) || 'Your shop';
 }

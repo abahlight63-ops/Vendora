@@ -5,6 +5,7 @@
 // One action per screen: road picker → connect → webhook verify → TEST.
 // DATA: GET /api/me/channels (status + Meta App ID/Config ID) + GET /api/me/ai-models.
 import { useEffect, useRef, useState } from 'react'; // state per step; effect loads status once
+import { Link } from 'react-router-dom'; // in-page links (points at AI settings for the full picture)
 import { api, pop, toast } from '../lib/api.js'; // api() calls; pop() big outcomes; toast() small notes
 
 import Ic from '../components/icons.jsx'; // drawn glyphs (never emoji!)
@@ -436,6 +437,15 @@ export default function Connect() {
       setBusy(false);
     }
   }
+  // Derived values the effects below depend on. These used to sit further down
+  // (just above the JSX), which meant the `[tgOn]` dependency array was read
+  // BEFORE `tgOn` was initialised — a temporal-dead-zone crash on every render
+  // of this page. Declaring them once, above every consumer, is the fix.
+  const wa = st && st.whatsapp;
+  const tgOn = !!st?.telegram?.connected;
+  const tgSharedCard = tgShared || null; // fresh shared result (code travels only on explicit generate!)
+  const tgSharedOrOn = !!(tgShared || st?.telegram?.shared); // shared mode active (fresh tap OR earlier session!)
+
   // Silent truth-check on arrival: a token sitting in the database is NOT proof
   // Telegram can still reach us. One cheap read, no toasts, no spinner —
   // the pill just tells the truth instead of parroting "connected".
@@ -464,10 +474,6 @@ export default function Connect() {
     const stop = setTimeout(() => { setTesting(false); toast('Still waiting — check the 3 common mistakes below', 'err'); }, 120000); // 2-min cap (never poll forever!)
     return () => { clearInterval(t); clearTimeout(stop); }; // cleanup on unmount/stop (no leaked timers!)
   }, [testing]);
-  const wa = st && st.whatsapp;
-  const tgOn = !!st?.telegram?.connected;
-  const tgSharedCard = tgShared || null; // fresh shared result (code travels only on explicit generate!)
-  const tgSharedOrOn = !!(tgShared || st?.telegram?.shared); // shared mode active (fresh tap OR earlier session!)
 
   return (
     <>
@@ -651,10 +657,11 @@ export default function Connect() {
         </div>
       )}
 
-      <div className="card"> {/* the WhatsApp brain pick (same picker + locks as VeloSalesAI!) */}
+      <div className="card"> {/* the WhatsApp brain pick — same three tiers as AI settings */}
         <h2>Which AI answers WhatsApp?</h2>
-        <p className="desc">Locked brains need their plan — tap one to see upgrade options.</p>
+        <p className="desc">Fast, Normal or Smart — the same choice you make in AI settings. Heavier tiers need the top plan.</p>
         <ModelPicker models={models} model={brain} onPick={saveBrain} onLocked={() => setUpsell(true)} />
+        <p className="hint" style={{ marginTop: 10 }}>Want the whole picture (voice, greeting, discounts)? <Link to="/ai-settings">Open AI settings</Link>.</p>
         <GlassUpsell show={upsell} onClose={() => setUpsell(false)} />
       </div>
     </>

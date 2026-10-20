@@ -15,6 +15,7 @@ import 'splash.dart';
 import 'motion.dart';
 import 'format.dart';
 import 'widgets/sidebar.dart';
+import 'widgets/error_art.dart';
 import 'screens/auth_screen.dart';
 import 'screens/setup_screen.dart';
 import 'screens/dashboard_screen.dart';
@@ -43,6 +44,7 @@ class VeloSalesApp extends StatefulWidget {
 
 class _VeloSalesAppState extends State<VeloSalesApp> {
   bool? _authed; // null = checking
+  bool _offline = false; // true = the session check could not reach the server (NOT a sign-out!)
   bool _needsSetup = false; // true = logged in but no niche yet (setup screen!)
   // Starts true so a returning owner never flashes the tour for one frame while
   // the preference loads. The boot read is what turns it off for new accounts.
@@ -91,6 +93,7 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
       _needsSetup = auth[1] as bool;
       _bizName = auth[2] as String;
       _niche = auth[3] as String;
+      _offline = auth[4] as bool;
       _seenTour = results[3] as bool;
     });
   }
@@ -103,10 +106,24 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
       final biz = (me['business'] as Map?)?.cast<String, dynamic>();
       final niche = '${biz?['business_niche'] ?? ''}'.trim();
       final name = '${biz?['name'] ?? biz?['business_name'] ?? ''}'.trim(); // the business row calls it `name` (business_name is only an alias in the admin/auth joins)
-      return [true, niche.isEmpty, name, niche];
+      return [true, niche.isEmpty, name, niche, false];
+    } on ApiException catch (e) {
+      // status 0 = the request never reached the server (offline, no route,
+      // dead Wi-Fi). That is NOT the same as a 401 sign-out, and showing the
+      // login form would be a lie — show the offline screen with Retry.
+      return [false, false, '', '', e.status == 0];
     } catch (_) {
-      return [false, false, '', ''];
+      return [false, false, '', '', true];
     }
+  }
+
+  /// Retry after the offline screen: show the splash again, then re-ask.
+  Future<void> _retryBoot() async {
+    setState(() {
+      _offline = false;
+      _authed = null;
+    });
+    await _boot();
   }
 
   /// Fresh login/signup just stamped the session → re-check (niche usually
@@ -119,6 +136,7 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
       _needsSetup = r[1] as bool;
       _bizName = r[2] as String;
       _niche = r[3] as String;
+      _offline = r[4] as bool;
     });
   }
 
@@ -140,25 +158,27 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
         const Positioned.fill(child: GlassBackground()),
         child ?? const SizedBox.shrink(),
       ]),
-      home: _authed == null
-          ? const SplashView()
-          : _authed!
-              ? _needsSetup
-                  ? (_seenTour
-                      ? SetupScreen(
-                          onDone: () => setState(() => _needsSetup = false))
-                      : OnboardingScreen(onDone: _finishTour))
-                  : HomeShell(
-                      bizName: _bizName,
-                      niche: _niche,
-                      mode: _mode,
-                      onMode: _setMode,
-                      onLogout: () => setState(() {
-                        _authed = false;
-                        _needsSetup = false;
-                      }),
-                    )
-              : AuthScreen(onAuthed: _onAuthed),
+      home: _offline
+          ? OfflineBoot(onRetry: _retryBoot)
+          : _authed == null
+              ? const SplashView()
+              : _authed!
+                  ? _needsSetup
+                      ? (_seenTour
+                          ? SetupScreen(
+                              onDone: () => setState(() => _needsSetup = false))
+                          : OnboardingScreen(onDone: _finishTour))
+                      : HomeShell(
+                          bizName: _bizName,
+                          niche: _niche,
+                          mode: _mode,
+                          onMode: _setMode,
+                          onLogout: () => setState(() {
+                            _authed = false;
+                            _needsSetup = false;
+                          }),
+                        )
+                  : AuthScreen(onAuthed: _onAuthed),
     );
   }
 }
@@ -669,6 +689,50 @@ class OfflineStrip extends StatelessWidget {
                 } catch (_) {}
               },
               child: const Text('Retry'),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// Cold start with no network. The session check could not reach the server,
+/// which is not the same thing as being signed out — so this screen tells the
+/// truth and offers Retry instead of dumping the owner on a login form.
+class OfflineBoot extends StatelessWidget {
+  final VoidCallback onRetry;
+  const OfflineBoot({super.key, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Scaffold(
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 24),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const ErrorArt(offline: true, size: 132),
+            const SizedBox(height: 4),
+            const Text(
+              'We can’t reach your shop right now',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'You look offline. Nothing has changed and no message was lost — reconnect, then try again.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 13,
+                  height: 1.55,
+                  color: scheme.onSurface.withValues(alpha: 0.68)),
+            ),
+            const SizedBox(height: 18),
+            FilledButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Try again'),
             ),
           ]),
         ),

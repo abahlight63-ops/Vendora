@@ -8,6 +8,7 @@ import { Suspense, lazy, useCallback, useEffect, useState } from 'react'; // Sus
 import { Routes, Route, Navigate } from 'react-router-dom'; // Routes = switch; Route = path→element; Navigate = redirect element
 import Shell from './components/Shell.jsx'; // app frame (sidebar+topbar) wrapping guarded pages — ALWAYS needed (eager!)
 import Splash from './components/Splash.jsx'; // brand intro (shown first — eager, it's tiny!)
+import Error3D from './components/Error3D.jsx'; // offline / failed-request art (the honest cold-start screen)
 import { BrandGate, useMinDisplay } from './components/Loader.jsx'; // selling-point loading face (page fallback + login wall!) + 1s brand beat
 import { api } from './lib/api.js'; // backend fetch helper (session cookie included)
 
@@ -45,13 +46,36 @@ function PageFallback() { // chunk loading placeholder (scatter logo — the bra
 function useMe() { // CUSTOM HOOK: "who's logged in?" — returns {me, loading, setMe}. Hooks let us reuse stateful logic.
   const [me, setMe] = useState(null); // me = business object or null (guest). null initial = "unknown yet" (loading covers the gap)
   const [loading, setLoading] = useState(true); // true until /api/me answers (prevents flashing login page to logged-in users)
-  useEffect(() => { // runs ONCE on mount ([] deps = componentDidMount equivalent)
-    api('/api/me').then(({ ok, data }) => { // destructure the {ok, data} shape api() returns
-      setMe(ok ? data.business : null); // ok → store business (includes tier!); else guest (bad session/expired)
+  const [netError, setNetError] = useState(false); // true = we could not ASK (offline/5xx), which is not the same as "signed out"
+  const load = useCallback(() => { // reusable so the offline wall's Retry re-runs the SAME check
+    setLoading(true);
+    setNetError(false);
+    api('/api/me').then(({ ok, status, data }) => { // destructure the {ok, data} shape api() returns
+      if (ok) { setMe(data.business); } // ok → store business (includes tier!)
+      else if (status === 401) { setMe(null); } // the server really said "not signed in"
+      else { setNetError(true); } // offline / sleeping server: KEEP the session, never fake a logout
       setLoading(false); // done either way (finally-style: success AND failure clear loading)
-    }).catch(() => setLoading(false)); // network DOWN → guest mode, still clear loading (app must render something!)
-  }, []); // [] = run once (no deps = never re-run)
-  return { me, loading, setMe }; // hook consumers: const { me, loading, setMe } = useMe()
+    }).catch(() => { setNetError(true); setLoading(false); }); // network DOWN → say so, still clear loading
+  }, []);
+  useEffect(load, [load]); // [] (via stable load) = run once
+  return { me, loading, setMe, netError, retry: load }; // hook consumers: const { me, loading, setMe } = useMe()
+}
+
+function ConnectionWall({ onRetry }) { // cold start with no network: one calm screen, never a fake sign-out
+  return (
+    <div className="page" style={{ maxWidth: 520, margin: '12vh auto 0' }}>
+      <div className="card">
+        <div className="empty">
+          <Error3D tone="offline" />
+          <b>We can’t reach your shop right now</b>
+          <p>You look offline. Nothing has changed and no message was lost — reconnect, then try again.</p>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14 }}>
+          <button className="btn" onClick={onRetry}>Try again</button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function Guard({ me, loading, theme, onToggleTheme, onLogout, children }) { // login wall: wraps every private page (destructure 6 props)
@@ -62,12 +86,13 @@ function Guard({ me, loading, theme, onToggleTheme, onLogout, children }) { // l
 }
 
 export default function App() { // ROOT component (main.jsx renders this)
-  const { me, loading, setMe } = useMe(); // login state (Login page calls setMe after auth → instant UI update, no reload!)
+  const { me, loading, setMe, netError, retry } = useMe(); // login state (Login page calls setMe after auth → instant UI update, no reload!)
   const [theme, toggleTheme] = useTheme(); // dark/light (persisted, applied to <html>)
   const [splash, setSplash] = useState(true); // brand intro visible?
   const hideSplash = useCallback(() => setSplash(false), []); // useCallback = stable function identity (Splash's effect dep won't loop)
   const handleLogout = useCallback(() => { setMe(null); }, []); // logout clears login state (next login refetches fresh)
   if (splash) return <Splash done={hideSplash} />; // EARLY RETURN: splash covers everything until done() fires
+  if (netError && !me) return <ConnectionWall onRetry={retry} />; // cannot ASK ≠ signed out: offer the truth and a retry
   return ( // after splash: the route table (order matters — first match wins!)
     <Suspense fallback={<PageFallback />}> {/* lazy pages suspend here while their chunk downloads (fallback matches Guard's look!) */}<Routes>
       <Route path="/admin" element={<Admin />} />

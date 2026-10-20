@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive launcher icon (Android 8+). The foreground is the V mark on
+     transparent, the background is the brand's solid accent. Android masks
+     this to whatever shape the launcher uses (circle, squircle, teardrop),
+     so the mark must stay inside the 66dp safe zone — see gen-icons. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+</adaptive-icon>

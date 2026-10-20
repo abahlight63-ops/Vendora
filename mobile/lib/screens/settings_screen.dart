@@ -24,6 +24,7 @@ import '../motion.dart';
 import '../theme.dart';
 import '../widgets/brand_ui.dart';
 import 'help_screen.dart';
+import 'legal_screen.dart';
 import 'profile_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -477,6 +478,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             widget.onGoTab(i); // …and land on the tab it named
                           },
                         ),
+                      ),
+                    ),
+                  ),
+                  _row(
+                    icon: Icons.gavel_outlined,
+                    iconColor: VeloSalesTheme.purple,
+                    title: 'Terms & privacy',
+                    subtitle: 'The agreement, and what we do with your data.',
+                    trailing: _chevron(),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const LegalScreen(),
                       ),
                     ),
                   ),

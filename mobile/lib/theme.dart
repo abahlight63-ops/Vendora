@@ -217,6 +217,10 @@ class VeloSalesTheme {
               fontFamily: _font, fontSize: 14, fontWeight: FontWeight.w700),
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(pill)),
+          // Disabled still reads as the same button, just unavailable —
+          // Material's default washes it out to a different-looking control.
+          disabledBackgroundColor: scheme.primary.withValues(alpha: 0.34),
+          disabledForegroundColor: scheme.onPrimary.withValues(alpha: 0.85),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -229,6 +233,7 @@ class VeloSalesTheme {
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(pill)),
           side: BorderSide(color: line),
+          disabledForegroundColor: muted.withValues(alpha: 0.55),
         ),
       ),
       textButtonTheme: TextButtonThemeData(

@@ -158,15 +158,16 @@ a:hover { text-decoration: underline; }
    Inputs share one look; :focus ring uses box-shadow (never outline:none alone —
    keyboard users need SOME visible focus! :focus-visible further down refines it). */
 /* buttons — 3 variants (primary/ghost/danger), heights sm 36 / md 40 / lg 48, radius 12 */
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: var(--fs-sm); min-height: 40px; padding: 0 20px; border-radius: var(--r-pill); border: 1px solid transparent; cursor: pointer; background: var(--accent-solid); color: #fff; font-family: var(--font); white-space: nowrap; transition: background var(--t), opacity var(--t), transform var(--t), border-color var(--t), box-shadow var(--t); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: var(--fs-sm); min-height: 40px; padding: 0 20px; border-radius: var(--r-pill); border: 1px solid transparent; cursor: pointer; background: var(--accent-solid); color: #fff; font-family: var(--font); white-space: nowrap; transition: background var(--t), opacity var(--t), transform var(--t), border-color var(--t), box-shadow var(--t); box-shadow: 0 1px 2px rgba(23, 21, 50, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.10); }
 .btn:hover { background: var(--accent-solid-hover); }
-.btn:active { transform: scale(0.97); }
-.btn.ghost { background: var(--surface); color: var(--text-1); border-color: var(--border); }
-.btn.ghost:hover { border-color: var(--accent); color: var(--accent); background: var(--surface); }
+.btn:active { transform: scale(0.97); box-shadow: none; }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn.ghost { background: var(--surface); color: var(--text-1); border-color: var(--border); box-shadow: 0 1px 2px rgba(23, 21, 50, 0.04); }
+.btn.ghost:hover { border-color: var(--accent); color: var(--accent); background: var(--purple-soft); }
 .btn.sm { min-height: 36px; padding: 0 16px; font-size: 13px; }
 .btn.lg { min-height: 48px; padding: 0 24px; font-size: var(--fs-body); }
 .btn.danger { background: var(--surface); color: var(--err); border-color: var(--red-line); }
-.btn:disabled { opacity: 0.4; pointer-events: none; }
+.btn:disabled { opacity: 0.4; pointer-events: none; box-shadow: none; }
 /* inputs — one height 44px, radius 12, 2px accent focus, label 16/8 rhythm */
 label { display: block; font-size: var(--fs-caption); font-weight: 600; color: var(--text-2); margin: 16px 0 8px; }
 label:first-child { margin-top: 0; }
@@ -217,6 +218,20 @@ tbody tr.rowlink:hover { background: #f6fef9; }
 .qa .hint { display: block; }
 .empty { padding: 30px 18px; text-align: center; color: var(--muted); font-size: 14px; }
 .empty b { display: block; color: var(--ink); margin-bottom: 5px; }
+
+/* --- failure art (Error3D.jsx) ---------------------------------------
+   The tile floats 3px; the shadow stays put, so the movement reads as
+   weight rather than a wobble. Nothing here loops forever at full opacity:
+   a failure state should feel calm, not busy. */
+.err3d { display: block; width: 154px; height: 140px; margin: 0 auto 2px; }
+.err3d-float { animation: err3d-float 6s ease-in-out infinite; }
+@keyframes err3d-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .err3d-float { animation: none; }
+}
 /* skeleton preloaders: shapes that mirror the real layout, with the brand's
    light travelling across them. The sweep is purple — a white sweep over grey
    is the generic "loading block" everyone has seen a thousand times, and the
@@ -1551,8 +1566,17 @@ a.ov-stat:hover { border-color: var(--purple-line); box-shadow: var(--shadow-md)
 @media (max-width: 900px) { .tsearch { display: none; } }
 
 /* ---------- inbox 3-panel (Step 4 — scoped .wx-*, desktop grid / mobile list→thread) ---------- */
-.wx-layout { display: grid; grid-template-columns: 320px minmax(0, 1fr) 280px; gap: 14px; align-items: start; }
+/* ONE height for both panels: the list and the thread stop at the same line and
+   scroll inside themselves, so the composer stays pinned instead of walking off
+   the page after a long conversation. dvh (not vh) so phone toolbars don't
+   leave a strip of dead space. */
+.wx-layout { display: grid; grid-template-columns: 320px minmax(0, 1fr) 280px; gap: 14px; align-items: stretch; --wx-h: min(700px, calc(100dvh - 210px)); }
 .wx-list, .wx-thread, .wx-side { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px; min-width: 0; box-shadow: var(--shadow-sm); }
+.wx-list, .wx-thread { height: var(--wx-h); min-height: 420px; }
+.wx-list { display: flex; flex-direction: column; }
+.wx-thread { display: flex; flex-direction: column; }
+.wx-thread > .empty { margin: auto; }
+.wx-thread .thread { flex: 1; min-height: 0; overflow-y: auto; padding-right: 2px; }
 .wx-search { display: flex; align-items: center; gap: 8px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 999px; padding: 0 12px; height: 40px; color: var(--text-2); margin-bottom: 10px; }
 .wx-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91,75,214,0.15); }
 .wx-search input { border: none; background: none; outline: none; flex: 1; min-width: 0; font: inherit; font-size: 14px; color: var(--text-1); height: 100%; padding: 0; }
@@ -1564,8 +1588,8 @@ a.ov-stat:hover { border-color: var(--purple-line); box-shadow: var(--shadow-md)
 .wx-tab.on { background: var(--purple-soft); border-color: var(--purple-line); color: var(--purple-dark); }
 .wx-chans { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 .wx-chip { border: 1px solid var(--border); background: none; color: var(--muted); border-radius: 999px; font: inherit; font-size: 12px; font-weight: 600; padding: 7px 12px; cursor: pointer; min-height: 36px; }
-.wx-chip.on { background: var(--ink); border-color: var(--ink); color: var(--bg); }
-.wx-rows { display: grid; gap: 6px; max-height: 640px; overflow-y: auto; }
+.wx-chip.on { background: var(--surface); border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.wx-rows { display: grid; gap: 6px; flex: 1; min-height: 0; overflow-y: auto; }
 .wx-row { display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left; background: none; border: 1px solid transparent; border-radius: 14px; padding: 10px 8px; cursor: pointer; font: inherit; color: var(--text-1); }
 .wx-row:hover { background: var(--bg-secondary); }
 .wx-row.sel { background: var(--purple-soft); border-color: var(--purple-line); }
@@ -1580,16 +1604,29 @@ a.ov-stat:hover { border-color: var(--purple-line); box-shadow: var(--shadow-md)
 .wx-tags { display: flex; gap: 4px; flex-wrap: wrap; }
 .wx-skel { display: flex; gap: 10px; align-items: center; padding: 10px 8px; }
 .wx-thead { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+/* AI ↔ human: one control, both states visible. Matches the phone's switch. */
+.wx-modebar { display: flex; padding: 8px 0 0; }
+.wx-mode { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg-secondary); border: 1px solid var(--border); }
+.wx-seg { border: none; background: none; font: inherit; font-size: 12px; font-weight: 600; color: var(--muted); padding: 6px 12px; border-radius: 999px; cursor: pointer; transition: background var(--t), color var(--t), box-shadow var(--t); }
+.wx-seg:hover:not(.on) { color: var(--text-1); }
+.wx-seg.on { background: var(--surface); color: var(--ink); font-weight: 800; box-shadow: 0 1px 3px rgba(23, 21, 50, 0.12); }
+.wx-seg:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .wx-back { display: none; }
 .wx-facts { display: grid; gap: 0; border-top: 1px solid var(--line); margin-top: 4px; }
 .wx-facts div { display: flex; justify-content: space-between; gap: 10px; padding: 9px 2px; border-bottom: 1px solid var(--line); font-size: 13px; }
 .wx-facts span { color: var(--muted); }
 @media (max-width: 1100px) { .wx-layout { grid-template-columns: 300px minmax(0, 1fr); } .wx-side { display: none; } }
 @media (max-width: 760px) {
-  .wx-layout { grid-template-columns: 1fr; }
+  .wx-layout { grid-template-columns: 1fr; --wx-h: auto; }
   .wx-side { display: none; }
   .wx-thread { display: none; }
-  .wx-has-thread .wx-thread { display: block; }
+  .wx-list, .wx-thread { height: auto; min-height: 0; }
+  /* The message area keeps a ceiling on a phone so the composer stays near the
+     fold — the page scrolls, but the reply box is never a full screen away. */
+  .wx-thread .thread { overflow-y: auto; flex: none; max-height: 56dvh; }
+  .wx-mode { flex: 1; }
+  .wx-seg { flex: 1; }
+  .wx-has-thread .wx-thread { display: flex; }
   .wx-has-thread .wx-list { display: none; }
   .wx-back { display: inline-flex; }
   .wx-rows { max-height: none; }

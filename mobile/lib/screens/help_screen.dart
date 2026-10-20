@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import '../brand_mark.dart';
 import '../theme.dart';
 import '../widgets/brand_ui.dart';
+import 'legal_screen.dart';
 
 class HelpScreen extends StatelessWidget {
   /// Optional jump into a tab, so a step can take you where it describes.
@@ -168,6 +169,43 @@ class HelpScreen extends StatelessWidget {
             ]),
           ),
 
+          const SizedBox(height: 22),
+          SoftPanel(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Row(children: [
+                Icon(Icons.gavel_outlined, size: 18, color: VeloSalesTheme.purpleDark),
+                SizedBox(width: 7),
+                Text('The fine print',
+                    style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800)),
+              ]),
+              const SizedBox(height: 6),
+              Text(
+                'What you agree to, and exactly what we do with your data. Same '
+                'documents as the website — readable here, no browser needed.',
+                style: TextStyle(
+                    fontSize: 12.5,
+                    height: 1.5,
+                    color: scheme.onSurface.withValues(alpha: 0.66)),
+              ),
+              const SizedBox(height: 6),
+              Row(children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) =>
+                          const LegalScreen(initial: LegalDoc.terms))),
+                  child: const Text('Terms & Conditions',
+                      style: TextStyle(fontSize: 12.5)),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) =>
+                          const LegalScreen(initial: LegalDoc.privacy))),
+                  child: const Text('Privacy Policy',
+                      style: TextStyle(fontSize: 12.5)),
+                ),
+              ]),
+            ]),
+          ),
           const SizedBox(height: 24),
           Text(
             'Still stuck? Reply to any message from us on WhatsApp and a person will '

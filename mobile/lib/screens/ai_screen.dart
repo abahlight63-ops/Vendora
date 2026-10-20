@@ -438,7 +438,7 @@ class _AiScreenState extends State<AiScreen> {
               '50 free chats a day — Pro never queues, and unlocks the premium brains.'),
           const SizedBox(height: 6),
           const Text('• Unlimited free AIs + 50 premium chats daily'),
-          const Text('• Kimi K2, Claude + GPT-4o mini included'),
+          const Text('• Smart, Normal and Fast modes included'),
           const Text('• Zero ads, priority support'),
           const SizedBox(height: 14),
           SizedBox(

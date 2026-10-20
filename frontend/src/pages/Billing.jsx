@@ -32,7 +32,7 @@ const PRO_FEATS = [ // Pro tier: the full salesperson (same for monthly + yearly
 
 const PLUS_EXTRAS = [ // Pro Plus: everything in Pro, PLUS these (voice + heavy models + queue jump)
   'Voice-note transcription (Whisper AI)',
-  '2 heavy work models (Kimi K2 + GPT-4o mini)',
+  '2 heavy-work modes (Smart + Normal)',
   'Priority support — jump the queue',
 ];
 
@@ -59,7 +59,7 @@ const COMPARE_ROWS = [
   ['ComeBack abandoned-buyer follow-ups', false, true, true],
   ['Insights: handled %, peak hours', false, true, true],
   ['Voice-note transcription', false, false, true],
-  ['Heavy work models (Kimi K2 + GPT-4o mini)', false, false, true],
+  ['Heavy work modes (Smart + Normal)', false, false, true],
   ['Priority support', false, false, true],
 ];
 

@@ -35,7 +35,7 @@ const _proFeats = [
 
 const _plusExtras = [
   'Voice-note transcription (Whisper AI)',
-  '2 heavy work models (Kimi K2 + GPT-4o mini)',
+  '2 heavy-work modes (Smart + Normal)',
   'Priority support — jump the queue',
 ];
 

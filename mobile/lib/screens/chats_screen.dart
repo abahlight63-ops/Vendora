@@ -10,6 +10,13 @@ import '../format.dart';
 import '../glass.dart';
 import '../motion.dart';
 
+/// The channel of a chat. `channel ?? 'whatsapp'` on purpose: the column
+/// defaults to whatsapp, but rows written before it existed come back null.
+/// Treating those as WhatsApp keeps old chats visible instead of silently
+/// vanishing behind a filter nobody set.
+String _chanOf(Map c) =>
+    '${c['channel'] ?? 'whatsapp'}' == 'telegram' ? 'telegram' : 'whatsapp';
+
 class ChatsScreen extends StatefulWidget {
   const ChatsScreen({super.key});
 
@@ -21,6 +28,8 @@ class _ChatsScreenState extends State<ChatsScreen> {
   List<dynamic>? _chats;
   String _filter = 'all'; // 'all' | 'needs' | 'handled'
   String _chan = 'all'; // 'all' | 'whatsapp' | 'telegram' — mixed inboxes need a way to zoom into one channel
+  String _q = ''; // list search (name, number, last message — client-side, instant)
+  final _find = TextEditingController(); // owns the search text so Clear can empty the field
   String? _err;
   bool _loading = true;
 
@@ -28,6 +37,12 @@ class _ChatsScreenState extends State<ChatsScreen> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _find.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -46,15 +61,10 @@ class _ChatsScreenState extends State<ChatsScreen> {
     }
   }
 
-  /// `channel ?? 'whatsapp'` on purpose: the column defaults to whatsapp, but
-  /// rows written before it existed come back null. Treating those as WhatsApp
-  /// keeps old chats visible instead of silently vanishing behind a filter
-  /// nobody set.
-  static String _chanOf(Map c) =>
-      '${c['channel'] ?? 'whatsapp'}' == 'telegram' ? 'telegram' : 'whatsapp';
-
+  /// Channel + status + text, in the same order the web list applies them.
   List<dynamic> get _list {
     final all = _chats ?? [];
+    final needle = _q.trim().toLowerCase();
     return all
         .where((c) => _chanOf(c as Map) == _chan)
         .where((c) => _filter == 'needs'
@@ -62,6 +72,10 @@ class _ChatsScreenState extends State<ChatsScreen> {
             : _filter == 'handled'
                 ? (c as Map)['needs_human'] != true
                 : true)
+        .where((c) => needle.isEmpty ||
+            '${(c as Map)['customer_name'] ?? ''} ${c['customer_number'] ?? ''} ${c['last_message'] ?? ''}'
+                .toLowerCase()
+                .contains(needle))
         .toList();
   }
 
@@ -104,6 +118,49 @@ class _ChatsScreenState extends State<ChatsScreen> {
                     ),
             ),
         ]),
+      ),
+      // Search — same fields the web filters on (name, number, preview).
+      Padding(
+        padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
+        child: TextField(
+          controller: _find,
+          onChanged: (v) => setState(() => _q = v),
+          textInputAction: TextInputAction.search,
+          style: const TextStyle(fontSize: 14),
+          decoration: InputDecoration(
+            hintText: 'Search name, number, message…',
+            isDense: true,
+            filled: true,
+            fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            prefixIcon: Icon(Icons.search_rounded,
+                size: 19, color: scheme.onSurface.withValues(alpha: 0.5)),
+            suffixIcon: _q.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Clear search',
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    onPressed: () {
+                      _find.clear();
+                      setState(() => _q = '');
+                    },
+                  ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(999),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(999),
+              borderSide: BorderSide(
+                  color: scheme.outline.withValues(alpha: 0.35)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(999),
+              borderSide: BorderSide(color: scheme.primary, width: 1.4),
+            ),
+          ),
+        ),
       ),
       // Channel zoom row — only rendered when that channel actually has chats
       // (a dead tab is worse than no tab), and tapping the active one clears it.
@@ -148,11 +205,11 @@ class _ChatsScreenState extends State<ChatsScreen> {
                 ? EmptyState("Couldn't load your inbox", _err!, retry: _load)
                 : _list.isEmpty
                     ? EmptyState(
-                        (_filter != 'all' || _chan != 'all')
+                        (_filter != 'all' || _chan != 'all' || _q.isNotEmpty)
                             ? 'No chats match'
                             : 'No chats yet',
-                        (_filter != 'all' || _chan != 'all')
-                            ? 'Nothing here with these filters on — try All.'
+                        (_filter != 'all' || _chan != 'all' || _q.isNotEmpty)
+                            ? 'Nothing here with this search or filter on — clear it or try All.'
                             : 'Chats appear once you connect WhatsApp or Telegram.')
                     : RefreshIndicator(
                         onRefresh: _load,
@@ -295,6 +352,8 @@ class _ThreadScreenState extends State<ThreadScreen> {
   bool _needsHuman = false; // gold flag snapshot (cleared locally on send!)
   final _draft = TextEditingController(); // reply draft (controlled input!)
   bool _sending = false; // send in flight (button locks — no double-sends!)
+  bool _switching = false; // takeover call in flight (the switch must not flap)
+  final _scroll = ScrollController(); // message list (we land on the newest)
 
   @override
   void initState() {
@@ -307,13 +366,23 @@ class _ThreadScreenState extends State<ThreadScreen> {
   @override
   void dispose() {
     _draft.dispose(); // controller cleanup (no leaked listeners!)
+    _scroll.dispose();
     super.dispose();
+  }
+
+  /// A chat opens at the newest message — the oldest is history, not the point.
+  void _toLatest() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scroll.hasClients) return;
+      _scroll.jumpTo(_scroll.position.maxScrollExtent);
+    });
   }
 
   Future<void> _load() async {
     try {
       _msgs = await ApiClient.instance.messages(widget.chat['id']);
       if (mounted) setState(() {});
+      _toLatest();
     } on ApiException catch (e) {
       if (mounted) setState(() => _err = e.message);
     } catch (_) {
@@ -322,11 +391,17 @@ class _ThreadScreenState extends State<ThreadScreen> {
   }
 
   Future<void> _takeover(bool paused) async {
+    if (_switching || paused == _paused) return; // no-op taps and double taps
+    setState(() => _switching = true);
     try {
       await ApiClient.instance.takeover(widget.chat['id'], paused);
       if (mounted) setState(() => _paused = paused);
     } on ApiException catch (e) {
       if (mounted) showToast(context, e.message, type: 'err');
+    } catch (_) {
+      if (mounted) showToast(context, 'No connection.', type: 'err');
+    } finally {
+      if (mounted) setState(() => _switching = false);
     }
   }
 
@@ -344,12 +419,13 @@ class _ThreadScreenState extends State<ThreadScreen> {
           _sending = false;
           _paused = true; // you're talking now (Hand-back button appears!)
           _needsHuman = false; // answered (gold flag clears!)
+          (_msgs ??= []).add({
+            'direction': 'out',
+            'body': text,
+            'created_at': DateTime.now().toUtc().toIso8601String(),
+          }); // optimistic append inside setState (the bubble appears instantly!)
         });
-        (_msgs ??= []).add({
-          'direction': 'out',
-          'body': text,
-          'created_at': DateTime.now().toUtc().toIso8601String(),
-        }); // optimistic append (server already stored it!)
+        _toLatest();
       }
     } on ApiException catch (e) {
       if (mounted) {
@@ -374,62 +450,54 @@ class _ThreadScreenState extends State<ThreadScreen> {
       ),
       body: Column(children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
           child: Row(children: [
-            OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.arrow_back, size: 14),
-              label: const Text('Inbox', style: TextStyle(fontSize: 13)),
+            Expanded(
+              child: Text(
+                '${widget.chat['customer_number'] ?? ''}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.62)),
+              ),
             ),
-            const SizedBox(width: 8),
-            // Paused → green "Hand back to AI", else ghost "Take over".
-            _paused
-                ? FilledButton(
-                    onPressed: () => _takeover(false),
-                    style: FilledButton.styleFrom(
-                        minimumSize: const Size(0, 36),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16)),
-                    child: const Text('Hand back to AI',
-                        style: TextStyle(fontSize: 13)),
-                  )
-                : OutlinedButton(
-                    onPressed: () => _takeover(true),
-                    style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(0, 36),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16)),
-                    child: const Text('Take over (pause bot)',
-                        style: TextStyle(fontSize: 13)),
-                  ),
+            Text(
+              '${_chanOf(widget.chat) == 'telegram' ? 'Telegram' : 'WhatsApp'} · '
+              '${needsHuman ? 'needs you' : 'handled by AI'}',
+              style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.5)),
+            ),
           ]),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          child: _ModeSwitch(
+            paused: _paused,
+            busy: _switching,
+            onChanged: _takeover,
+          ),
         ),
         if (_paused)
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Text(
-              'Bot paused on this chat — the customer hears only you. Hand back anytime.',
-              style: TextStyle(fontSize: 12),
+              'The bot is paused on this chat — the customer hears only you. '
+              'Hand back anytime.',
+              style: TextStyle(fontSize: 12, height: 1.4),
             ),
           ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '${widget.chat['customer_number'] ?? ''} ${needsHuman ? '· needs you' : '· handled by AI'}',
-              style: TextStyle(
-                  fontSize: 13,
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.6)),
-            ),
-          ),
-        ),
         Expanded(
           child: _err != null
-              ? EmptyState("Couldn't load this chat", _err!)
+              ? EmptyState("Couldn't load this chat", _err!, retry: _load)
               : _msgs == null
                   ? ListView(
                       padding: const EdgeInsets.all(12),
@@ -459,6 +527,7 @@ class _ThreadScreenState extends State<ThreadScreen> {
                   : _msgs!.isEmpty
                       ? const Center(child: Text('No messages.'))
                       : ListView.builder(
+                          controller: _scroll,
                           padding: const EdgeInsets.all(12),
                           itemCount: _msgs!.length,
                           itemBuilder: (c, i) {
@@ -607,6 +676,99 @@ class _ThreadScreenState extends State<ThreadScreen> {
           ),
         ),
       ]),
+    );
+  }
+}
+
+/// AI ↔ human, as one control instead of two competing buttons.
+///
+/// The old pair ("Take over (pause bot)" / "Hand back to AI") made the owner
+/// read two labels to work out which state they were in. A segmented switch
+/// shows both states at once and marks the live one, so "who is answering?"
+/// is answered before you tap anything.
+class _ModeSwitch extends StatelessWidget {
+  final bool paused; // true = the owner is answering
+  final bool busy;
+  final ValueChanged<bool> onChanged; // true = take over, false = hand back
+
+  const _ModeSwitch({
+    required this.paused,
+    required this.busy,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Opacity(
+      opacity: busy ? 0.6 : 1,
+      child: Container(
+        height: 42,
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          // A dark wash under a card-coloured thumb: on light it is a grey
+          // track, on dark it is deeper than the card, so the live half is
+          // always the raised one in both themes.
+          color: Colors.black.withValues(alpha: dark ? 0.26 : 0.045),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: scheme.outline.withValues(alpha: 0.4)),
+        ),
+        child: Row(children: [
+          _seg(context, 'AI answers', Icons.auto_awesome_rounded, !paused,
+              () => onChanged(false)),
+          _seg(context, 'You answer', Icons.person_outline_rounded, paused,
+              () => onChanged(true)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _seg(BuildContext context, String label, IconData icon, bool on,
+      VoidCallback tap) {
+    final scheme = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Expanded(
+      child: GestureDetector(
+        onTap: busy ? null : tap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: on ? scheme.surface : Colors.transparent,
+            borderRadius: BorderRadius.circular(999),
+            boxShadow: on
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: dark ? 0.3 : 0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(icon,
+                size: 15,
+                color: on
+                    ? scheme.primary
+                    : scheme.onSurface.withValues(alpha: 0.45)),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: on ? FontWeight.w800 : FontWeight.w600,
+                color: on
+                    ? scheme.onSurface
+                    : scheme.onSurface.withValues(alpha: 0.5),
+              ),
+            ),
+          ]),
+        ),
+      ),
     );
   }
 }

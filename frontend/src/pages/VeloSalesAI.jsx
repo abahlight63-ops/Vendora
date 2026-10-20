@@ -205,7 +205,7 @@ export default function VeloSalesAI({ biz }) {
         setUpsellLines([ // a quota wall is an upgrade moment — context lines beat the generic list
           '50 free chats a day — Pro never queues',
           'Unlimited free AIs + 50 premium chats daily',
-          'Kimi K2, Claude + GPT-4o mini included',
+          'Smart, Normal and Fast modes included',
           'Zero ads, priority support',
         ]);
         setUpsell(true);

@@ -9,10 +9,12 @@
 // calls the app always made; only the order of the mode-3 branch was wrong
 // (it fell through to "verify code"), so it is written out explicitly now.
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 
 import '../api.dart';
 import '../theme.dart';
 import '../widgets/auth_ui.dart';
+import 'legal_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   final VoidCallback onAuthed;
@@ -42,8 +44,23 @@ class _AuthScreenState extends State<AuthScreen> {
   String? _refMsg; // live reward preview ("Reward attached…") or null
   bool _refOk = false; // green (attached!) vs amber (unknown code — signup still works!)
 
+  // The two links inside the consent line. Created once so a rebuild does not
+  // leak a recognizer, and disposed with the screen.
+  late final TapGestureRecognizer _termsTap = TapGestureRecognizer()
+    ..onTap = () => _openLegal(LegalDoc.terms);
+  late final TapGestureRecognizer _privacyTap = TapGestureRecognizer()
+    ..onTap = () => _openLegal(LegalDoc.privacy);
+
+  void _openLegal(LegalDoc d) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => LegalScreen(initial: d),
+    ));
+  }
+
   @override
   void dispose() {
+    _termsTap.dispose();
+    _privacyTap.dispose();
     _name.dispose();
     _email.dispose();
     _pass.dispose();
@@ -309,16 +326,22 @@ class _AuthScreenState extends State<AuthScreen> {
             const TextSpan(text: 'I agree to the '),
             TextSpan(
               text: 'Terms of Service',
+              recognizer: _termsTap,
               style: TextStyle(
                   fontWeight: FontWeight.w800,
-                  color: scheme.onSurface.withValues(alpha: 0.88)),
+                  color: scheme.primary,
+                  decoration: TextDecoration.underline,
+                  decorationColor: scheme.primary.withValues(alpha: 0.45)),
             ),
             const TextSpan(text: ' and '),
             TextSpan(
               text: 'Privacy Policy',
+              recognizer: _privacyTap,
               style: TextStyle(
                   fontWeight: FontWeight.w800,
-                  color: scheme.onSurface.withValues(alpha: 0.88)),
+                  color: scheme.primary,
+                  decoration: TextDecoration.underline,
+                  decorationColor: scheme.primary.withValues(alpha: 0.45)),
             ),
             const TextSpan(text: '.'),
           ],

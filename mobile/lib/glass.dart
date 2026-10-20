@@ -6,6 +6,8 @@
 // Light/dark aware via the active ColorScheme.
 import 'package:flutter/material.dart';
 
+import 'widgets/error_art.dart';
+
 /// Blur strength for cards vs sheets/dialogs.
 ///
 /// Was 18/22 — real backdrop blur, with translucent tints so a mesh gradient
@@ -160,12 +162,18 @@ class EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final low = message.toLowerCase();
+    final offline = low.contains('offline') || low.contains('no connection');
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (retry != null) ...[
+              ErrorArt(offline: offline, size: 116),
+              const SizedBox(height: 6),
+            ],
             Text(title,
                 textAlign: TextAlign.center,
                 style:

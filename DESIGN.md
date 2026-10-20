@@ -120,17 +120,25 @@ Check every text/background pair at 4.5:1 in both themes.
 
 ## Components
 ### Brand mark
-- Two files, one shape. `frontend/src/components/Logo.jsx` inlines the SVG for
-  React surfaces (sidebar, auth, landing); `frontend/public/logo.svg` is the
-  standalone copy for `<img>`, the splash, and anything outside React.
-- The component ships **no colour of its own** — colour lives only in
+- One geometry, every surface. The mark is the hexagon with the V cut-out:
+  `M301 0 L602 189 L602 513 L301 696 L0 513 L0 189 Z M0 189 L602 189 L301 696 Z`
+  with `fill-rule: evenodd`, `viewBox="0 0 602 696"`. It appears, unchanged, in
+  `frontend/src/components/Logo.jsx`, `mobile/lib/brand_mark.dart`,
+  `website/assets/mark.svg` and `frontend/public/favicon.svg`. Never redraw it.
+- The React component ships **no colour of its own** — colour lives only in
   `.vl-root` / `[data-theme="dark"] .vl-root` in styles.css. Never hard-code a
   fill in `Logo.jsx`; change the two token blocks instead.
-- Shape is the designer kit in `files (2)/` (gold) with the ramp swapped to
-  purple. Do not redraw it.
-- App icons: `frontend/public/favicon.svg` is the master (rounded tile, inset
-  purple mark, border). The PNG set + `favicon.ico` are generated from it —
-  never hand-edit the PNGs.
+- App icons all come from the same path: `scripts`-adjacent Chrome renders of
+  the master HTML produce 1024px faces (square, round, maskable, transparent
+  foreground), then System.Drawing downsamples them. Surfaces:
+  Android `mipmap-*/ic_launcher(.png/_round/_foreground)` + adaptive XML,
+  iOS `AppIcon.appiconset`, phone web `favicon.png` + `Icon-192/512` +
+  maskable, `frontend/public` + `website` favicons/apple-touch/logo, and the
+  native launch screens. Never hand-edit a generated PNG — regenerate.
+- Launcher: purple `#4F3FC7` adaptive background, mark inside the 66dp safe
+  zone. Native splash: rail `#1A1443` + centred mark, so the first paint is
+  already the brand instead of a white flash (iOS storyboard uses the same
+  colour).
 - Mark + wordmark: mark 34px, gap 10px, wordmark 15.5px/700 at -0.2px.
 - Clear space around the mark = 25% of its width. Never put it on the accent
   fill (purple-on-purple disappears); put it on a surface.
@@ -164,7 +172,13 @@ Check every text/background pair at 4.5:1 in both themes.
 - Desktop 3-panel: conversation list (search, channel + AI/human filters,
   unread badges) + thread (ticks, media, AI vs human-labeled messages) +
   contact side panel.
-- Mobile: list -> thread, per-thread AI/human takeover toggle.
+- One height for list and thread (`min(700px, 100dvh - 210px)`), each panel
+  scrolls inside itself so the composer stays pinned. At <=760px the list and
+  thread become two pages (`wx-has-thread`), never a squeezed pair of columns.
+- Mobile: list -> thread, with the same search (name, number, preview) and the
+  same three filters. The thread header is one segmented switch — `AI answers`
+  / `You answer` — not two competing buttons: both states are visible at once
+  and the live one is marked before you tap.
 - Purple reserved for outbound + send. AI drafts visually distinct.
 
 ### Catalog
@@ -192,6 +206,19 @@ Check every text/background pair at 4.5:1 in both themes.
 - Labels above fields, 10px radius, correct mobile keyboard types.
 - Validation beside the field with a fix. Preserve input on error.
 - Focus: border-color change + soft glow. Placeholders are examples, never labels.
+
+### Legal documents (Terms + Privacy)
+- One document, two clients, same substance. Web `/terms` + `/privacy`;
+  phone `lib/screens/legal_screen.dart` (Terms / Privacy segmented switch).
+  If a clause changes, both change in the same commit.
+- Phone consent must be real: the signup checkbox links to both documents in
+  the app itself (no dead text), and Settings → Terms & privacy and Help →
+  The fine print open the same screen.
+- Reading surface is plain: 13.5px/1.6 body, bold section numbers, bullet
+  dots in accent at 60%, one closing contact card. No accordions — legal text
+  should be scrollable, not hidden behind taps.
+- Dates: "Last updated: September 2026". Never show a future date or a
+  version number users cannot check.
 
 ### Stat cards
 - Big number (h2/h1), small uppercase label, optional green trend badge,
@@ -221,6 +248,18 @@ Check every text/background pair at 4.5:1 in both themes.
 ### Empty states
 - Outline icon, one line saying what is empty, one primary button saying what
   to do. New accounts get a guided first action, never an empty chart.
+
+### Failure and offline states (web `Error3D.jsx`, phone `ErrorArt`)
+- A failure is an object, not a warning glyph: the brand tile stands in space
+  with a contact shadow and one status light. Red core = the request failed,
+  amber core + dashed ring = you are offline. Same geometry, same colours on
+  both clients; the art is drawn (SVG / `CustomPainter`), never an image that
+  can 404.
+- Motion is 3px on a 6s loop and stops under `prefers-reduced-motion` /
+  `disableAnimations`. It says "still here", never "loading".
+- The copy still carries the meaning: what failed, what to do, Retry. The art
+  never replaces the sentence.
+- Genuine empty states stay calm and text-first — no 3D, no red.
 
 ### Transactional email (one shell, 21 templates)
 Every email comes from `layout()` in `src/services/emailTemplates.js`. If a

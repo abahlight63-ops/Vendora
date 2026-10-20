@@ -3,7 +3,7 @@
 // on mobile. Filters: status (All / Needs you / Handled) + channel chips +
 // text search. AI/human takeover toggle per thread. All data from
 // /api/me/conversations (list) + /messages (thread) — no fake content.
-import { useEffect, useState } from 'react'; // useState ×8; useEffect = load inbox on mount
+import { useEffect, useRef, useState } from 'react'; // useState ×8; useEffect = load inbox on mount
 import { api, fmtTime, toast } from '../lib/api.js'; // api() fetches; fmtTime stamps; toast() send errors
 import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures (offline? waking? stale?)
 import LoadFailed from '../components/LoadFailed.jsx'; // branded failed card + Retry (never eternal skeletons!)
@@ -21,6 +21,11 @@ export default function Chats() {
   const [tries, setTries] = useState(0); // retry counter (forces reload — no page refresh!)
   const [chan, setChan] = useState('all'); // 'all' | 'whatsapp' | 'telegram' — mixed inboxes need a way to zoom into one channel
   const [q, setQ] = useState(''); // list text search (name, number, preview — client-side, instant)
+  const threadRef = useRef(null); // the scrolling message column (we land on the newest message)
+  useEffect(() => { // a conversation opens at the latest message, never at the oldest
+    const el = threadRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [msgs]);
   async function load() { // reusable reload (mount + retry + back-from-thread to refresh flags)
     try {
       setFailed(null);
@@ -38,6 +43,7 @@ export default function Chats() {
   }, [tries]);
   async function open(c) { // open thread: show instantly + spinner messages → fill when fetch lands
     setThread(c); setMsgs(null); setDraft('');
+    if (window.innerWidth <= 760) window.scrollTo({ top: 0 }); // phone: the thread starts at its header, not mid-list
     try {
       const { data } = await api('/api/me/conversations/' + c.id + '/messages', { timeout: 15000 });
       setMsgs(data || []);
@@ -55,6 +61,7 @@ export default function Chats() {
   const needsCount = (convos || []).filter((c) => c.needs_human).length; // badge on the Needs-you tab (real count!)
 
   async function takeover(paused) { // flip THIS chat's bot: true = you talk (bot silent), false = AI resumes.
+    if (!thread || !!thread.bot_paused === !!paused) return; // already in that mode — no dead request
     const { ok } = await api('/api/me/conversations/' + thread.id + '/takeover', { method: 'POST', body: JSON.stringify({ paused }) });
     if (ok) { setThread({ ...thread, bot_paused: paused }); load(); } // spread-copy with new flag (immutable update!) + reload list (badges there too)
     else toast('Could not update takeover', 'err'); // failure toast (button stays — retry possible)
@@ -126,20 +133,24 @@ export default function Chats() {
             : (
               <>
                 <div className="wx-thead">
-                  <button className="btn ghost sm wx-back" onClick={() => { setThread(null); load(); }} aria-label="Back to list"><Ic n="back" s={14} /></button>
+                  <button className="btn ghost sm wx-back" onClick={() => { setThread(null); if (window.innerWidth <= 760) window.scrollTo({ top: 0 }); load(); }} aria-label="Back to list"><Ic n="back" s={14} /></button>
                   <span className="wx-ava" aria-hidden="true">{initialOf(thread)}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <b style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{thread.customer_name || thread.customer_number}</b>
                     <span className="hint">{thread.customer_number} · {thread.needs_human ? 'needs you' : 'handled by AI'}</span>
                   </div>
-                  {thread.bot_paused
-                    ? <button className="btn sm" onClick={() => takeover(false)}>Hand back to AI</button>
-                    : <button className="btn ghost sm" onClick={() => takeover(true)}>Take over</button>}
+                </div>
+                {/* One switch, both states visible — same control as the phone. */}
+                <div className="wx-modebar">
+                  <div className="wx-mode" role="group" aria-label="Who answers this chat">
+                    <button className={'wx-seg' + (!thread.bot_paused ? ' on' : '')} aria-pressed={!thread.bot_paused} onClick={() => takeover(false)}>AI answers</button>
+                    <button className={'wx-seg' + (thread.bot_paused ? ' on' : '')} aria-pressed={thread.bot_paused} onClick={() => takeover(true)}>You answer</button>
+                  </div>
                 </div>
                 {thread.bot_paused
-                  ? <p className="hint" style={{ margin: '8px 2px 0' }}>Bot paused — the customer hears only you. Hand back anytime.</p>
+                  ? <p className="hint" style={{ margin: '8px 2px 0' }}>The bot is paused on this chat — the customer hears only you. Hand back anytime.</p>
                   : (thread.flag_reason || thread.needs_human) ? <p className="hint" style={{ margin: '8px 2px 0' }}>{thread.flag_reason || 'Flagged for your human touch.'}</p> : null}
-                <div className="thread">
+                <div className="thread" ref={threadRef}>
                   {msgs === null ? (<div className="skel-grid"><div className="skel" style={{ width: '70%', height: 44, borderRadius: 14 }} /><div className="skel" style={{ width: '60%', height: 44, borderRadius: 14, justifySelf: 'end' }} /><div className="skel" style={{ width: '50%', height: 44, borderRadius: 14 }} /></div>)
                     : msgs.length === 0 ? <p className="hint">No messages.</p>
                     : msgs.map((m, i) => (<div key={i} className={m.direction === 'in' ? 'bubble-in' : 'bubble-out'}>{m.media_url && <img src={m.media_url} alt="" />}{m.body}<div className="ts">{fmtTime(m.created_at)}</div></div>))}
@@ -168,11 +179,11 @@ export default function Chats() {
               <div><span>Last active</span><b>{fmtTime(thread.updated_at)}</b></div>
             </div>
             {thread.flag_reason && <p className="hint" style={{ marginTop: 10 }}>Flag: {thread.flag_reason}</p>}
-            <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
+            <p className="hint" style={{ marginTop: 12 }}>
               {thread.bot_paused
-                ? <button className="btn sm" onClick={() => takeover(false)}>Hand back to AI</button>
-                : <button className="btn ghost sm" onClick={() => takeover(true)}>Take over (pause bot)</button>}
-            </div>
+                ? 'You are answering this chat. The bot stays quiet until you hand it back.'
+                : 'The bot answers this chat. Take over from the switch above whenever you want.'}
+            </p>
           </aside>
         )}
       </div>

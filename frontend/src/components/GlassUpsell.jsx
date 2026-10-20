@@ -17,8 +17,8 @@ export default function GlassUpsell({ show, title, lines, onClose }) {
         <p className="hint">Premium AIs answer sharper, reason deeper, and never queue behind free traffic.</p>
         <ul className="glass-feats">
           {(lines && lines.length ? lines : [ // default benefit list (override per context via lines prop!)…
-            'Kimi K2 — the smartest assistant we offer',
-            'Claude Haiku + GPT-4o mini included',
+            'Smart mode — the strongest reasoning we offer',
+            'Normal and Fast modes included',
             'Voice-note transcription on WhatsApp',
             '50 premium chats daily + unlimited free AIs',
             'Zero ads, priority support',

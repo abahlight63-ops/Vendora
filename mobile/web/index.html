@@ -1,46 +1,67 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="VeloSales Ai — your WhatsApp shop, open 24/7. Instant AI answers in English or Pidgin, straight from your catalog.">
+  <meta name="theme-color" content="#4F3FC7">
+  <meta name="color-scheme" content="light dark">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="velosalesai">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="VeloSales Ai">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>velosalesai</title>
+  <title>VeloSales Ai — Your WhatsApp shop, open 24/7</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Paint the rail before Flutter boots, so no white flash on a phone. -->
+  <style>
+    html, body { margin: 0; height: 100%; background: #0E0C1D; }
+    #vs-boot {
+      position: fixed; inset: 0; display: grid; place-items: center;
+      background: radial-gradient(120% 120% at 32% 14%, #352A7F 0%, #221A56 55%, #1A1443 100%);
+      transition: opacity .35s ease;
+    }
+    #vs-boot svg { width: 76px; height: auto; animation: vs-pulse 1.8s ease-in-out infinite; }
+    #vs-boot.off { opacity: 0; pointer-events: none; }
+    @keyframes vs-pulse {
+      0%, 100% { opacity: .55; transform: translateY(0) scale(.985); }
+      50% { opacity: 1; transform: translateY(-2px) scale(1); }
+    }
+    @media (prefers-reduced-motion: reduce) { #vs-boot svg { animation: none; opacity: .9; } }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+  <div id="vs-boot" aria-hidden="true">
+    <svg viewBox="0 0 602 696" xmlns="http://www.w3.org/2000/svg">
+      <path d="M301 0 L602 189 L602 513 L301 696 L0 513 L0 189 Z M0 189 L602 189 L301 696 Z" fill-rule="evenodd" fill="#FFFFFF"/>
+    </svg>
+  </div>
   <script src="flutter_bootstrap.js" async></script>
+  <script>
+    // The splash removes itself once Flutter has painted its first frame.
+    // The 8s fallback matters: if the event is ever renamed by an engine
+    // upgrade, a stuck splash would hide the whole app behind a logo.
+    (function () {
+      var done = false;
+      function clearBoot() {
+        if (done) return;
+        done = true;
+        var b = document.getElementById('vs-boot');
+        if (b) { b.classList.add('off'); setTimeout(function () { b.remove(); }, 400); }
+      }
+      window.addEventListener('flutter-first-frame', clearBoot);
+      setTimeout(clearBoot, 8000);
+    })();
+  </script>
 </body>
 </html>

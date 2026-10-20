@@ -6,10 +6,18 @@
 // per-line comments inside legal copy hurt readability + legal precision).
 import { useEffect } from 'react'; // tab title on mount
 import Logo from '../components/Logo.jsx'; // theme-aware brand mark (blue dark / green light!)
-import { Link } from 'react-router-dom'; // brand/login/privacy links + footer
+import { Link } from 'react-router-dom'; // brand/login/privacy links
+import SiteFooter from '../components/SiteFooter.jsx'; // global footer (real links, descriptive anchors)
+import { setPageMeta, APP_URL } from '../lib/seo.js'; // title + description + canonical
 
 export default function Terms() {
-  useEffect(() => { document.title = 'VeloSales Ai — Terms & Conditions'; }, []); // tab title
+  useEffect(() => {
+    setPageMeta({
+      title: 'VeloSales Ai — Terms & Conditions',
+      description: 'The terms that govern your VeloSales Ai account: plans, trials, refunds, acceptable use, AI accuracy limits and Nigerian governing law.',
+      canonical: APP_URL + '/terms',
+    });
+  }, []);
   return (
     <div className="landing">
       <header className="landing-nav"><div className="landing-inner">
@@ -89,9 +97,7 @@ export default function Terms() {
           </div>
         </div>
       </section>
-      <footer className="foot-links landing-inner">
-        <Link to="/faq">FAQ</Link><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

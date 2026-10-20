@@ -15,7 +15,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>VeloSales Ai — AI WhatsApp Sales Assistant</title>
 <meta name="description" content="VeloSales Ai turns your WhatsApp number into a 24/7 AI sales rep — instant answers in English or Pidgin, straight from your catalog." />
-<meta name="theme-color" content="#6366f1" />
+<meta name="robots" id="route-robots" content="index,follow" />
+<link rel="canonical" href="https://app.velosalesai.com.ng/" />
+<meta name="theme-color" content="#4F3FC7" />
 <meta name="referrer" content="no-referrer-when-downgrade" />
 <!-- ══ SITE OWNERSHIP VERIFICATION TAGS (Google / Bing / ad networks) ══
      WHAT: these <meta> tags prove YOU own this domain to Google Search
@@ -48,11 +50,60 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="dns-prefetch" href="https://ipapi.co" />
 <link rel="dns-prefetch" href="https://accounts.google.com" />
+<meta property="og:site_name" content="VeloSales Ai" />
+<meta property="og:url" content="https://app.velosalesai.com.ng/" />
 <meta property="og:title" content="VeloSales Ai — Your WhatsApp shop, open 24/7" />
 <meta name="d3fc6b69181612796155cb0dee5dd9e3dbb93947" content="d3fc6b69181612796155cb0dee5dd9e3dbb93947" /> <!-- second ad-network ownership token (same rules as above — leave while verified) -->
 <meta property="og:description" content="AI sales assistant for WhatsApp. Instant answers in English or Pidgin, straight from your catalog." />
 <meta property="og:type" content="website" />
-<meta property="og:image" content="/photos/og.jpg" />
+<meta property="og:image" content="https://app.velosalesai.com.ng/og.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="VeloSales Ai — your WhatsApp shop, open 24/7" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="VeloSales Ai — Your WhatsApp shop, open 24/7" />
+<meta name="twitter:description" content="Instant AI answers in English or Pidgin, straight from your catalog. Free plan, 7-day Pro trial." />
+<meta name="twitter:image" content="https://app.velosalesai.com.ng/og.png" />
+<!-- ── STRUCTURED DATA ────────────────────────────────────────────────
+     One @graph, three nodes, one identity. Google reads Organization once
+     for the whole brand (the marketing site publishes the same @id), then
+     WebSite and SoftwareApplication hang off it. Absolute URLs only —
+     relative ones are ignored in JSON-LD. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://velosalesai.com.ng/#org",
+      "name": "VeloSales Ai",
+      "url": "https://velosalesai.com.ng/",
+      "logo": "https://velosalesai.com.ng/assets/icon-512.png",
+      "email": "velosales63@gmail.com",
+      "description": "VeloSales Ai is an AI sales assistant for WhatsApp, built for small shops in Nigeria. It answers price, stock, delivery and hours questions 24/7 in English or Pidgin, straight from the owner's catalog.",
+      "areaServed": "NG",
+      "sameAs": []
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://app.velosalesai.com.ng/#website",
+      "name": "VeloSales Ai",
+      "url": "https://app.velosalesai.com.ng/",
+      "publisher": { "@id": "https://velosalesai.com.ng/#org" }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "VeloSales Ai",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web, Android",
+      "url": "https://app.velosalesai.com.ng/",
+      "description": "AI WhatsApp sales assistant with catalog, inbox, insights and billing, plus a general AI chat.",
+      "publisher": { "@id": "https://velosalesai.com.ng/#org" },
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "NGN", "description": "Free plan, no card required" }
+    }
+  ]
+}
+</script>
 </head>
 <body>
 <div id="root"></div>

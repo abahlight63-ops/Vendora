@@ -1,12 +1,13 @@
 // ── src/services/emailTemplates.js ───────────────────────────────
 // WHAT: every email VeloSales Ai sends, in ONE branded place. All templates
-// share the same shell (logo header, brand button, copy-friendly code box,
-// Maitama footer), so the inbox always looks like the app — never plain text.
-// SENDING: Resend ONLY (FROM address must sit on your VERIFIED Resend domain
-// or Resend 400/403s — see the hint in the Resend-fail log below). Gmail SMTP
-// is retired (no creds configured → smtpMailer stays dormant). No mail
-// configured → returns false (callers auto-verify in dev). LINKS: built from PUBLIC_BASE_URL (set it to the live
-// URL on Render — localhost links die in real inboxes!). Logo: /logo.png.
+// share the same shell (brand profile row, white sheet, purple CTA, code box,
+// living footer), so the inbox always looks like the app — never plain text.
+// SENDING: SMTP first (Gmail app password, works with zero domains), Resend
+// second (needs a VERIFIED domain, else 400/403 — see the hint in the
+// Resend-fail log). No mail configured → returns false (callers auto-verify in
+// dev). LINKS: built from PUBLIC_BASE_URL (set it to the live URL on Render —
+// localhost links die in real inboxes!). Logo: /email-logo.png (the circular
+// mark, 256px, generated from the same path as frontend/src/components/Logo).
 // No npm modules — fetch (Resend API) + local smtpMailer only.
 const db = require('../db'); // owner lookups for lifecycle emails (no cycle: db never requires us!)
 
@@ -58,53 +59,149 @@ function esc(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// Shared shell: preheader + logo header + content + code box + receipt rows +
-// CTA button + brand footer. Inline styles only (clients strip <style>).
+// Shared shell — THE one place the brand is drawn in an inbox.
+//
+// Anatomy (mirrors the sender row people already trust, e.g. a verified
+// storefront email): a circular brand mark, the name, an "Official" badge and
+// the real From address, on the deep rail. Then a white sheet for the message,
+// and a living footer: the mark, three breathing dots and a sweeping bar, the
+// same "working" language as the app's loader.
+//
+// EMAIL REALITIES, not preferences:
+//   · Inline styles first — Gmail strips most of <head>.
+//   · The <style> block only carries @keyframes + dark mode; if a client drops
+//     it, every element still renders in its resting state (bar 38% filled,
+//     dots solid). Nothing looks broken, it just stops moving.
+//   · No web fonts: Manrope is listed first, then the safe stack. Outlook will
+//     use Segoe UI and the layout still holds.
+//   · No background images for meaning, no flexbox, no grid: tables only.
+//
 // opts: { preheader, title, intro, body, code, codeLabel, codeHint, rows,
 //         ctaLabel, ctaLink, foot }
 function layout(o) {
   const base = baseUrl();
   const contact = supportEmail();
   const year = new Date().getFullYear();
+  // Which address should the brand row print? It must be the REAL sender, or
+  // the header is theatre. SMTP rewrites From to the authenticated account
+  // unless EMAIL_FROM is set; Resend uses EMAIL_FROM verbatim.
+  let smtpUser = '';
+  try { if (require('./smtpMailer').isSmtpConfigured()) smtpUser = (process.env.EMAIL_SMTP_USER || '').trim(); } catch {}
+  const fromEmail = (smtpUser && !process.env.EMAIL_FROM)
+    ? smtpUser
+    : ((/<([^>]+)>/.exec(fromAddress() || '') || [])[1] || contact);
   const rows = Array.isArray(o.rows) && o.rows.length
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background:#ffffff;border:1px solid #e3efe9;border-radius:12px;margin:6px 0 14px;border-collapse:separate;border-spacing:0;overflow:hidden;">${
+    ? `<table role="presentation" class="vs-rows" cellpadding="0" cellspacing="0" style="width:100%;background:#ffffff;border:1px solid #E7E5F0;border-radius:14px;margin:6px 0 16px;border-collapse:separate;border-spacing:0;overflow:hidden;">${
       o.rows.map(([k, v], i) => `<tr>
-        <td style="padding:11px 14px;color:#667085;font-size:13px;${i ? 'border-top:1px solid #eef4f1;' : ''}">${esc(k)}</td>
-        <td align="right" style="padding:11px 14px;color:#0d1f16;font-size:13px;font-weight:700;${i ? 'border-top:1px solid #eef4f1;' : ''}">${esc(v)}</td>
+        <td class="vs-cell vs-rowkey" style="padding:12px 16px;color:#6B6885;font-size:13px;${i ? 'border-top:1px solid #F2F1F8;' : ''}">${esc(k)}</td>
+        <td class="vs-cell vs-rowval" align="right" style="padding:12px 16px;color:#171532;font-size:13px;font-weight:700;${i ? 'border-top:1px solid #F2F1F8;' : ''}">${esc(v)}</td>
       </tr>`).join('')
     }</table>`
     : '';
   const code = o.code
-    ? `<div style="margin:20px 0;padding:20px 12px;background:#ffffff;border:2px dashed #128c4a;border-radius:14px;text-align:center;">
-        <div style="font-size:11px;color:#667085;letter-spacing:3px;margin-bottom:8px;">${esc(o.codeLabel || 'YOUR CODE')}</div>
-        <div style="font-size:44px;font-weight:800;letter-spacing:14px;color:#0d1f16;user-select:all;-webkit-user-select:all;">${esc(o.code)}</div>
-        <div style="font-size:12px;color:#667085;margin-top:8px;">${esc(o.codeHint || 'Tap and hold the code to copy it')}</div>
-      </div>`
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:22px 0;border-collapse:separate;">
+        <tr><td align="center" style="background:#EFEBFE;border:1px solid #CFC6F8;border-radius:16px;padding:22px 12px 18px;">
+          <div style="font-size:10px;font-weight:800;color:#5B4BD6;letter-spacing:3px;margin-bottom:10px;">${esc(o.codeLabel || 'YOUR CODE')}</div>
+          <div style="font-size:40px;line-height:1.1;font-weight:800;letter-spacing:12px;color:#3B2E9E;-webkit-user-select:all;user-select:all;">${esc(o.code)}</div>
+          <div style="font-size:12px;color:#6B6885;margin-top:10px;">${esc(o.codeHint || 'Tap and hold the code to copy it')}</div>
+        </td></tr>
+      </table>`
     : '';
   return `
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(o.preheader || o.intro || '')}</div>
-  <div style="font-family:Segoe UI,Arial,Helvetica,sans-serif;max-width:560px;margin:auto;background:#f6faf8;border-radius:16px;overflow:hidden;color:#0d1f16;">
-    <div style="background:#075E54;padding:22px 24px;text-align:center;">
-      <img src="${base}/logo.png" alt="VeloSales Ai" width="48" style="border-radius:12px;background:#ffffff;padding:4px;display:block;margin:0 auto;" />
-      <div style="color:#ffffff;font-weight:800;letter-spacing:3px;font-size:15px;margin-top:10px;">VELOSALES AI</div>
-      <div style="color:#b9e8d2;font-size:12px;margin-top:2px;">Your WhatsApp shop, open 24/7</div>
-    </div>
-    <div style="padding:28px 26px;">
-      <h2 style="color:#0d1f16;margin:0 0 10px;font-size:22px;">${o.title}</h2>
-      <p style="color:#333333;line-height:1.65;margin:0 0 14px;font-size:14.5px;">${o.intro}</p>
-      ${code}
-      ${rows}
-      ${o.body || ''}
-      ${o.ctaLabel && o.ctaLink ? `<p style="text-align:center;margin:26px 0 8px;"><a href="${o.ctaLink}" style="background:#25D366;color:#04120c;padding:14px 30px;border-radius:12px;text-decoration:none;font-weight:800;font-size:15px;display:inline-block;">${esc(o.ctaLabel)}</a></p>` : ''}
-      ${o.foot ? `<p style="color:#667085;font-size:12.5px;line-height:1.7;margin:16px 0 0;">${o.foot}</p>` : ''}
-    </div>
-    <div style="background:#eef4f1;padding:16px 24px;text-align:center;color:#667085;font-size:12px;line-height:1.8;">
-      VeloSales Ai · ${esc(brandAddress())}<br>
-      Need help? Write to <a href="mailto:${contact}" style="color:#075E54;font-weight:700;">${contact}</a><br>
-      <a href="${base}/login" style="color:#075E54;">Open app</a> · <a href="${base}/billing" style="color:#075E54;">Billing</a> · <a href="${base}/help" style="color:#075E54;">Help center</a><br>
-      <span style="color:#98a9a0;">© ${year} VeloSales Ai. You got this because you have an account with us.</span>
-    </div>
-  </div>`;
+  <style>
+    @keyframes vsDot{0%,100%{opacity:.25}50%{opacity:1}}
+    @keyframes vsSweep{0%{transform:translateX(-110%)}100%{transform:translateX(320%)}}
+    @keyframes vsBreathe{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.09);opacity:1}}
+    .vs-anim{animation:vsBreathe 3.6s ease-in-out infinite;transform-origin:center}
+    .vs-dot{animation:vsDot 1.6s ease-in-out infinite}
+    .vs-bar{animation:vsSweep 2.2s ease-in-out infinite}
+    @media (prefers-reduced-motion:reduce){.vs-anim,.vs-dot,.vs-bar{animation:none!important}}
+    @media (prefers-color-scheme:dark){
+      .vs-outer{background:#0E0C1D!important}
+      .vs-card{background:#181530!important;border-color:#272346!important}
+      .vs-title{color:#F2F1FA!important}
+      .vs-copy{color:#A5A1C0!important}
+      .vs-legal{background:#14112B!important;border-color:#272346!important;color:#9693AC!important}
+      .vs-legalbrand{color:#F2F1FA!important}
+      .vs-footline{border-color:#272346!important}
+      .vs-rows{background:#0E0C1D!important;border-color:#272346!important}
+      .vs-cell{border-top-color:#272346!important}
+      .vs-rowkey{color:#A5A1C0!important}
+      .vs-rowval{color:#F2F1FA!important}
+      .vs-track{background:#221C4D!important}
+      .vs-legal a{color:#A99FFA!important}
+    }
+  </style>
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">${esc(o.preheader || o.intro || '')}</div>
+  <table role="presentation" class="vs-outer" width="100%" cellpadding="0" cellspacing="0" style="background:#F2F1F8;border-collapse:collapse;">
+    <tr><td align="center" style="padding:30px 12px;">
+      <table role="presentation" class="vs-card" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;border:1px solid #E7E5F0;border-radius:20px;border-collapse:separate;overflow:hidden;font-family:'Manrope',-apple-system,'Segoe UI',Roboto,Arial,sans-serif;">
+
+        <!-- ── brand row: circular mark + name + Official + real From address ── -->
+        <tr><td style="background:#221A56;padding:26px 26px 24px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+            <tr>
+              <td width="54" valign="middle">
+                <img src="${base}/email-logo.png" alt="VeloSales Ai" width="52" height="52" style="display:block;width:52px;height:52px;border-radius:50%;border:0;" />
+              </td>
+              <td valign="middle" style="padding-left:14px;">
+                <div style="color:#F4F2FE;font-size:17px;font-weight:800;letter-spacing:-.2px;line-height:1.3;">
+                  VeloSales Ai&nbsp;<span style="display:inline-block;background:#5B4BD6;color:#ffffff;font-size:9px;font-weight:800;letter-spacing:1.4px;padding:3px 7px;border-radius:999px;vertical-align:2px;">✓ OFFICIAL</span>
+                </div>
+                <div style="color:#C6C0EA;font-size:12px;line-height:1.5;margin-top:2px;">&lt;${esc(fromEmail)}&gt;</div>
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+
+        <!-- ── message ── -->
+        <tr><td style="padding:30px 28px 6px;">
+          <h1 class="vs-title" style="margin:0 0 12px;color:#171532;font-size:24px;line-height:1.25;font-weight:800;letter-spacing:-.4px;">${o.title}</h1>
+          <p class="vs-copy" style="margin:0 0 16px;color:#4A4763;font-size:15px;line-height:1.7;">${o.intro}</p>
+          ${code}
+          ${rows}
+          ${o.body || ''}
+          ${o.ctaLabel && o.ctaLink ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px auto 10px;border-collapse:separate;"><tr><td align="center" style="background:#4F3FC7;border-radius:999px;">
+            <a href="${o.ctaLink}" style="display:inline-block;padding:15px 34px;color:#ffffff;text-decoration:none;font-weight:800;font-size:15px;letter-spacing:.1px;">${esc(o.ctaLabel)}</a>
+          </td></tr></table>` : ''}
+          ${o.foot ? `<p class="vs-copy" style="margin:16px 0 0;color:#6B6885;font-size:12.5px;line-height:1.7;">${o.foot}</p>` : ''}
+        </td></tr>
+
+        <!-- ── living footer: the same "working" language as the app loader ── -->
+        <tr><td style="padding:22px 28px 26px;">
+          <table role="presentation" class="vs-footline" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #F2F1F8;border-collapse:collapse;">
+            <tr><td align="center" style="padding-top:20px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="border-collapse:collapse;">
+                <tr>
+                  <td valign="middle" style="padding-right:10px;">
+                    <img class="vs-anim" src="${base}/email-logo.png" alt="" width="28" height="28" style="display:block;width:28px;height:28px;border-radius:50%;border:0;" />
+                  </td>
+                  <td valign="middle" style="color:#6B6885;font-size:12px;font-weight:700;letter-spacing:.4px;">
+                    AI ON DUTY &nbsp;<span class="vs-dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#10B981;vertical-align:1px;"></span><span class="vs-dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#8B7FF0;vertical-align:1px;animation-delay:.25s;"></span><span class="vs-dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#CFC6F8;vertical-align:1px;animation-delay:.5s;"></span>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" width="150" cellpadding="0" cellspacing="0" align="center" style="width:150px;margin-top:12px;border-collapse:separate;">
+                <tr><td class="vs-track" style="background:#EFEBFE;border-radius:999px;height:5px;overflow:hidden;">
+                  <table role="presentation" width="38%" cellpadding="0" cellspacing="0" style="width:38%;border-collapse:collapse;"><tr><td class="vs-bar" style="background:#5B4BD6;height:5px;border-radius:999px;font-size:0;line-height:0;">&nbsp;</td></tr></table>
+                </td></tr>
+              </table>
+              <div style="color:#6B6885;font-size:11px;margin-top:10px;">Always answering — even while you read this.</div>
+            </td></tr>
+          </table>
+        </td></tr>
+
+        <!-- ── legal ── -->
+        <tr><td class="vs-legal" style="background:#F7F6FB;border-top:1px solid #E7E5F0;padding:20px 28px;text-align:center;color:#6B6885;font-size:12px;line-height:1.8;">
+          <b class="vs-legalbrand" style="color:#171532;">VeloSales Ai</b> · ${esc(brandAddress())}<br>
+          Need help? Write to <a href="mailto:${contact}" style="color:#4F3FC7;font-weight:700;text-decoration:none;">${contact}</a><br>
+          <a href="${base}/dashboard" style="color:#4F3FC7;text-decoration:none;">Dashboard</a> &nbsp;·&nbsp; <a href="${base}/billing" style="color:#4F3FC7;text-decoration:none;">Billing</a> &nbsp;·&nbsp; <a href="${base}/help" style="color:#4F3FC7;text-decoration:none;">Help centre</a><br>
+          <span style="color:#6B6885;">© ${year} VeloSales Ai. You received this because you have an account with us.</span>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>`;
 }
 
 // Any mail path alive? (SMTP app-password OR Resend key — callers use this,
@@ -199,7 +296,7 @@ async function sendWelcomeEmail(email, name) {
       preheader: 'Your 7-day Pro trial is running. Three quick wins inside.',
       title: `Welcome, ${esc(first(name))}!`,
       intro: 'Your email is confirmed and your 7-day Pro trial is running. Three quick wins for tonight:',
-      body: `<ol style="color:#333333;line-height:1.9;margin:0 0 6px;padding-left:20px;font-size:14.5px;">
+      body: `<ol style="color:#4A4763;line-height:1.9;margin:0 0 6px;padding-left:20px;font-size:14.5px;">
         <li><b>Add 3–5 products</b> — the AI only quotes your catalog, never invents prices.</li>
         <li><b>Test like a customer</b> — open Test bot and ask for prices, then chaos.</li>
         <li><b>Connect WhatsApp</b> — one tap on the Connect page, TEST to LIVE in minutes.</li>
@@ -219,7 +316,7 @@ async function sendInactiveEmail(email, name) {
       preheader: 'Your catalog and settings are exactly where you left them.',
       title: 'We miss you (your customers do too)',
       intro: `It's been a while since you opened VeloSales Ai, ${esc(first(name))}. Your catalog and settings are exactly where you left them — pick up in seconds:`,
-      body: `<ul style="color:#333333;line-height:1.9;margin:0 0 6px;padding-left:20px;font-size:14.5px;">
+      body: `<ul style="color:#4A4763;line-height:1.9;margin:0 0 6px;padding-left:20px;font-size:14.5px;">
         <li><b>Unread chats</b> may be waiting in your inbox right now.</li>
         <li><b>One LEARN: message</b> from WhatsApp teaches the bot your newest stock.</li>
         <li><b>Still free</b> — your bot keeps replying from your manual catalog.</li>
@@ -239,7 +336,7 @@ async function sendTicketReplyEmail(email, subject, reply) {
       preheader: 'Our support team just answered your message.',
       title: 'Support replied',
       intro: `On “${esc(String(subject || 'your message').slice(0, 80))}”:`,
-      body: `<div style="background:#ffffff;border-left:4px solid #25D366;padding:12px 14px;color:#333333;line-height:1.65;border-radius:0 8px 8px 0;font-size:14.5px;">${esc(String(reply || '').slice(0, 1000))}</div>`,
+      body: `<div style="background:#F7F6FB;border-left:4px solid #5B4BD6;padding:12px 14px;color:#4A4763;line-height:1.65;border-radius:0 8px 8px 0;font-size:14.5px;">${esc(String(reply || '').slice(0, 1000))}</div>`,
       ctaLabel: 'View in Help', ctaLink: `${baseUrl()}/help`,
     }),
   });
@@ -413,7 +510,7 @@ async function sendUpdateBroadcast(email, name, { title, body, link, linkLabel }
       preheader: String(body || '').replace(/<[^>]*>/g, '').slice(0, 100),
       title: String(title || 'Something new').slice(0, 80),
       intro: `Hi ${esc(first(name))},`,
-      body: `<div style="color:#333333;line-height:1.7;font-size:14.5px;">${body || ''}</div>`,
+      body: `<div style="color:#4A4763;line-height:1.7;font-size:14.5px;">${body || ''}</div>`,
       ctaLabel: linkLabel || undefined, ctaLink: link || undefined,
       foot: 'You get product news because you have a VeloSales Ai account. Receipts and security mails always still arrive.',
     }),

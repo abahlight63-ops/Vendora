@@ -222,6 +222,27 @@ Check every text/background pair at 4.5:1 in both themes.
 - Outline icon, one line saying what is empty, one primary button saying what
   to do. New accounts get a guided first action, never an empty chart.
 
+### Transactional email (one shell, 21 templates)
+Every email comes from `layout()` in `src/services/emailTemplates.js`. If a
+template writes its own `<html>`, it is a bug — the inbox must look like the app.
+- **Brand row** — circular mark (`/email-logo.png`, 256px, the same geometry as
+  `Logo.jsx`), "VeloSales Ai", a small `OFFICIAL` pill, and the real From address
+  underneath. It mirrors the sender row people already trust; it does not fake
+  a blue verification tick.
+- **Sheet** — 600px max, 20px radius, white card on `#F2F1F8`. Titles 24px,
+  body 15px/1.7, one pink-free palette: CTA `#4F3FC7`, code box `#EFEBFE` with
+  `#3B2E9E` digits, amber only for money.
+- **Living footer** — the mark, three breathing dots and a 150px sweeping bar
+  under "AI ON DUTY". This is the app's loader language, not decoration: it says
+  the assistant is working while you read.
+- **Animation is progressive** — `@keyframes` inside one `<style>` block. Gmail
+  may drop it; the resting state is a 38%-filled bar with solid dots, which
+  still reads as a status strip. No GIFs, no JS.
+- **Dark mode** — `prefers-color-scheme` swaps card, rows, legal strip and link
+  colour. Light values stay inline so clients that strip `<style>` still render.
+- **Build rules** — tables + inline styles only, no flex/grid for structure,
+  no background images that carry meaning, `esc()` on every user value.
+
 ## Motion
 - Only motion that answers an action: press, open, close, confirm, tab change.
 - 140–220ms ease-out. Sheets slide up. Buttons scale to 0.97 on press.

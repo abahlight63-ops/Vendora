@@ -1,8 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 602 696" width="602" height="696" role="img" aria-label="VeloSales Ai">
-  <defs>
-    <linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="301" y1="0" x2="301" y2="696">
-      <stop offset="0" stop-color="#A5B4FC"/><stop offset=".5" stop-color="#6366F1"/><stop offset="1" stop-color="#4338CA"/>
-    </linearGradient>
-  </defs>
-  <path d="M301 0 L602 189 L602 513 L301 696 L0 513 L0 189 Z M0 189 L602 189 L301 696 Z" fill-rule="evenodd" fill="url(#lg)"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="VeloSales Ai">
+  <rect width="64" height="64" rx="14" fill="#4F3FC7"/>
+  <g transform="translate(14 11.2) scale(0.0598)">
+    <path d="M301 0 L602 189 L602 513 L301 696 L0 513 L0 189 Z M0 189 L602 189 L301 696 Z" fill-rule="evenodd" fill="#FFFFFF"/>
+  </g>
 </svg>

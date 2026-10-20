@@ -178,6 +178,7 @@ input:disabled { background: var(--bg-secondary); color: var(--text-3); }
 /* pills */
 .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 4px 11px; border-radius: var(--r-pill); letter-spacing: 0.2px; white-space: nowrap; }
 .pill.ok { background: var(--green-soft); color: var(--green-dark); border: 1px solid var(--green-line); }
+.pill.brand { background: var(--purple-soft); color: var(--purple-dark); border: 1px solid var(--purple-line); }
 .pill.flag { background: var(--gold-bg); color: var(--gold); border: 1px solid var(--gold-line); }
 .pill.off { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-line); }
 .pill.info { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-line); }
@@ -447,7 +448,7 @@ tbody tr.rowlink:hover { background: #f6fef9; }
    on a near-white page a white card is invisible, so the answer is set as
    prose on the page itself, the way ChatGPT does it. */
 .vai { display: flex; flex-direction: column; height: calc(100dvh - 132px); min-height: 360px; width: 100%; }
-body:has(.vai) .foot-links { display: none; } /* the chat is an app surface — no legal-links strip mid-conversation */
+body:has(.vai) .site-foot { display: none; } /* the chat is an app surface — no footer mid-conversation */
 .vai-top { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; flex: 0 0 auto; }
 
 /* The brain switch, in plain words. A segmented pill: the active engine is
@@ -679,8 +680,29 @@ body:has(.vai) .foot-links { display: none; } /* the chat is an app surface — 
    .drawer-backdrop dims the page; body overflow lock lives in Shell.jsx.
    Lesson: `display:none` ↔ `display:flex` inside media queries = the standard
    responsive show/hide pattern (mobile-bar works the same way, inverted). */
-.foot-links { display: flex; justify-content: center; gap: 20px; padding: 18px 0 26px; font-size: 12.5px; }
-.foot-links a { color: var(--faint); }
+/* ── GLOBAL FOOTER ────────────────────────────────────────────────────────
+   One footer, every surface: the signed-in app, the landing page, FAQ,
+   Privacy, Terms. It is the site's link graph made visible — real <a href>
+   links with sentence-sized names, grouped in labelled <nav> columns. That is
+   what a crawler reads when it decides which pages deserve sitelinks, and it
+   is what a person reads when they are one scroll from leaving.
+   Quiet by design: paper, hairlines, small type. The app's content is the
+   loud part. */
+.site-foot { background: var(--card); border-top: 1px solid var(--line); }
+.site-foot-in { display: grid; grid-template-columns: 1.25fr repeat(3, minmax(0, 1fr)); gap: 38px; max-width: 1200px; margin: 0 auto; padding: 46px 32px 34px; }
+.site-foot.is-compact .site-foot-in { padding: 38px 32px 28px; }
+.site-foot-brand p { margin: 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.65; max-width: 250px; }
+.site-foot-logo { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 800; font-size: 15px; letter-spacing: -0.2px; text-decoration: none; }
+.site-foot-logo svg { flex: none; }
+.site-foot-logo:hover { text-decoration: none; }
+.site-foot-col { display: flex; flex-direction: column; align-items: flex-start; gap: 9px; min-width: 0; }
+.site-foot-col h2 { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--faint); margin: 0 0 4px; }
+.site-foot-col a { color: var(--muted); font-size: 13px; line-height: 1.45; text-decoration: none; transition: color var(--t); }
+.site-foot-col a:hover { color: var(--accent); text-decoration: none; }
+.site-foot-col a.active { color: var(--accent); font-weight: 600; }
+.site-foot-base { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; max-width: 1200px; margin: 0 auto; padding: 16px 32px 22px; border-top: 1px solid var(--line-soft); color: var(--faint); font-size: 12px; }
+.site-foot-live { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 600; }
+.site-foot-live i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
 .mobile-bar { display: none; }
 /* inputs inside flex rows (e.g. Test-bot send bar) must shrink instead of pushing buttons off-screen */
 .row-input { display: flex; gap: 10px; margin-top: 14px; }
@@ -731,7 +753,11 @@ body:has(.vai) .foot-links { display: none; } /* the chat is an app surface — 
   .mobile-bar a { display: flex; flex: 1 1 0; flex-direction: column; align-items: center; gap: 2px; font-size: 10.5px; color: var(--muted); font-weight: 600; padding: 6px 2px; min-width: 0; overflow: hidden; border-radius: 14px; }
   .mobile-bar a span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
   .mobile-bar a.active { color: var(--purple-dark); background: var(--purple-soft); }
-  .foot-links { padding-bottom: calc(84px + env(safe-area-inset-bottom)); flex-wrap: wrap; row-gap: 8px; }
+  .site-foot-in { grid-template-columns: 1fr 1fr; gap: 30px 24px; padding: 34px 20px 26px; }
+  .site-foot-brand { grid-column: 1 / -1; }
+  .site-foot-brand p { max-width: none; }
+  .site-foot-base { padding: 16px 20px 26px; flex-direction: column; align-items: flex-start; gap: 8px; }
+  .site-foot.is-compact .site-foot-base { padding-bottom: calc(88px + env(safe-area-inset-bottom)); } /* clears the floating tab bar (app only) */
   .live-dot { display: none; }
   .toast-wrap { left: 14px; right: 14px; }
   .toast { width: 100%; max-width: none; }
@@ -859,7 +885,7 @@ body:has(.vai) .foot-links { display: none; } /* the chat is an app surface — 
 .landing-price { text-align: right; }
 .landing-price b { font-size: 32px; color: #fff; }
 .landing-price span { display: block; font-size: 13px; color: var(--text-2); margin-bottom: 10px; }
-.landing .foot-links { padding-bottom: 40px; }
+.landing .site-foot { margin-top: 8px; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (max-width: 960px) { .landing-hero { grid-template-columns: 1fr; padding: 40px 20px 28px; } .landing-hero h1 { font-size: 32px; } }
 /* dashboard */
@@ -1063,7 +1089,7 @@ button.mini-link:hover { text-decoration: underline; }
 [data-theme="dark"] .learn-box.light { background: var(--line-soft); color: var(--ink); border-color: var(--line); }
 [data-theme="dark"] .learn-box.light .reply { background: var(--card); color: var(--ink); }
 [data-theme="dark"] .trial-strip { background: var(--gold-bg); border-color: var(--gold-line); color: #f5d9a8; }
-[data-theme="dark"] .foot-links a { color: var(--muted); }
+[data-theme="dark"] .site-foot-col a { color: var(--muted); }
 [data-theme="dark"] .auth-pane { color: var(--ink); }
 [data-theme="dark"] .mock { background: var(--line-soft); color: var(--ink); }
 
@@ -1956,4 +1982,16 @@ a.ov-stat:hover { border-color: var(--purple-line); box-shadow: var(--shadow-md)
   .re-hero-actions .btn { width: 100%; }
   .re-hero-side { padding: 14px; }
   .re-earn { font-size: 26px; }
+}
+
+/* ── PHONE HEADER FIT (≤520px) ───────────────────────────────────────────
+   At 390px the wordmark, the sign-in link and the trial button cannot all
+   sit on one line at their desktop sizes; the brand used to wrap onto two
+   lines and collide with the buttons. Shrink the lockup, keep every word,
+   and let the row breathe instead of hiding the primary CTA. */
+@media (max-width: 520px) {
+  .landing-nav .landing-inner { gap: 12px; }
+  .landing-brand { font-size: 12px; letter-spacing: 0.4px; gap: 8px; min-width: 0; white-space: nowrap; }
+  .landing-brand svg { height: 26px; width: auto; }
+  .landing-nav .btn { padding: 6px 9px; font-size: 12px; }
 }

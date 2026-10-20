@@ -3,17 +3,14 @@
 # only for direct "website folder as site root" deploys (e.g. drag-and-drop).
 # NOTE: publish is relative to base, so it must be "." here (NOT "website/" —
 # that wrongly resolved to website/website and broke builds!).
+#
+# NO SPA CATCH-ALL: every page is a real index.html. Unknown paths fall through
+# to 404.html on purpose, so crawlers see a true 404 instead of a soft one.
 
 [build]
   base = "website/"
   publish = "."
   command = ""
-
-# Single page + anchors: any deep link serves index.html.
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
 
 [[headers]]
   for = "/*"
@@ -21,6 +18,11 @@
     X-Frame-Options = "SAMEORIGIN"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
 
 [[headers]]
   for = "/assets/*"

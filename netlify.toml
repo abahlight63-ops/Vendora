@@ -4,16 +4,15 @@
 # Dashboard settings that match: Base directory = (EMPTY!), Build command =
 # (empty), Publish directory = website. Production branch = main.
 # Static site = nothing to build (pure HTML/CSS/JS), deploy is instant.
+#
+# NO SPA CATCH-ALL. This used to rewrite every unknown path to /index.html,
+# which turned real 404s into soft 404s (Google treats those as thin pages and
+# they poison sitelinks). Every page is now a real folder with a real
+# index.html, and Netlify serves website/404.html for anything that is not one.
 
 [build]
   publish = "website"
   command = ""
-
-# Single page + anchors: any deep link serves index.html (harmless for static).
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
 
 [[headers]]
   for = "/*"
@@ -22,7 +21,18 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
 
+# Pages must revalidate: a stale HTML file is a stale price and a stale offer.
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
 [[headers]]
   for = "/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/sitemap.xml"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"

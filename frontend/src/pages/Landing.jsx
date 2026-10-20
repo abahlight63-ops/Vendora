@@ -9,16 +9,18 @@ import ThemeToggle from '../components/ThemeToggle.jsx'; // guests get the eye-f
 import { useTheme } from '../lib/theme.js'; // self-served theme (no App props needed!)
 import { Link } from 'react-router-dom'; // Links (client-side nav, no reloads)
 import { useCurrency } from '../lib/locale.js'; // location → 'NGN' | 'USD' (single-currency pricing!)
-
-// WEBSITE_URL: the Netlify marketing site (full videos + story). Empty string =
-// link hidden (set once Netlify is live, e.g. https://vendorabot.netlify.app).
-const WEBSITE_URL = '';
+import SiteFooter from '../components/SiteFooter.jsx'; // one footer everywhere (real links → sitelinks)
+import { setPageMeta, APP_URL } from '../lib/seo.js'; // per-route title + description + canonical (SPA head hygiene)
 
 export default function Landing() { // single premium dark theme (no props — App still passes theme, harmlessly ignored!)
   const [theme, toggleTheme] = useTheme(); // nav toggle state (persisted!)
   const cur = useCurrency(); // visitor currency (NGN default → corrected after IP/timezone detection, auto re-render!)
   useEffect(() => { // mount: title + scroll-reveal wiring…
-    document.title = 'VeloSales Ai — Your WhatsApp shop, open 24/7'; // tab title (SEO-ish + tabs)
+    setPageMeta({
+      title: 'VeloSales Ai — Your WhatsApp shop, open 24/7',
+      description: 'VeloSales Ai is an AI sales assistant for WhatsApp. It answers price, stock, delivery and hours questions 24/7 in English or Pidgin, straight from your catalog. Free plan, 7-day Pro trial.',
+      canonical: APP_URL + '/',
+    });
     const els = document.querySelectorAll('.reveal'); // grab ALL reveal elements (cards below)…
     const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) e.target.classList.add('vis'); }), { threshold: 0.12 }); // IntersectionObserver = browser API: fires when element enters viewport (12% visible → add .vis → CSS transitions opacity/position. No scroll listeners = buttery + battery-friendly!)
     els.forEach((el) => io.observe(el)); // watch each…
@@ -87,8 +89,8 @@ export default function Landing() { // single premium dark theme (no props — A
       </section>
 
       <section className="landing-inner reveal"> {/* PRO spotlight: the bot that does real work (your premium-tier positioning!) */}
-        <div className="card hover-lift" style={{ borderColor: '#25d366' }}>
-          <span className="pill ok">VeloSales Ai Pro</span>
+        <div className="card hover-lift" style={{ borderColor: 'var(--purple-line)' }}>
+          <span className="pill brand">VeloSales Ai Pro</span>
           <h2 style={{ marginTop: 10 }}>Your AI Assistant That Actually Works For You.</h2>
           <p className="desc">Answering questions was just the interview. Pro rolls up its sleeves: tell it <b>"sold 3 bags of rice"</b> and your stock updates itself — before and after confirmed, every change logged and undoable. Supplier reorder drafts and auto-invoicing are on the way, same tier. No spreadsheets. No stock-taking Sundays. No "I thought we had more."</p>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -107,11 +109,7 @@ export default function Landing() { // single premium dark theme (no props — A
         </div>
       </section>
 
-      <footer className="foot-links landing-inner"> {/* <footer> semantic landmark: legal links + copyright */}
-        <Link to="/faq">FAQ</Link><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link> {/* Router Links (client-side) */}
-        {WEBSITE_URL && <a href={WEBSITE_URL} target="_blank" rel="noreferrer">Full website ↗</a>} {/* marketing site (hidden until WEBSITE_URL set!) */}
-        <span className="hint">© 2026 VeloSales Ai · Made for shops that never sleep</span>
-      </footer>
+      <SiteFooter /> {/* global footer: the map of every public page (real <a href>, descriptive anchors) */}
     </div>
   );
 }

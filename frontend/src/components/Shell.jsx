@@ -11,6 +11,7 @@ import { api, toast } from '../lib/api.js'; // api() for the logout call (+ vers
 import ThemeToggle from './ThemeToggle.jsx'; // sun/moon button (topbar — light mode for sensitive eyes!)
 import Notifications from './Notifications.jsx'; // bell (payment + update alerts)
 import Tour from './Tour.jsx'; // first-run coachmarks (mounted once here = available everywhere)
+import SiteFooter from './SiteFooter.jsx'; // one footer everywhere: the crawlable map of the product
 
 const GROUPS = [ // sidebar sections: label + [iconKey, label, route] rows (data-driven nav = add a row, get a link)
   { label: 'Sell', items: [['overview', 'Overview', '/dashboard'], ['chats', 'Inbox', '/chats'], ['catalog', 'Catalog', '/catalog'], ['connect', 'Connect', '/connect'], ['playground', 'Test bot', '/playground']] }, // nested arrays: [icon, label, href] per item
@@ -72,7 +73,12 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
   const [menuOpen, setMenuOpen] = useState(false); // mobile drawer open? (desktop sidebar always visible via CSS)
   const [confirmOut, setConfirmOut] = useState(false); // the sign-out confirmation (one tap away from losing your chat list)
   const [updateBanner, setUpdateBanner] = useState(null); // {version} while the 2-min NEW window is open (null = hidden!)
-  useEffect(() => { document.title = 'VeloSales Ai — ' + (TITLES[pathname] || 'Overview'); }, [pathname]); // side-effect: browser tab title follows route (|| fallback)
+  useEffect(() => { // side-effects: tab title + robots, both follow the route
+    document.title = 'VeloSales Ai — ' + (TITLES[pathname] || 'Overview'); // || fallback keeps the tab readable
+    const meta = document.getElementById('route-robots');
+    if (meta) meta.setAttribute('content', 'noindex,follow'); // private app pages: don't let Google index an empty shell
+    return () => { if (meta) meta.setAttribute('content', 'index,follow'); }; // leaving the app (sign-out → /login) restores indexing for public pages
+  }, [pathname]);
   useEffect(() => { setMenuOpen(false); }, [pathname]); // auto-close drawer on every navigation (pick a link → drawer vanishes)
   useEffect(() => { // lock body scroll while drawer open (background mustn't scroll under the overlay)…
     document.body.style.overflow = menuOpen ? 'hidden' : ''; // '' restores default ('hidden' disables scroll)
@@ -166,7 +172,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
       <nav className="mobile-bar"> {/* bottom tab bar: mobile only (CSS), 5 key sections */}
         {mobile.map(([k, label, href]) => (<NavLink key={k} to={href}><Icon k={k} /><span>{label}</span></NavLink>))}
       </nav>
-      <div className="foot-links"><NavLink to="/help">Help</NavLink><NavLink to="/faq">FAQ</NavLink><NavLink to="/privacy">Privacy</NavLink><NavLink to="/terms">Terms</NavLink></div> {/* legal links (public FAQ/privacy/terms need no login) */}
+      <SiteFooter compact /> {/* global footer: real links to the marketing site + public app pages (SEO/sitelinks), sits below the app frame */}
       <Tour /> {/* coachmarks overlay (renders null until triggered) */}
       {confirmOut && (
         // A confirmation, not a punishment: nothing here is styled red, because

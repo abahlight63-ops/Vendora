@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="VeloSales Ai">
+  <rect width="64" height="64" rx="14" fill="#4F3FC7"/>
+  <g transform="translate(14 11.2) scale(0.0598)">
+    <path d="M301 0 L602 189 L602 513 L301 696 L0 513 L0 189 Z M0 189 L602 189 L301 696 Z" fill-rule="evenodd" fill="#FFFFFF"/>
+  </g>
+</svg>

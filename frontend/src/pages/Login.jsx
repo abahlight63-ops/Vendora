@@ -11,6 +11,7 @@ import { api } from '../lib/api.js'; // api() auth calls
 import { normalizePhone, prettyPhone } from '../lib/phone.js'; // WhatsApp input help (validate + pretty-print on blur)
 import Ic from '../components/icons.jsx'; // bolt/spark/hand/check/mail/eye icons
 import Loader from '../components/Loader.jsx'; // mini orbit inside busy buttons (the brand, spinning!)
+import { setPageMeta, APP_URL } from '../lib/seo.js'; // title + description + canonical
 
 const DEMO = [ // scripted demo conversation (loops forever in the brand panel!)
   { from: 'you', text: 'Abeg, do you have blue gown?' }, // from: 'you' = customer bubble (right)…
@@ -134,7 +135,13 @@ async function fetchGoogleClientId() { // module-level fetch (called once below)
 fetchGoogleClientId(); // fire on module load (once per page-load — cached on window!)
 
 export default function Login({ setMe }) { // setMe prop = App's state setter (login updates GLOBAL login state directly — no reload!)
-  useEffect(() => { document.title = 'VeloSales Ai — Sign in'; }, []); // tab title (mount-only side-effect)
+  useEffect(() => {
+    setPageMeta({
+      title: 'VeloSales Ai — Sign in or create your account',
+      description: 'Sign in to VeloSales Ai to open your WhatsApp inbox, catalog, insights and AI settings — or create a free account and start the 7-day Pro trial. No card needed.',
+      canonical: APP_URL + '/login',
+    });
+  }, []); // mount-only side-effect
   const nav = useNavigate(); // code navigation (afterAuth below)
   const [mode, setMode] = useState('login'); // 'login' | 'signup' (one form, two modes — toggled by link below!)
   const [msg, setMsg] = useState(''); // status line text ("Welcome back…" / errors)

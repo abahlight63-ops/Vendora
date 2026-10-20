@@ -8,6 +8,8 @@ import { useEffect, useMemo, useState } from 'react'; // useMemo = cached comput
 import Logo from '../components/Logo.jsx'; // theme-aware brand mark (blue dark / green light!)
 import { Link } from 'react-router-dom'; // brand/home/signin/trial/footer links
 import Ic from '../components/icons.jsx'; // drawn close glyph for the search-clear button
+import SiteFooter from '../components/SiteFooter.jsx'; // global footer (real links, descriptive anchors)
+import { setPageMeta, APP_URL } from '../lib/seo.js'; // title + description + canonical
 
 const FAQS = [ // 15 pairs — CUSTOMER voice (plain answers, zero jargon; in-app Help rephrases for owners)
   ['Is there really a free plan?', 'Yes — the manual catalog is free forever: add products on the dashboard or teach the bot with LEARN: messages and it replies to customers at no cost. Pro (profile sync plus verification) is what you pay for, and every account starts with a 7-day Pro trial (countdown shown, bell warns you before it ends).'],
@@ -39,7 +41,13 @@ function useReveal() { // CUSTOM HOOK: fade .reveal elements in on scroll (Inter
 export default function Faq() {
   const [open, setOpen] = useState(0); // open accordion index (0 = first open on load shows the pattern; -1 = all closed)
   const [query, setQuery] = useState(''); // live search text (controlled input below)
-  useEffect(() => { document.title = 'VeloSales Ai — FAQ'; }, []); // tab title
+  useEffect(() => {
+    setPageMeta({
+      title: 'VeloSales Ai — Frequently asked questions',
+      description: 'Answers about VeloSales Ai: connecting WhatsApp, LEARN mode, the free plan, the 7-day Pro trial, billing in naira or dollars, and what the AI will never do.',
+      canonical: APP_URL + '/faq',
+    });
+  }, []); // mount-only
   useReveal(); // scroll-reveal wiring (hooks are just functions — top-level call, stable order)
   const shown = useMemo(() => { // filtered list, recomputed ONLY when query changes (useMemo caches otherwise)…
     const q = query.trim().toLowerCase(); // normalize once (trim + lowercase = case-insensitive match)
@@ -84,9 +92,7 @@ export default function Faq() {
           <Link className="btn" to="/login">Start free — 7 days Pro</Link>
         </div>
       </section>
-      <footer className="foot-links landing-inner"> {/* legal trio (consistent everywhere) */}
-        <Link to="/faq">FAQ</Link><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

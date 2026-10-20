@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react'; // useState = passwords + status; u
 import { Link } from 'react-router-dom'; // back-to-login link
 import { api } from '../lib/api.js'; // reset POST
 import Loader from '../components/Loader.jsx'; // mini orbit in the save button
+import { setPageMeta, APP_URL } from '../lib/seo.js'; // title + description + canonical
 
 export default function Reset() {
   const [pw1, setPw1] = useState(''); // new password draft
@@ -17,7 +18,14 @@ export default function Reset() {
   const [busy, setBusy] = useState(false); // submit lock (double-submit protection!)
   const [done, setDone] = useState(false); // success → swap form for "go sign in" (no dead form lingering!)
   const token = new URLSearchParams(window.location.search).get('token') || ''; // URLSearchParams parses ?token=… (?token missing → '' → backend 400s with the vague message!)
-  useEffect(() => { document.title = 'VeloSales Ai — Reset password'; }, []); // tab title
+  useEffect(() => {
+    setPageMeta({
+      title: 'VeloSales Ai — Reset password',
+      description: 'Choose a new password for your VeloSales Ai account. The reset link in your email is the only credential needed — it expires after one use.',
+      canonical: APP_URL + '/reset',
+      robots: 'noindex,follow', // token page: nothing to rank, everything to protect
+    });
+  }, []);
   async function submit() { // validate locally, then consume the token…
     if (pw1.length < 8) { setMsg('Password must be at least 8 characters.'); setErr(true); return; } // client mirror of server rule (fail fast!)
     if (pw1 !== pw2) { setMsg('Passwords do not match — retype both.'); setErr(true); return; } // match check BEFORE any request (typo'd passwords lock users out!)

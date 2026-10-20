@@ -7,10 +7,18 @@
 // inside legal copy would break readability AND risk altering legal meaning!
 import { useEffect } from 'react'; // useEffect = tab title on mount
 import Logo from '../components/Logo.jsx'; // theme-aware brand mark (blue dark / green light!)
-import { Link } from 'react-router-dom'; // brand/login/faq/terms links + footer
+import { Link } from 'react-router-dom'; // brand/login/faq/terms links
+import SiteFooter from '../components/SiteFooter.jsx'; // global footer (real links, descriptive anchors)
+import { setPageMeta, APP_URL } from '../lib/seo.js'; // title + description + canonical
 
 export default function Privacy() {
-  useEffect(() => { document.title = 'VeloSales Ai — Privacy Policy'; }, []); // tab title (mount-only)
+  useEffect(() => {
+    setPageMeta({
+      title: 'VeloSales Ai — Privacy Policy',
+      description: 'How VeloSales Ai collects, uses and protects your business data, customer messages and payment details — a plain-English NDPR privacy policy.',
+      canonical: APP_URL + '/privacy',
+    });
+  }, []); // mount-only
   return (
     <div className="landing">
       <header className="landing-nav"><div className="landing-inner">
@@ -98,9 +106,7 @@ export default function Privacy() {
           </div>
         </div>
       </section>
-      <footer className="foot-links landing-inner">
-        <Link to="/faq">FAQ</Link><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

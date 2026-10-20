@@ -11,8 +11,6 @@ import { api, toast } from '../lib/api.js'; // api() for the logout call (+ vers
 import ThemeToggle from './ThemeToggle.jsx'; // sun/moon button (topbar — light mode for sensitive eyes!)
 import Notifications from './Notifications.jsx'; // bell (payment + update alerts)
 import Tour from './Tour.jsx'; // first-run coachmarks (mounted once here = available everywhere)
-import SiteFooter from './SiteFooter.jsx'; // one footer everywhere: the crawlable map of the product
-
 const GROUPS = [ // sidebar sections: label + [iconKey, label, route] rows (data-driven nav = add a row, get a link)
   { label: 'Sell', items: [['overview', 'Overview', '/dashboard'], ['chats', 'Inbox', '/chats'], ['catalog', 'Catalog', '/catalog'], ['connect', 'Connect', '/connect'], ['playground', 'Test bot', '/playground']] }, // nested arrays: [icon, label, href] per item
   { label: 'Grow', items: [['insights', 'Insights', '/insights'], ['velosalesai', 'Chat with Velo', '/velosales-ai'], ['gift', 'Refer & Earn', '/refer-earn'], ['billing', 'Billing', '/billing']] },
@@ -172,7 +170,6 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
       <nav className="mobile-bar"> {/* bottom tab bar: mobile only (CSS), 5 key sections */}
         {mobile.map(([k, label, href]) => (<NavLink key={k} to={href}><Icon k={k} /><span>{label}</span></NavLink>))}
       </nav>
-      <SiteFooter compact /> {/* global footer: real links to the marketing site + public app pages (SEO/sitelinks), sits below the app frame */}
       <Tour /> {/* coachmarks overlay (renders null until triggered) */}
       {confirmOut && (
         // A confirmation, not a punishment: nothing here is styled red, because

@@ -12,6 +12,7 @@
 // the whole row: business fields first (so validation passes), THEN settings.
 import { useEffect, useState } from 'react'; // useState = the form + the picked tier; useEffect = load tiers once
 import { api, pop } from '../lib/api.js'; // api() calls; pop() animated outcomes
+import Select from '../components/Select.jsx'; // the ONE dropdown control (same as catalog, billing, niche)
 import Ic from '../components/icons.jsx'; // check/tick glyphs
 import { BUCKETS, bucketOf, idFor, modelFor } from '../components/BrainPicker.jsx'; // the ONLY module that knows engines exist
 
@@ -23,9 +24,26 @@ const FOR = {
   smart: ['Tricky bargaining and long questions', 'Writing captions and offers for you', 'When quality matters more than speed'],
 };
 
+// The shop's voice. Values are what the server stores (plain text, lower case);
+// labels are what an owner reads. One dropdown, five real choices — the old
+// free-text box plus chips made people wonder whether their own words counted.
+const TONES = [
+  { value: 'warm and friendly', label: 'Warm and friendly', hint: 'Greets people, never rushes them' },
+  { value: 'friendly and helpful', label: 'Friendly and helpful', hint: 'The balanced default — clear and kind' },
+  { value: 'short and businesslike', label: 'Short and businesslike', hint: 'Price, stock, next step. No small talk' },
+  { value: 'playful market aunty', label: 'Playful market aunty', hint: 'Local warmth and light teasing, always respectful' },
+  { value: 'calm and respectful', label: 'Calm and respectful', hint: 'Gentle and patient — good for premium goods' },
+];
+
+function canonicalTone(raw) {
+  const t = String(raw || '').trim();
+  const hit = TONES.find((x) => x.value.toLowerCase() === t.toLowerCase());
+  return hit ? hit.value : (t || 'friendly and helpful');
+}
+
 export default function AiSettings({ biz }) {
   const [f, setF] = useState({
-    tone: biz?.tone || 'friendly and helpful',
+    tone: canonicalTone(biz?.tone),
     greeting: biz?.greeting_msg || '',
     handoff: biz?.handoff_msg || 'Thanks for your message! A member of our team will get back to you shortly.',
     discount: biz?.max_discount_pct ?? 0,
@@ -83,7 +101,10 @@ export default function AiSettings({ biz }) {
 
   const cur = BUCKETS.find((b) => b.key === tier) || BUCKETS[1];
   const symbol = biz?.currency === 'USD' ? '$' : '₦';
-  const toneChips = ['Warm and friendly', 'Short and businesslike', 'Playful market aunty', 'Calm and respectful'];
+  // Keep an older custom sentence selectable (never silently overwrite it).
+  const toneOptions = TONES.some((t) => t.value === f.tone)
+    ? TONES
+    : [{ value: f.tone, label: f.tone, hint: 'Your saved style — pick one above to simplify' }, ...TONES];
   const pct = Number(f.discount) || 0;
   const sample = 21500; // a believable dress price, only used to SHOW the maths
   return (
@@ -124,14 +145,18 @@ export default function AiSettings({ biz }) {
       {/* ── 2. the voice ─────────────────────────────────────────────── */}
       <div className="card">
         <h2>Personality</h2>
-        <p className="desc">How the AI talks to customers. Warm and respectful is built in — describe YOUR shop's style here.</p>
-        <label>Shop personality (tone)</label>
-        <textarea value={f.tone} onChange={set('tone')} rows="2" maxLength={300} placeholder="e.g. warm and playful like a market aunty, but always respectful" />
-        <div className="ai-chips">
-          {toneChips.map((t) => (
-            <button key={t} type="button" className={'ai-chip' + (f.tone.trim().toLowerCase() === t.toLowerCase() ? ' on' : '')} onClick={() => { setF({ ...f, tone: t }); setDirty(true); }}>{t}</button>
-          ))}
-        </div>
+        <p className="desc">How the AI talks to customers. Warm and respectful is built in — choose the style closest to your shop.</p>
+        <label>Shop personality</label>
+        <Select
+          value={f.tone}
+          onChange={(v) => { setF({ ...f, tone: v }); setDirty(true); }}
+          options={toneOptions}
+          label="Shop personality"
+          placeholder="Choose a personality"
+        />
+        <p className="hint" style={{ marginTop: 8 }}>
+          {toneOptions.find((t) => t.value === f.tone)?.hint || 'Pick how your shop should sound.'}
+        </p>
       </div>
 
       {/* ── 3. greeting, with the customer's-eye preview ─────────────── */}

@@ -449,10 +449,35 @@ tbody td .ic{color:var(--mint)}
 .foot-bottom a{color:var(--muted);text-decoration:none}
 .foot-bottom a:hover{color:#fff}
 
-/* 404 */
-.err-wrap{max-width:620px;margin:0 auto;padding:70px 22px 90px;text-align:center}
-.err-code{font-family:var(--disp);font-size:clamp(4rem,14vw,8rem);font-weight:800;line-height:1;
-  background:linear-gradient(92deg,#E4DFFE,#A99FFA 45%,#5B4BD6);-webkit-background-clip:text;background-clip:text;color:transparent}
+/* 404 — a quiet room, not an alarm: the mark, one numeral, four real doors. */
+.err-stage{max-width:760px;margin:0 auto;padding:clamp(30px,7vh,72px) 22px 80px;text-align:center}
+.err-art{position:relative;width:124px;height:112px;margin:0 auto 4px;display:grid;place-items:center}
+.err-halo{position:absolute;inset:-14px -30px;border-radius:50%;
+  background:radial-gradient(circle at 50% 45%,rgba(139,127,240,.22),transparent 68%);pointer-events:none}
+.err-art img{position:relative;filter:drop-shadow(0 14px 26px rgba(0,0,0,.42));animation:errFloat 6s ease-in-out infinite}
+.err-eyebrow{color:var(--mint);margin-bottom:2px}
+.err-num{font-family:var(--disp);font-size:clamp(5.4rem,17vw,9.6rem);font-weight:800;line-height:.92;
+  letter-spacing:-.07em;user-select:none;background:linear-gradient(160deg,#E4DFFE 6%,#A99FFA 50%,#5B4BD6 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.err-stage h1{font-size:clamp(1.7rem,3.6vw,2.4rem);letter-spacing:-.03em;margin-top:4px}
+.err-lede{max-width:31rem;margin-left:auto;margin-right:auto;font-size:1.02rem;line-height:1.65}
+.err-actions{margin-top:22px}
+.err-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:590px;
+  margin:32px auto 0;text-align:left}
+.err-links a{display:block;padding:15px 17px;border:1px solid var(--glass-brd);border-radius:15px;
+  background:rgba(255,255,255,.045);color:var(--ink);text-decoration:none;
+  transition:transform .2s ease,border-color .2s ease,background .2s ease}
+.err-links a:hover{transform:translateY(-2px);border-color:rgba(169,159,250,.45);background:rgba(255,255,255,.07);color:#fff}
+.err-links b{display:block;font-size:.94rem;letter-spacing:-.01em;margin-bottom:2px}
+.err-links span{display:block;color:var(--muted);font-size:.82rem;line-height:1.45}
+.err-help{margin-top:26px;color:var(--faint);font-size:.82rem}
+.err-help a{color:var(--mint);font-weight:600}
+@keyframes errFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@media (prefers-reduced-motion:reduce){.err-art img{animation:none}}
+@media (max-width:560px){
+  .err-links{grid-template-columns:1fr;margin-top:26px}
+  .err-actions .btn{flex:1 1 auto;justify-content:center}
+}
 
 /* ── reveal ── */
 .reveal{opacity:0;transform:translateY(26px);transition:opacity .65s ease,transform .65s ease}

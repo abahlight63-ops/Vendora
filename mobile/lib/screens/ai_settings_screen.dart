@@ -17,7 +17,41 @@ import '../api.dart';
 import '../glass.dart';
 import '../motion.dart';
 import '../theme.dart';
+import '../widgets/app_select.dart';
 import '../widgets/brand_ui.dart';
+
+/// The shop's voice. Stored values stay plain lower-case text (the server has
+/// always accepted free text); the phone only ever shows the readable label.
+const _tonePresets = [
+  AppSelectOption(
+      value: 'warm and friendly',
+      label: 'Warm and friendly',
+      hint: 'Greets people, never rushes them'),
+  AppSelectOption(
+      value: 'friendly and helpful',
+      label: 'Friendly and helpful',
+      hint: 'The balanced default — clear and kind'),
+  AppSelectOption(
+      value: 'short and businesslike',
+      label: 'Short and businesslike',
+      hint: 'Price, stock, next step. No small talk'),
+  AppSelectOption(
+      value: 'playful market aunty',
+      label: 'Playful market aunty',
+      hint: 'Local warmth and light teasing, always respectful'),
+  AppSelectOption(
+      value: 'calm and respectful',
+      label: 'Calm and respectful',
+      hint: 'Gentle and patient — good for premium goods'),
+];
+
+String _canonicalTone(String raw) {
+  final t = raw.trim();
+  for (final o in _tonePresets) {
+    if (o.value.toLowerCase() == t.toLowerCase()) return o.value;
+  }
+  return t.isEmpty ? 'friendly and helpful' : t;
+}
 
 /// The three tiers, in the owner's words. One list, so the labels and blurbs
 /// cannot drift between the chat, Connect and this page.
@@ -83,13 +117,6 @@ class _AiSettingsScreenState extends State<AiSettingsScreen> {
   bool _dirty = false;
   String? _err;
 
-  static const _toneChips = [
-    'Warm and friendly',
-    'Short and businesslike',
-    'Playful market aunty',
-    'Calm and respectful',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -104,6 +131,30 @@ class _AiSettingsScreenState extends State<AiSettingsScreen> {
     _discount.dispose();
     _minOrder.dispose();
     super.dispose();
+  }
+
+  /// Keeps an older custom sentence selectable instead of silently replacing
+  /// it the first time the sheet opens.
+  List<AppSelectOption> get _toneOptions {
+    final cur = _tone.text.trim();
+    if (cur.isEmpty || _tonePresets.any((o) => o.value == cur)) {
+      return _tonePresets;
+    }
+    return [
+      AppSelectOption(
+          value: cur,
+          label: cur,
+          hint: 'Your saved style — pick one to simplify'),
+      ..._tonePresets,
+    ];
+  }
+
+  String get _toneHint {
+    final cur = _tone.text.trim();
+    for (final o in _toneOptions) {
+      if (o.value == cur) return o.hint ?? 'Pick how your shop should sound.';
+    }
+    return 'Pick how your shop should sound.';
   }
 
   Future<void> _load() async {
@@ -130,7 +181,7 @@ class _AiSettingsScreenState extends State<AiSettingsScreen> {
         _me = me;
         _models = models;
         _currency = '${me['currency'] ?? 'NGN'}';
-        _tone.text = '${me['tone'] ?? 'friendly and helpful'}';
+        _tone.text = _canonicalTone('${me['tone'] ?? ''}');
         _greeting.text = '${me['greeting_msg'] ?? ''}';
         _handoff.text = '${me['handoff_msg'] ?? 'Thanks for your message! A member of our team will get back to you shortly.'}';
         _discount.text = '${_numOr(me['max_discount_pct'], 0)}';
@@ -354,39 +405,33 @@ class _AiSettingsScreenState extends State<AiSettingsScreen> {
         SoftPanel(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(
-              'How the AI talks to customers. Warm and respectful is built in — describe your own style here.',
+              'How the AI talks to customers. Warm and respectful is built in — choose the style closest to your shop.',
               style: TextStyle(
                   fontSize: 13,
                   height: 1.5,
                   color: scheme.onSurface.withValues(alpha: 0.62)),
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _tone,
-              onChanged: (_) => _edited(),
-              maxLines: 2,
-              maxLength: 300,
-              decoration: const InputDecoration(
-                labelText: 'Shop personality (tone)',
-                counterText: '',
-                hintText: 'e.g. warm and playful like a market aunty',
-              ),
+            // One dropdown, the same control used by catalog and billing.
+            // The old free-text box + chips made owners wonder whether their
+            // own words counted; now the choice is explicit and one tap.
+            AppSelect(
+              label: 'Shop personality',
+              sheetTitle: 'How should your shop sound?',
+              value: _tone.text.trim(),
+              options: _toneOptions,
+              onChanged: (v) {
+                _tone.text = v;
+                _edited();
+              },
             ),
             const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final t in _toneChips)
-                  _Chip(
-                    label: t,
-                    selected: _tone.text.trim().toLowerCase() == t.toLowerCase(),
-                    onTap: () {
-                      _tone.text = t;
-                      _edited();
-                    },
-                  ),
-              ],
+            Text(
+              _toneHint,
+              style: TextStyle(
+                  fontSize: 12,
+                  height: 1.45,
+                  color: scheme.onSurface.withValues(alpha: 0.55)),
             ),
           ]),
         ),
@@ -668,37 +713,6 @@ class _Pill extends StatelessWidget {
             style: TextStyle(
                 fontSize: 10.5, fontWeight: FontWeight.w800, color: c)),
       ]),
-    );
-  }
-}
-
-/// A chip that fills in a field (tone presets). Kept local: chips elsewhere in
-/// the app are filters, and a filter chip that writes text is a different idea.
-class _Chip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  const _Chip({required this.label, required this.selected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Pressable(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? scheme.primaryContainer : scheme.surface,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: selected ? scheme.primary : scheme.outline),
-        ),
-        child: Text(label,
-            style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: selected ? scheme.primary : scheme.onSurface.withValues(alpha: 0.72))),
-      ),
     );
   }
 }

@@ -10,7 +10,14 @@
 // VITE_API_URL remains as an override (e.g. testing the API directly), but
 // empty is now the recommended value on Vercel (proxy handles it).
 export const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, ''); // import.meta.env = Vite's env (VITE_*-prefixed vars baked in at BUILD time!); strip trailing slash so '/api' joins cleanly
+export const OFFLINE_MSG = 'You look offline — reconnect and try again.'; // ONE sentence for every offline surface (cards, toasts, the Shell banner)
 export async function api(url, opts = {}) { // url like '/api/me'; opts = {method, body, headers…, timeout} (timeout ms, default 30s!)
+  // AIRPLANE MODE: the browser already knows there is no network, so waiting on
+  // a fetch that cannot leave the device is a lie (and a spinner with no end).
+  // Answer at once, in the same {ok,status,data} shape callers already handle.
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return { ok: false, status: 0, data: { error: OFFLINE_MSG, offline: true } };
+  }
   const ctrl = new AbortController(); // hanging requests must DIE (a stuck fetch = an eternally-loading page — the 12-hour skeleton bug!)
   const timer = setTimeout(() => ctrl.abort(), Number(opts.timeout) || 30000); // sleeping servers + dead networks abort into a catchable error
   try {

@@ -71,6 +71,14 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
   const [menuOpen, setMenuOpen] = useState(false); // mobile drawer open? (desktop sidebar always visible via CSS)
   const [confirmOut, setConfirmOut] = useState(false); // the sign-out confirmation (one tap away from losing your chat list)
   const [updateBanner, setUpdateBanner] = useState(null); // {version} while the 2-min NEW window is open (null = hidden!)
+  const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine)); // the browser's own network verdict (instant, no polling)
+  useEffect(() => { // connection truth is an EVENT, not a guess: flip the calm banner the moment the OS knows
+    const up = () => setOnline(true);
+    const down = () => setOnline(false);
+    window.addEventListener('online', up);
+    window.addEventListener('offline', down);
+    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down); };
+  }, []);
   useEffect(() => { // side-effects: tab title + robots, both follow the route
     document.title = 'VeloSales Ai — ' + (TITLES[pathname] || 'Overview'); // || fallback keeps the tab readable
     const meta = document.getElementById('route-robots');
@@ -157,6 +165,13 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
             </div>
           </header>
           <main className="page">
+            {!online && (
+              <div className="offline-banner" role="status" aria-live="polite"> {/* honest + calm: the state, and what it means for their work */}
+                <span className="offline-dot" aria-hidden="true" />
+                <span><b>You’re offline.</b> We’ll keep this screen exactly as it is — reconnect and everything carries on.</span>
+                <button className="btn ghost sm" onClick={() => window.location.reload()}>Try again</button>
+              </div>
+            )}
             {updateBanner && (
               <div className="update-banner" role="status"> {/* 2-min release banner (auto-hides!) */}
                 <span className="pill new">NEW</span>

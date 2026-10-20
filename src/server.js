@@ -144,8 +144,16 @@ const spa = (req, res) => {
   if (hasDist) return res.sendFile(path.join(distDir, 'index.html')); // React Router takes over client-side
   return res.status(503).json({ error: 'Frontend not built. Run: npm run build' }); // 503 = not ready
 };
-// All app routes → React SPA
-['/', '/login', '/reset', '/onboarding', '/welcome', '/dashboard', '/profile', '/catalog', '/connect', '/chats', '/billing', '/contact-sales', '/playground', '/insights', '/velosales-ai', '/settings', '/help', '/privacy', '/terms', '/faq', '/admin'].forEach((r) => app.get(r, spa)); // register each page → same handler
+// All app routes → React SPA. A hardcoded whitelist was a losing game: the day
+// a route was added (/ai-settings, /notifications, /refer-earn) a refresh or a
+// bookmark 404'd while in-app navigation still worked. Any GET that is not an
+// API/webhook call and has no file extension is a page — React Router answers it.
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api') || req.path.startsWith('/webhook')) return next(); // real API/webhook 404s must stay JSON
+  if (req.path === '/health') return next(); // liveness probe (handled above)
+  if (path.extname(req.path)) return next(); // missing asset (logo.js) → a real 404, not an HTML body
+  return spa(req, res); // e.g. /ai-settings, /notifications/42, /anything-else
+});
 
 // Keep-alive: free hosts nap after ~15 idle minutes (first reply then takes
 // ~60s — "instant answers" arriving in a minute lose sales!). A 9-minute

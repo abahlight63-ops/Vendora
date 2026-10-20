@@ -6,8 +6,10 @@
 // so the app stays logged in across restarts.
 // BASE URL: --dart-define API_BASE_URL=https://your-backend (default =
 // the live Render backend, same one vercel.json proxies to).
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -56,6 +58,20 @@ class ApiClient {
   static const _cookieKey = 'velosalesai_session_cookie';
   String? _cookie; // raw "connect.sid=..." pair (attributes stripped)
   bool _loaded = false;
+
+  /// True the moment a request proves the phone has no usable network, false
+  /// again on the next answer. The shell listens to this and shows one calm
+  /// amber strip — an error state the owner can see before they act.
+  static final ValueNotifier<bool> offline = ValueNotifier<bool>(false);
+
+  /// One sentence for every offline surface (screens, retry cards, the strip).
+  static const String offlineMessage =
+      'You look offline — reconnect and try again.';
+
+  /// A request that never answers must not become a spinner that never stops.
+  /// Twelve seconds is long enough for a cold Render start, short enough that
+  /// an owner sees the state instead of waiting on a dead Wi-Fi route.
+  static const Duration _timeout = Duration(seconds: 12);
 
 
 
@@ -116,16 +132,28 @@ class ApiClient {
     final uri = Uri.parse('$baseUrl$path');
     late http.Response r;
     final h = _headers();
-    if (method == 'GET') {
-      r = await http.get(uri, headers: _headers(json: false));
-    } else if (method == 'DELETE') {
-      r = await http.delete(uri, headers: _headers(json: false));
-    } else {
-      final body = jsonEncode(data ?? {});
-      r = method == 'PUT'
-          ? await http.put(uri, headers: h, body: body)
-          : await http.post(uri, headers: h, body: body);
+    try {
+      if (method == 'GET') {
+        r = await http.get(uri, headers: _headers(json: false)).timeout(_timeout);
+      } else if (method == 'DELETE') {
+        r = await http.delete(uri, headers: _headers(json: false)).timeout(_timeout);
+      } else {
+        final body = jsonEncode(data ?? {});
+        r = method == 'PUT'
+            ? await http.put(uri, headers: h, body: body).timeout(_timeout)
+            : await http.post(uri, headers: h, body: body).timeout(_timeout);
+      }
+    } on TimeoutException {
+      throw ApiException(0,
+          'The server took too long to answer. Check your connection, then try again.');
+    } on http.ClientException {
+      // No DNS, no route, airplane mode, dead Wi-Fi: the phone already knows.
+      // Flip the strip at once so the state is visible, then let the screen
+      // render its own retry card with the same sentence.
+      offline.value = true;
+      throw ApiException(0, offlineMessage);
     }
+    offline.value = false; // an answer (any status) proves the network is back
     await _saveCookie(r.headers['set-cookie']);
     return _decode(r);
   }
@@ -492,6 +520,3 @@ class ApiClient {
   Future<Map<String, dynamic>> version() async =>
       (await get('/api/version') as Map).cast<String, dynamic>();
 }
-
-// Fire-and-forget without importing dart:async everywhere.
-void unawaited(Future<void> f) {}

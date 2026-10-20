@@ -188,6 +188,14 @@ input:disabled { background: var(--bg-secondary); color: var(--text-3); }
 /* release banner (Shell: 2-min "NEW version live" notice) */
 .update-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--purple-soft); border: 1px solid var(--purple-line); border-radius: 14px; padding: 10px 14px; margin-bottom: 14px; font-size: 14px; font-weight: 600; }
 
+/* offline banner (Shell: shown the instant the browser reports no network).
+   Amber, not red: nothing failed and nothing is lost — the wires are simply
+   down. It sits in the page flow so it never covers a control. */
+.offline-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--gold-bg); border: 1px solid var(--gold-line); border-radius: 14px; padding: 10px 14px; margin-bottom: 14px; font-size: 13.5px; line-height: 1.45; color: var(--ink); }
+.offline-banner b { font-weight: 800; }
+.offline-banner .btn { margin-left: auto; }
+.offline-dot { width: 9px; height: 9px; flex: none; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 4px var(--gold-bg); }
+
 /* tables */
 .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
 .table-wrap table { min-width: 620px; }
@@ -2031,4 +2039,39 @@ a.ov-stat:hover { border-color: var(--purple-line); box-shadow: var(--shadow-md)
   .landing-brand { font-size: 12px; letter-spacing: 0.4px; gap: 8px; min-width: 0; white-space: nowrap; }
   .landing-brand svg { height: 26px; width: auto; }
   .landing-nav .btn { padding: 6px 9px; font-size: 12px; }
+}
+
+/* ── NOT FOUND (NotFound.jsx) ─────────────────────────────────────────────
+   A wrong address is a quiet room, not an alarm. One mark, one large numeral,
+   one sentence, four real doors. No red, no warning glyph — nothing failed. */
+.nf-stage { max-width: 760px; margin: 0 auto; padding: clamp(24px, 6vh, 64px) 6px 34px; text-align: center; }
+.nf-art { position: relative; width: 118px; height: 106px; margin: 0 auto 6px; display: grid; place-items: center; }
+.nf-halo { position: absolute; inset: -16px -26px; border-radius: 50%; background: radial-gradient(circle at 50% 45%, var(--purple-soft), transparent 68%); pointer-events: none; }
+.nf-art .vl-root { position: relative; filter: drop-shadow(0 10px 18px rgba(53, 42, 127, 0.18)); animation: nfFloat 6s ease-in-out infinite; }
+.nf-eyebrow { position: relative; font-size: 11px; font-weight: 800; letter-spacing: 1.8px; text-transform: uppercase; color: var(--purple-dark); margin-bottom: 2px; }
+.nf-code { position: relative; font-size: clamp(88px, 17vw, 148px); line-height: 0.92; font-weight: 800; letter-spacing: -0.07em; background: linear-gradient(160deg, var(--purple) 8%, #8b7ff0 52%, var(--purple-dark) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; user-select: none; }
+.nf-title { font-size: clamp(24px, 3.6vw, 33px); letter-spacing: -0.7px; margin-top: 4px; }
+.nf-lede { max-width: 31rem; margin: 10px auto 0; color: var(--muted); font-size: 15px; line-height: 1.65; }
+.nf-actions { display: flex; gap: 9px; justify-content: center; flex-wrap: wrap; margin-top: 22px; }
+.nf-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; max-width: 570px; margin: 30px auto 0; text-align: left; }
+.nf-links a { display: block; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink); text-decoration: none; box-shadow: var(--shadow-sm); transition: border-color var(--t), transform var(--t), box-shadow var(--t); }
+.nf-links a:hover { text-decoration: none; border-color: var(--purple-line); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.nf-links b { display: block; font-size: 14px; letter-spacing: -0.1px; }
+.nf-links span { display: block; margin-top: 2px; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.nf-help { margin-top: 24px; color: var(--faint); font-size: 12.5px; }
+.nf-help a { color: var(--purple-dark); font-weight: 600; }
+.nf-public { min-height: 100vh; display: flex; flex-direction: column; }
+.nf-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px clamp(16px, 4vw, 40px); }
+.nf-brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); font-weight: 800; font-size: 14px; letter-spacing: -0.2px; text-decoration: none; }
+.nf-brand:hover { text-decoration: none; }
+.nf-public-main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 0 20px 40px; }
+@keyframes nfFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .nf-art .vl-root { animation: none; } }
+[data-theme="dark"] .nf-code { background: linear-gradient(160deg, #cfc7fd 4%, #8b7ff0 55%, #5b4bd6 100%); -webkit-background-clip: text; background-clip: text; }
+[data-theme="dark"] .nf-eyebrow { color: var(--purple-line); }
+[data-theme="dark"] .nf-links a { background: var(--card); }
+[data-theme="dark"] .nf-halo { background: radial-gradient(circle at 50% 45%, rgba(139, 127, 240, 0.18), transparent 68%); }
+@media (max-width: 560px) {
+  .nf-links { grid-template-columns: 1fr; margin-top: 24px; }
+  .nf-actions .btn { flex: 1 1 auto; }
 }

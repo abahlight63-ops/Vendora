@@ -37,6 +37,7 @@ const VeloSalesAI = lazy(() => import('./pages/VeloSalesAI.jsx')); // general AI
 const Privacy = lazy(() => import('./pages/Privacy.jsx')); // public legal (no login needed)
 const Terms = lazy(() => import('./pages/Terms.jsx')); // public legal
 const Faq = lazy(() => import('./pages/Faq.jsx')); // public FAQ marketing page
+const NotFound = lazy(() => import('./pages/NotFound.jsx')); // the calm 404 (inside Shell when signed in!)
 function PageFallback() { // chunk loading placeholder (scatter logo — the brand moment, same family as Splash!)
   return <div className="page"><div className="card"><BrandGate /></div></div>;
 }
@@ -94,7 +95,7 @@ export default function App() { // ROOT component (main.jsx renders this)
       <Route path="/refer-earn" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><ReferEarn /></Guard>} /> {/* full Refer & Earn page (Dashboard card teasers it!) */}
       <Route path="/velosales-ai" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><VeloSalesAI biz={me} /></Guard>} />
       <Route path="/" element={loading ? <div className="page"><div className="card"><BrandGate /></div></div> : me ? <Navigate to="/dashboard" replace /> : <Landing theme={theme} onToggleTheme={toggleTheme} />} /> {/* / = smart root: loading→brand gate, logged-in→dashboard, guest→marketing landing (ternary chain) */}
-      <Route path="*" element={<div className="page"><div className="card"><h2>Page not found</h2><p className="hint">That link doesn't exist.</p><p style={{ marginTop: 12 }}><a href="/dashboard">Back to overview</a></p></div></div>} /> {/* path="*" = catch-all 404 (MUST be last — Routes picks first match!) */}
+      <Route path="*" element={<NotFound me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout} />} /> {/* path="*" = catch-all 404 (MUST be last — Routes picks first match!); keeps the nav when signed in */}
     </Routes></Suspense>
   );
 }

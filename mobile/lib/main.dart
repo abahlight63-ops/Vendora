@@ -578,13 +578,28 @@ class _HomeShellState extends State<HomeShell> {
           ),
         ],
       ),
-      body: IndexedStack(index: _tab, children: [
-        HomeScreen(onGoTab: _go),
-        const ChatsScreen(),
-        const CatalogScreen(),
-        const ConnectScreen(),
-        const AiScreen(),
-        const BillingScreen(),
+      body: Column(children: [
+        // The connection state lives above every tab, so it is visible before
+        // the owner taps anything — not discovered after a failed save.
+        ValueListenableBuilder<bool>(
+          valueListenable: ApiClient.offline,
+          builder: (_, isOffline, _) => AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            child: isOffline
+                ? const OfflineStrip()
+                : const SizedBox.shrink(key: ValueKey('online')),
+          ),
+        ),
+        Expanded(
+          child: IndexedStack(index: _tab, children: [
+            HomeScreen(onGoTab: _go),
+            const ChatsScreen(),
+            const CatalogScreen(),
+            const ConnectScreen(),
+            const AiScreen(),
+            const BillingScreen(),
+          ]),
+        ),
       ]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab > 4 ? 0 : _tab,
@@ -611,6 +626,52 @@ class _HomeShellState extends State<HomeShell> {
               selectedIcon: Icon(Icons.smart_toy_rounded),
               label: 'Ai'),
         ],
+      ),
+    );
+  }
+}
+
+/// The phone's offline strip. Amber (attention), never red (nothing broke):
+/// the network is down, the shop and its data are untouched. It appears the
+/// instant ApiClient sees a dead connection and leaves on the first answer.
+class OfflineStrip extends StatelessWidget {
+  const OfflineStrip({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: VeloSalesTheme.gold.withValues(alpha: 0.12),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+          child: Row(children: [
+            const Icon(Icons.cloud_off_outlined,
+                size: 17, color: VeloSalesTheme.gold),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'You’re offline. We’ll keep this screen as it is — reconnect and carry on.',
+                style: TextStyle(
+                    fontSize: 12.5,
+                    height: 1.4,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurface),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                // A real request is the only honest test; success clears the
+                // strip in ApiClient (no fake "online" toggle).
+                try {
+                  await ApiClient.instance.version();
+                } catch (_) {}
+              },
+              child: const Text('Retry'),
+            ),
+          ]),
+        ),
       ),
     );
   }

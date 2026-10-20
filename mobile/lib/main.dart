@@ -109,9 +109,10 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
       return [true, niche.isEmpty, name, niche, false];
     } on ApiException catch (e) {
       // status 0 = the request never reached the server (offline, no route,
-      // dead Wi-Fi). That is NOT the same as a 401 sign-out, and showing the
-      // login form would be a lie — show the offline screen with Retry.
-      return [false, false, '', '', e.status == 0];
+      // dead Wi-Fi); 5xx = the server itself is down or waking. Neither is a
+      // 401 sign-out, and showing the login form would be a lie — show the
+      // retry screen instead.
+      return [false, false, '', '', e.status == 0 || e.status >= 500];
     } catch (_) {
       return [false, false, '', '', true];
     }
@@ -721,7 +722,7 @@ class OfflineBoot extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'You look offline. Nothing has changed and no message was lost — reconnect, then try again.',
+              'The connection (or our server) isn’t answering. Nothing has changed and no message was lost — reconnect, then try again.',
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontSize: 13,

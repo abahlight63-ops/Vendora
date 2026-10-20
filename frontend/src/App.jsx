@@ -62,13 +62,18 @@ function useMe() { // CUSTOM HOOK: "who's logged in?" — returns {me, loading, 
 }
 
 function ConnectionWall({ onRetry }) { // cold start with no network: one calm screen, never a fake sign-out
+  const offline = typeof navigator !== 'undefined' && navigator.onLine === false; // the browser's own verdict, if it has one
   return (
     <div className="page" style={{ maxWidth: 520, margin: '12vh auto 0' }}>
       <div className="card">
         <div className="empty">
-          <Error3D tone="offline" />
-          <b>We can’t reach your shop right now</b>
-          <p>You look offline. Nothing has changed and no message was lost — reconnect, then try again.</p>
+          <Error3D tone={offline ? 'offline' : 'error'} />
+          <b>{offline ? 'You look offline' : 'We can’t reach your shop right now'}</b>
+          <p>
+            {offline
+              ? 'Nothing has changed and no message was lost — reconnect, then try again.'
+              : 'The server is taking longer than usual (it may be waking up). Nothing has changed — try again in a moment.'}
+          </p>
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14 }}>
           <button className="btn" onClick={onRetry}>Try again</button>

@@ -218,13 +218,16 @@ class GradientPill extends StatelessWidget {
           height: height,
           padding: EdgeInsets.symmetric(horizontal: dense ? 12 : 20),
           decoration: BoxDecoration(
-            gradient: VeloSalesTheme.cta(context),
+            // One fill, both themes — the web's `--accent-solid`. The old
+            // gradient read as a different product from the browser button.
+            color: VeloSalesTheme.accentSolid,
             borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
             boxShadow: [
               BoxShadow(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.28),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
+                color: const Color(0xFF171532).withValues(alpha: 0.14),
+                blurRadius: 2,
+                offset: const Offset(0, 1),
               ),
             ],
           ),
@@ -282,12 +285,20 @@ class SoftPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final panel = Container(
       padding: padding,
       decoration: BoxDecoration(
         color: scheme.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: scheme.outline),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: dark ? 0.28 : 0.045),
+            blurRadius: 3,
+            offset: const Offset(0, 1),
+          ),
+        ],
       ),
       child: child,
     );

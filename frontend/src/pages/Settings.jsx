@@ -8,6 +8,11 @@
 // to a 256px square → POST the data URL → the URL comes back on /api/me. No
 // storage service, no upload widget library, and the file never leaves the
 // browser at full size (a 4MB phone photo arrives as ~30KB).
+// Whatch full size photos? Use the catalog page, which is the only place customers see them anyway.
+//explain the switches: assistant replies (the bot is on/off) and phone alerts (web push notifications). The server already has a bot kill-switch, so this page just flips it. The push switch is a client-side toggle that subscribes/unsubscribes the browser to the server's push service. The server never sees the switch state — it only sees the subscription object when the browser subscribes, and forgets it when unsubscribing. The server can still send pushes to other browsers that are subscribed, even if this one is off.
+//explain every part of the page: the profile picture, the switches, the doors to plan/billing, business details, AI settings, and help. The switches are real <button role="switch"> elements with aria-checked and aria-label for accessibility. The assistant replies switch is optimistic: it flips immediately and then confirms with the server. The phone alerts switch checks for browser support, permission, and subscription state before toggling.
+//name every icon and what it represents: reply bubble with dots (assistant answering), bell (phone alerts), credit card (plan & billing), shop awning (business details), sliders (AI settings), help, pencil (edit photo), chevron (trailing arrow).
+//wite codes with comments explaining what each part does, especially the useEffect hooks for checking push support and syncing the bot switch with the server.
 //
 // NOTE: the assistant's own voice/guardrails moved to pages/AiSettings.jsx
 // (/ai-settings) when this page took over /settings — one page, one job.

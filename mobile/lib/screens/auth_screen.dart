@@ -18,7 +18,17 @@ import 'legal_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   final VoidCallback onAuthed;
-  const AuthScreen({super.key, required this.onAuthed});
+  /// Which form to open on: 0 sign in, 1 create account. The welcome page
+  /// picks this, so "Get started" lands on signup in one tap.
+  final int initialMode;
+  /// Present when the welcome page sent us here — returns to it.
+  final VoidCallback? onBack;
+  const AuthScreen({
+    super.key,
+    required this.onAuthed,
+    this.initialMode = 0,
+    this.onBack,
+  });
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -27,7 +37,7 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   // mode: 0 login · 1 signup · 2 otp · 3 forgot (reset link via email, opened
   // in the browser — deep links are phase 2, the email works today!)
-  int _mode = 0;
+  late int _mode;
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _pass = TextEditingController();
@@ -55,6 +65,12 @@ class _AuthScreenState extends State<AuthScreen> {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => LegalScreen(initial: d),
     ));
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _mode = widget.initialMode;
   }
 
   @override
@@ -266,6 +282,28 @@ class _AuthScreenState extends State<AuthScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (widget.onBack != null) ...[
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: widget.onBack,
+                        icon: const Icon(Icons.arrow_back_rounded, size: 17),
+                        label: const Text('Back'),
+                        style: TextButton.styleFrom(
+                          foregroundColor:
+                              scheme.onSurface.withValues(alpha: 0.58),
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(0, 0),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          textStyle: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
                   AuthPanelTitle(title: _title, subtitle: _subtitle),
                   const SizedBox(height: 22),
                   ..._fields(),
@@ -301,7 +339,6 @@ class _AuthScreenState extends State<AuthScreen> {
                     const SizedBox(height: 18),
                     AuthSocialRow(
                       onGoogle: () => _notWired('Google'),
-                      onApple: () => _notWired('Apple'),
                     ),
                   ],
                   const SizedBox(height: 18),

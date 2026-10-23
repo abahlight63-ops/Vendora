@@ -31,7 +31,12 @@ import '../widgets/answer_text.dart';
 import '../widgets/brand_ui.dart';
 
 class AiScreen extends StatefulWidget {
-  const AiScreen({super.key});
+  /// Start in the shop's test-bot mode (the web's /playground), where answers
+  /// come from this shop's catalog rather than the general assistant. The
+  /// drawer's "Test bot" row opens a pushed copy in this mode.
+  final bool startInTestBot;
+
+  const AiScreen({super.key, this.startInTestBot = false});
 
   @override
   State<AiScreen> createState() => _AiScreenState();
@@ -179,6 +184,7 @@ class _AiScreenState extends State<AiScreen> {
   @override
   void initState() {
     super.initState();
+    _testBot = widget.startInTestBot;
     _scroll.addListener(_onScroll);
     _loadModels();
     _loadChips();

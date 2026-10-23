@@ -232,6 +232,24 @@ Check every text/background pair at 4.5:1 in both themes.
   clients use the same words. The dialog is not red — leaving is routine, and a
   red alarm would punish a normal tap.
 
+### Pre-signup welcome (phone)
+- A signed-out guest lands here before any form: one promise, six automatic
+  proof slides, then a choice. It is the phone's equivalent of the web's public
+  landing page.
+- The stage is saturated indigo with slow drifting brand glows and a fine star
+  field. This is marketing, not chrome: the backdrop and the all-in-one orbit
+  may loop here, and nowhere inside the app.
+- Each proof slide is a WhatsApp-shaped exchange — teal header, wallpaper,
+  tails, times, blue ticks, typing dots and a reply that types itself — plus one
+  result line. The conversations are illustrative, never testimonials.
+- Slide 4 is the language promise: a drawn Nigerian flag, Pidgin, Yorùbá, Igbo
+  and Hausa chips, and a reply written in Pidgin. Slide 6 replaces the chat with
+  Instagram, WhatsApp and Telegram orbiting the mark.
+- Slides advance every 7s; a drag pauses the clock, and the dots show position.
+  Reduced motion stops the drift, the orbit and the typing but keeps the content.
+- "Sign in" and "Get started" are always visible. Either opens auth in that mode;
+  Back returns here. The primary action never says "Create my free shop".
+
 ### Welcome tour (web + phone)
 - Six slides, one idea each, shown once after sign-up, then never unprompted.
   Order on both clients: splash → tour → 5-question setup → dashboard.
@@ -286,7 +304,16 @@ template writes its own `<html>`, it is a bug — the inbox must look like the a
 - Only motion that answers an action: press, open, close, confirm, tab change.
 - 140–220ms ease-out. Sheets slide up. Buttons scale to 0.97 on press.
 - Respect `prefers-reduced-motion` globally in one place.
-- No decorative loops or pulse animations.
+- No decorative loops or pulse animations. The one exception is the signed-out
+  welcome: its backdrop may drift and the all-in-one marks may orbit while that
+  slide is active. Neither runs under reduced motion, and neither appears in the
+  app after sign-in.
+- **Depth (phone only).** The phone may add real perspective to the same flat
+  web surfaces: a card tilts 2–4° toward the finger, a page arrives with a 2°
+  pitch and a 12px rise, and cards settle flat on entry. These are still
+  action-answering, never ambient: no idle float, spin, or pulse. Implement
+  them once in `mobile/lib/depth.dart` (`DepthCard`, `DepthReveal`) and let
+  every screen reuse them; if the OS reduces motion, they render flat.
 
 ## Copy
 - Sentence case, plain verbs, say what will happen. Errors say what went wrong
@@ -295,7 +322,8 @@ template writes its own `<html>`, it is a bug — the inbox must look like the a
 
 ## Don'ts (these make it look AI-made)
 - No stacks of identical cards. North-star metric first, details on demand.
-- No decorative gradients (except one hero highlight if it matches the ref).
+- No decorative gradients (except the signed-out welcome's brand sky and one
+  hero highlight elsewhere).
 - No glass on readable content. No cards inside cards. No gray text on fills.
 - No emoji as icons. Outline icons only, one stroke width.
 - No numbered markers (01 / 02) unless the content is a real sequence.

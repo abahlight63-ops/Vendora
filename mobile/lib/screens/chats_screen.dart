@@ -1,21 +1,37 @@
-// ── lib/screens/chats_screen.dart ────────────────────────────────
-// WHAT: inbox + thread — mirrors Chats.jsx: filter tabs (All / Needs you
-// / Handled), status pills (needs you / handled / you talk), timestamps,
-// photo bubbles, takeover BUTTONS (not a switch) with the paused explainer.
-// direction=in → customer (left), anything else → AI/owner (right).
+// ── lib/screens/chats_screen.dart ─────────────────────────────────
+// WHAT: the phone inbox — the web's Chats.jsx in one column.
+//
+// Web parity: page head, search, status tabs with real counts, channel chips,
+// conversation rows (avatar + gold dot + channel mark + status tags), then a
+// pushed thread with the same AI/human switch, bubbles and composer. The web's
+// right-hand contact panel becomes a bottom sheet behind the header's info key,
+// because a phone has no third column.
+//
+// Every list comes from /api/me/conversations; every thread from /messages.
+// No sample chats, no invented counts.
 import 'package:flutter/material.dart';
 
 import '../api.dart';
+import '../depth.dart';
 import '../format.dart';
 import '../glass.dart';
 import '../motion.dart';
+import '../theme.dart';
+import '../widgets/brand_ui.dart';
+import '../widgets/channel_marks.dart';
 
-/// The channel of a chat. `channel ?? 'whatsapp'` on purpose: the column
-/// defaults to whatsapp, but rows written before it existed come back null.
-/// Treating those as WhatsApp keeps old chats visible instead of silently
-/// vanishing behind a filter nobody set.
-String _chanOf(Map c) =>
-    '${c['channel'] ?? 'whatsapp'}' == 'telegram' ? 'telegram' : 'whatsapp';
+/// WhatsApp unless the backend says Telegram. Rows written before the channel
+/// column existed come back null; treating those as WhatsApp keeps old chats
+/// visible instead of silently vanishing behind a filter nobody set.
+SalesChannel _channelOf(Map c) =>
+    '${c['channel'] ?? 'whatsapp'}' == 'telegram'
+        ? SalesChannel.telegram
+        : SalesChannel.whatsapp;
+
+String _initialOf(Map c) {
+  final name = '${c['customer_name'] ?? c['customer_number'] ?? '?'}'.trim();
+  return name.isEmpty ? '?' : name.substring(0, 1).toUpperCase();
+}
 
 class ChatsScreen extends StatefulWidget {
   const ChatsScreen({super.key});
@@ -27,9 +43,9 @@ class ChatsScreen extends StatefulWidget {
 class _ChatsScreenState extends State<ChatsScreen> {
   List<dynamic>? _chats;
   String _filter = 'all'; // 'all' | 'needs' | 'handled'
-  String _chan = 'all'; // 'all' | 'whatsapp' | 'telegram' — mixed inboxes need a way to zoom into one channel
-  String _q = ''; // list search (name, number, last message — client-side, instant)
-  final _find = TextEditingController(); // owns the search text so Clear can empty the field
+  String _chan = 'all'; // 'all' | 'whatsapp' | 'telegram'
+  String _q = '';
+  final _find = TextEditingController();
   String? _err;
   bool _loading = true;
 
@@ -46,27 +62,29 @@ class _ChatsScreenState extends State<ChatsScreen> {
   }
 
   Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _err = null;
-    });
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _err = null;
+      });
+    }
     try {
-      _chats = await ApiClient.instance.conversations();
+      final rows = await ApiClient.instance.conversations();
+      if (mounted) setState(() => _chats = rows);
     } on ApiException catch (e) {
-      _err = e.message;
+      if (mounted) setState(() => _err = e.message);
     } catch (_) {
-      _err = 'No connection.';
+      if (mounted) setState(() => _err = 'No connection.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  /// Channel + status + text, in the same order the web list applies them.
   List<dynamic> get _list {
     final all = _chats ?? [];
     final needle = _q.trim().toLowerCase();
     return all
-        .where((c) => _chanOf(c as Map) == _chan)
+        .where((c) => _chan == 'all' || _channelOf(c as Map).name == _chan)
         .where((c) => _filter == 'needs'
             ? (c as Map)['needs_human'] == true
             : _filter == 'handled'
@@ -79,263 +97,668 @@ class _ChatsScreenState extends State<ChatsScreen> {
         .toList();
   }
 
-  int _chanCount(String k) =>
-      (_chats ?? []).where((c) => _chanOf(c as Map) == k).length;
+  int _count(SalesChannel k) =>
+      (_chats ?? []).where((c) => _channelOf(c as Map) == k).length;
+
+  int get _needsCount =>
+      (_chats ?? []).where((c) => (c as Map)['needs_human'] == true).length;
+
+  Future<void> _open(Map<String, dynamic> chat) async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => ThreadScreen(chat: chat),
+    ));
+    if (mounted) _load(); // flags + previews can change while you were inside
+  }
+
+  void _clearFilters() {
+    _find.clear();
+    setState(() {
+      _q = '';
+      _filter = 'all';
+      _chan = 'all';
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Column(children: [
-      // Filter tabs (same three as web).
-      Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-        child: Row(children: [
-          for (final e in [
-            ['all', 'All'],
-            ['needs', 'Needs you'],
-            ['handled', 'Handled']
-          ])
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: _filter == e[0]
-                  ? FilledButton(
-                      onPressed: () {},
-                      style: FilledButton.styleFrom(
-                          minimumSize: const Size(0, 36),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16)),
-                      child: Text(e[1],
-                          style: const TextStyle(fontSize: 13)),
-                    )
-                  : OutlinedButton(
-                      onPressed: () => setState(() => _filter = e[0]),
-                      style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(0, 36),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16)),
-                      child: Text(e[1],
-                          style: const TextStyle(fontSize: 13)),
+    final filtered = _filter != 'all' || _chan != 'all' || _q.trim().isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Inbox',
+                style: TextStyle(
+                  fontSize: 26,
+                  height: 1.1,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.8,
+                  color: scheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                'Every WhatsApp and Telegram chat, in one inbox. Green = AI '
+                'handled. Gold = needs your human touch.',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  height: 1.45,
+                  fontWeight: FontWeight.w500,
+                  color: scheme.onSurface.withValues(alpha: 0.58),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+            child: Container(
+              decoration: BoxDecoration(
+                color: scheme.surface,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: scheme.outline),
+                boxShadow: softShadow(context, lift: 0.35),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                    child: _SearchField(
+                      controller: _find,
+                      value: _q,
+                      onChanged: (v) => setState(() => _q = v),
+                      onClear: () {
+                        _find.clear();
+                        setState(() => _q = '');
+                      },
                     ),
-            ),
-        ]),
-      ),
-      // Search — same fields the web filters on (name, number, preview).
-      Padding(
-        padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
-        child: TextField(
-          controller: _find,
-          onChanged: (v) => setState(() => _q = v),
-          textInputAction: TextInputAction.search,
-          style: const TextStyle(fontSize: 14),
-          decoration: InputDecoration(
-            hintText: 'Search name, number, message…',
-            isDense: true,
-            filled: true,
-            fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-            prefixIcon: Icon(Icons.search_rounded,
-                size: 19, color: scheme.onSurface.withValues(alpha: 0.5)),
-            suffixIcon: _q.isEmpty
-                ? null
-                : IconButton(
-                    tooltip: 'Clear search',
-                    icon: const Icon(Icons.close_rounded, size: 18),
-                    onPressed: () {
-                      _find.clear();
-                      setState(() => _q = '');
-                    },
                   ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(999),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(999),
-              borderSide: BorderSide(
-                  color: scheme.outline.withValues(alpha: 0.35)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(999),
-              borderSide: BorderSide(color: scheme.primary, width: 1.4),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      children: [
+                        _Tab(
+                          label: 'All',
+                          count: _chats == null ? '·' : '${_chats!.length}',
+                          on: _filter == 'all',
+                          onTap: () => setState(() => _filter = 'all'),
+                        ),
+                        const SizedBox(width: 6),
+                        _Tab(
+                          label: 'Needs you',
+                          count: _chats == null ? '·' : '$_needsCount',
+                          on: _filter == 'needs',
+                          onTap: () => setState(() => _filter = 'needs'),
+                        ),
+                        const SizedBox(width: 6),
+                        _Tab(
+                          label: 'Handled',
+                          count: _chats == null
+                              ? '·'
+                              : '${_chats!.length - _needsCount}',
+                          on: _filter == 'handled',
+                          onTap: () => setState(() => _filter = 'handled'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          _Chip(
+                            label: 'All',
+                            on: _chan == 'all',
+                            onTap: () => setState(() => _chan = 'all'),
+                          ),
+                          if (_count(SalesChannel.whatsapp) > 0)
+                            _Chip(
+                              label: 'WhatsApp (${_count(SalesChannel.whatsapp)})',
+                              on: _chan == 'whatsapp',
+                              onTap: () =>
+                                  setState(() => _chan = 'whatsapp'),
+                            ),
+                          if (_count(SalesChannel.telegram) > 0)
+                            _Chip(
+                              label: 'Telegram (${_count(SalesChannel.telegram)})',
+                              on: _chan == 'telegram',
+                              onTap: () =>
+                                  setState(() => _chan = 'telegram'),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Divider(height: 1, thickness: 1, color: scheme.outline),
+                  Expanded(
+                    child: _loading
+                        ? const _InboxSkeleton()
+                        : _err != null
+                            ? EmptyState("Couldn't load your inbox", _err!,
+                                retry: _load)
+                            : _list.isEmpty
+                                ? _EmptyInbox(
+                                    filtered: filtered,
+                                    onClear: _clearFilters,
+                                  )
+                                : RefreshIndicator(
+                                    onRefresh: _load,
+                                    child: ListView.separated(
+                                      padding: const EdgeInsets.fromLTRB(
+                                          6, 6, 6, 12),
+                                      itemCount: _list.length,
+                                      separatorBuilder: (_, _) =>
+                                          const SizedBox(height: 2),
+                                      itemBuilder: (context, i) {
+                                        final chat = (_list[i] as Map)
+                                            .cast<String, dynamic>();
+                                        return FadeSlideIn(
+                                          delayMs: (i * 45).clamp(0, 240),
+                                          child: _ChatRow(
+                                            chat: chat,
+                                            onTap: () => _open(chat),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-      ),
-      // Channel zoom row — only rendered when that channel actually has chats
-      // (a dead tab is worse than no tab), and tapping the active one clears it.
-      if (_chanCount('whatsapp') > 0 || _chanCount('telegram') > 0)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
-          child: Row(children: [
-            for (final k in ['whatsapp', 'telegram'])
-              if (_chanCount(k) > 0)
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: TextButton(
-                    onPressed: () =>
-                        setState(() => _chan = _chan == k ? 'all' : k),
-                    style: TextButton.styleFrom(
-                        minimumSize: const Size(0, 30),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        foregroundColor:
-                            _chan == k ? scheme.primary : scheme.onSurface),
-                    child: Text(
-                        '${k == 'telegram' ? 'Telegram' : 'WhatsApp'} (${_chanCount(k)})',
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: _chan == k
-                                ? FontWeight.w800
-                                : FontWeight.w400)),
-                  ),
-                ),
-          ]),
-        ),
-      Expanded(
-        child: _loading
-            ? ListView.builder(
-                padding: const EdgeInsets.all(12),
-                itemCount: 4,
-                itemBuilder: (_, i) => const Padding(
-                  padding: EdgeInsets.only(bottom: 8),
-                  child: Skeleton(height: 76),
-                ),
-              )
-            : _err != null
-                ? EmptyState("Couldn't load your inbox", _err!, retry: _load)
-                : _list.isEmpty
-                    ? EmptyState(
-                        (_filter != 'all' || _chan != 'all' || _q.isNotEmpty)
-                            ? 'No chats match'
-                            : 'No chats yet',
-                        (_filter != 'all' || _chan != 'all' || _q.isNotEmpty)
-                            ? 'Nothing here with this search or filter on — clear it or try All.'
-                            : 'Chats appear once you connect WhatsApp or Telegram.')
-                    : RefreshIndicator(
-                        onRefresh: _load,
-                        child: ListView.builder(
-                          itemCount: _list.length,
-                          itemBuilder: (c, i) {
-                            final m =
-                                (_list[i] as Map).cast<String, dynamic>();
-                            final needsHuman =
-                                m['needs_human'] == true;
-                            final paused = m['bot_paused'] == true;
-                            return FadeSlideIn(
-                              delayMs: (i * 60).clamp(0, 300),
-                              child: GlassCard(
-                                radius: 16,
-                                margin: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 5),
-                                child: ListTile(
-                                  leading: CircleAvatar(
-                                      child: Text(
-                                          '${m['customer_name'] ?? '?'}'
-                                              .substring(0, 1)
-                                              .toUpperCase())),
-                                   title: Row(children: [
-                                     Flexible(
-                                       child: Text(
-                                           '${m['customer_name'] ?? m['customer_number']}',
-                                           overflow: TextOverflow.ellipsis),
-                                     ),
-                                     const SizedBox(width: 6),
-                                     // Channel badge — a mixed inbox that doesn't
-                                     // say which app each chat came from makes the
-                                     // owner guess before they answer.
-                                     Container(
-                                       padding: const EdgeInsets.symmetric(
-                                           horizontal: 7, vertical: 2),
-                                       decoration: BoxDecoration(
-                                         color: scheme.primary.withValues(
-                                             alpha: 0.12),
-                                         borderRadius:
-                                             BorderRadius.circular(999),
-                                       ),
-                                       child: Text(
-                                         _chanOf(m) == 'telegram'
-                                             ? 'Telegram'
-                                             : 'WhatsApp',
-                                         style: TextStyle(
-                                             fontSize: 10,
-                                             fontWeight: FontWeight.w700,
-                                             color: scheme.primary),
-                                       ),
-                                     ),
-                                   ]),
-                                  subtitle: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                          '${m['last_message'] ?? ''}',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis),
-                                      Text(fmtTime(m['updated_at']),
-                                          style: TextStyle(
-                                              fontSize: 11,
-                                              color: scheme.onSurface
-                                                  .withValues(
-                                                      alpha: 0.55))),
-                                    ],
-                                  ),
-                                  trailing: Column(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.center,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.end,
-                                    children: [
-                                      // Pills: needs-you (solid brand) / handled (tinted).
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: needsHuman
-                                              ? scheme.primary
-                                              : scheme.primary.withValues(
-                                                  alpha: 0.12),
-                                          borderRadius:
-                                              BorderRadius.circular(999),
-                                        ),
-                                        child: Text(
-                                          needsHuman
-                                              ? 'needs you'
-                                              : 'handled',
-                                          style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
-                                              color: needsHuman
-                                                  ? scheme.onPrimary
-                                                  : scheme.primary),
-                                        ),
-                                      ),
-                                      if (paused)
-                                        const Padding(
-                                          padding:
-                                              EdgeInsets.only(top: 4),
-                                          child: Text('you talk',
-                                              style: TextStyle(
-                                                  fontSize: 11,
-                                                  color: Colors.blue)),
-                                        ),
-                                    ],
-                                  ),
-                                  onTap: () =>
-                                      Navigator.of(context)
-                                          .push(MaterialPageRoute(
-                                              builder: (_) =>
-                                                  ThreadScreen(chat: m)))
-                                          .then((_) => _load()),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-      ),
-    ]);
+      ],
+    );
   }
 }
+
+// ── list furniture ───────────────────────────────────────────────
+
+class _SearchField extends StatelessWidget {
+  final TextEditingController controller;
+  final String value;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+
+  const _SearchField({
+    required this.controller,
+    required this.value,
+    required this.onChanged,
+    required this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 40,
+      child: TextField(
+        controller: controller,
+        onChanged: onChanged,
+        textInputAction: TextInputAction.search,
+        style: TextStyle(fontSize: 14, color: scheme.onSurface),
+        decoration: InputDecoration(
+          hintText: 'Search name, number, message…',
+          hintStyle: TextStyle(
+            fontSize: 13.5,
+            color: scheme.onSurface.withValues(alpha: 0.38),
+          ),
+          isDense: true,
+          filled: true,
+          fillColor: scheme.surfaceContainerLowest,
+          prefixIcon: Icon(Icons.search_rounded,
+              size: 18, color: scheme.onSurface.withValues(alpha: 0.45)),
+          prefixIconConstraints:
+              const BoxConstraints(minWidth: 38, minHeight: 38),
+          suffixIcon: value.isEmpty
+              ? null
+              : InkWell(
+                  onTap: onClear,
+                  borderRadius: BorderRadius.circular(999),
+                  child: Icon(Icons.close_rounded,
+                      size: 17,
+                      color: scheme.onSurface.withValues(alpha: 0.55)),
+                ),
+          suffixIconConstraints:
+              const BoxConstraints(minWidth: 38, minHeight: 38),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          border: _border(scheme.outline, 1),
+          enabledBorder: _border(scheme.outline, 1),
+          focusedBorder: _border(scheme.primary, 1.4),
+        ),
+      ),
+    );
+  }
+
+  OutlineInputBorder _border(Color c, double w) => OutlineInputBorder(
+        borderRadius: BorderRadius.circular(999),
+        borderSide: BorderSide(color: c, width: w),
+      );
+}
+
+class _Tab extends StatelessWidget {
+  final String label;
+  final String count;
+  final bool on;
+  final VoidCallback onTap;
+
+  const _Tab({
+    required this.label,
+    required this.count,
+    required this.on,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final fg = on ? VeloSalesTheme.purpleDark : scheme.onSurface.withValues(alpha: 0.64);
+    return Expanded(
+      child: Pressable(
+        onTap: onTap,
+        radius: BorderRadius.circular(999),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          height: 40,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: on ? VeloSalesTheme.purpleSoft : scheme.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+                color: on ? VeloSalesTheme.purpleLine : scheme.outline),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: on ? FontWeight.w800 : FontWeight.w600,
+                    color: fg,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                count,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: fg.withValues(alpha: 0.66),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  final String label;
+  final bool on;
+  final VoidCallback onTap;
+
+  const _Chip({required this.label, required this.on, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Pressable(
+      onTap: onTap,
+      radius: BorderRadius.circular(999),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        height: 34,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: on ? scheme.surface : Colors.transparent,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: on ? scheme.primary : scheme.outline,
+            width: on ? 1.3 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: on ? scheme.primary : scheme.onSurface.withValues(alpha: 0.55),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatRow extends StatelessWidget {
+  final Map<String, dynamic> chat;
+  final VoidCallback onTap;
+
+  const _ChatRow({required this.chat, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final needsHuman = chat['needs_human'] == true;
+    final paused = chat['bot_paused'] == true;
+    final channel = _channelOf(chat);
+    final name = '${chat['customer_name'] ?? chat['customer_number'] ?? '?'}';
+    final preview = '${chat['last_message'] ?? ''}'.trim();
+    return Pressable(
+      onTap: onTap,
+      radius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _Avatar(initial: _initialOf(chat), channel: channel, flagged: needsHuman),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.15,
+                            color: scheme.onSurface,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        fmtTime(chat['updated_at']),
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                          color: scheme.onSurface.withValues(alpha: 0.38),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    preview.isEmpty ? '—' : preview,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w500,
+                      color: scheme.onSurface.withValues(alpha: 0.58),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: [
+                      needsHuman
+                          ? const _Tag(label: 'needs you', kind: _TagKind.gold)
+                          : const _Tag(label: 'handled', kind: _TagKind.green),
+                      _Tag(label: channel.label, kind: _TagKind.blue),
+                      if (paused)
+                        const _Tag(label: 'you talk', kind: _TagKind.blue),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Avatar extends StatelessWidget {
+  final String initial;
+  final SalesChannel channel;
+  final bool flagged;
+
+  const _Avatar({
+    required this.initial,
+    required this.channel,
+    required this.flagged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: 46,
+      height: 46,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerLowest,
+              shape: BoxShape.circle,
+              border: Border.all(color: scheme.outline),
+            ),
+            child: Text(
+              initial,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: scheme.onSurface,
+              ),
+            ),
+          ),
+          if (flagged)
+            Positioned(
+              top: -1,
+              right: 2,
+              child: Container(
+                width: 11,
+                height: 11,
+                decoration: BoxDecoration(
+                  color: VeloSalesTheme.goldColor(context),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: scheme.surface, width: 2),
+                ),
+              ),
+            ),
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Container(
+              padding: const EdgeInsets.all(1.5),
+              decoration: BoxDecoration(
+                color: scheme.surface,
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: ChannelMark(channel: channel, size: 14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+enum _TagKind { green, gold, blue }
+
+class _Tag extends StatelessWidget {
+  final String label;
+  final _TagKind kind;
+  const _Tag({required this.label, required this.kind});
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final (fg, bg, line) = switch (kind) {
+      _TagKind.green => (
+          VeloSalesTheme.successColor(context),
+          VeloSalesTheme.successColor(context).withValues(alpha: 0.10),
+          VeloSalesTheme.successColor(context).withValues(alpha: 0.28),
+        ),
+      _TagKind.gold => (
+          VeloSalesTheme.goldColor(context),
+          VeloSalesTheme.goldColor(context).withValues(alpha: 0.10),
+          VeloSalesTheme.goldColor(context).withValues(alpha: 0.30),
+        ),
+      _TagKind.blue => (
+          dark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB),
+          (dark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB))
+              .withValues(alpha: 0.10),
+          (dark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB))
+              .withValues(alpha: 0.26),
+        ),
+    };
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 3, 8, 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: line),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.1,
+          color: fg,
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyInbox extends StatelessWidget {
+  final bool filtered;
+  final VoidCallback onClear;
+  const _EmptyInbox({required this.filtered, required this.onClear});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: VeloSalesTheme.tintLavender(context),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.forum_outlined,
+                  size: 25, color: VeloSalesTheme.purpleDark),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'Nothing here',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.25,
+                color: scheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              filtered
+                  ? 'No chats match — clear the search or try All.'
+                  : 'Chats appear once you connect WhatsApp or Telegram.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12.5,
+                height: 1.45,
+                color: scheme.onSurface.withValues(alpha: 0.58),
+              ),
+            ),
+            if (filtered) ...[
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: onClear,
+                child: const Text('Clear filters'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InboxSkeleton extends StatelessWidget {
+  const _InboxSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      physics: const NeverScrollableScrollPhysics(),
+      children: [
+        for (var i = 0; i < 5; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Row(
+              children: [
+                const Skeleton(height: 42, width: 42, radius: 21),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Skeleton(height: 11, width: 120, radius: 6),
+                      SizedBox(height: 8),
+                      Skeleton(height: 9, width: 210, radius: 5),
+                      SizedBox(height: 8),
+                      Skeleton(height: 12, width: 150, radius: 6),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ── thread ───────────────────────────────────────────────────────
 
 class ThreadScreen extends StatefulWidget {
   final Map<String, dynamic> chat;
@@ -349,23 +772,30 @@ class _ThreadScreenState extends State<ThreadScreen> {
   List<dynamic>? _msgs;
   String? _err;
   late bool _paused;
-  bool _needsHuman = false; // gold flag snapshot (cleared locally on send!)
-  final _draft = TextEditingController(); // reply draft (controlled input!)
-  bool _sending = false; // send in flight (button locks — no double-sends!)
-  bool _switching = false; // takeover call in flight (the switch must not flap)
-  final _scroll = ScrollController(); // message list (we land on the newest)
+  bool _needsHuman = false;
+  final _draft = TextEditingController();
+  bool _sending = false;
+  bool _switching = false;
+  final _scroll = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _paused = widget.chat['bot_paused'] == true;
     _needsHuman = widget.chat['needs_human'] == true;
+    _draft.addListener(_onDraft);
     _load();
+  }
+
+  void _onDraft() {
+    if (mounted) setState(() {}); // enables the send key the moment there is text
   }
 
   @override
   void dispose() {
-    _draft.dispose(); // controller cleanup (no leaked listeners!)
+    _draft
+      ..removeListener(_onDraft)
+      ..dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -380,8 +810,9 @@ class _ThreadScreenState extends State<ThreadScreen> {
 
   Future<void> _load() async {
     try {
-      _msgs = await ApiClient.instance.messages(widget.chat['id']);
-      if (mounted) setState(() {});
+      final rows = await ApiClient.instance.messages(widget.chat['id']);
+      if (!mounted) return;
+      setState(() => _msgs = rows);
       _toLatest();
     } on ApiException catch (e) {
       if (mounted) setState(() => _err = e.message);
@@ -391,11 +822,16 @@ class _ThreadScreenState extends State<ThreadScreen> {
   }
 
   Future<void> _takeover(bool paused) async {
-    if (_switching || paused == _paused) return; // no-op taps and double taps
+    if (_switching || paused == _paused) return;
     setState(() => _switching = true);
     try {
       await ApiClient.instance.takeover(widget.chat['id'], paused);
-      if (mounted) setState(() => _paused = paused);
+      if (mounted) {
+        setState(() {
+          _paused = paused;
+          if (!paused) _needsHuman = false; // the bot is answering again
+        });
+      }
     } on ApiException catch (e) {
       if (mounted) showToast(context, e.message, type: 'err');
     } catch (_) {
@@ -405,32 +841,30 @@ class _ThreadScreenState extends State<ThreadScreen> {
     }
   }
 
-  /// Owner reply INSIDE the app (web parity!): sends through the chat's OWN
-  /// channel, clears the gold flag + pauses the bot (hand back explicitly!).
   Future<void> _send() async {
     final text = _draft.text.trim();
-    if (text.isEmpty || _sending) return; // empty/double-tap guards
+    if (text.isEmpty || _sending) return;
+    final capped = text.length > 2000 ? text.substring(0, 2000) : text;
     setState(() => _sending = true);
     try {
-      await ApiClient.instance.replyConversation(widget.chat['id'], text);
+      await ApiClient.instance.replyConversation(widget.chat['id'], capped);
       _draft.clear();
-      if (mounted) {
-        setState(() {
-          _sending = false;
-          _paused = true; // you're talking now (Hand-back button appears!)
-          _needsHuman = false; // answered (gold flag clears!)
-          (_msgs ??= []).add({
-            'direction': 'out',
-            'body': text,
-            'created_at': DateTime.now().toUtc().toIso8601String(),
-          }); // optimistic append inside setState (the bubble appears instantly!)
+      if (!mounted) return;
+      setState(() {
+        _sending = false;
+        _paused = true;
+        _needsHuman = false;
+        (_msgs ??= []).add({
+          'direction': 'out',
+          'body': capped,
+          'created_at': DateTime.now().toUtc().toIso8601String(),
         });
-        _toLatest();
-      }
+      });
+      _toLatest();
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _sending = false);
-        showToast(context, e.message, type: 'err'); // honest backend reason (not connected? blocked chat?)
+        showToast(context, e.message, type: 'err');
       }
     } catch (_) {
       if (mounted) {
@@ -440,256 +874,553 @@ class _ThreadScreenState extends State<ThreadScreen> {
     }
   }
 
+  void _showFacts() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _ContactSheet(
+        chat: widget.chat,
+        paused: _paused,
+        needsHuman: _needsHuman,
+        messageCount: _msgs?.length,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final needsHuman = widget.chat['needs_human'] == true;
+    final scheme = Theme.of(context).colorScheme;
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    final canSend = _draft.text.trim().isNotEmpty && !_sending;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-            '${widget.chat['customer_name'] ?? widget.chat['customer_number']}'),
-      ),
-      body: Column(children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-          child: Row(children: [
-            Expanded(
-              child: Text(
-                '${widget.chat['customer_number'] ?? ''}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.62)),
+      backgroundColor: scheme.surfaceContainerLowest,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            _ThreadHeader(
+              chat: widget.chat,
+              onBack: () => Navigator.of(context).pop(),
+              onFacts: _showFacts,
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              child: _ModeSwitch(
+                paused: _paused,
+                busy: _switching,
+                onChanged: _takeover,
               ),
             ),
-            Text(
-              '${_chanOf(widget.chat) == 'telegram' ? 'Telegram' : 'WhatsApp'} · '
-              '${needsHuman ? 'needs you' : 'handled by AI'}',
-              style: TextStyle(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
+              child: Text(
+                _paused
+                    ? 'The bot is paused on this chat — the customer hears only you. '
+                        'Hand back anytime.'
+                    : '${widget.chat['flag_reason'] ?? ''}'.trim().isNotEmpty
+                        ? '${widget.chat['flag_reason']}'
+                        : _needsHuman
+                            ? 'Flagged for your human touch.'
+                            : 'The bot answers this chat. Take over whenever you want.',
+                style: TextStyle(
                   fontSize: 12,
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.5)),
+                  height: 1.45,
+                  fontWeight: FontWeight.w500,
+                  color: _paused
+                      ? VeloSalesTheme.goldColor(context)
+                      : scheme.onSurface.withValues(alpha: 0.52),
+                ),
+              ),
             ),
-          ]),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-          child: _ModeSwitch(
-            paused: _paused,
-            busy: _switching,
-            onChanged: _takeover,
-          ),
-        ),
-        if (_paused)
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Text(
-              'The bot is paused on this chat — the customer hears only you. '
-              'Hand back anytime.',
-              style: TextStyle(fontSize: 12, height: 1.4),
-            ),
-          ),
-        Expanded(
-          child: _err != null
-              ? EmptyState("Couldn't load this chat", _err!, retry: _load)
-              : _msgs == null
-                  ? ListView(
-                      padding: const EdgeInsets.all(12),
-                      children: const [
-                        Align(
-                            alignment: Alignment.centerLeft,
-                            child: Skeleton(
-                                height: 44,
-                                width: 220,
-                                radius: 14)),
-                        SizedBox(height: 8),
-                        Align(
-                            alignment: Alignment.centerRight,
-                            child: Skeleton(
-                                height: 44,
-                                width: 190,
-                                radius: 14)),
-                        SizedBox(height: 8),
-                        Align(
-                            alignment: Alignment.centerLeft,
-                            child: Skeleton(
-                                height: 44,
-                                width: 150,
-                                radius: 14)),
-                      ],
-                    )
-                  : _msgs!.isEmpty
-                      ? const Center(child: Text('No messages.'))
-                      : ListView.builder(
-                          controller: _scroll,
-                          padding: const EdgeInsets.all(12),
-                          itemCount: _msgs!.length,
-                          itemBuilder: (c, i) {
-                            final m = (_msgs![i] as Map)
-                                .cast<String, dynamic>();
-                            final incoming = m['direction'] == 'in';
-                            final media = '${m['media_url'] ?? ''}';
-                            return FadeSlideIn(
-                              child: Align(
-                                alignment: incoming
-                                    ? Alignment.centerLeft
-                                    : Alignment.centerRight,
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(
-                                      vertical: 4),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 14, vertical: 10),
-                                  constraints: BoxConstraints(
-                                      maxWidth:
-                                          MediaQuery.of(context)
-                                                  .size
-                                                  .width *
-                                              0.8),
-                                  decoration: BoxDecoration(
-                                    color: incoming
-                                        ? Theme.of(context)
-                                            .colorScheme
-                                            .surface
-                                        : Theme.of(context)
-                                            .colorScheme
-                                            .primary,
-                                    border: incoming
-                                        ? Border.all(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .outline
-                                                .withValues(
-                                                    alpha: 0.4))
-                                        : null,
-                                    borderRadius:
-                                        BorderRadius.circular(14),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      if (media.isNotEmpty)
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                              bottom: 6),
-                                          child: ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(
-                                                    8),
-                                            child: Image.network(
-                                              media,
-                                              width: 200,
-                                              errorBuilder: (_, _, _) =>
-                                                  const Text(
-                                                      '[photo could not load]',
-                                                      style: TextStyle(
-                                                          fontSize:
-                                                              11)),
-                                            ),
-                                          ),
-                                        ),
-                                      Text('${m['body'] ?? ''}'),
-                                      const SizedBox(height: 2),
-                                      Text(fmtTime(m['created_at']),
-                                          style: TextStyle(
-                                              fontSize: 10,
-                                              color: incoming
-                                                  ? Theme.of(context)
-                                                      .colorScheme
-                                                      .onSurface
-                                                      .withValues(
-                                                          alpha:
-                                                              0.5)
-                                                  : Theme.of(context)
-                                                      .colorScheme
-                                                      .onPrimary
-                                                      .withValues(
-                                                          alpha:
-                                                              0.8))),
-                                    ],
-                                  ),
+            Expanded(
+              child: _err != null
+                  ? EmptyState("Couldn't load this chat", _err!, retry: _load)
+                  : _msgs == null
+                      ? const _ThreadSkeleton()
+                      : _msgs!.isEmpty
+                          ? Center(
+                              child: Text(
+                                'No messages.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color:
+                                      scheme.onSurface.withValues(alpha: 0.5),
                                 ),
                               ),
-                            );
-                          },
-                        ),
+                            )
+                          : ListView.builder(
+                              controller: _scroll,
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                              itemCount: _msgs!.length,
+                              itemBuilder: (context, i) {
+                                final m = (_msgs![i] as Map)
+                                    .cast<String, dynamic>();
+                                return _Bubble(message: m);
+                              },
+                            ),
+            ),
+            _Composer(
+              controller: _draft,
+              paused: _paused,
+              sending: _sending,
+              canSend: canSend,
+              needsHuman: _needsHuman,
+              bottomInset: bottom,
+              onSend: _send,
+            ),
+          ],
         ),
-        // Reply composer: type + Send (Enter key sends too!). Sending clears
-        // the gold flag + pauses the bot (no double answers — hand back after!).
-        SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+      ),
+    );
+  }
+}
+
+class _ThreadHeader extends StatelessWidget {
+  final Map<String, dynamic> chat;
+  final VoidCallback onBack;
+  final VoidCallback onFacts;
+
+  const _ThreadHeader({
+    required this.chat,
+    required this.onBack,
+    required this.onFacts,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final name = '${chat['customer_name'] ?? chat['customer_number'] ?? '?'}';
+    final channel = _channelOf(chat);
+    final needsHuman = chat['needs_human'] == true;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: Row(
+        children: [
+          Pressable(
+            onTap: onBack,
+            radius: BorderRadius.circular(999),
+            child: Container(
+              width: 38,
+              height: 38,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: scheme.surface,
+                shape: BoxShape.circle,
+                border: Border.all(color: scheme.outline),
+              ),
+              child: Icon(Icons.arrow_back_rounded,
+                  size: 19, color: scheme.onSurface),
+            ),
+          ),
+          const SizedBox(width: 10),
+          _Avatar(initial: _initialOf(chat), channel: channel, flagged: needsHuman),
+          const SizedBox(width: 10),
+          Expanded(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _draft,
-                      minLines: 1,
-                      maxLines: 4,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _send(),
-                      decoration: InputDecoration(
-                        hintText: _needsHuman
-                            ? 'Answer them here…'
-                            : 'Reply as yourself…',
-                        border: const OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.all(Radius.circular(22)),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 10),
-                      ),
-                    ),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                    color: scheme.onSurface,
                   ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: _sending ? null : _send,
-                    style: FilledButton.styleFrom(
-                        minimumSize: const Size(0, 44),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 18)),
-                    child: _sending
-                        ? const OrbitLoader(size: 17, color: Colors.white)
-                        : const Text('Send',
-                            style: TextStyle(fontSize: 13)),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${chat['customer_number'] ?? ''} · ${needsHuman ? 'needs you' : 'handled by AI'}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    color: scheme.onSurface.withValues(alpha: 0.5),
                   ),
-                ]),
-                if (!_paused)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 4),
-                    child: Text(
-                      'Sending pauses the bot on this chat — hand back when done.',
-                      style: TextStyle(fontSize: 11),
-                    ),
-                  ),
+                ),
               ],
             ),
           ),
+          Pressable(
+            onTap: onFacts,
+            radius: BorderRadius.circular(999),
+            child: Container(
+              width: 38,
+              height: 38,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: scheme.surface,
+                shape: BoxShape.circle,
+                border: Border.all(color: scheme.outline),
+              ),
+              child: Icon(Icons.info_outline_rounded,
+                  size: 19,
+                  color: scheme.onSurface.withValues(alpha: 0.62)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Bubble extends StatelessWidget {
+  final Map<String, dynamic> message;
+  const _Bubble({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final incoming = message['direction'] == 'in';
+    final media = '${message['media_url'] ?? ''}';
+    final fg = scheme.onSurface;
+    return Align(
+      alignment: incoming ? Alignment.centerLeft : Alignment.centerRight,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 3),
+        padding: const EdgeInsets.fromLTRB(13, 10, 13, 8),
+        constraints: BoxConstraints(
+            maxWidth: MediaQuery.sizeOf(context).width * 0.82),
+        decoration: BoxDecoration(
+          color: incoming ? scheme.surface : VeloSalesTheme.purpleSoft,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(incoming ? 4 : 14),
+            topRight: Radius.circular(incoming ? 14 : 4),
+            bottomLeft: const Radius.circular(14),
+            bottomRight: const Radius.circular(14),
+          ),
+          border: Border.all(
+            color: incoming ? scheme.outline : VeloSalesTheme.purpleLine,
+          ),
         ),
-      ]),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (media.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 7),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(9),
+                  child: Image.network(
+                    media,
+                    width: 210,
+                    errorBuilder: (_, _, _) => Text(
+                      '[photo could not load]',
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: scheme.onSurface.withValues(alpha: 0.5)),
+                    ),
+                  ),
+                ),
+              ),
+            Text(
+              '${message['body'] ?? ''}',
+              style: TextStyle(fontSize: 14, height: 1.5, color: fg),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              fmtTime(message['created_at']),
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: scheme.onSurface.withValues(alpha: 0.42),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Composer extends StatelessWidget {
+  final TextEditingController controller;
+  final bool paused;
+  final bool sending;
+  final bool canSend;
+  final bool needsHuman;
+  final double bottomInset;
+  final VoidCallback onSend;
+
+  const _Composer({
+    required this.controller,
+    required this.paused,
+    required this.sending,
+    required this.canSend,
+    required this.needsHuman,
+    required this.bottomInset,
+    required this.onSend,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: EdgeInsets.fromLTRB(12, 10, 12, 10 + bottomInset),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        border: Border(top: BorderSide(color: scheme.outline)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 46),
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: scheme.outline),
+                  ),
+                  child: TextField(
+                    controller: controller,
+                    minLines: 1,
+                    maxLines: 4,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => onSend(),
+                    style: TextStyle(fontSize: 14, color: scheme.onSurface),
+                    decoration: InputDecoration(
+                      hintText: needsHuman
+                          ? 'Answer them here…'
+                          : 'Reply as yourself…',
+                      hintStyle: TextStyle(
+                        fontSize: 13.5,
+                        color: scheme.onSurface.withValues(alpha: 0.4),
+                      ),
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding:
+                          const EdgeInsets.fromLTRB(14, 13, 14, 13),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Pressable(
+                onTap: canSend ? onSend : null,
+                radius: BorderRadius.circular(14),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: 46,
+                  height: 46,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: canSend
+                        ? VeloSalesTheme.accentSolid
+                        : VeloSalesTheme.accentSolid.withValues(alpha: 0.30),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: sending
+                      ? const OrbitLoader(size: 17, color: Colors.white)
+                      : const Icon(Icons.arrow_upward_rounded,
+                          size: 20, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          if (!paused)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                'Sending pauses the bot on this chat — hand back to AI when you are done.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w500,
+                  color: scheme.onSurface.withValues(alpha: 0.42),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ThreadSkeleton extends StatelessWidget {
+  const _ThreadSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 12),
+      physics: const NeverScrollableScrollPhysics(),
+      children: const [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Skeleton(height: 46, width: 220, radius: 14),
+        ),
+        SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Skeleton(height: 46, width: 190, radius: 14),
+        ),
+        SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Skeleton(height: 46, width: 160, radius: 14),
+        ),
+        SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Skeleton(height: 46, width: 210, radius: 14),
+        ),
+      ],
+    );
+  }
+}
+
+class _ContactSheet extends StatelessWidget {
+  final Map<String, dynamic> chat;
+  final bool paused;
+  final bool needsHuman;
+  final int? messageCount;
+
+  const _ContactSheet({
+    required this.chat,
+    required this.paused,
+    required this.needsHuman,
+    required this.messageCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final name = '${chat['customer_name'] ?? chat['customer_number'] ?? '?'}';
+    final channel = _channelOf(chat);
+    final status = needsHuman ? 'Needs you' : paused ? 'You talk' : 'AI handles';
+    return Padding(
+      padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top + 40),
+      child: Container(
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border(top: BorderSide(color: scheme.outline)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: scheme.outline,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const SizedBox(height: 20),
+              _Avatar(
+                  initial: _initialOf(chat),
+                  channel: channel,
+                  flagged: needsHuman),
+              const SizedBox(height: 10),
+              Text(
+                name,
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                  color: scheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${chat['customer_number'] ?? ''}',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: scheme.onSurface.withValues(alpha: 0.5),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: scheme.outline)),
+                ),
+                child: Column(
+                  children: [
+                    _Fact(label: 'Channel', value: channel.label),
+                    _Fact(label: 'Status', value: status),
+                    _Fact(
+                        label: 'Messages',
+                        value: messageCount == null ? '…' : '$messageCount'),
+                    _Fact(
+                        label: 'Last active',
+                        value: fmtTime(chat['updated_at'])),
+                  ],
+                ),
+              ),
+              if ('${chat['flag_reason'] ?? ''}'.trim().isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  'Flag: ${chat['flag_reason']}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.45,
+                    color: VeloSalesTheme.goldColor(context),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Fact extends StatelessWidget {
+  final String label;
+  final String value;
+  const _Fact({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: scheme.outline)),
+      ),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: scheme.onSurface.withValues(alpha: 0.55),
+            ),
+          ),
+          const Spacer(),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: scheme.onSurface,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
 /// AI ↔ human, as one control instead of two competing buttons.
-///
-/// The old pair ("Take over (pause bot)" / "Hand back to AI") made the owner
-/// read two labels to work out which state they were in. A segmented switch
-/// shows both states at once and marks the live one, so "who is answering?"
-/// is answered before you tap anything.
 class _ModeSwitch extends StatelessWidget {
-  final bool paused; // true = the owner is answering
+  final bool paused;
   final bool busy;
-  final ValueChanged<bool> onChanged; // true = take over, false = hand back
+  final ValueChanged<bool> onChanged;
 
   const _ModeSwitch({
     required this.paused,
@@ -707,12 +1438,11 @@ class _ModeSwitch extends StatelessWidget {
         height: 42,
         padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
-          // A dark wash under a card-coloured thumb: on light it is a grey
-          // track, on dark it is deeper than the card, so the live half is
-          // always the raised one in both themes.
-          color: Colors.black.withValues(alpha: dark ? 0.26 : 0.045),
+          color: dark
+              ? Colors.black.withValues(alpha: 0.26)
+              : scheme.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: scheme.outline.withValues(alpha: 0.4)),
+          border: Border.all(color: scheme.outline),
         ),
         child: Row(children: [
           _seg(context, 'AI answers', Icons.auto_awesome_rounded, !paused,

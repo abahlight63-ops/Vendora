@@ -12,7 +12,7 @@
 // the chat worse to serve the Connect page.
 //
 // Locked buckets are never silently swapped — they show a lock and hand the
-// tap to the upgrade card, exactly like the old picker did.
+// tap to the upgrade card, exactly like the old picker did. 
 import Ic from './icons.jsx';
 
 // badge is the server's own grouping (see src/services/aiModels.js): 'Fast'

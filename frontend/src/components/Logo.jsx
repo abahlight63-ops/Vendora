@@ -12,7 +12,7 @@
 //
 // COLOUR: the shape ships no colour of its own. styles.css sets --lg-* on
 // .vl-root (light) and [data-theme="dark"] .vl-root (dark), so the mark
-// re-tints with the theme instead of being frozen at one value.
+// re-tints with the theme instead of being frozen at one value. 
 //
 // GRADIENT IDS ARE PER-INSTANCE, and that is not a detail. An SVG gradient
 // lives in the document, not in the element: `url(#vl-g)` resolves to the

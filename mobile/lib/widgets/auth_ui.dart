@@ -462,17 +462,16 @@ class AuthOrDivider extends StatelessWidget {
   }
 }
 
-/// The social row. These are visually complete but not wired to a provider
-/// yet — see the note on the screen itself; Google needs an Android OAuth
-/// client and Apple needs a developer account before either can work.
+/// The social row. Visually complete but not wired to a provider yet — see the
+/// note on the screen itself; Google needs an Android OAuth client first.
+/// Apple was removed on purpose: the shop is web + Android, and offering a
+/// button that can never work is worse than offering none.
 class AuthSocialRow extends StatelessWidget {
   final VoidCallback? onGoogle;
-  final VoidCallback? onApple;
-  const AuthSocialRow({super.key, this.onGoogle, this.onApple});
+  const AuthSocialRow({super.key, this.onGoogle});
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -482,11 +481,6 @@ class AuthSocialRow extends StatelessWidget {
             size: const Size(21, 21),
             painter: _GoogleGlyph(),
           ),
-        ),
-        const SizedBox(width: 16),
-        _SocialButton(
-          onTap: onApple,
-          child: Icon(Icons.apple, size: 24, color: scheme.onSurface),
         ),
       ],
     );

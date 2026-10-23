@@ -29,3 +29,7 @@ BRO/
 
 # QA sweep screenshots (local verification artifacts)
 screenshots/
+
+# installable builds stay out of git
+*.apk
+*.aab

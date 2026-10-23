@@ -55,6 +55,7 @@ class GlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = BorderRadius.circular(radius);
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final inner = padding == null
         ? child
         : Padding(padding: padding!, child: child);
@@ -66,6 +67,13 @@ class GlassCard extends StatelessWidget {
           color: Glass.tint(context),
           borderRadius: r,
           border: border ?? Border.all(color: Glass.edge(context), width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: dark ? 0.26 : 0.045),
+              blurRadius: 3,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
         child: Material(
           color: Colors.transparent,

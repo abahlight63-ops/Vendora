@@ -8,17 +8,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'api.dart';
-import 'brand_mark.dart';
+import 'depth.dart';
 import 'glass.dart';
 import 'theme.dart';
 import 'splash.dart';
 import 'motion.dart';
 import 'format.dart';
+import 'widgets/brand_ui.dart';
 import 'widgets/sidebar.dart';
 import 'widgets/error_art.dart';
 import 'screens/auth_screen.dart';
+import 'screens/welcome_screen.dart';
 import 'screens/setup_screen.dart';
-import 'screens/dashboard_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/help_screen.dart';
 import 'screens/chats_screen.dart';
@@ -49,6 +50,10 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
   // Starts true so a returning owner never flashes the tour for one frame while
   // the preference loads. The boot read is what turns it off for new accounts.
   bool _seenTour = true;
+  // Pre-signup: the welcome page is the front door. Auth only opens after the
+  // guest chooses sign in or create — never as the first thing they see.
+  bool _authOpen = false;
+  int _authMode = 0; // 0 = sign in, 1 = create account (welcome picks it)
   ThemeMode _mode = ThemeMode.system;
   String _bizName = '';
   String _niche = '';
@@ -177,9 +182,26 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
                           onLogout: () => setState(() {
                             _authed = false;
                             _needsSetup = false;
+                            _authOpen = false;
+                            _authMode = 0;
                           }),
                         )
-                  : AuthScreen(onAuthed: _onAuthed),
+                  : !_authOpen
+                      ? WelcomeScreen(
+                          onCreateAccount: () => setState(() {
+                            _authMode = 1;
+                            _authOpen = true;
+                          }),
+                          onSignIn: () => setState(() {
+                            _authMode = 0;
+                            _authOpen = true;
+                          }),
+                        )
+                      : AuthScreen(
+                          initialMode: _authMode,
+                          onAuthed: _onAuthed,
+                          onBack: () => setState(() => _authOpen = false),
+                        ),
     );
   }
 }
@@ -209,11 +231,11 @@ class _HomeShellState extends State<HomeShell> {
   String? _avatar; // the owner's picture (null = the brand mark stands in)
 
   static const _titles = [
-    'Home',
+    'Overview',
     'Inbox',
     'Catalog',
     'Connect',
-    'VeloSales Ai',
+    'Chat with Velo',
     'Billing',
   ];
 
@@ -424,6 +446,22 @@ class _HomeShellState extends State<HomeShell> {
   void _open(Widget page) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
 
+  void _openHelp() {
+    _open(HelpScreen(
+      onGoTab: (i) {
+        Navigator.of(context).pop();
+        _go(i);
+      },
+      onReplayTour: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => OnboardingScreen(
+            onDone: () => Navigator.of(context).pop(),
+          ),
+        ),
+      ),
+    ));
+  }
+
   Widget _sidebar() {
     final dark = Theme.of(context).brightness == Brightness.dark;
     return Sidebar(
@@ -431,85 +469,94 @@ class _HomeShellState extends State<HomeShell> {
       niche: widget.niche,
       avatarUrl: _avatar,
       tab: _tab,
-      primary: const [
-        SidebarItem(icon: Icons.home_outlined, label: 'Home', tab: 0),
-        SidebarItem(
-            icon: Icons.forum_outlined,
-            label: 'Inbox',
-            hint: 'Reply to your customers',
-            tab: 1),
-        SidebarItem(
-            icon: Icons.inventory_2_outlined,
-            label: 'Catalog',
-            hint: 'The only prices the bot may quote',
-            tab: 2),
-        SidebarItem(
-            icon: Icons.link_outlined,
-            label: 'Connect',
-            hint: 'WhatsApp and Telegram',
-            tab: 3),
-        SidebarItem(
-            icon: Icons.smart_toy_outlined,
-            label: 'VeloSales Ai',
-            hint: 'Ask it anything',
-            tab: 4),
-        SidebarItem(icon: Icons.payments_outlined, label: 'Billing', tab: 5),
-      ],
-      secondary: [
-        SidebarItem(
-          icon: Icons.insights_outlined,
-          label: 'Shop overview',
-          hint: 'How your bot is performing',
-          push: () => _open(DashboardScreen(onGoTab: _go)),
-        ),
-        SidebarItem(
-          icon: Icons.query_stats_outlined,
-          label: 'Insights',
-          hint: 'Chats, quiet customers, busy hours',
-          push: () => _open(const InsightsScreen()),
-        ),
-        SidebarItem(
-          icon: Icons.card_giftcard_outlined,
-          label: 'Refer & Earn',
-          hint: 'Invite sellers — you both win',
-          push: () => _open(const ReferEarnScreen()),
-        ),
-        SidebarItem(
-          icon: Icons.storefront_outlined,
-          label: 'Business profile',
-          hint: 'What the AI knows about your shop',
-          push: () => _open(const ProfileScreen()),
-        ),
-        SidebarItem(
-          icon: Icons.psychology_outlined,
-          label: 'AI settings',
-          hint: 'Who answers, and how it sounds',
-          push: () => _open(const AiSettingsScreen()),
-        ),
-        SidebarItem(
-          icon: Icons.settings_outlined,
-          label: 'Settings',
-          hint: 'Your picture, plan and preferences',
-          push: _openSettings,
-        ),
-        SidebarItem(
-          icon: Icons.menu_book_outlined,
-          label: 'How to use VeloSales Ai',
-          hint: 'A short guided tour',
-          push: () => _open(HelpScreen(
-            onGoTab: (i) {
-              Navigator.of(context).pop();
-              _go(i);
-            },
-            onReplayTour: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => OnboardingScreen(
-                  onDone: () => Navigator.of(context).pop(),
-                ),
+      groups: [
+        // The web's three groups, same words and order. The phone's drawer is
+        // the deep-indigo rail; the five things a thumb needs every day live
+        // in the floating dock instead.
+        SidebarGroup(label: 'Sell', items: [
+          const SidebarItem(
+              icon: Icons.grid_view_outlined,
+              label: 'Overview',
+              hint: 'Your shop at a glance',
+              tab: 0),
+          const SidebarItem(
+              icon: Icons.forum_outlined,
+              label: 'Inbox',
+              hint: 'Reply to your customers',
+              tab: 1),
+          const SidebarItem(
+              icon: Icons.inventory_2_outlined,
+              label: 'Catalog',
+              hint: 'The only prices the bot may quote',
+              tab: 2),
+          const SidebarItem(
+              icon: Icons.link_outlined,
+              label: 'Connect',
+              hint: 'WhatsApp and Telegram',
+              tab: 3),
+          SidebarItem(
+            icon: Icons.science_outlined,
+            label: 'Test bot',
+            hint: 'See what a customer sees',
+            push: () => _open(Scaffold(
+              appBar: AppBar(
+                title: const Text('Test bot',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
               ),
-            ),
-          )),
-        ),
+              body: const AiScreen(startInTestBot: true),
+            )),
+          ),
+        ]),
+        SidebarGroup(label: 'Grow', items: [
+          SidebarItem(
+            icon: Icons.query_stats_outlined,
+            label: 'Insights',
+            hint: 'Chats, quiet customers, busy hours',
+            push: () => _open(const InsightsScreen()),
+          ),
+          const SidebarItem(
+              icon: Icons.smart_toy_outlined,
+              label: 'Chat with Velo',
+              hint: 'Ask it anything',
+              tab: 4),
+          SidebarItem(
+            icon: Icons.card_giftcard_outlined,
+            label: 'Refer & Earn',
+            hint: 'Invite sellers — you both win',
+            push: () => _open(const ReferEarnScreen()),
+          ),
+          const SidebarItem(
+              icon: Icons.payments_outlined,
+              label: 'Billing',
+              hint: 'Plan, trial and receipts',
+              tab: 5),
+        ]),
+        SidebarGroup(label: 'Setup', items: [
+          SidebarItem(
+            icon: Icons.storefront_outlined,
+            label: 'Business',
+            hint: 'What the AI knows about your shop',
+            push: () => _open(const ProfileScreen()),
+          ),
+          SidebarItem(
+            icon: Icons.psychology_outlined,
+            label: 'AI settings',
+            hint: 'Who answers, and how it sounds',
+            push: () => _open(const AiSettingsScreen()),
+          ),
+          SidebarItem(
+            icon: Icons.settings_outlined,
+            label: 'Settings',
+            hint: 'Your picture, plan and preferences',
+            push: _openSettings,
+          ),
+          SidebarItem(
+            icon: Icons.menu_book_outlined,
+            label: 'Help',
+            hint: 'A short guided tour',
+            push: _openHelp,
+          ),
+        ]),
       ],
       onGoTab: _go,
       dark: dark,
@@ -522,7 +569,7 @@ class _HomeShellState extends State<HomeShell> {
           context: context,
           builder: (c) => AlertDialog(
             icon: const Icon(Icons.logout_rounded),
-            title: const Text('Sign out?'),
+            title: const Text('Sign out of VeloSales Ai?'),
             content: const Text(
                 'Your shop keeps working — the AI answers every customer whether '
                 'the app is open or not. You will need your login to come back.'),
@@ -548,6 +595,7 @@ class _HomeShellState extends State<HomeShell> {
     return Scaffold(
       drawer: _sidebar(),
       appBar: AppBar(
+        toolbarHeight: 64,
         leading: Builder(
           builder: (c) => IconButton(
             icon: const Icon(Icons.menu_rounded),
@@ -556,11 +604,39 @@ class _HomeShellState extends State<HomeShell> {
           ),
         ),
         titleSpacing: 0,
-        title: Row(children: [
-          const BrandMark(size: 24),
-          const SizedBox(width: 9),
-          Text(_titles[_tab]),
-        ]),
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'VeloSales Ai / ${_titles[_tab]}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.1,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.45),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              widget.bizName.isEmpty ? 'Your business' : widget.bizName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 16.5,
+                height: 1.1,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.35,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
         actions: [
           // Bell (Notifications.jsx parity: badge + mark-read on open).
           Stack(children: [
@@ -588,15 +664,36 @@ class _HomeShellState extends State<HomeShell> {
               ),
           ]),
           IconButton(
-            icon: Icon(widget.mode == ThemeMode.dark
+            // Use the theme actually on screen, not the preference. If the
+            // phone is in system-dark and the preference is `system`, the moon
+            // must still switch to light on the first tap (not set dark again).
+            icon: Icon(Theme.of(context).brightness == Brightness.dark
                 ? Icons.light_mode_outlined
                 : Icons.dark_mode_outlined),
             tooltip: 'Toggle theme',
             onPressed: () => widget.onMode(
-                widget.mode == ThemeMode.dark
+                Theme.of(context).brightness == Brightness.dark
                     ? ThemeMode.light
                     : ThemeMode.dark),
           ),
+          Builder(
+            builder: (c) => Semantics(
+              button: true,
+              label: 'Open menu',
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => Scaffold.of(c).openDrawer(),
+                child: SizedBox(
+                  width: 42,
+                  height: 42,
+                  child: Center(
+                    child: _TopAvatar(url: _avatar, name: widget.bizName),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
         ],
       ),
       body: Column(children: [
@@ -622,31 +719,185 @@ class _HomeShellState extends State<HomeShell> {
           ]),
         ),
       ]),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab > 4 ? 0 : _tab,
-        onDestinationSelected: _go,
-        destinations: const [
-          NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home_rounded),
-              label: 'Home'),
-          NavigationDestination(
-              icon: Icon(Icons.forum_outlined),
-              selectedIcon: Icon(Icons.forum_rounded),
-              label: 'Inbox'),
-          NavigationDestination(
-              icon: Icon(Icons.inventory_2_outlined),
-              selectedIcon: Icon(Icons.inventory_2_rounded),
-              label: 'Catalog'),
-          NavigationDestination(
-              icon: Icon(Icons.link_outlined),
-              selectedIcon: Icon(Icons.link_rounded),
-              label: 'Connect'),
-          NavigationDestination(
-              icon: Icon(Icons.smart_toy_outlined),
-              selectedIcon: Icon(Icons.smart_toy_rounded),
-              label: 'Ai'),
-        ],
+      // The web's floating mobile bar — same five destinations, same active
+      // pill, lifted off the canvas instead of a full-width Material sheet.
+      bottomNavigationBar: _Dock(tab: _tab, onTab: _go, onHelp: _openHelp),
+    );
+  }
+}
+
+/// One destination in the floating dock.
+class _DockEntry {
+  final int tab; // -1 = a pushed page (Help)
+  final String label;
+  final IconData icon;
+  final IconData activeIcon;
+  const _DockEntry(this.tab, this.label, this.icon, this.activeIcon);
+}
+
+/// The phone's five-item bar. It matches the browser's `@media (max-width:
+/// 980px) .mobile-bar`: a floating white card, 20px radius, one shadow, five
+/// labels at 10.5px, and a purple-soft pill under the current page. Billing and
+/// Help are here (as on the web); Connect and Chat with Velo stay in the rail.
+class _Dock extends StatelessWidget {
+  final int tab;
+  final ValueChanged<int> onTab;
+  final VoidCallback onHelp;
+
+  const _Dock({required this.tab, required this.onTab, required this.onHelp});
+
+  static const _entries = [
+    _DockEntry(0, 'Overview', Icons.grid_view_outlined, Icons.grid_view_rounded),
+    _DockEntry(1, 'Inbox', Icons.forum_outlined, Icons.forum_rounded),
+    _DockEntry(
+        2, 'Catalog', Icons.inventory_2_outlined, Icons.inventory_2_rounded),
+    _DockEntry(5, 'Billing', Icons.payments_outlined, Icons.payments_rounded),
+    _DockEntry(-1, 'Help', Icons.help_outline_rounded, Icons.help_rounded),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+        child: Container(
+          height: 64,
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
+          decoration: BoxDecoration(
+            color: scheme.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: scheme.outline),
+            boxShadow: softShadow(context, lift: 0.5),
+          ),
+          child: Row(
+            children: [
+              for (final e in _entries)
+                Expanded(
+                  child: _DockItem(
+                    entry: e,
+                    active: e.tab == tab,
+                    onTap: e.tab < 0 ? onHelp : () => onTab(e.tab),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The topbar avatar: the owner's photo if there is one, otherwise the shop's
+/// initial in the accent tint. It is the same object the web topbar shows, not
+/// a second sign-out door — tapping it opens the rail, where sign-out lives.
+class _TopAvatar extends StatelessWidget {
+  final String? url;
+  final String name;
+
+  const _TopAvatar({this.url, required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final trimmed = name.trim();
+    final initial = trimmed.isEmpty
+        ? 'V'
+        : String.fromCharCode(trimmed.runes.first).toUpperCase();
+    if (url != null && url!.isNotEmpty) {
+      return Container(
+        width: 32,
+        height: 32,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: scheme.outline),
+        ),
+        child: Image.network(
+          url!,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _initialAvatar(scheme, initial),
+        ),
+      );
+    }
+    return _initialAvatar(scheme, initial);
+  }
+
+  Widget _initialAvatar(ColorScheme scheme, String initial) {
+    return Container(
+      width: 32,
+      height: 32,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer,
+        shape: BoxShape.circle,
+        border: Border.all(color: scheme.outline),
+      ),
+      child: Text(
+        initial,
+        style: TextStyle(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w800,
+          color: scheme.primary,
+        ),
+      ),
+    );
+  }
+}
+
+class _DockItem extends StatelessWidget {
+  final _DockEntry entry;
+  final bool active;
+  final VoidCallback onTap;
+
+  const _DockItem({
+    required this.entry,
+    required this.active,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final muted = scheme.onSurface.withValues(alpha: 0.52);
+    return Semantics(
+      button: true,
+      selected: active,
+      label: entry.label,
+      child: Pressable(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 2),
+          decoration: BoxDecoration(
+            color: active ? scheme.primaryContainer : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                active ? entry.activeIcon : entry.icon,
+                size: 20,
+                color: active ? scheme.primary : muted,
+              ),
+              const SizedBox(height: 3),
+              Text(
+                entry.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  height: 1,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                  color: active ? scheme.primary : muted,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

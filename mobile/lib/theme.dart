@@ -9,6 +9,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'depth.dart';
+
 class VeloSalesTheme {
   static const _key = 'velosalesai_theme_mode'; // 'light' | 'dark' | 'system'
 
@@ -49,8 +51,23 @@ class VeloSalesTheme {
   static const red = Color(0xFFDC2626);
   static const gold = Color(0xFFD97706);
 
+  // The web's quiet second data colour (Reply mix: "Catalog"). It is a
+  // lavender, not a second brand hue — it only ever sits inside a chart.
+  static const sky = Color(0xFFCFC6F8);
+  static const skyDark = Color(0xFF3B3187);
+
   /// Kept so existing call sites keep compiling — this is the brand accent now.
   static const accentTeal = purpleDark;
+
+  /// Semantic colours that must lift on a dark page (the web tokens do).
+  static Color successColor(BuildContext c) =>
+      Theme.of(c).brightness == Brightness.dark ? const Color(0xFF34D399) : greenDark;
+  static Color goldColor(BuildContext c) =>
+      Theme.of(c).brightness == Brightness.dark ? const Color(0xFFFBBF24) : gold;
+  static Color skyColor(BuildContext c) =>
+      Theme.of(c).brightness == Brightness.dark ? skyDark : sky;
+  static Color faintColor(BuildContext c) =>
+      Theme.of(c).colorScheme.onSurface.withValues(alpha: 0.45);
 
   // ── brand-mark ramp ──
   // Same three steps as the web's --lg-top/mid/bot in styles.css, so the mark
@@ -178,13 +195,14 @@ class VeloSalesTheme {
       canvasColor: bg,
       dividerColor: line,
       textTheme: _text(base.textTheme).apply(bodyColor: ink, displayColor: ink),
-      // .page fade .12s → global page transition (fast fade).
+      // .page fade .12s → the phone's depth transition (fade + 2° rise).
+      // The 3.44 builder signature is the same on every platform.
       pageTransitionsTheme: const PageTransitionsTheme(builders: {
-        TargetPlatform.android: _FadePageBuilder(),
-        TargetPlatform.iOS: _FadePageBuilder(),
-        TargetPlatform.linux: _FadePageBuilder(),
-        TargetPlatform.macOS: _FadePageBuilder(),
-        TargetPlatform.windows: _FadePageBuilder(),
+        TargetPlatform.android: DepthPageTransitionsBuilder(),
+        TargetPlatform.iOS: DepthPageTransitionsBuilder(),
+        TargetPlatform.linux: DepthPageTransitionsBuilder(),
+        TargetPlatform.macOS: DepthPageTransitionsBuilder(),
+        TargetPlatform.windows: DepthPageTransitionsBuilder(),
       }),
       appBarTheme: AppBarTheme(
         backgroundColor: bg, // solid — no frost, no blur
@@ -213,14 +231,18 @@ class VeloSalesTheme {
         style: FilledButton.styleFrom(
           minimumSize: const Size(0, 44),
           padding: const EdgeInsets.symmetric(horizontal: 22),
+          backgroundColor: accentSolid,
+          foregroundColor: Colors.white,
           textStyle: const TextStyle(
               fontFamily: _font, fontSize: 14, fontWeight: FontWeight.w700),
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(pill)),
-          // Disabled still reads as the same button, just unavailable —
-          // Material's default washes it out to a different-looking control.
-          disabledBackgroundColor: scheme.primary.withValues(alpha: 0.34),
-          disabledForegroundColor: scheme.onPrimary.withValues(alpha: 0.85),
+          // Same fill in both themes, exactly like the web's --accent-solid:
+          // white on #4F3FC7 is 7:1, while white on the dark --purple would
+          // only be 2.9:1. The accent still shows through text and icons.
+          // Disabled still reads as the same button, just unavailable.
+          disabledBackgroundColor: accentSolid.withValues(alpha: 0.34),
+          disabledForegroundColor: Colors.white.withValues(alpha: 0.85),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -301,24 +323,6 @@ class VeloSalesTheme {
         iconColor: muted,
         textColor: ink,
       ),
-    );
-  }
-}
-
-// .page { animation: fade 0.12s ease } — page-level fade, both platforms.
-class _FadePageBuilder extends PageTransitionsBuilder {
-  const _FadePageBuilder();
-  @override
-  Widget buildTransitions<T>(
-    PageRoute<T> route,
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-    Widget child,
-  ) {
-    return FadeTransition(
-      opacity: animation.drive(CurveTween(curve: Curves.ease)),
-      child: child,
     );
   }
 }

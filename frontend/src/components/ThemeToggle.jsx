@@ -18,5 +18,5 @@ export default function ThemeToggle({ theme, onToggle }) { // export default = `
       </span>
     </button>
   );
-}
+} 
 // Usage: <ThemeToggle theme={theme} onToggle={toggleTheme} /> (self-closing = no children)

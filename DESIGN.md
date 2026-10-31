@@ -139,6 +139,8 @@ Check every text/background pair at 4.5:1 in both themes.
   zone. Native splash: rail `#1A1443` + centred mark, so the first paint is
   already the brand instead of a white flash (iOS storyboard uses the same
   colour).
+- The welcome scene is the one 3D version of the mark. It extrudes this same
+  geometry, so its front outline is still the exact logo. Use it nowhere else.
 - Mark + wordmark: mark 34px, gap 10px, wordmark 15.5px/700 at -0.2px.
 - Clear space around the mark = 25% of its width. Never put it on the accent
   fill (purple-on-purple disappears); put it on a surface.
@@ -232,23 +234,26 @@ Check every text/background pair at 4.5:1 in both themes.
   clients use the same words. The dialog is not red — leaving is routine, and a
   red alarm would punish a normal tap.
 
-### Pre-signup welcome (phone)
-- A signed-out guest lands here before any form: one promise, six automatic
-  proof slides, then a choice. It is the phone's equivalent of the web's public
-  landing page.
-- The stage is saturated indigo with slow drifting brand glows and a fine star
-  field. This is marketing, not chrome: the backdrop and the all-in-one orbit
-  may loop here, and nowhere inside the app.
-- Each proof slide is a WhatsApp-shaped exchange — teal header, wallpaper,
-  tails, times, blue ticks, typing dots and a reply that types itself — plus one
-  result line. The conversations are illustrative, never testimonials.
-- Slide 4 is the language promise: a drawn Nigerian flag, Pidgin, Yorùbá, Igbo
-  and Hausa chips, and a reply written in Pidgin. Slide 6 replaces the chat with
-  Instagram, WhatsApp and Telegram orbiting the mark.
-- Slides advance every 7s; a drag pauses the clock, and the dots show position.
-  Reduced motion stops the drift, the orbit and the typing but keeps the content.
-- "Sign in" and "Get started" are always visible. Either opens auth in that mode;
-  Back returns here. The primary action never says "Create my free shop".
+### Pre-signup welcome (web `/` + phone)
+- One screen on both clients (`frontend/src/pages/Landing.jsx`,
+  `mobile/lib/screens/welcome_screen.dart`): the 3D mark, one promise ("Your
+  WhatsApp shop, open 24/7."), one sentence, then a choice. Pricing and detail
+  live on the marketing site; the web links to it once and keeps its legal
+  footer below the stage.
+- The stage is saturated indigo in both themes, with slow drifting brand glows
+  and a fine star field. This is marketing, not chrome: the backdrop and the
+  orbit may loop here, and nowhere inside the app.
+- The scene (`components/mark3d-core.js` + `Mark3D.jsx`, `widgets/mark_3d.dart`)
+  extrudes the mark's three triangles with no model file and no 3D library. The
+  pieces fly in and lock, the mark turns toward the cursor or finger, and channel
+  tiles orbit on a tilted ring, passing behind and in front. Both files hold the
+  same numbers: change one, change both.
+- Only live channels orbit untagged. A channel that has not shipped carries an
+  amber "soon" tag (Instagram today); remove the tag when it ships.
+- Headline on this screen may exceed the type scale (up to 68px on desktop).
+  The primary action is a white pill joined to an amber arrow, with "Sign in"
+  beside it. Either opens auth in that mode. It never says "Create my free shop".
+- Reduced motion: one still, angled pose with every channel visible, no drift.
 
 ### Welcome tour (web + phone)
 - Six slides, one idea each, shown once after sign-up, then never unprompted.
@@ -305,9 +310,8 @@ template writes its own `<html>`, it is a bug — the inbox must look like the a
 - 140–220ms ease-out. Sheets slide up. Buttons scale to 0.97 on press.
 - Respect `prefers-reduced-motion` globally in one place.
 - No decorative loops or pulse animations. The one exception is the signed-out
-  welcome: its backdrop may drift and the all-in-one marks may orbit while that
-  slide is active. Neither runs under reduced motion, and neither appears in the
-  app after sign-in.
+  welcome: its backdrop may drift and the channel marks may orbit the 3D mark.
+  Neither runs under reduced motion, and neither appears in the app after sign-in.
 - **Depth (phone only).** The phone may add real perspective to the same flat
   web surfaces: a card tilts 2–4° toward the finger, a page arrives with a 2°
   pitch and a 12px rise, and cards settle flat on entry. These are still

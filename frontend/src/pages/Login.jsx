@@ -143,7 +143,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
     });
   }, []); // mount-only side-effect
   const nav = useNavigate(); // code navigation (afterAuth below)
-  const [mode, setMode] = useState('login'); // 'login' | 'signup' (one form, two modes — toggled by link below!)
+  const [mode, setMode] = useState(() => (new URLSearchParams(window.location.search).get('mode') === 'signup' ? 'signup' : 'login')); // 'login' | 'signup' (one form, two modes — toggled by link below; the welcome page's Get started opens signup)
   const [msg, setMsg] = useState(''); // status line text ("Welcome back…" / errors)
   const [msgErr, setMsgErr] = useState(false); // status line red? (drives .err + shake animation!)
   const [busy, setBusy] = useState(false); // request in flight (button spinner + lock — double-submit protection!)

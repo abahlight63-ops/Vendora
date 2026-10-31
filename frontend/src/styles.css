@@ -871,20 +871,6 @@ body:has(.vai) .site-foot { display: none; } /* the chat is an app surface — n
 .landing-nav .landing-inner { display: flex; justify-content: space-between; align-items: center; }
 .landing-brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: 0.8px; color: var(--text-1); }
 .landing-brand img { width: 32px; height: 32px; border-radius: 8px; background: #fff; }
-.landing-hero { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 32px; padding: 64px 32px 48px; align-items: center; }
-.landing-hero h1 { font-size: var(--fs-h1); line-height: 1.1; letter-spacing: -1.2px; color: var(--text-1); margin: 16px 0; font-weight: 700; }
-.landing-hero p { color: var(--text-2); font-size: 16px; line-height: 1.5; max-width: 520px; }
-.landing-hero .hint { color: var(--text-3); }
-.landing-hero-photo { border-radius: var(--r); overflow: hidden; box-shadow: var(--shadow-md); margin-bottom: 16px; }
-.landing-hero-photo img { display: block; width: 100%; height: 220px; object-fit: cover; }
-.how-thumb { border-radius: var(--r); overflow: hidden; margin-bottom: 16px; }
-.how-thumb img { display: block; width: 100%; height: 148px; object-fit: cover; }
-.landing-phone { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 4px; box-shadow: var(--shadow-md); }
-.landing-phone-head { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--text-1); font-size: var(--fs-sm); margin-bottom: 10px; }
-.landing-phone-head i { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); }
-.landing-phone-head span { margin-left: auto; font-size: var(--fs-caption); color: var(--text-3); font-weight: 500; }
-.landing-phone .bubble { background: var(--bg-secondary); color: var(--text-1); border-radius: 14px 14px 3px 14px; padding: 10px 13px; font-size: var(--fs-sm); align-self: flex-start; max-width: 88%; margin: 4px 0; }
-.landing-phone .bubble-out { background: var(--accent); color: #fff; border-radius: 14px 14px 14px 3px; padding: 10px 13px; font-size: var(--fs-sm); align-self: flex-end; max-width: 88%; margin: 4px 0; }
 .landing .grid3 { padding-top: 8px; padding-bottom: 8px; }
 .landing .card { background: var(--surface); border-color: var(--border); color: var(--text-1); box-shadow: var(--shadow-sm); }
 .landing .card h2 { color: var(--text-1); }
@@ -893,14 +879,6 @@ body:has(.vai) .site-foot { display: none; } /* the chat is an app surface — n
 [data-theme="dark"] .landing { background: var(--bg); color: var(--text-1); }
 [data-theme="dark"] .landing-nav { border-color: var(--line); background: var(--bg); }
 [data-theme="dark"] .landing-brand { color: #fff; }
-[data-theme="dark"] .landing-hero h1 { color: #fff; }
-[data-theme="dark"] .landing-hero p { color: #b9d4c2; }
-[data-theme="dark"] .landing-hero .hint { color: var(--text-2); }
-[data-theme="dark"] .landing-phone { background: #10281c; border-color: rgba(255,255,255,0.12); box-shadow: none; }
-[data-theme="dark"] .landing-phone-head { color: #fff; }
-[data-theme="dark"] .landing-phone-head span { color: var(--text-2); }
-[data-theme="dark"] .landing-phone .bubble { background: rgba(255,255,255,0.09); color: #eaf3ed; }
-[data-theme="dark"] .landing-phone .bubble-out { background: #25d366; color: #04120c; }
 [data-theme="dark"] .landing .card { background: #10281c; border-color: rgba(255,255,255,0.1); color: #eaf3ed; box-shadow: none; }
 [data-theme="dark"] .landing .card h2 { color: #fff; }
 [data-theme="dark"] .landing .card .desc { color: #b9d4c2; }
@@ -910,7 +888,6 @@ body:has(.vai) .site-foot { display: none; } /* the chat is an app surface — n
 .landing-price span { display: block; font-size: 13px; color: var(--text-2); margin-bottom: 10px; }
 .landing .site-foot { margin-top: 8px; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-@media (max-width: 960px) { .landing-hero { grid-template-columns: 1fr; padding: 40px 20px 28px; } .landing-hero h1 { font-size: 32px; } }
 /* dashboard */
 /* Was a dark-green gradient slab with white text — the retired brand, still
    sitting on the most-viewed card in the app. It is a soft purple card with a
@@ -1188,9 +1165,6 @@ button.mini-link:hover { text-decoration: underline; }
 /* ---------- extra motion: reveal, float, faq ---------- */
 .reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.2, 0.9, 0.25, 1); }
 .reveal.vis { opacity: 1; transform: none; }
-.landing-phone { animation: phoneFloat 5s ease-in-out infinite alternate; }
-@keyframes phoneFloat { to { transform: translateY(-8px); } }
-.landing-phone .bubble, .landing-phone .bubble-out { animation: bubbleIn 0.5s ease both; }
 .faq-a { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.3s ease; }
 .faq-a.open { grid-template-rows: 1fr; }
 .faq-a > div { overflow: hidden; }
@@ -1352,7 +1326,7 @@ button.mini-link:hover { text-decoration: underline; }
   .welcome-nav .btn { width: 100%; min-height: 48px; font-size: 15px; }
 }
 
-@media (prefers-reduced-motion: reduce) { .page { animation: none; } .slide.fwd, .slide.back { animation: none; } .splash-bar i, .landing-phone { animation: none; } .reveal-mark .rv-piece, .reveal-mark .rv-orbit, .reveal-mark .rv-shine, .reveal-mark .rv-join, .splash-name span, .splash-tag { animation: none; opacity: 1; transform: none; } .reveal-mark .rv-ring { display: none; } .reveal { opacity: 1; transform: none; transition: none; } }
+@media (prefers-reduced-motion: reduce) { .page { animation: none; } .slide.fwd, .slide.back { animation: none; } .splash-bar i { animation: none; } .reveal-mark .rv-piece, .reveal-mark .rv-orbit, .reveal-mark .rv-shine, .reveal-mark .rv-join, .splash-name span, .splash-tag { animation: none; opacity: 1; transform: none; } .reveal-mark .rv-ring { display: none; } .reveal { opacity: 1; transform: none; transition: none; } }
 
 /* Quiz progress + step transitions + cheers (Welcome.jsx 5-step setup). */
 .quiz-prog { height: 8px; border-radius: 99px; background: var(--purple-soft); overflow: hidden; margin: 10px 0 2px; }
@@ -2075,3 +2049,53 @@ a.ov-stat:hover { border-color: var(--purple-line); box-shadow: var(--shadow-md)
   .nf-links { grid-template-columns: 1fr; margin-top: 24px; }
   .nf-actions .btn { flex: 1 1 auto; }
 }
+
+/* ── welcome (/) ─────────────────────────────────────────────────────
+   The signed-out front door, same screen as the phone's welcome_screen.dart.
+   The stage is indigo in both themes: it is brand, not chrome. */
+.wel { --stage-1: #1c1350; --stage-2: #34238d; --stage-3: #5b4bd6; --stage-4: #3a2596; --stage-ink: #fff; --stage-muted: rgba(255, 255, 255, 0.74); --stage-amber: #fbbf24; --stage-amber-ink: #2a1e6b;
+  position: relative; overflow: hidden; isolation: isolate; display: flex; flex-direction: column; min-height: 100vh; min-height: 100svh; color: var(--stage-ink);
+  background-color: var(--stage-1);
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25'><circle cx='8%25' cy='12%25' r='1.2' fill='white' fill-opacity='.3'/><circle cx='21%25' cy='28%25' r='0.8' fill='white' fill-opacity='.3'/><circle cx='34%25' cy='7%25' r='1' fill='white' fill-opacity='.3'/><circle cx='47%25' cy='19%25' r='0.7' fill='white' fill-opacity='.3'/><circle cx='63%25' cy='10%25' r='1.1' fill='white' fill-opacity='.3'/><circle cx='78%25' cy='24%25' r='0.8' fill='white' fill-opacity='.3'/><circle cx='91%25' cy='13%25' r='1.3' fill='white' fill-opacity='.3'/><circle cx='13%25' cy='46%25' r='0.7' fill='white' fill-opacity='.3'/><circle cx='29%25' cy='62%25' r='1' fill='white' fill-opacity='.3'/><circle cx='55%25' cy='52%25' r='0.8' fill='white' fill-opacity='.3'/><circle cx='72%25' cy='44%25' r='1.2' fill='white' fill-opacity='.3'/><circle cx='88%25' cy='63%25' r='0.7' fill='white' fill-opacity='.3'/><circle cx='6%25' cy='77%25' r='1' fill='white' fill-opacity='.3'/><circle cx='24%25' cy='91%25' r='0.8' fill='white' fill-opacity='.3'/><circle cx='41%25' cy='84%25' r='1.1' fill='white' fill-opacity='.3'/><circle cx='66%25' cy='79%25' r='0.7' fill='white' fill-opacity='.3'/><circle cx='83%25' cy='92%25' r='1' fill='white' fill-opacity='.3'/><circle cx='96%25' cy='74%25' r='0.8' fill='white' fill-opacity='.3'/></svg>"), linear-gradient(135deg, var(--stage-1) 0%, var(--stage-2) 38%, var(--stage-3) 72%, var(--stage-4) 100%); }
+.wel-glow { position: absolute; z-index: -1; border-radius: 50%; pointer-events: none; animation: welDrift 18s ease-in-out infinite alternate; }
+.wel-glow-a { width: 620px; height: 620px; left: -180px; top: -200px; background: radial-gradient(circle, rgba(139, 92, 246, 0.55), rgba(139, 92, 246, 0) 70%); }
+.wel-glow-b { width: 520px; height: 520px; right: -190px; top: 18%; background: radial-gradient(circle, rgba(236, 72, 153, 0.26), rgba(236, 72, 153, 0) 70%); animation-delay: -6s; }
+.wel-glow-c { width: 560px; height: 560px; left: 18%; bottom: -260px; background: radial-gradient(circle, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0) 70%); animation-delay: -12s; }
+@keyframes welDrift { from { transform: translate(-20px, -14px); } to { transform: translate(24px, 18px); } }
+.wel-bar { max-width: 1200px; width: 100%; margin: 0 auto; padding: 20px 32px 0; }
+.wel-brand { display: inline-flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 800; letter-spacing: -0.4px; }
+.wel-brand .vl-root { --lg-top: #fff; --lg-mid: #e4e0ff; --lg-bot: #b9aefb; }
+.wel-main { flex: 1; display: grid; grid-template-columns: 1fr 1.08fr; align-items: center; gap: 24px; max-width: 1200px; width: 100%; margin: 0 auto; padding: 12px 32px 40px; }
+.wel-scene { grid-column: 2; grid-row: 1; height: min(640px, 76vh); min-width: 0; }
+.wel-copy { grid-column: 1; grid-row: 1; min-width: 0; }
+.wel-copy h1 { margin: 0; font-size: clamp(38px, 5.2vw, 68px); line-height: 1.03; font-weight: 800; letter-spacing: -0.035em; color: var(--stage-ink); }
+.wel-copy h1 em { font-style: normal; white-space: nowrap; color: var(--stage-amber); }
+.wel-copy p { margin: 18px 0 0; max-width: 460px; font-size: 18px; line-height: 1.5; color: var(--stage-muted); }
+.wel-actions { display: flex; align-items: center; gap: 22px; margin-top: 30px; }
+.wel-cta { position: relative; display: flex; align-items: center; flex: 0 1 300px; min-width: 0; height: 56px; gap: 10px; color: var(--stage-amber-ink); text-decoration: none; transition: transform 160ms ease-out; }
+.wel-cta:hover { text-decoration: none; }
+.wel-cta:active { transform: scale(0.97); }
+.wel-cta:focus-visible { outline: 2px solid #fff; outline-offset: 4px; border-radius: 999px; }
+.wel-cta-pill { flex: 1; display: flex; align-items: center; justify-content: center; height: 56px; min-width: 0; border-radius: 999px; background: #fff; font-size: 16px; font-weight: 800; letter-spacing: -0.2px; }
+.wel-cta-arrow { flex: 0 0 56px; display: flex; align-items: center; justify-content: center; height: 56px; border-radius: 50%; background: var(--stage-amber); transition: transform 180ms ease-out; }
+.wel-cta:hover .wel-cta-arrow svg { transform: translate(2px, -2px); }
+.wel-cta-arrow svg { transition: transform 180ms ease-out; }
+.wel-cta-neck { position: absolute; right: 47.8px; top: 8.2px; width: 26.4px; height: 39.6px; }
+.wel-cta-neck path { fill: #fff; }
+.wel-signin { display: inline-flex; align-items: center; min-height: 44px; font-size: 15px; font-weight: 700; color: var(--stage-ink); text-decoration: none; }
+.wel-signin:hover { text-decoration: underline; }
+.wel-more { display: inline-block; margin-top: 18px; padding: 6px 0; font-size: 14px; font-weight: 600; color: var(--stage-muted); text-decoration: underline; text-underline-offset: 3px; }
+.wel-more:hover { color: var(--stage-ink); }
+@media (max-width: 900px) {
+  .wel-bar { padding: 14px 20px 0; }
+  .wel-main { grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 0 20px 28px; align-items: end; }
+  .wel-scene { grid-column: 1; grid-row: auto; height: min(46svh, 104vw); }
+  .wel-copy { grid-column: 1; grid-row: auto; }
+  .wel-copy h1 { font-size: clamp(34px, 10.4vw, 52px); }
+  .wel-copy p { margin-top: 12px; font-size: 16px; }
+  .wel-actions { margin-top: 20px; gap: 16px; }
+  .wel-cta { flex: 1 1 auto; }
+  .wel-more { margin-top: 10px; }
+}
+@media (max-width: 900px) and (max-height: 700px) { .wel-scene { height: 36svh; } .wel-copy h1 { font-size: 31px; } .wel-copy p { margin-top: 8px; font-size: 14px; } .wel-actions { margin-top: 12px; } .wel-more { margin-top: 4px; } .wel-main { padding-bottom: 12px; } }
+@media (prefers-reduced-motion: reduce) { .wel-glow { animation: none; } .wel-cta, .wel-cta-arrow svg { transition: none; } }

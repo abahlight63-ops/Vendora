@@ -82,7 +82,7 @@ class _VeloSalesAppState extends State<VeloSalesApp> {
     // Web parity: the splash holds for the full reveal. The wordmark's last
     // letter lands at 1.88s, so the floor is 2s — anything shorter cuts the
     // one authored moment in the app in half.
-    final wait = Future.delayed(const Duration(milliseconds: 2000));
+    final wait = Future.delayed(const Duration(milliseconds: 2600));
     final results = await Future.wait([
       wait,
       VeloSalesTheme.loadMode(),

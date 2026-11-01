@@ -6,6 +6,9 @@
 // and every tappable surface is at least 48px and scales to 0.97 under the
 // finger, which is the one motion the whole app reuses.
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../brand_mark.dart';
 
 import '../theme.dart';
 
@@ -13,6 +16,83 @@ import '../theme.dart';
 ///
 /// A GestureDetector rather than an InkWell because these cards carry their own
 /// tint — Material's ripple paints a grey overlay that muddies a pastel fill.
+/// Pull to refresh with the logo turning at the top instead of a stock spinner,
+/// and a soft tick when the pull is far enough.
+class BrandRefresh extends StatefulWidget {
+  final Future<void> Function() onRefresh;
+  final Widget child;
+  const BrandRefresh({super.key, required this.onRefresh, required this.child});
+
+  @override
+  State<BrandRefresh> createState() => _BrandRefreshState();
+}
+
+class _BrandRefreshState extends State<BrandRefresh>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _turn = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  )..repeat();
+  RefreshIndicatorStatus? _status;
+
+  @override
+  void dispose() {
+    _turn.dispose();
+    super.dispose();
+  }
+
+  void _onStatus(RefreshIndicatorStatus? next) {
+    if (next == RefreshIndicatorStatus.armed && _status != next) {
+      HapticFeedback.lightImpact();
+    }
+    if (mounted) setState(() => _status = next);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final showing = _status != null;
+    return Stack(
+      children: [
+        RefreshIndicator.noSpinner(
+          onRefresh: widget.onRefresh,
+          onStatusChange: _onStatus,
+          child: widget.child,
+        ),
+        Positioned(
+          top: 8,
+          left: 0,
+          right: 0,
+          child: IgnorePointer(
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 160),
+              opacity: showing ? 1 : 0,
+              child: Center(
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  alignment: Alignment.center,
+                  decoration: VeloSalesTheme.glass(context, radius: 999, bright: true),
+                  child: AnimatedBuilder(
+                    animation: _turn,
+                    builder: (_, child) => Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.identity()
+                        ..setEntry(3, 2, 0.002)
+                        ..rotateY(_turn.value * 6.2832),
+                      child: child,
+                    ),
+                    child: const BrandMark(size: 24),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// A customer's picture: their real photo when we have one, and a person-shaped
 /// icon otherwise, or if the photo fails to load. WhatsApp does not give businesses
 /// customer photos, so the icon is the normal case there. Same as the web's
@@ -72,7 +152,12 @@ class _PressableState extends State<Pressable> {
         onTapDown: enabled ? (_) => setState(() => _down = true) : null,
         onTapUp: enabled ? (_) => setState(() => _down = false) : null,
         onTapCancel: enabled ? () => setState(() => _down = false) : null,
-        onTap: widget.onTap,
+        onTap: enabled
+            ? () {
+                HapticFeedback.selectionClick(); // a light tick: the phone answers the finger
+                widget.onTap!();
+              }
+            : null,
         child: AnimatedScale(
           scale: _down && enabled ? 0.97 : 1,
           duration: const Duration(milliseconds: 120),

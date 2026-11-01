@@ -499,7 +499,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
         locked: m['locked'] == true,
       ));
     }
-    return RefreshIndicator(
+    return BrandRefresh(
       onRefresh: () => _load(silent: true), // RefreshIndicator spins itself (no skeleton flash!)
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 6, 16, 28), children: [
         // ── page head ──────────────────────────────────────────────

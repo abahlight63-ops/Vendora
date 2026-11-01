@@ -3,7 +3,6 @@
 // styles.css keyframes: fadeSlide (cards), toastIn + errShake (toasts),
 // blink (typing dots), .skel shimmer (loading), stagger (lists).
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -110,8 +109,8 @@ class _TypingDotsState extends State<TypingDots>
 // Same object as the web's `.skel`: a flat plate with a light travelling across
 // it, not a block that pulses. A pulse reads as "something is wrong with this
 // box"; a sweep reads as "content is on its way", which is what is happening.
-// The sweep carries the brand purple rather than white, so a loading screen is
-// recognisably ours from across the room.
+// The sweep blends coral into lavender, so a loading screen is recognisably ours
+// from across the room. Same as the web's .skel.
 class Skeleton extends StatefulWidget {
   final double height;
   final double? width;
@@ -144,8 +143,16 @@ class _SkeletonState extends State<Skeleton>
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final base = Color.lerp(scheme.surface, scheme.onSurface, 0.055)!;
-    final sheen = scheme.primary.withValues(alpha: 0.20);
+    final dark = scheme.brightness == Brightness.dark;
+    final base = dark
+        ? Colors.white.withValues(alpha: 0.1)
+        : const Color(0xFF4F3FC7).withValues(alpha: 0.13);
+    final sheenA = dark
+        ? const Color(0xFFFF8A6B).withValues(alpha: 0.42)
+        : const Color(0xFFFFB199).withValues(alpha: 0.75);
+    final sheenB = dark
+        ? const Color(0xFFB9AEFB).withValues(alpha: 0.46)
+        : const Color(0xFFB5A6FF).withValues(alpha: 0.8);
     final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
 
     return LayoutBuilder(builder: (context, c) {
@@ -168,11 +175,15 @@ class _SkeletonState extends State<Skeleton>
                     translation: Offset(-1.0 + 2.0 * _c.value, 0),
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [
-                          sheen.withValues(alpha: 0),
-                          sheen,
-                          sheen.withValues(alpha: 0),
-                        ]),
+                        gradient: LinearGradient(
+                          stops: const [0, 0.45, 0.62, 1],
+                          colors: [
+                            sheenA.withValues(alpha: 0),
+                            sheenA,
+                            sheenB,
+                            sheenB.withValues(alpha: 0),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -186,8 +197,7 @@ class _SkeletonState extends State<Skeleton>
 }
 
 // ── the ONE spinner ─────────────────────────────────────────────────
-// A dashed orbit with the V inside it, drawn from the same 120×120 geometry
-// and the same 1.4s rotation as the web's <Loader/> (components/Loader.jsx).
+// A coral and indigo arc, the same as the small web <Loader/>.
 // Every place the app says "working" without saying anything else uses this —
 // a second spinner style would make the product look assembled from parts.
 //
@@ -232,8 +242,8 @@ class _OrbitLoaderState extends State<OrbitLoader>
         builder: (_, _) => CustomPaint(
           painter: _OrbitPainter(
             t: still ? 0 : _c.value,
-            a: widget.color ?? const Color(0xFF818CF8),
-            b: widget.color ?? scheme.primary,
+            a: widget.color ?? const Color(0xFFD03C16),
+            b: widget.color?.withValues(alpha: 0.4) ?? scheme.primary,
           ),
         ),
       ),
@@ -249,55 +259,19 @@ class _OrbitPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.scale(size.width / 120, size.height / 120);
-    final shader = LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [a, b],
-    ).createShader(const Rect.fromLTWH(0, 0, 120, 120));
-
-    canvas.save();
-    canvas.translate(60, 60);
-    canvas.rotate(t * 2 * math.pi);
-    canvas.translate(-60, -60);
-
-    // 42 on / 26 off around r=44 (circumference 276) — four dashes, round caps
-    final ring = Paint()
+    final stroke = size.width >= 28 ? 4.0 : 3.0;
+    final rect = (Offset.zero & size).deflate(stroke / 2);
+    final start = t * 2 * 3.14159265;
+    final p = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.round
-      ..shader = shader;
-    final box = Rect.fromCircle(center: const Offset(60, 60), radius: 44);
-    const dash = 42 / 276 * 2 * math.pi;
-    for (var i = 0; i < 4; i++) {
-      canvas.drawArc(box, i * math.pi / 2, dash, false, ring);
-    }
-    canvas.drawCircle(const Offset(60, 16), 6, Paint()..color = _soft(a));
-    canvas.drawCircle(const Offset(60, 104), 5, Paint()..color = b);
-    canvas.restore();
-
-    // the V sits still while the orbit turns around it
-    final v = Path()
-      ..moveTo(42, 44)
-      ..lineTo(60, 78)
-      ..lineTo(78, 44);
-    canvas.drawPath(
-      v,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 9
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..shader = shader,
-    );
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(rect, start, 1.5, false, p..color = a);
+    canvas.drawArc(rect, start + 1.5, 1.5, false, p..color = b);
   }
 
-  /// The trailing dot is a step lighter than the leading one, as on the web.
-  Color _soft(Color c) => Color.lerp(c, Colors.white, 0.45)!;
-
   @override
-  bool shouldRepaint(_OrbitPainter old) =>
-      old.t != t || old.a != a || old.b != b;
+  bool shouldRepaint(_OrbitPainter old) => old.t != t || old.a != a || old.b != b;
 }
 
 // ── toast() — web .toast: dark pill, slides in, ok green / err red+shake,

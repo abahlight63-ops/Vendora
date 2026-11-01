@@ -160,14 +160,40 @@ class _MarkPainter extends CustomPainter {
       );
     }
 
-    final fill = Paint();
     if (solid != null) {
-      fill.color = solid!;
+      canvas.drawPath(_outline, Paint()..color = solid!);
     } else {
-      fill.shader =
-          gradient.createShader(const Rect.fromLTWH(0, 0, kMarkW, kMarkH));
+      // One coral piece, one indigo piece and one that blends both: the same
+      // colours as the web's Logo.jsx, in light and dark.
+      const box = Rect.fromLTWH(0, 0, kMarkW, kMarkH);
+      const ramps = [
+        LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFFB199), Color(0xFFD03C16)],
+        ),
+        LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF9C8FFA), Color(0xFF3B2E9E)],
+        ),
+        LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          stops: [0, 0.5, 1],
+          colors: [Color(0xFFFF8A6B), Color(0xFFB44BA0), Color(0xFF4F3FC7)],
+        ),
+      ];
+      final pieces = markPiecePaths();
+      for (var i = 0; i < 3; i++) {
+        canvas.drawPath(
+          pieces[i],
+          Paint()
+            ..isAntiAlias = true
+            ..shader = ramps[i].createShader(box),
+        );
+      }
     }
-    canvas.drawPath(_outline, fill);
 
     canvas.restore();
   }

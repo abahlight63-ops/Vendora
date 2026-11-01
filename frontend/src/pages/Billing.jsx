@@ -13,6 +13,8 @@
 // HISTORY: rendered only from rows the server actually sends. No invented
 // receipts — an empty table says so, honestly.
 import { useEffect, useState } from 'react'; // useState = bill/busy/period; useEffect = load on mount
+import LoadFailed from '../components/LoadFailed.jsx'; // branded failed card + Retry
+import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures
 import { api, fmtDate, pop } from '../lib/api.js'; // api() calls; fmtDate = expiry dates; pop() = big animated outcomes
 import { money } from '../lib/money.js'; // money(n, 'NGN'|'USD') formatter
 import Ic from '../components/icons.jsx'; // check icons
@@ -83,9 +85,14 @@ export default function Billing() {
   const [busy, setBusy] = useState(''); // '' = idle; plan key = which button spins
   const [period, setPeriod] = useState('yearly'); // 'monthly' | 'yearly' — the billing-period toggle (yearly default: shows the savings!)
 
-  async function load() { // reusable reload (mount only — card payments leave the page!)
-    const { data } = await api('/api/me/billing'); // status, tier, currency, plans{pro,plus}, provider flags
-    setBill(data);
+  const [failed, setFailed] = useState(null); // null | { detail }: the plan could not load (Retry card, never an eternal skeleton)
+  async function load() { // reusable reload (mount, retry, and after a card payment)
+    try {
+      setFailed(null);
+      const { ok, status: st, data } = await api('/api/me/billing', { timeout: 15000 }); // status, tier, currency, plans{pro,plus}, provider flags
+      if (ok && data) setBill(data);
+      else setFailed({ status: st, detail: 'Please try again in a moment.' });
+    } catch (e) { setFailed({ status: 0, detail: describeNetError(e) }); }
   }
   useEffect(() => { load(); }, []); // [] = mount-only
   useEffect(() => { // Flutterwave RETURN: ?transaction_id=… in the URL → server-verified activation (idempotent — webhook usually already did it!)
@@ -177,6 +184,14 @@ export default function Billing() {
     );
   };
 
+  if (!bill) return (
+    <>
+      <div className="page-head"><div><h1>Plan and usage</h1><p>Your plan, today's replies and your payments.</p></div></div>
+      {failed
+        ? <LoadFailed title="Couldn't load your plan" status={failed.status} detail={failed.detail} tries={0} onRetry={load} backTo="/dashboard" backLabel="Back to Home" />
+        : <div className="skel-grid" aria-busy="true"><div className="skel-grid cols2">{[0, 1].map((i) => (<div key={i} className="skel-card"><div className="skel" style={{ width: '40%' }} /><div className="skel" style={{ width: '70%', height: 26 }} /><div className="skel" style={{ width: '90%' }} /></div>))}</div><div className="skel-card"><div className="skel" style={{ width: '30%' }} /><div className="skel" style={{ height: 120 }} /></div></div>}
+    </>
+  );
   return (
     <>
       <div className="page-head"><div><h1>Plan and usage</h1><p>Free forever, Pro, Pro Plus — or Enterprise. Cancel anytime, your catalog stays yours.</p></div></div>

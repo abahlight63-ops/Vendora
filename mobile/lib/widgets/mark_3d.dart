@@ -35,13 +35,21 @@ const _stillOrbit = 0.62;
 class _Piece {
   final List<List<double>> v;
   final double dx, dy, rot;
-  const _Piece(this.v, this.dx, this.dy, this.rot);
+  final List<Color> ramp;
+  final Color sideDark, sideLit;
+  const _Piece(this.v, this.dx, this.dy, this.rot, this.ramp, this.sideDark, this.sideLit);
 }
 
 const _pieces = [
-  _Piece([[301, 0], [602, 189], [0, 189]], 0, -190, -17),
-  _Piece([[0, 189], [0, 513], [301, 696]], -185, 80, 15),
-  _Piece([[602, 189], [602, 513], [301, 696]], 185, 80, -15),
+  _Piece([[301, 0], [602, 189], [0, 189]], 0, -190, -17,
+      [Color(0xFFFFB199), Color(0xFFFF7650), Color(0xFFD03C16)],
+      Color(0xFF6B1D08), Color(0xFFD03C16)),
+  _Piece([[0, 189], [0, 513], [301, 696]], -185, 80, 15,
+      [Color(0xFF9C8FFA), Color(0xFF5B4BD6), Color(0xFF3B2E9E)],
+      Color(0xFF1F1659), Color(0xFF6D5BF6)),
+  _Piece([[602, 189], [602, 513], [301, 696]], 185, 80, -15,
+      [Color(0xFFFF8A6B), Color(0xFFB44BA0), Color(0xFF4F3FC7)],
+      Color(0xFF4A1D5E), Color(0xFFB44BA0)),
 ];
 
 const _channels = [
@@ -101,7 +109,13 @@ _V _mean(List<_V> pts) {
 }
 
 class Mark3D extends StatefulWidget {
-  const Mark3D({super.key});
+  /// Show the orbiting channel tiles (the welcome screen).
+  final bool channels;
+
+  /// Turn once, a full revolution, after the pieces lock (the splash).
+  final bool spin;
+
+  const Mark3D({super.key, this.channels = true, this.spin = false});
 
   @override
   State<Mark3D> createState() => _Mark3DState();
@@ -204,9 +218,15 @@ class _ScenePainter extends CustomPainter {
     final scale = math.min(w / 1320, h / 1120);
     final cx = w / 2, cy = h / 2;
     final settle = still ? 1.0 : _easeOut(_clamp(time / 1.1));
+    final w_ = s.widget;
+    final turnT = w_.spin ? _clamp((time - 1.1) / 1.3) : 0.0;
+    final turn = Curves.easeInOutCubic.transform(turnT) * math.pi * 2;
     final yaw = still
         ? _stillYaw
-        : math.sin(time * 0.55) * _sway + s._px * 0.45 + (1 - settle) * 1.4;
+        : (w_.spin ? -0.38 : math.sin(time * 0.55) * _sway) +
+            turn +
+            s._px * 0.45 +
+            (1 - settle) * 1.4;
     final pitch = still
         ? _stillPitch
         : -0.1 + math.sin(time * 0.4) * 0.05 - s._py * 0.3;
@@ -346,9 +366,9 @@ class _ScenePainter extends CustomPainter {
                 Paint()
                   ..isAntiAlias = true
                   ..shader = ui.Gradient.linear(gradA, gradB, [
-                    Color.lerp(const Color(0xFF6D5BF6), Colors.white, shade)!,
-                    Color.lerp(const Color(0xFF4F3FC7), const Color(0xFFD9D3FF), shade)!,
-                    Color.lerp(const Color(0xFF352A7F), const Color(0xFF9A8EF5), shade)!,
+                    Color.lerp(const Color(0xFF352A7F), piece.ramp[0], shade)!,
+                    Color.lerp(const Color(0xFF352A7F), piece.ramp[1], shade)!,
+                    Color.lerp(const Color(0xFF352A7F), piece.ramp[2], shade)!,
                   ], const [0, 0.5, 1]),
               );
               if (sweep >= 0 && sweep <= 1) {
@@ -377,8 +397,7 @@ class _ScenePainter extends CustomPainter {
                   ..color = const Color(0xB3FFFFFF),
               );
             } else {
-              final side =
-                  Color.lerp(const Color(0xFF1F1659), const Color(0xFF6D5BF6), lit)!;
+              final side = Color.lerp(piece.sideDark, piece.sideLit, lit)!;
               canvas.drawPath(
                 path,
                 Paint()
@@ -401,7 +420,7 @@ class _ScenePainter extends CustomPainter {
 
     // ── the channels ──
     final base = still ? _stillOrbit : (time / _orbitPeriod) * math.pi * 2;
-    for (var i = 0; i < _channels.length; i++) {
+    for (var i = 0; w_.channels && i < _channels.length; i++) {
       final e = still ? 1.0 : _easeBack(_clamp((time - 0.8 - i * 0.12) / 0.7));
       if (e <= 0) continue;
       final a = base + (i * math.pi * 2) / 3;

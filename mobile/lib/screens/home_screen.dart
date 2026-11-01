@@ -208,9 +208,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final doneCount = steps.where((s) => s.done).length;
     final showGuide = !_guideOff && doneCount < steps.length;
 
-    return RefreshIndicator(
+    return BrandRefresh(
       onRefresh: _load,
-      color: scheme.primary,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
         children: [

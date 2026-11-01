@@ -65,7 +65,7 @@
   --line: #e7e5f0; --line-soft: #f2f1f8;
   /* the skeleton pair: a flat plate + the brand's light crossing it. Tokens so
      the dark theme gets its own values instead of a washed-out copy. */
-  --skel-base: #ecebf5; --skel-sheen: rgba(91, 75, 214, 0.18);
+  --skel-base: rgba(79, 63, 199, 0.13); --skel-sheen-a: rgba(255, 177, 153, 0.75); --skel-sheen-b: rgba(181, 166, 255, 0.8);
   --bg: #ffffff; --card: #ffffff;
   --gold: #d97706; --gold-bg: #fffbeb; --gold-line: #fcd34d;
   --red: #dc2626; --red-bg: #fef2f2; --red-line: #fca5a5;
@@ -266,7 +266,8 @@ tbody tr.rowlink:hover { background: #f6fef9; }
    is the generic "loading block" everyone has seen a thousand times, and the
    base is a token pair so dark mode is designed rather than washed out. */
 .skel { position: relative; overflow: hidden; height: 15px; border-radius: 7px; background: var(--skel-base); }
-.skel::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, var(--skel-sheen) 50%, transparent 70%); animation: skelShimmer 1.6s cubic-bezier(0.45, 0, 0.25, 1) infinite; }
+.skel::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(100deg, transparent, var(--skel-sheen-a) 45%, var(--skel-sheen-b) 62%, transparent); animation: skelSweep 1.5s ease-in-out infinite; }
+@keyframes skelSweep { to { transform: translateX(100%); } }
 @keyframes skelShimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 @media (prefers-reduced-motion: reduce) { .skel::after { animation: none; content: none; } }
 .skel-grid { display: grid; gap: 14px; }
@@ -1092,7 +1093,7 @@ button.mini-link:hover { text-decoration: underline; }
   --green: #34d399; --green-dark: #6ee7b7; --green-soft: #052e22; --green-line: #065f46;
   --ink: #f4f2fe; --muted: #c9c2f5; --faint: #9c95cb;
   --line: #2e2478; --line-soft: #1b1450;
-  --skel-base: #1d1a35; --skel-sheen: rgba(139, 127, 240, 0.16);
+  --skel-base: rgba(255, 255, 255, 0.1); --skel-sheen-a: rgba(255, 138, 107, 0.42); --skel-sheen-b: rgba(185, 174, 251, 0.46);
   --bg: #0b0630; --card: #1b1450;
   --gold: #fbbf24; --gold-bg: #2a1f08; --gold-line: #6b4d16;
   --red: #f87171; --red-bg: #2b1210; --red-line: #6e2a24;
@@ -1153,7 +1154,7 @@ button.mini-link:hover { text-decoration: underline; }
    overshoots its baseline and springs back (cubic-bezier with y > 1). The
    reference holds the same pose for four and a half seconds; a splash that
    long is a delay, so the sequence is compressed, never reordered. */
-.splash { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: radial-gradient(760px 440px at 50% 28%, var(--purple-soft), var(--bg) 74%); transition: opacity 0.34s ease; }
+.splash { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: radial-gradient(760px 620px at 50% 40%, #2a1c7a 0%, #120b4a 62%, #0b0630 100%); transition: opacity 0.34s ease; }
 .splash.out { opacity: 0; pointer-events: none; }
 .splash-inner { text-align: center; display: flex; flex-direction: column; align-items: center; }
 .reveal-mark { position: relative; display: inline-block; flex: 0 0 auto; }
@@ -1192,11 +1193,11 @@ button.mini-link:hover { text-decoration: underline; }
 
 /* The wordmark. 12 letters, 42ms apart, each falling 0.85em and springing
    past its baseline on the way in. */
-.splash-name { display: flex; color: var(--text-1); font-weight: 800; letter-spacing: -0.6px; margin-top: 18px; font-size: 25px; }
+.splash-name { display: flex; color: #fff; font-weight: 800; letter-spacing: -0.6px; margin-top: 18px; font-size: 25px; }
 .splash-name span { display: inline-block; opacity: 0; transform: translateY(-0.85em) scale(0.94); animation: rvDrop 0.32s cubic-bezier(0.2, 1.55, 0.42, 1) both; animation-delay: calc(1.1s + var(--li) * 0.042s); }
 @keyframes rvDrop { 0% { opacity: 0; transform: translateY(-0.85em) scale(0.94); } 45% { opacity: 1; } 100% { opacity: 1; transform: none; } }
-.splash-tag { color: var(--text-2); font-size: 13.5px; margin-top: 6px; opacity: 0; animation: rvDrop 0.3s cubic-bezier(0.2, 1.4, 0.42, 1) 1.52s both; }
-.splash-bar { width: 150px; height: 4px; border-radius: 99px; background: var(--purple-soft); margin: 20px auto 0; overflow: hidden; opacity: 0; animation: rvJoin 0.3s linear 1.55s both; } /* appears with the wordmark, not before it — during the assembly it read as a stray dash */
+.splash-tag { color: #c9c2f5; font-size: 13.5px; margin-top: 6px; opacity: 0; animation: rvDrop 0.3s cubic-bezier(0.2, 1.4, 0.42, 1) 1.52s both; }
+.splash-bar { width: 150px; height: 4px; border-radius: 99px; background: rgba(255, 255, 255, 0.16); margin: 20px auto 0; overflow: hidden; opacity: 0; animation: rvJoin 0.3s linear 1.55s both; } /* appears with the wordmark, not before it — during the assembly it read as a stray dash */
 .splash-bar i { display: block; height: 100%; width: 40%; border-radius: 99px; background: var(--accent-solid); animation: barSlide 1.1s ease-in-out infinite; }
 @keyframes barSlide { 0% { transform: translateX(-100%); } 100% { transform: translateX(450%); } }
 
@@ -1430,11 +1431,10 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
    Colours come from three custom properties so the same spinner works on white
    and on the brand purple. Inside a .btn the ring takes currentColor: a purple
    orbit on a purple button is an invisible orbit. */
-.orbit-loader { --orb-a: #a89df7; --orb-b: #5b4bd6; --orb-dot: #cfc7fd; display: inline-flex; flex: 0 0 auto; }
-.btn .orbit-loader { --orb-a: currentColor; --orb-b: currentColor; --orb-dot: currentColor; }
-.orbit-loader .orbit-spin { transform-origin: 60px 60px; animation: orbitRot 1.4s linear infinite; }
+.orbit-loader { display: inline-block; flex: 0 0 auto; box-sizing: border-box; border-radius: 50%; border: 3px solid transparent; border-top-color: var(--accent-solid); border-right-color: var(--purple); animation: m3dArc 0.9s linear infinite; }
+.btn .orbit-loader { border-color: rgba(255, 255, 255, 0.35); border-top-color: currentColor; }
 @keyframes orbitRot { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .orbit-loader .orbit-spin { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .orbit-loader { animation: none; } }
 /* ── Connect guide slides (visual road cards: auto-rotating screenshots, branded placeholder until shots land) ── */
 .gslide { display: flex; align-items: center; gap: 16px; margin: 14px 0 4px; }
 .gslide-frame { flex: 0 0 auto; width: 152px; aspect-ratio: 9 / 14; border-radius: 20px; overflow: hidden; border: 1px solid var(--line); background: var(--bg); display: grid; place-items: center; }
@@ -2402,3 +2402,47 @@ a.dg-stat { transition: transform var(--t); }
   .page:has(.wx-has-thread) { padding-bottom: 16px; }
   .wx-row.sel { padding: 14px; }
 }
+
+/* ── the 3D logo ── */
+.m3d { position: relative; width: calc(var(--m3d) * 2.3); height: calc(var(--m3d) * 1.7); perspective: calc(var(--m3d) * 4.6); display: flex; align-items: center; justify-content: center; }
+.m3d-world { position: relative; display: block; width: calc(var(--m3d) * 0.865); height: var(--m3d); transform-style: preserve-3d; }
+.m3d > .m3d-world { animation: m3dWorld 2.4s cubic-bezier(0.55, 0, 0.25, 1) both; }
+.m3d-piece { position: absolute; inset: 0; transform-style: preserve-3d; }
+.m3d-lay { position: absolute; inset: 0; transform: translateZ(calc(var(--m3d) * 0.0125 * var(--n))); }
+.p1 .m3d-lay { clip-path: polygon(50% 0, 100% 27.16%, 0 27.16%); }
+.p2 .m3d-lay { clip-path: polygon(0 27.16%, 0 73.7%, 50% 100%); }
+.p3 .m3d-lay { clip-path: polygon(100% 27.16%, 100% 73.7%, 50% 100%); }
+.p1 .m3d-side { background: #a92e0d; }
+.p2 .m3d-side { background: #2a1c7a; }
+.p3 .m3d-side { background: #6b2a7a; }
+.p1 .m3d-face { background: linear-gradient(160deg, #ffb199, #ff7650 45%, #d03c16); }
+.p2 .m3d-face { background: linear-gradient(165deg, #9c8ffa, #5b4bd6 55%, #3b2e9e); }
+.p3 .m3d-face { background: linear-gradient(195deg, #ff8a6b, #b44ba0 50%, #4f3fc7); }
+.m3d-glint { background: linear-gradient(115deg, rgba(255, 255, 255, 0) 42%, rgba(255, 255, 255, 0.85) 50%, rgba(255, 255, 255, 0) 58%); background-size: 320% 100%; background-position: 120% 0; animation: m3dGlint 2.4s linear both; }
+.m3d > .m3d-world .p1 { animation: m3dFly1 1.15s cubic-bezier(0.2, 0.9, 0.25, 1) both; }
+.m3d > .m3d-world .p2 { animation: m3dFly2 1.2s cubic-bezier(0.2, 0.9, 0.25, 1) both; }
+.m3d > .m3d-world .p3 { animation: m3dFly3 1.25s cubic-bezier(0.2, 0.9, 0.25, 1) both; }
+.m3d-ring { position: absolute; left: 50%; top: 50%; width: calc(var(--m3d) * 1.85); height: calc(var(--m3d) * 1.85); margin: calc(var(--m3d) * -0.925) 0 0 calc(var(--m3d) * -0.925); box-sizing: border-box; border-radius: 50%; border: 3px solid transparent; border-top-color: #ff8a6b; border-right-color: #b9aefb; border-bottom-color: #7b6bf0; animation: m3dRing 4s linear infinite, m3dFadeIn 0.5s ease-out 0.85s both; }
+.m3d-ring2 { width: calc(var(--m3d) * 1.5); height: calc(var(--m3d) * 1.5); margin: calc(var(--m3d) * -0.75) 0 0 calc(var(--m3d) * -0.75); border-width: 2px; border-top-color: #b9aefb; border-right-color: transparent; border-bottom-color: #ff8a6b; animation-direction: reverse, normal; }
+.m3d-ring b { position: absolute; left: 50%; top: -9px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: radial-gradient(circle at 32% 30%, #fff, #ff9c7f 42%, #d03c16); }
+.m3d-halo { position: absolute; left: 50%; top: 50%; width: calc(var(--m3d) * 2.3); height: calc(var(--m3d) * 2.3); margin: calc(var(--m3d) * -1.15) 0 0 calc(var(--m3d) * -1.15); border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 138, 107, 0.34), rgba(123, 107, 240, 0.26) 48%, rgba(123, 107, 240, 0)); animation: m3dHalo 1.3s ease-out 0.5s both; }
+.m3d-floor { position: absolute; left: 50%; top: 50%; width: calc(var(--m3d) * 1.2); height: calc(var(--m3d) * 0.17); margin: calc(var(--m3d) * 0.62) 0 0 calc(var(--m3d) * -0.6); border-radius: 50%; background: radial-gradient(closest-side, rgba(8, 4, 36, 0.75), rgba(8, 4, 36, 0)); animation: m3dFadeIn 0.5s ease-out 0.7s both; }
+@keyframes m3dWorld { 0% { transform: rotateX(-20deg) rotateY(-60deg) scale(0.82); } 45% { transform: rotateX(-10deg) rotateY(-22deg) scale(1); } 52% { transform: rotateX(-10deg) rotateY(-22deg) scale(1.05); } 58% { transform: rotateX(-10deg) rotateY(-22deg) scale(1); } 100% { transform: rotateX(-6deg) rotateY(338deg) scale(1); } }
+@keyframes m3dFly1 { 0% { transform: translate3d(calc(var(--m3d) * 0.12), calc(var(--m3d) * -1.25), calc(var(--m3d) * 1.1)) rotate3d(1, 0.4, 0.2, 210deg); opacity: 0; } 20% { opacity: 1; } 100% { transform: none; opacity: 1; } }
+@keyframes m3dFly2 { 0% { transform: translate3d(calc(var(--m3d) * -1.3), calc(var(--m3d) * 0.65), calc(var(--m3d) * 0.9)) rotate3d(0.3, 1, 0.2, -230deg); opacity: 0; } 20% { opacity: 1; } 100% { transform: none; opacity: 1; } }
+@keyframes m3dFly3 { 0% { transform: translate3d(calc(var(--m3d) * 1.3), calc(var(--m3d) * 0.65), calc(var(--m3d) * 0.9)) rotate3d(0.3, 1, -0.2, 230deg); opacity: 0; } 20% { opacity: 1; } 100% { transform: none; opacity: 1; } }
+@keyframes m3dGlint { 0%, 55% { background-position: 120% 0; } 80%, 100% { background-position: -20% 0; } }
+@keyframes m3dRing { from { transform: rotateX(74deg) rotateZ(0); } to { transform: rotateX(74deg) rotateZ(360deg); } }
+@keyframes m3dFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes m3dHalo { 0% { opacity: 0; transform: scale(0.7); } 50% { opacity: 1; transform: scale(1.12); } 100% { opacity: 0.82; transform: scale(1); } }
+.m3d-turn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: calc(var(--m3d) * 1.8); height: calc(var(--m3d) * 1.8); perspective: calc(var(--m3d) * 8); }
+.m3d-turn .m3d-world { animation: m3dTurn 2.2s cubic-bezier(0.6, 0, 0.3, 1) infinite; }
+.m3d-arc { position: absolute; inset: 0; border-radius: 50%; border: 4px solid transparent; border-top-color: var(--accent-solid); border-right-color: var(--purple); animation: m3dArc 1.1s linear infinite; }
+@keyframes m3dTurn { 0% { transform: rotateY(-25deg); } 50% { transform: rotateY(155deg); } 100% { transform: rotateY(335deg); } }
+@keyframes m3dArc { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .m3d > .m3d-world, .m3d > .m3d-world .m3d-piece, .m3d-glint, .m3d-halo, .m3d-floor, .m3d-turn .m3d-world, .m3d-arc { animation: none; }
+  .m3d > .m3d-world, .m3d-turn .m3d-world { transform: rotateX(-10deg) rotateY(-22deg); }
+  .m3d-ring { animation: none; transform: rotateX(74deg); }
+}
+body { min-height: 100vh; min-height: 100dvh; } /* the colour field must reach the bottom on short pages */

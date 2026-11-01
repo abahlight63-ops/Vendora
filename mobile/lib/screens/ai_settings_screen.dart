@@ -322,7 +322,7 @@ class _AiSettingsScreenState extends State<AiSettingsScreen> {
           ? const _AiSettingsSkeleton()
           : _err != null
               ? EmptyState('Could not load AI settings', _err!, retry: _load)
-              : RefreshIndicator(onRefresh: _load, child: _body(scheme)),
+              : BrandRefresh(onRefresh: _load, child: _body(scheme)),
       bottomNavigationBar: (_loading || _err != null)
           ? null
           : Container(

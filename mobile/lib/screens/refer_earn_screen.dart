@@ -120,7 +120,7 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
     final history = (_x?['history'] as List? ?? const []);
     final leaders = (_x?['leaders'] as List? ?? const []);
 
-    return RefreshIndicator(
+    return BrandRefresh(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 28), children: [
         _hero(code, link, text, pct, s),

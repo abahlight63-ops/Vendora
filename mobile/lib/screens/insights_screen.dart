@@ -199,7 +199,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                       'No chats yet',
                       'Charts build themselves from your first conversations — share your WhatsApp number and come back.',
                     )
-                  : RefreshIndicator(onRefresh: _load, child: _body(_d!)),
+                  : BrandRefresh(onRefresh: _load, child: _body(_d!)),
     );
   }
 

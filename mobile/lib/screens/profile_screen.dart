@@ -207,7 +207,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ? const _ProfileSkeleton()
           : _err != null
               ? EmptyState('Could not load your profile', _err!, retry: _load)
-              : RefreshIndicator(
+              : BrandRefresh(
                   onRefresh: _refresh,
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),

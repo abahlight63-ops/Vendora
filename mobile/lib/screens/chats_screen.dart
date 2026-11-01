@@ -12,6 +12,7 @@
 // Every list comes from /api/me/conversations; every thread from /messages.
 // No sample chats, no invented counts.
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../api.dart';
 import '../format.dart';
@@ -219,7 +220,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                   ? EmptyState("Couldn't load your inbox", _err!, retry: _load)
                   : _list.isEmpty
                       ? _EmptyInbox(filtered: filtered, onClear: _clearFilters)
-                      : RefreshIndicator(
+                      : BrandRefresh(
                           onRefresh: _load,
                           child: _groupedList(),
                         ),
@@ -734,6 +735,7 @@ class _ThreadScreenState extends State<ThreadScreen> {
     setState(() => _sending = true);
     try {
       await ApiClient.instance.replyConversation(widget.chat['id'], capped);
+      HapticFeedback.mediumImpact();
       _draft.clear();
       if (!mounted) return;
       setState(() {

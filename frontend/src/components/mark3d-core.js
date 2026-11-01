@@ -25,9 +25,9 @@ export const SCENE = {
 };
 
 const PIECES = [
-  { v: [[301, 0], [602, 189], [0, 189]], dx: 0, dy: -190, rot: -17 },
-  { v: [[0, 189], [0, 513], [301, 696]], dx: -185, dy: 80, rot: 15 },
-  { v: [[602, 189], [602, 513], [301, 696]], dx: 185, dy: 80, rot: -15 },
+  { v: [[301, 0], [602, 189], [0, 189]], dx: 0, dy: -190, rot: -17, ramp: ['#ffb199', '#ff7650', '#d03c16'], side: ['#6b1d08', '#d03c16'] },
+  { v: [[0, 189], [0, 513], [301, 696]], dx: -185, dy: 80, rot: 15, ramp: ['#9c8ffa', '#5b4bd6', '#3b2e9e'], side: ['#1f1659', '#6d5bf6'] },
+  { v: [[602, 189], [602, 513], [301, 696]], dx: 185, dy: 80, rot: -15, ramp: ['#ff8a6b', '#b44ba0', '#4f3fc7'], side: ['#4a1d5e', '#b44ba0'] },
 ];
 
 export const CHANNELS = [
@@ -281,9 +281,9 @@ export function drawScene(ctx, w, h, { t, px = 0, py = 0, still = false }) {
           if (f.front) {
             const shade = 0.72 + lit * 0.28;
             const g = ctx.createLinearGradient(gradA[0], gradA[1], gradB[0], gradB[1]);
-            g.addColorStop(0, mix('#6d5bf6', '#ffffff', shade));
-            g.addColorStop(0.5, mix('#4f3fc7', '#d9d3ff', shade));
-            g.addColorStop(1, mix('#352a7f', '#9a8ef5', shade));
+            g.addColorStop(0, mix('#352a7f', piece.ramp[0], shade));
+            g.addColorStop(0.5, mix('#352a7f', piece.ramp[1], shade));
+            g.addColorStop(1, mix('#352a7f', piece.ramp[2], shade));
             ctx.fillStyle = g;
             ctx.fill();
             if (sweep >= 0 && sweep <= 1) {
@@ -304,9 +304,9 @@ export function drawScene(ctx, w, h, { t, px = 0, py = 0, still = false }) {
             ctx.lineJoin = 'round';
             ctx.stroke();
           } else {
-            ctx.fillStyle = mix('#1f1659', '#6d5bf6', lit);
+            ctx.fillStyle = mix(piece.side[0], piece.side[1], lit);
             ctx.fill();
-            ctx.strokeStyle = mix('#1f1659', '#6d5bf6', lit);
+            ctx.strokeStyle = mix(piece.side[0], piece.side[1], lit);
             ctx.lineWidth = 0.6;
             ctx.stroke();
           }

@@ -124,30 +124,23 @@ Check every text/background pair at 4.5:1 in both themes.
 
 ## Components
 ### Brand mark
-- One geometry, every surface. The mark is the hexagon with the V cut-out:
-  `M301 0 L602 189 L602 513 L301 696 L0 513 L0 189 Z M0 189 L602 189 L301 696 Z`
-  with `fill-rule: evenodd`, `viewBox="0 0 602 696"`. It appears, unchanged, in
-  `frontend/src/components/Logo.jsx`, `mobile/lib/brand_mark.dart`,
-  `website/assets/mark.svg` and `frontend/public/favicon.svg`. Never redraw it.
-- The React component ships **no colour of its own** — colour lives only in
-  `.vl-root` / `[data-theme="dark"] .vl-root` in styles.css. Never hard-code a
-  fill in `Logo.jsx`; change the two token blocks instead.
-- App icons all come from the same path: `scripts`-adjacent Chrome renders of
-  the master HTML produce 1024px faces (square, round, maskable, transparent
-  foreground), then System.Drawing downsamples them. Surfaces:
-  Android `mipmap-*/ic_launcher(.png/_round/_foreground)` + adaptive XML,
-  iOS `AppIcon.appiconset`, phone web `favicon.png` + `Icon-192/512` +
-  maskable, `frontend/public` + `website` favicons/apple-touch/logo, and the
-  native launch screens. Never hand-edit a generated PNG — regenerate.
-- Launcher: purple `#4F3FC7` adaptive background, mark inside the 66dp safe
-  zone. Native splash: rail `#1A1443` + centred mark, so the first paint is
-  already the brand instead of a white flash (iOS storyboard uses the same
-  colour).
-- The welcome scene is the one 3D version of the mark. It extrudes this same
-  geometry, so its front outline is still the exact logo. Use it nowhere else.
-- Mark + wordmark: mark 34px, gap 10px, wordmark 15.5px/700 at -0.2px.
-- Clear space around the mark = 25% of its width. Never put it on the accent
-  fill (purple-on-purple disappears); put it on a surface.
+- The same hexagon and V, built from three pieces: coral (#FFB199 to #D03C16), indigo
+  (#9C8FFA to #3B2E9E), and one blending both (#FF8A6B, #B44BA0, #4F3FC7).
+- The geometry lives in `frontend/src/components/Logo.jsx` and `mobile/lib/brand_mark.dart`.
+  Keep the colours the same on both, in light and dark. A one-colour white version is
+  allowed only where gradients cannot sit, such as a coloured header.
+- App icons and favicons sit on the violet gradient (#2A1C7A to #120B4A). Regenerate
+  them all together; never hand-edit one PNG.
+- The 3D version is `MarkReveal` / `MarkTurn` on web and `Mark3D` on phone. It plays once on
+  the splash: the pieces fly in and lock, the logo turns with a flash of light, and a
+  ring settles around it. Reduced motion shows one still pose.
+
+### Loading
+- Skeletons on anything that loads a list or numbers: a coral-to-lavender sweep (`.skel`
+  on web, `Skeleton` on phone). A failed load shows a retry card, never an endless skeleton.
+- The turning logo for longer page waits. A small coral and indigo arc inside buttons,
+  where the button keeps its size and says what it is doing.
+- Pull to refresh on the phone shows the turning logo with a soft tick.
 
 ### Shell
 - Main menu, same words on both clients: Home, Inbox, Catalog, Channels, Insights.

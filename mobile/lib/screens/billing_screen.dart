@@ -176,7 +176,7 @@ class _BillingScreenState extends State<BillingScreen> {
     String amt(Map<String, dynamic> tier, String p) =>
         _money((tier[p] as Map?)?['amount'] ?? 0, cur);
 
-    return RefreshIndicator(
+    return BrandRefresh(
       onRefresh: _load,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 6, 16, 28),

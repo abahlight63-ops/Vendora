@@ -10,9 +10,8 @@
 // anti-aliased. (The phone does split them — but only while the mark is
 // assembling itself on the splash.)
 //
-// COLOUR: the shape ships no colour of its own. styles.css sets --lg-* on
-// .vl-root (light) and [data-theme="dark"] .vl-root (dark), so the mark
-// re-tints with the theme instead of being frozen at one value. 
+// COLOUR: one coral piece, one indigo piece and one that blends both. The colours
+// live here and in mobile/lib/brand_mark.dart, the same in light and dark.
 //
 // GRADIENT IDS ARE PER-INSTANCE, and that is not a detail. An SVG gradient
 // lives in the document, not in the element: `url(#vl-g)` resolves to the
@@ -40,39 +39,25 @@ export default function Logo({
   const h = height ?? size ?? 34;
   const w = width ?? h * MARK_ASPECT;
   const uid = useId().replace(/[^a-zA-Z0-9]/g, ''); // ":r1:" → "r1" (CSS-safe fragment)
-  const gid = `vlg-${uid}`;
-  const sid = `vls-${uid}`;
-
   return (
     <svg
       className={`vl-root${className ? ' ' + className : ''}`}
       width={w}
       height={h}
       viewBox="0 0 602 696"
-      role="img"
-      aria-label={alt}
+      role={alt ? 'img' : undefined}
+      aria-label={alt || undefined}
+      aria-hidden={alt ? undefined : 'true'}
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
-        <linearGradient
-          id={gid}
-          gradientUnits="userSpaceOnUse"
-          x1="301"
-          y1="0"
-          x2="301"
-          y2="696"
-        >
-          <stop offset="0" style={{ stopColor: 'var(--lg-top)' }} />
-          <stop offset=".5" style={{ stopColor: 'var(--lg-mid)' }} />
-          <stop offset="1" style={{ stopColor: 'var(--lg-bot)' }} />
-        </linearGradient>
-        <linearGradient id={sid} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#fff" style={{ stopOpacity: 'var(--lg-sheen)' }} />
-          <stop offset=".55" stopColor="#fff" stopOpacity="0" />
-        </linearGradient>
+        <linearGradient id={`vl1-${uid}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#FFB199" /><stop offset="1" stopColor="#D03C16" /></linearGradient>
+        <linearGradient id={`vl2-${uid}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#9C8FFA" /><stop offset="1" stopColor="#3B2E9E" /></linearGradient>
+        <linearGradient id={`vl3-${uid}`} x1="1" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#FF8A6B" /><stop offset=".5" stopColor="#B44BA0" /><stop offset="1" stopColor="#4F3FC7" /></linearGradient>
       </defs>
-      <path d={D} fillRule="evenodd" fill={`url(#${gid})`} />
-      <path d={D} fillRule="evenodd" fill={`url(#${sid})`} />
+      <path d={MARK_PIECES[0].d} fill={`url(#vl1-${uid})`} />
+      <path d={MARK_PIECES[1].d} fill={`url(#vl2-${uid})`} />
+      <path d={MARK_PIECES[2].d} fill={`url(#vl3-${uid})`} />
     </svg>
   );
 }

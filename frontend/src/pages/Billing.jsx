@@ -179,7 +179,7 @@ export default function Billing() {
 
   return (
     <>
-      <div className="page-head"><div><h1>Billing</h1><p>Free forever, Pro, Pro Plus — or Enterprise. Cancel anytime, your catalog stays yours.</p></div></div>
+      <div className="page-head"><div><h1>Plan and usage</h1><p>Free forever, Pro, Pro Plus — or Enterprise. Cancel anytime, your catalog stays yours.</p></div></div>
 
       {/* ── where you are + what it costs you, side by side ──────────── */}
       <div className="bill-top">

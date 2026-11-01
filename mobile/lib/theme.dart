@@ -15,22 +15,72 @@ class VeloSalesTheme {
   static const _key = 'velosalesai_theme_mode'; // 'light' | 'dark' | 'system'
 
   // ── :root (web light default) ──
-  // Locked to the founder's reference dashboard (2026-10): indigo is authority,
-  // amber is money/attention, green is only ever "it worked". Same values as
-  // frontend/src/styles.css — if one changes, change both.
-  static const purple = Color(0xFF5B4BD6); // the ONE primary accent
-  static const purpleDark = Color(0xFF4938B4);
+  // Coral + indigo (locked with the owner, 2026-11). Indigo shows where you are
+  // and what is true; coral shows what to do next; green is only ever "it
+  // worked". Same values as frontend/src/styles.css — if one changes, change both.
+  static const purple = Color(0xFF4F3FC7);
+  static const purpleDark = Color(0xFF3B2E9E);
   static const purpleSoft = Color(0xFFEFEBFE); // tinted fills (chips, bubbles)
   static const purpleLine = Color(0xFFCFC6F8);
-  static const accentSolid = Color(0xFF4F3FC7); // button fill — white text works in BOTH themes
-  static const accentSolidHover = Color(0xFF4133A4);
+  static const accentSolid = Color(0xFFD03C16); // coral: white text measures 4.84:1
+  static const accentSolidHover = Color(0xFFB83412);
+  static const coralInk = Color(0xFFB83412); // coral as text on light surfaces
+  static const coralBright = Color(0xFFFF8A6B); // dark mode's coral, with dark text on it
+  static const nightInk = Color(0xFF120B4A);
+
+  /// The "do this next" fill, and the text that sits on it, for the active theme.
+  static Color accent(BuildContext c) =>
+      Theme.of(c).brightness == Brightness.dark ? coralBright : accentSolid;
+  static Color onAccent(BuildContext c) =>
+      Theme.of(c).brightness == Brightness.dark ? nightInk : Colors.white;
+  static Color coralText(BuildContext c) =>
+      Theme.of(c).brightness == Brightness.dark ? coralBright : coralInk;
+
+  /// The soft glow at the top of the app. Two layers, so it is built as widgets.
+  static Widget glow(BuildContext c, {required Widget child}) {
+    final dark = Theme.of(c).brightness == Brightness.dark;
+    if (dark) {
+      return DecoratedBox(
+        decoration: const BoxDecoration(
+          color: Color(0xFF0B0630),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF2A1C7A), Color(0xFF0B0630)],
+            stops: [0.0, 0.42],
+          ),
+        ),
+        child: child,
+      );
+    }
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        gradient: RadialGradient(
+          center: Alignment(1.0, -1.04),
+          radius: 1.05,
+          colors: [Color(0xFFFFD9CC), Color(0x00FFD9CC)],
+        ),
+      ),
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment(-1.0, -1.04),
+            radius: 1.0,
+            colors: [Color(0xFFE6E0FF), Color(0x00E6E0FF)],
+          ),
+        ),
+        child: child,
+      ),
+    );
+  }
 
   // ── the rail (drawer chrome) ──
   // The drawer is the phone's sidebar, so it wears the same deep-indigo wash the
   // web rail does — brand + nav on a dark frame, content on light paper.
-  static const rail1 = Color(0xFF352A7F);
-  static const rail2 = Color(0xFF221A56);
-  static const rail3 = Color(0xFF1A1443);
+  static const rail1 = Color(0xFF2A1C7A);
+  static const rail2 = Color(0xFF120B4A);
+  static const rail3 = Color(0xFF0B0630);
   static const railInk = Color(0xFFF4F2FE);
   static const railMuted = Color(0xFFC6C0EA);
   static const railFaint = Color(0xFF9C95CB);
@@ -103,8 +153,8 @@ class VeloSalesTheme {
         begin: Alignment.centerLeft,
         end: Alignment.centerRight,
         colors: Theme.of(c).brightness == Brightness.dark
-            ? const [Color(0xFF8B7FF0), Color(0xFF6D5CE0)]
-            : const [Color(0xFF6A59DF), Color(0xFF4A3AB8)],
+            ? const [Color(0xFFFF8A6B), Color(0xFFFF7650)]
+            : const [Color(0xFFD03C16), Color(0xFFB83412)],
       );
 
   static const radius = 16.0; // cards
@@ -133,18 +183,18 @@ class VeloSalesTheme {
 
   static TextTheme _text(TextTheme base) => base.apply(
         fontFamily: _font,
-        bodyColor: const Color(0xFF171532),
-        displayColor: const Color(0xFF171532),
+        bodyColor: const Color(0xFF1E1757),
+        displayColor: const Color(0xFF1E1757),
       );
 
   static ThemeData get light {
-    const ink = Color(0xFF171532);
-    const muted = Color(0xFF6B6885);
+    const ink = Color(0xFF1E1757);
+    const muted = Color(0xFF5F5A7D);
     const line = Color(0xFFE7E5F0);
-    const bg = Color(0xFFF7F6FB);
+    const bg = Color(0xFFFFFFFF);
     const card = Color(0xFFFFFFFF);
     const scheme = ColorScheme.light(
-      primary: accentSolid,
+      primary: purple, // links, current tab, meters. Main buttons are coral (below).
       onPrimary: Colors.white,
       primaryContainer: purpleSoft,
       onPrimaryContainer: Color(0xFF2B2168),
@@ -162,15 +212,15 @@ class VeloSalesTheme {
   }
 
   static ThemeData get dark {
-    const ink = Color(0xFFF2F1FA);
-    const muted = Color(0xFFA5A1C0);
-    const line = Color(0xFF272346);
-    const bg = Color(0xFF0E0C1D);
-    const card = Color(0xFF181530);
+    const ink = Color(0xFFF4F2FE);
+    const muted = Color(0xFFC9C2F5);
+    const line = Color(0xFF2E2478);
+    const bg = Color(0xFF0B0630);
+    const card = Color(0xFF1B1450);
     const scheme = ColorScheme.dark(
-      primary: Color(0xFF8B7FF0),
-      onPrimary: Colors.white,
-      primaryContainer: Color(0xFF221C4D),
+      primary: Color(0xFFB9AEFB),
+      onPrimary: nightInk,
+      primaryContainer: Color(0xFF2E2478),
       onPrimaryContainer: Color(0xFFDDD8FF),
       surface: card,
       onSurface: ink,
@@ -215,8 +265,6 @@ class VeloSalesTheme {
         foregroundColor: ink,
         elevation: 0,
         scrolledUnderElevation: 0,
-        // .topbar 1px bottom border (Divider under AppBar via shape).
-        shape: Border(bottom: BorderSide(color: line)),
         titleTextStyle: TextStyle(
             fontFamily: _font, fontSize: 17, fontWeight: FontWeight.w800, color: ink),
       ),
@@ -236,18 +284,23 @@ class VeloSalesTheme {
         style: FilledButton.styleFrom(
           minimumSize: const Size(0, 44),
           padding: const EdgeInsets.symmetric(horizontal: 22),
-          backgroundColor: accentSolid,
-          foregroundColor: Colors.white,
+          backgroundColor:
+              brightness == Brightness.dark ? coralBright : accentSolid,
+          foregroundColor:
+              brightness == Brightness.dark ? nightInk : Colors.white,
           textStyle: const TextStyle(
               fontFamily: _font, fontSize: 14, fontWeight: FontWeight.w700),
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(pill)),
-          // Same fill in both themes, exactly like the web's --accent-solid:
-          // white on #4F3FC7 is 7:1, while white on the dark --purple would
-          // only be 2.9:1. The accent still shows through text and icons.
+          // The web's --accent-solid: deep coral with white text in light mode,
+          // bright coral with dark text in dark mode.
           // Disabled still reads as the same button, just unavailable.
-          disabledBackgroundColor: accentSolid.withValues(alpha: 0.34),
-          disabledForegroundColor: Colors.white.withValues(alpha: 0.85),
+          disabledBackgroundColor:
+              (brightness == Brightness.dark ? coralBright : accentSolid)
+                  .withValues(alpha: 0.34),
+          disabledForegroundColor:
+              (brightness == Brightness.dark ? nightInk : Colors.white)
+                  .withValues(alpha: 0.85),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(

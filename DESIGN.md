@@ -35,26 +35,27 @@ of a popover), the words, order, states and emphasis still match — and so does
 every empty, loading and error state. A screen that exists on one client only is
 a bug, not a bonus.
 
-### Colour — the reasoning (locked 2026-10, from the reference video)
+### Colour — coral + indigo (locked with the owner, 2026-11)
 
-- **Indigo is authority.** It reads as competent, calm and expensive, and it is
-  the only hue that stays legible as text on white *and* as a fill under white
-  text. So it owns every action the owner should take, and nothing else does.
-- **The rail is deep indigo.** Dark chrome turns the nav into a frame; white
-  content on a faintly lilac canvas becomes "the paper". The eye lands on the
-  numbers and the inbox, not on the chrome. It also survives phone glare far
-  better than a white column.
-- **The canvas is warm off-white, not blue-white.** Clinical blue-white reads
-  machine-made. A 2° shift toward violet ties the page to the brand for free.
-- **Amber is money and attention** — the colour of a Naira note and of a warning
-  lamp. It means "a decision is needed". It never means "something broke".
+**The one rule: indigo shows where you are and what is true. Coral shows what to
+do next.** Coral is warm and human, indigo is trust and competence.
+
+- **Indigo** owns the logo, the current tab, links, focus rings and meters.
+- **Coral** owns main buttons, "needs you" and the upgrade prompt. Light mode uses
+  #D03C16 with white text (4.84:1). Dark mode uses #FF8A6B with dark text (7.76:1).
+  Never use the brighter coral with white text: it fails contrast.
+- **The glow.** Light screens are white with a peach and lilac glow at the very
+  top. Dark screens fade from violet to #0B0630. Lists, tables and forms always
+  sit on solid surfaces.
+- **The rail.** On desktop it is white in light mode and violet in dark mode. The
+  phone drawer is an overlay, so it is violet in both.
+- **Amber is a warning**, such as nearing the daily limit. It never means "something broke".
 - **Green is only ever "it worked"**: success, online, KPI up, a tick.
 - **Red is failure and destruction.** Never decoration.
 
-- **One memorable thing per screen.** Overview leads with the north-star metric
-  card; Inbox leads with the thread; Catalog leads with completeness.
-- Purple appears on: primary CTAs, active nav, focus rings, info status,
-  outbound chat. Everywhere else: neutrals.
+- **One memorable thing per screen.** Home leads with what needs you; Inbox leads with the thread; Catalog leads with completeness.
+- Indigo appears on: active nav, links, focus rings, meters, info status, outbound
+  chat. Coral appears on: primary actions and needs-you. Everywhere else: neutrals.
 - Everything the user reads or edits (lists, tables, forms, numbers, chat
   messages) sits on solid surfaces.
 - Copy the visual language, never the brand: no Flowify/Venture Harbour names,
@@ -66,32 +67,29 @@ Tokens live in `:root` (light) and `[data-theme="dark"]`. New work uses tokens
 only. No hex literals outside token blocks.
 
 ### Light tokens
-- --purple: #5b4bd6 (primary accent, focus) · --purple-dark: #4938b4 (hover/pressed)
+- --purple: #4f3fc7 (indigo: active, links, focus) · --purple-dark: #3b2e9e (hover/pressed)
 - --purple-soft: #efebfe (active nav, outbound chat, info chips) · --purple-line: #cfc6f8
-- --accent-solid: #4f3fc7 · --accent-solid-hover: #4133a4 (white text on both, both themes)
-- --rail-1 #352a7f → --rail-2 #221a56 → --rail-3 #1a1443 (the sidebar/drawer gradient,
-  top-lit so the brand reads as nearest). Rail ink/muted/faint/line/hover/active:
-  #f4f2fe / #b4aede / #847cb8 / rgba(255,255,255,.10) / .08 / .15
-- --ink: #171532; --muted: #6b6885; --faint: #9693ac
+- --accent-solid: #d03c16 · --accent-solid-hover: #b83412 · --on-accent: #fff (dark: #ff8a6b, #ffa488, #120b4a)
+- --coral-ink: #b83412 · --coral-soft: #fff4ef · --coral-line: #f3c3b3 (needs-you text and chips)
+- Violet frame (dark rail, phone drawer): #2a1c7a → #120b4a → #0b0630
+- --ink: #1e1757; --muted: #5f5a7d; --faint: #736f8e
 - --line: #e7e5f0; --line-soft: #f2f1f8 (borders, dividers)
-- --bg: #f7f6fb (page); --card: #ffffff (cards, forms, menus)
+- --bg: #ffffff (page, under --glow); --card: #ffffff (cards, forms, menus)
 - --green: #10b981 on --green-soft: #d1fae5; --green-dark: #059669 (success, KPI-up)
 - --gold: #d97706 on --gold-bg: #fffbeb; --gold-line: #fcd34d (needs attention, never errors)
 - --red: #dc2626 on --red-bg: #fef2f2; --red-line: #fca5a5 (failed, destructive only)
 - --blue: #2563eb on --blue-bg: #eff6ff (info, links)
 
 ### Dark tokens
-- --purple: #8b7ff0 (never dimmed below 4.5:1), --purple-soft: #221c4d
-- --ink: #f2f1fa; --muted: #a5a1c0; --faint: #6f6b8c
-- --line: #272346; --line-soft: #1c1934
-- --bg: #0e0c1d; --card: #181530
-- rail drops a shade below the page (--rail-1 #2b2269 → --rail-3 #120e33)
+- --purple: #8b7ff0 (never dimmed below 4.5:1), --purple-soft: #2e2478
+- --ink: #f4f2fe; --muted: #c9c2f5; --faint: #9c95cb
+- --line: #2e2478; --line-soft: #1b1450
+- --bg: #0b0630; --card: #1b1450
 - --green: #34d399; --gold: #fbbf24 on #2a1f08; --red: #f87171 on #2b1210; --blue: #60a5fa
 - Dark is designed, not inverted: surface separation via borders, softer shadows.
 
-The mark's ramp (`.vl-root`) lives in the same two blocks; the rail is dark in
-BOTH themes, so a mark sitting on it uses the dark ramp via
-`.sidebar .vl-root` (declared after the theme blocks so source order wins).
+The mark's ramp (`.vl-root`) lives in the same two blocks. A mark on a violet
+rail uses the bright ramp.
 
 Check every text/background pair at 4.5:1 in both themes.
 
@@ -146,11 +144,13 @@ Check every text/background pair at 4.5:1 in both themes.
   fill (purple-on-purple disappears); put it on a surface.
 
 ### Shell
-- Left sidebar 232px, deep-indigo rail (top-lit gradient), grouped nav, footer.
-  Brand + nav rows sit ON the rail; the rail is dark in both themes.
-- Topbar: breadcrumb + business name, centered page search, right cluster
-  (AI status pill, notifications bell, theme toggle, avatar, sign out).
-- Mobile: slide-out drawer (same indigo rail) + 5-item bottom bar + footer links.
+- Main menu, same words on both clients: Home, Inbox, Catalog, Channels, Insights.
+  Everything else sits behind More. Never add a sixth main item.
+- Desktop: left sidebar 232px with the five items and a More toggle. Topbar:
+  breadcrumb + business name, page search, then Upgrade (free plan only), AI status,
+  bell, theme toggle, avatar, sign out.
+- Phone: bottom bar of Home, Inbox, Catalog, Channels, More. More opens the violet
+  drawer, which holds Insights and everything else.
 
 ### Dropdowns
 - ONE control, everywhere: `frontend/src/components/Select.jsx` (web) and
@@ -163,12 +163,13 @@ Check every text/background pair at 4.5:1 in both themes.
 - Anything that picks an AI brain shows the TIER (Fast / Normal / Smart).
   The engine's real name never reaches the UI.
 
-### Dashboard Overview (built first)
-- Hero: greeting + business name + primary "Test bot" action.
-- North-star stat row: conversations, products live, handled-by-AI %.
-- Main grid: activity sparkline, reply-mix donut, tasks timeline.
-- Right column: busy-hours heat grid, connected apps with progress rings.
-- Everything visualizes REAL counts only. No invented analytics.
+### Home
+- Greeting in two lines: "Hi {name}," in coral, then "what do you need today?".
+- Four action cards: chats that need you first, then Add a product, Test your bot,
+  Connect a channel. The first card fills coral only when a real chat is waiting.
+- Then the reply meter ("32 of 50"), the Ask Velo bar, Needs your attention, and the
+  checklist or Activity.
+- Everything shows REAL counts only. No invented analytics.
 
 ### Inbox / Chats
 - Desktop 3-panel: conversation list (search, channel + AI/human filters,

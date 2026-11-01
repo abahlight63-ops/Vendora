@@ -86,7 +86,7 @@ export default function Insights() { // no props (self-sufficient)
   if (failed && !d) return ( // fetch failed BEFORE first paint (failed card, never skeletons!)
     <>
       <div className="page-head"><div><h1>Insights</h1><p>What customers ask, what the AI nails, and where you lose money.</p></div></div>
-      <LoadFailed title="Couldn't load insights" status={failed.status} detail={failed.detail} tries={tries} onRetry={() => { setD(null); setTries((t) => t + 1); }} backTo="/dashboard" backLabel="Back to Overview" />
+      <LoadFailed title="Couldn't load insights" status={failed.status} detail={failed.detail} tries={tries} onRetry={() => { setD(null); setTries((t) => t + 1); }} backTo="/dashboard" backLabel="Back to Home" />
     </>
   );
   if (!d) return ( // LOADING: skeleton chart mirroring the real layout

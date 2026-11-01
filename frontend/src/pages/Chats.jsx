@@ -81,14 +81,14 @@ export default function Chats() {
   }
   if (failed && convos === null && !thread) return ( // list failed BEFORE first paint (nothing to show — failed card, never skeletons!)
     <>
-      <div className="page-head"><div><h1>Inbox</h1><p>Every WhatsApp and Telegram chat, in one inbox. Green = AI handled. Gold = needs your human touch.</p></div></div>
-      <LoadFailed title="Couldn't load inbox" status={failed.status} detail={failed.detail} tries={tries} onRetry={() => { setConvos(null); setTries((t) => t + 1); }} backTo="/dashboard" backLabel="Back to Overview" />
+      <div className="page-head"><div><h1>Inbox</h1><p>Every chat from your channels, in one place.</p></div></div>
+      <LoadFailed title="Couldn't load inbox" status={failed.status} detail={failed.detail} tries={tries} onRetry={() => { setConvos(null); setTries((t) => t + 1); }} backTo="/dashboard" backLabel="Back to Home" />
     </>
   );
   const initialOf = (c) => (((c && (c.customer_name || c.customer_number)) || '?').trim()[0] || '?').toUpperCase();
   return ( // 3-panel inbox: list | thread | contact (mobile shows list OR thread)
     <>
-      <div className="page-head"><div><h1>Inbox</h1><p>Every WhatsApp and Telegram chat, in one inbox. Green = AI handled. Gold = needs your human touch.</p></div></div>
+      <div className="page-head"><div><h1>Inbox</h1><p>Every chat from your channels, in one place.</p></div></div>
       <div className={'wx-layout' + (thread ? ' wx-has-thread' : '')}>
         {/* LEFT: conversation list */}
         <section className="wx-list" aria-label="Conversations">
@@ -99,7 +99,7 @@ export default function Chats() {
           </div>
           <div className="wx-tabs" role="tablist" aria-label="Filter by status">
             {[['all', 'All', (convos || []).length], ['needs', 'Needs you', needsCount], ['handled', 'Handled', (convos || []).length - needsCount]].map(([k, l, n]) => (
-              <button key={k} role="tab" aria-selected={filter === k} className={'wx-tab' + (filter === k ? ' on' : '')} onClick={() => setFilter(k)}>{l}<b>{convos === null ? '·' : n}</b></button>
+              <button key={k} role="tab" aria-selected={filter === k} className={'wx-tab' + (filter === k ? ' on' : '') + (k === 'needs' && needsCount > 0 ? ' needs' : '')} onClick={() => setFilter(k)}>{l}<b>{convos === null ? '·' : n}</b></button>
             ))}
           </div>
           <div className="wx-chans">
@@ -114,13 +114,9 @@ export default function Chats() {
                 <button key={c.id} className={'wx-row' + (thread && thread.id === c.id ? ' sel' : '')} onClick={() => open(c)} aria-current={thread && thread.id === c.id ? 'true' : undefined}>
                   <span className="wx-ava" aria-hidden="true">{initialOf(c)}{c.needs_human ? <i className="wx-dot" /> : null}</span>
                   <span className="wx-main">
-                    <span className="wx-top"><b>{c.customer_name || c.customer_number}</b><small>{fmtTime(c.updated_at)}</small></span>
+                    <span className="wx-top"><b>{c.customer_name || c.customer_number}</b>{c.needs_human ? <span className="wx-needs">Needs you</span> : <small>{fmtTime(c.updated_at)}</small>}</span>
                     <span className="wx-sub"><span>{(c.last_message || '').slice(0, 60) || '—'}</span></span>
-                    <span className="wx-tags">
-                      <span className={'pill ' + (c.needs_human ? 'flag' : 'ok')} style={{ fontSize: 10 }}>{c.needs_human ? 'needs you' : 'handled'}</span>
-                      <span className="pill info" style={{ fontSize: 10 }}>{(c.channel || 'whatsapp') === 'telegram' ? 'Telegram' : 'WhatsApp'}</span>
-                      {c.bot_paused ? <span className="pill info" style={{ fontSize: 10 }}>you talk</span> : null}
-                    </span>
+                    <span className="wx-chan-line">{(c.channel || 'whatsapp') === 'telegram' ? 'Telegram' : 'WhatsApp'}{c.bot_paused ? ', you are answering' : ''}</span>
                   </span>
                 </button>
               ))}

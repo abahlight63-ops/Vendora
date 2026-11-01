@@ -134,7 +134,7 @@ export default function Catalog() { // no props needed (fetches everything itsel
   if (failed && products === null) return ( // products failed BEFORE first paint (nothing to show — failed card, never skeletons!)
     <>
       <div className="page-head"><div><h1>Catalog</h1><p>The single source of truth. If it's not here, the AI will not promise it.</p></div></div>
-      <LoadFailed title="Couldn't load catalog" status={failed.status} detail={failed.detail} tries={tries} onRetry={() => { setProducts(null); setTries((t) => t + 1); }} backTo="/dashboard" backLabel="Back to Overview" />
+      <LoadFailed title="Couldn't load catalog" status={failed.status} detail={failed.detail} tries={tries} onRetry={() => { setProducts(null); setTries((t) => t + 1); }} backTo="/dashboard" backLabel="Back to Home" />
     </>
   );
   return (

@@ -477,7 +477,7 @@ export default function Connect() {
 
   return (
     <>
-      <div className="page-head"><div><h1>Connect</h1><p>Plug in your channels once — the AI answers from then on.</p></div></div>
+      <div className="page-head"><div><h1>Channels</h1><p>Connect your channels once, and Velo answers from then on.</p></div></div>
 
       <div className="card"> {/* status board: both doors at a glance */}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>

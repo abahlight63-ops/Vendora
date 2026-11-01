@@ -231,12 +231,12 @@ class _HomeShellState extends State<HomeShell> {
   String? _avatar; // the owner's picture (null = the brand mark stands in)
 
   static const _titles = [
-    'Overview',
+    'Home',
     'Inbox',
     'Catalog',
-    'Connect',
+    'Channels',
     'Chat with Velo',
-    'Billing',
+    'Plan and usage',
   ];
 
   @override
@@ -470,13 +470,11 @@ class _HomeShellState extends State<HomeShell> {
       avatarUrl: _avatar,
       tab: _tab,
       groups: [
-        // The web's three groups, same words and order. The phone's drawer is
-        // the deep-indigo rail; the five things a thumb needs every day live
-        // in the floating dock instead.
-        SidebarGroup(label: 'Sell', items: [
+        // The same words and order as the web: five daily jobs, then More.
+        SidebarGroup(label: 'Your shop', items: [
           const SidebarItem(
               icon: Icons.grid_view_outlined,
-              label: 'Overview',
+              label: 'Home',
               hint: 'Your shop at a glance',
               tab: 0),
           const SidebarItem(
@@ -491,9 +489,22 @@ class _HomeShellState extends State<HomeShell> {
               tab: 2),
           const SidebarItem(
               icon: Icons.link_outlined,
-              label: 'Connect',
+              label: 'Channels',
               hint: 'WhatsApp and Telegram',
               tab: 3),
+          SidebarItem(
+            icon: Icons.query_stats_outlined,
+            label: 'Insights',
+            hint: 'Chats, quiet customers, busy hours',
+            push: () => _open(const InsightsScreen()),
+          ),
+        ]),
+        SidebarGroup(label: 'More', items: [
+          const SidebarItem(
+              icon: Icons.payments_outlined,
+              label: 'Plan and usage',
+              hint: 'Plan, trial and receipts',
+              tab: 5),
           SidebarItem(
             icon: Icons.science_outlined,
             label: 'Test bot',
@@ -506,14 +517,6 @@ class _HomeShellState extends State<HomeShell> {
               body: const AiScreen(startInTestBot: true),
             )),
           ),
-        ]),
-        SidebarGroup(label: 'Grow', items: [
-          SidebarItem(
-            icon: Icons.query_stats_outlined,
-            label: 'Insights',
-            hint: 'Chats, quiet customers, busy hours',
-            push: () => _open(const InsightsScreen()),
-          ),
           const SidebarItem(
               icon: Icons.smart_toy_outlined,
               label: 'Chat with Velo',
@@ -525,13 +528,6 @@ class _HomeShellState extends State<HomeShell> {
             hint: 'Invite sellers — you both win',
             push: () => _open(const ReferEarnScreen()),
           ),
-          const SidebarItem(
-              icon: Icons.payments_outlined,
-              label: 'Billing',
-              hint: 'Plan, trial and receipts',
-              tab: 5),
-        ]),
-        SidebarGroup(label: 'Setup', items: [
           SidebarItem(
             icon: Icons.storefront_outlined,
             label: 'Business',
@@ -592,10 +588,12 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return VeloSalesTheme.glow(context, child: Scaffold(
+      backgroundColor: Colors.transparent,
       drawer: _sidebar(),
       appBar: AppBar(
         toolbarHeight: 64,
+        backgroundColor: Colors.transparent,
         leading: Builder(
           builder: (c) => IconButton(
             icon: const Icon(Icons.menu_rounded),
@@ -720,15 +718,21 @@ class _HomeShellState extends State<HomeShell> {
         ),
       ]),
       // The web's floating mobile bar — same five destinations, same active
-      // pill, lifted off the canvas instead of a full-width Material sheet.
-      bottomNavigationBar: _Dock(tab: _tab, onTab: _go, onHelp: _openHelp),
-    );
+      // pill. More opens the drawer, which holds Insights and everything else.
+      bottomNavigationBar: Builder(
+        builder: (c) => _Dock(
+          tab: _tab,
+          onTab: _go,
+          onMore: () => Scaffold.of(c).openDrawer(),
+        ),
+      ),
+    ));
   }
 }
 
 /// One destination in the floating dock.
 class _DockEntry {
-  final int tab; // -1 = a pushed page (Help)
+  final int tab; // -1 = opens the drawer (More)
   final String label;
   final IconData icon;
   final IconData activeIcon;
@@ -737,22 +741,22 @@ class _DockEntry {
 
 /// The phone's five-item bar. It matches the browser's `@media (max-width:
 /// 980px) .mobile-bar`: a floating white card, 20px radius, one shadow, five
-/// labels at 10.5px, and a purple-soft pill under the current page. Billing and
-/// Help are here (as on the web); Connect and Chat with Velo stay in the rail.
+/// labels at 10.5px, and a purple-soft pill under the current page. More opens
+/// the rail, which holds Insights and everything else (as on the web).
 class _Dock extends StatelessWidget {
   final int tab;
   final ValueChanged<int> onTab;
-  final VoidCallback onHelp;
+  final VoidCallback onMore;
 
-  const _Dock({required this.tab, required this.onTab, required this.onHelp});
+  const _Dock({required this.tab, required this.onTab, required this.onMore});
 
   static const _entries = [
-    _DockEntry(0, 'Overview', Icons.grid_view_outlined, Icons.grid_view_rounded),
+    _DockEntry(0, 'Home', Icons.grid_view_outlined, Icons.grid_view_rounded),
     _DockEntry(1, 'Inbox', Icons.forum_outlined, Icons.forum_rounded),
     _DockEntry(
         2, 'Catalog', Icons.inventory_2_outlined, Icons.inventory_2_rounded),
-    _DockEntry(5, 'Billing', Icons.payments_outlined, Icons.payments_rounded),
-    _DockEntry(-1, 'Help', Icons.help_outline_rounded, Icons.help_rounded),
+    _DockEntry(3, 'Channels', Icons.link_outlined, Icons.link_rounded),
+    _DockEntry(-1, 'More', Icons.more_horiz_rounded, Icons.more_horiz_rounded),
   ];
 
   @override
@@ -777,8 +781,8 @@ class _Dock extends StatelessWidget {
                 Expanded(
                   child: _DockItem(
                     entry: e,
-                    active: e.tab == tab,
-                    onTap: e.tab < 0 ? onHelp : () => onTab(e.tab),
+                    active: e.tab < 0 ? tab > 3 : e.tab == tab,
+                    onTap: e.tab < 0 ? onMore : () => onTab(e.tab),
                   ),
                 ),
             ],

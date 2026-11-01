@@ -10,7 +10,7 @@ import Logo from '../components/Logo.jsx';
 import Shell from '../components/Shell.jsx';
 
 const APP_LINKS = [
-  ['Overview', 'Your shop at a glance', '/dashboard'],
+  ['Home', 'Your shop at a glance', '/dashboard'],
   ['Inbox', 'Every customer conversation', '/chats'],
   ['Catalog', 'Products, prices and stock', '/catalog'],
   ['AI settings', 'How your assistant sounds', '/ai-settings'],

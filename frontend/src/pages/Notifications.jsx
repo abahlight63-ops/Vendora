@@ -64,7 +64,7 @@ export default function Notifications() {
       <div className="page-head"><div><h1>Notifications</h1><p>Payment news and app updates — tap any row to read it fully.</p></div></div>
       <div className="card">
         {items === null ? <div className="skel-grid">{[0, 1, 2].map((i) => (<div key={i} className="skel" style={{ height: 56, marginBottom: 8 }} />))}</div>
-          : failed && items.length === 0 ? <LoadFailed title="Couldn't load notifications" status={failed.status} detail={failed.detail} tries={tries} onRetry={() => { setItems(null); setTries((t) => t + 1); }} backTo="/dashboard" backLabel="Back to Overview" />
+          : failed && items.length === 0 ? <LoadFailed title="Couldn't load notifications" status={failed.status} detail={failed.detail} tries={tries} onRetry={() => { setItems(null); setTries((t) => t + 1); }} backTo="/dashboard" backLabel="Back to Home" />
           : items.length === 0 ? <div className="empty"><b>All caught up</b>Payment verifications and app updates will land here.</div>
             : items.map((n) => (
               <button key={n.id} className={'nbell-item' + (n.is_read ? '' : ' fresh')} style={{ borderBottom: '1px solid var(--line-soft)' }} onClick={() => nav(`/notifications/${n.id}`)}>

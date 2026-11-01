@@ -1,11 +1,11 @@
 // ── lib/screens/home_screen.dart ──────────────────────────────────
-// WHAT: the Overview — the phone's copy of the web's Dashboard.jsx.
+// WHAT: Home — the phone's copy of the web's Dashboard.jsx.
 //
-// Same order as the browser: greeting + bot status + the two actions, the
-// trial strip, four real KPIs, Activity, Reply mix, Needs your attention, the
-// first-15-minutes checklist (or Recent chats once it is done), and Refer &
-// Earn. No invented numbers, no fake charts: every value is a real API answer,
-// and a failed load is a retry wall, never a page of zeroes.
+// Same order as the browser: a greeting, the trial strip, four things to do next
+// (chats that need you comes first and turns coral when it is real), today's
+// reply meter, the way into Chat with Velo, Needs your attention, and the
+// checklist (or Activity once it is done). No invented numbers: every value is a
+// real API answer, and a failed load is a retry wall, never a page of zeroes.
 //
 // The phone is allowed one thing the browser is not: depth. Cards tilt toward
 // the thumb and rise on entry (lib/depth.dart). Nothing loops.
@@ -13,7 +13,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../api.dart';
 import '../depth.dart';
@@ -24,11 +23,11 @@ import '../widgets/brand_ui.dart';
 import '../widgets/error_art.dart';
 import 'insights_screen.dart';
 import 'profile_screen.dart';
-import 'refer_earn_screen.dart';
+import 'ai_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  /// Jumps to another tab in the shell (0 Overview · 1 Inbox · 2 Catalog ·
-  /// 3 Connect · 4 VeloSales Ai · 5 Billing).
+  /// Jumps to another tab in the shell (0 Home · 1 Inbox · 2 Catalog ·
+  /// 3 Channels · 4 Chat with Velo · 5 Plan and usage).
   final ValueChanged<int> onGoTab;
 
   const HomeScreen({super.key, required this.onGoTab});
@@ -128,9 +127,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _openRefer() {
+  void _openTestBot() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ReferEarnScreen()),
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(
+            title: const Text('Test bot',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+          ),
+          body: const AiScreen(startInTestBot: true),
+        ),
+      ),
     );
   }
 
@@ -148,7 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Center(child: ErrorArt(offline: offline, size: 128)),
           const SizedBox(height: 8),
           const Text(
-            "Couldn't load overview",
+            "Couldn't load Home",
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3),
           ),
@@ -180,13 +187,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final needs = _convos
         .where((c) => c['needs_human'] == true || c['needs_human'] == 1)
         .toList();
-    final pct = _convos.isEmpty
-        ? 100
-        : (((_convos.length - needs.length) / _convos.length) * 100).round();
-    final needsPct =
-        _convos.isEmpty ? 0 : ((needs.length / _convos.length) * 100).round();
-    final catalogPct = math.max(0, 100 - pct - needsPct).toInt();
     final days = _sevenDays();
+    final wa = (_channels['whatsapp'] as Map?) ?? const {};
+    final used = (wa['dailyUsed'] as num?)?.toInt() ?? 0;
+    final limit = (wa['dailyLimit'] as num?)?.toInt();
+    final hasUsage = _channels['whatsapp'] != null;
     final waLive = ((_channels['whatsapp'] as Map?)?['live'] == true);
     final tgOn = ((_channels['telegram'] as Map?)?['connected'] == true);
     final live = waLive || tgOn;
@@ -204,65 +209,50 @@ class _HomeScreenState extends State<HomeScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
         children: [
-          // ── hero: greeting, truth about the bot, two actions ──
+          // ── the greeting ──
           DepthReveal(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${greeting()}, $first.',
+                  'Hi $first,',
                   style: TextStyle(
-                    fontSize: 27,
-                    height: 1.14,
+                    fontSize: 28,
+                    height: 1.12,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.7,
+                    color: VeloSalesTheme.accent(context),
+                  ),
+                ),
+                Text(
+                  'what do you need today?',
+                  style: TextStyle(
+                    fontSize: 28,
+                    height: 1.12,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.8,
                     color: scheme.onSurface,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Text(
                   botOn
                       ? (live
-                          ? 'Your bot is live and answering customers.'
+                          ? 'Velo is answering your customers right now.'
                           : 'Add a product and connect a channel to go live.')
                       : 'Your bot is paused — switch it back on in Settings.',
                   style: TextStyle(
                     fontSize: 14,
                     height: 1.45,
-                    color: scheme.onSurface.withValues(alpha: 0.62),
+                    color: scheme.onSurface.withValues(alpha: 0.72),
                   ),
-                ),
-                const SizedBox(height: 14),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    _StatusPill(
-                      live: live,
-                      paused: !botOn,
-                      label: !botOn ? 'Bot paused' : (live ? 'Bot online' : 'Bot ready'),
-                    ),
-                    FilledButton.icon(
-                      onPressed: () => widget.onGoTab(4),
-                      style: _smallButton,
-                      icon: const Icon(Icons.smart_toy_outlined, size: 17),
-                      label: const Text('Test bot'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () => widget.onGoTab(2),
-                      style: _smallGhost,
-                      icon: const Icon(Icons.add_rounded, size: 18),
-                      label: const Text('Add product'),
-                    ),
-                  ],
                 ),
               ],
             ),
           ),
 
           if (trialLeft != null) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             DepthReveal(
               delayMs: 50,
               child: _TrialStrip(
@@ -272,42 +262,76 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
 
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
 
-          // ── four real KPIs ──
-          DepthReveal(delayMs: 90, child: _StatsGrid(
-            convos: _convos.length,
-            products: _products.length,
-            pct: pct,
-            needs: needs.length,
-            days: days,
-            onInbox: () => widget.onGoTab(1),
-            onCatalog: () => widget.onGoTab(2),
-          )),
-
-          const SizedBox(height: 14),
-
-          // ── Activity ──
+          // ── four things to do next ──
           DepthReveal(
-            delayMs: 130,
-            child: _ActivityCard(days: days, onTap: _openInsights),
-          ),
-
-          const SizedBox(height: 14),
-
-          // ── Reply mix ──
-          DepthReveal(
-            delayMs: 160,
-            child: _ReplyMixCard(
-              total: _convos.length,
-              handled: pct,
-              catalog: catalogPct,
-              needs: needsPct,
-              onTap: _openInsights,
+            delayMs: 90,
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ActionCard(
+                        hot: needs.isNotEmpty,
+                        number: needs.length,
+                        label: needs.isEmpty
+                            ? 'All chats handled'
+                            : (needs.length == 1
+                                ? 'Chat needs you'
+                                : 'Chats need you'),
+                        onTap: () => widget.onGoTab(1),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _ActionCard(
+                        icon: Icons.add_rounded,
+                        label: 'Add a product',
+                        onTap: () => widget.onGoTab(2),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ActionCard(
+                        icon: Icons.chat_bubble_outline_rounded,
+                        label: 'Test your bot',
+                        onTap: _openTestBot,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _ActionCard(
+                        icon: Icons.link_rounded,
+                        label: 'Connect a channel',
+                        onTap: () => widget.onGoTab(3),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
 
-          const SizedBox(height: 14),
+          if (hasUsage) ...[
+            const SizedBox(height: 16),
+            DepthReveal(
+              delayMs: 130,
+              child: _UsageMeter(used: used, limit: limit),
+            ),
+          ],
+
+          const SizedBox(height: 16),
+          DepthReveal(
+            delayMs: 150,
+            child: _AskBar(onTap: () => widget.onGoTab(4)),
+          ),
+
+          const SizedBox(height: 24),
 
           // ── Needs your attention ──
           DepthReveal(
@@ -325,9 +349,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
 
-          // ── checklist until it is done, then recent chats ──
+          // ── checklist until it is done, then activity ──
           DepthReveal(
             delayMs: 220,
             child: showGuide
@@ -343,49 +367,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       }
                     },
                   )
-                : _ThreadsCard(
-                    title: 'Recent chats',
-                    action: 'Inbox',
-                    emptyTitle: 'No chats yet',
-                    emptyBody:
-                        'Share your WhatsApp number — conversations land here.',
-                    emptyIcon: Icons.forum_outlined,
-                    rows: _convos.take(3).toList(),
-                    warn: false,
-                    onAction: () => widget.onGoTab(1),
-                    onRow: (_) => widget.onGoTab(1),
-                  ),
-          ),
-
-          const SizedBox(height: 14),
-          _ReferCard(onOpen: _openRefer),
-
-          const SizedBox(height: 8),
-          Center(
-            child: Text(
-              'AI replies 24/7 — even at 2am.',
-              style: TextStyle(
-                fontSize: 11,
-                color: scheme.onSurface.withValues(alpha: 0.35),
-              ),
-            ),
+                : _ActivityCard(days: days, onTap: _openInsights),
           ),
         ],
       ),
     );
   }
-
-  static final ButtonStyle _smallButton = FilledButton.styleFrom(
-    minimumSize: const Size(0, 40),
-    padding: const EdgeInsets.symmetric(horizontal: 15),
-    textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-  );
-
-  static final ButtonStyle _smallGhost = OutlinedButton.styleFrom(
-    minimumSize: const Size(0, 40),
-    padding: const EdgeInsets.symmetric(horizontal: 15),
-    textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-  );
 
   /// Seven buckets, oldest → today. Real timestamps only; a conversation with
   /// no parseable date is left out rather than guessed into today.
@@ -439,6 +426,210 @@ class _HomeScreenState extends State<HomeScreen> {
       ];
 }
 
+
+/// One of the four things to do next. The "needs you" card is the only one that
+/// fills with coral, and only when a real chat is waiting.
+class _ActionCard extends StatelessWidget {
+  final IconData? icon;
+  final int? number;
+  final String label;
+  final bool hot;
+  final VoidCallback onTap;
+
+  const _ActionCard({
+    this.icon,
+    this.number,
+    required this.label,
+    this.hot = false,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final fg = hot ? VeloSalesTheme.onAccent(context) : scheme.onSurface;
+    return Semantics(
+      button: true,
+      child: Pressable(
+        onTap: onTap,
+        radius: BorderRadius.circular(20),
+        child: Container(
+          height: 124,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: hot ? VeloSalesTheme.accent(context) : scheme.surface,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF1E1757).withValues(alpha: 0.07),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  if (number != null)
+                    Text(
+                      '$number',
+                      style: TextStyle(
+                        fontSize: 31,
+                        height: 1,
+                        fontWeight: FontWeight.w800,
+                        color: fg,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    )
+                  else
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: scheme.primaryContainer,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, size: 18, color: scheme.primary),
+                    ),
+                  Icon(Icons.north_east_rounded,
+                      size: 20,
+                      color: hot ? fg : scheme.onSurface.withValues(alpha: 0.72)),
+                ],
+              ),
+              Text(
+                label,
+                maxLines: 2,
+                style: TextStyle(
+                  fontSize: 16,
+                  height: 1.2,
+                  fontWeight: FontWeight.w700,
+                  color: fg,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "32 of 50" replies today. Amber near the limit. Plans with no daily cap just
+/// show the count.
+class _UsageMeter extends StatelessWidget {
+  final int used;
+  final int? limit;
+  const _UsageMeter({required this.used, required this.limit});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final cap = limit;
+    final share = cap == null || cap == 0 ? 0.0 : (used / cap).clamp(0.0, 1.0);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer,
+        borderRadius: BorderRadius.circular(VeloSalesTheme.radius),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Replies today',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+              Text(
+                cap == null ? '$used' : '$used of $cap',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
+          ),
+          if (cap != null) ...[
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: share,
+                minHeight: 8,
+                semanticsLabel: 'Replies used today',
+                backgroundColor: scheme.primary.withValues(alpha: 0.22),
+                color: share >= 0.8
+                    ? VeloSalesTheme.goldColor(context)
+                    : scheme.primary,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// The way into Chat with Velo, shaped like the box you will type in.
+class _AskBar extends StatelessWidget {
+  final VoidCallback onTap;
+  const _AskBar({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Semantics(
+      button: true,
+      label: 'Ask Velo anything',
+      excludeSemantics: true,
+      child: Pressable(
+        onTap: onTap,
+        radius: BorderRadius.circular(999),
+        child: Row(
+          children: [
+            Expanded(
+              child: Container(
+                height: 52,
+                alignment: Alignment.centerLeft,
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                decoration: BoxDecoration(
+                  color: scheme.surface,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: scheme.outline),
+                ),
+                child: Text(
+                  'Ask Velo anything',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: scheme.onSurface.withValues(alpha: 0.72),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: VeloSalesTheme.accent(context),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.arrow_upward_rounded,
+                  size: 20, color: VeloSalesTheme.onAccent(context)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _Step {
   final bool done;
   final String label;
@@ -453,74 +644,6 @@ class _Step {
     this.tab,
     this.profile = false,
   });
-}
-
-// ── hero status ─────────────────────────────────────────────────────
-class _StatusPill extends StatelessWidget {
-  final bool live;
-  final bool paused;
-  final String label;
-
-  const _StatusPill({
-    required this.live,
-    required this.paused,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final Color fg;
-    final Color bg;
-    final Color line;
-    final Color dot;
-    if (paused) {
-      fg = VeloSalesTheme.goldColor(context);
-      bg = VeloSalesTheme.gold.withValues(alpha: dark ? 0.16 : 0.10);
-      line = VeloSalesTheme.gold.withValues(alpha: 0.35);
-      dot = VeloSalesTheme.goldColor(context);
-    } else if (live) {
-      fg = dark ? const Color(0xFF34D399) : const Color(0xFF047857);
-      bg = dark
-          ? const Color(0xFF34D399).withValues(alpha: 0.12)
-          : const Color(0xFFD1FAE5);
-      line = const Color(0xFF34D399).withValues(alpha: 0.30);
-      dot = const Color(0xFF10B981);
-    } else {
-      fg = scheme.onSurface.withValues(alpha: 0.62);
-      bg = scheme.onSurface.withValues(alpha: 0.04);
-      line = scheme.outline;
-      dot = scheme.onSurface.withValues(alpha: 0.35);
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: line),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: dot),
-          ),
-          const SizedBox(width: 7),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: fg,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // ── trial strip ────────────────────────────────────────────────────
@@ -572,178 +695,9 @@ class _TrialStrip extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 9),
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            child: const Text('Billing'),
+            child: const Text('See plans'),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ── KPIs ───────────────────────────────────────────────────────────
-class _StatsGrid extends StatelessWidget {
-  final int convos;
-  final int products;
-  final int pct;
-  final int needs;
-  final List<int> days;
-  final VoidCallback onInbox;
-  final VoidCallback onCatalog;
-
-  const _StatsGrid({
-    required this.convos,
-    required this.products,
-    required this.pct,
-    required this.needs,
-    required this.days,
-    required this.onInbox,
-    required this.onCatalog,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, c) {
-      final two = c.maxWidth >= 330;
-      final w = two ? (c.maxWidth - 12) / 2 : c.maxWidth;
-      return Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: [
-          SizedBox(
-            width: w,
-            child: _StatCard(
-              label: 'Conversations',
-              value: '$convos',
-              sub: 'Last 7 days',
-              spark: days,
-              onTap: onInbox,
-            ),
-          ),
-          SizedBox(
-            width: w,
-            child: _StatCard(
-              label: 'Products live',
-              value: '$products',
-              sub: products == 0 ? 'Add your first one' : 'In your catalog',
-              onTap: onCatalog,
-            ),
-          ),
-          SizedBox(
-            width: w,
-            child: _StatCard(
-              label: 'Handled by AI',
-              value: '$pct%',
-              sub: 'No human needed',
-              good: pct >= 80,
-              onTap: onInbox,
-            ),
-          ),
-          SizedBox(
-            width: w,
-            child: _StatCard(
-              label: 'Needs you',
-              value: '$needs',
-              sub: needs == 0 ? 'All clear' : 'Flagged chats',
-              warn: needs > 0,
-              onTap: onInbox,
-            ),
-          ),
-        ],
-      );
-    });
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final String sub;
-  final bool good;
-  final bool warn;
-  final List<int>? spark;
-  final VoidCallback onTap;
-
-  const _StatCard({
-    required this.label,
-    required this.value,
-    required this.sub,
-    this.good = false,
-    this.warn = false,
-    this.spark,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final tone = good
-        ? VeloSalesTheme.successColor(context)
-        : warn
-            ? VeloSalesTheme.goldColor(context)
-            : scheme.onSurface;
-    return SizedBox(
-      height: 124,
-      child: DepthCard(
-        onTap: onTap,
-        padding: const EdgeInsets.all(15),
-        semanticLabel: '$label: $value',
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.1,
-                color: scheme.onSurface.withValues(alpha: 0.58),
-              ),
-            ),
-            const Spacer(),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 30,
-                height: 1,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -1,
-                color: tone,
-              ),
-            ),
-            const SizedBox(height: 5),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    sub,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11.8,
-                      color: scheme.onSurface.withValues(alpha: 0.40),
-                    ),
-                  ),
-                ),
-                if (spark != null)
-                  SizedBox(
-                    width: 62,
-                    height: 24,
-                    child: CustomPaint(
-                      painter: _SparkPainter(
-                        data: spark!,
-                        line: scheme.primary,
-                        fill: scheme.primary.withValues(alpha: dark ? 0.18 : 0.10),
-                        faint: scheme.onSurface.withValues(alpha: 0.18),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -839,181 +793,6 @@ class _ActivityCard extends StatelessWidget {
     const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     final d = DateTime.now().subtract(Duration(days: 6 - i));
     return names[d.weekday % 7];
-  }
-}
-
-// ── Reply mix ──────────────────────────────────────────────────────
-class _ReplyMixCard extends StatelessWidget {
-  final int total;
-  final int handled;
-  final int catalog;
-  final int needs;
-  final VoidCallback onTap;
-
-  const _ReplyMixCard({
-    required this.total,
-    required this.handled,
-    required this.catalog,
-    required this.needs,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return DepthCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(17),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _CardHead(
-                  title: 'Reply mix',
-                  sub: 'How your chats are handled',
-                  action: null,
-                  onAction: null,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                decoration: BoxDecoration(
-                  color: scheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  'Live',
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    color: scheme.primary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Center(
-            child: SizedBox(
-              width: 150,
-              height: 150,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  CustomPaint(
-                    size: const Size(150, 150),
-                    painter: _DonutPainter(
-                      handled: handled,
-                      catalog: catalog,
-                      needs: needs,
-                      purple: scheme.primary,
-                      sky: VeloSalesTheme.skyColor(context),
-                      faint: scheme.onSurface.withValues(alpha: 0.34),
-                      track: scheme.outline,
-                    ),
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '$total',
-                        style: TextStyle(
-                          fontSize: 23,
-                          height: 1,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.5,
-                          color: scheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Chats',
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          color: scheme.onSurface.withValues(alpha: 0.55),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Expanded(
-                child: _Legend(
-                  color: scheme.primary,
-                  pct: handled,
-                  label: 'AI handled',
-                ),
-              ),
-              Expanded(
-                child: _Legend(
-                  color: VeloSalesTheme.skyColor(context),
-                  pct: catalog,
-                  label: 'Catalog',
-                ),
-              ),
-              Expanded(
-                child: _Legend(
-                  color: scheme.onSurface.withValues(alpha: 0.34),
-                  pct: needs,
-                  label: 'Human',
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Legend extends StatelessWidget {
-  final Color color;
-  final int pct;
-  final String label;
-
-  const _Legend({required this.color, required this.pct, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 7,
-              height: 7,
-              decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-            ),
-            const SizedBox(width: 5),
-            Text(
-              '$pct%',
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w700,
-                color: scheme.onSurface,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10.5,
-            color: scheme.onSurface.withValues(alpha: 0.52),
-          ),
-        ),
-      ],
-    );
   }
 }
 
@@ -1348,148 +1127,6 @@ class _GuideCard extends StatelessWidget {
   }
 }
 
-// ── Refer & Earn ───────────────────────────────────────────────────
-class _ReferCard extends StatefulWidget {
-  final VoidCallback onOpen;
-
-  const _ReferCard({required this.onOpen});
-
-  @override
-  State<_ReferCard> createState() => _ReferCardState();
-}
-
-class _ReferCardState extends State<_ReferCard> {
-  Map<String, dynamic>? _r;
-
-  @override
-  void initState() {
-    super.initState();
-    ApiClient.instance.referralStats().then((v) {
-      if (mounted) setState(() => _r = v);
-    }).catchError((_) {});
-  }
-
-  String _naira(dynamic kobo) {
-    final v = ((num.tryParse('$kobo') ?? 0) / 100).round().toString();
-    final buf = StringBuffer();
-    for (var i = 0; i < v.length; i++) {
-      if (i > 0 && (v.length - i) % 3 == 0) buf.write(',');
-      buf.write(v[i]);
-    }
-    return '₦$buf';
-  }
-
-  Future<void> _share(String code) async {
-    final text =
-        'I use VeloSales Ai — my WhatsApp shop answers customers 24/7. Start free with my code $code (connect + use it and we BOTH get 14 Pro days free): ${ApiClient.referralUrl(code)}';
-    try {
-      await launchUrl(
-        Uri.parse('https://wa.me/?text=${Uri.encodeComponent(text)}'),
-        mode: LaunchMode.externalApplication,
-      );
-    } catch (_) {}
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final r = _r;
-    if (r == null) return const SizedBox.shrink();
-    final scheme = Theme.of(context).colorScheme;
-    final code = '${r['code'] ?? ''}';
-    final paying = (r['paying'] as num? ?? 0).toInt();
-    final every = (r['milestoneEvery'] as num? ?? 5).toInt();
-    final pct = every <= 0 ? 0.0 : (paying % every) / every;
-    return DepthCard(
-      onTap: widget.onOpen,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.card_giftcard_outlined, size: 17, color: scheme.primary),
-              const SizedBox(width: 7),
-              Expanded(
-                child: Text(
-                  'Refer & Earn',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.2,
-                    color: scheme.onSurface,
-                  ),
-                ),
-              ),
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 18,
-                color: scheme.onSurface.withValues(alpha: 0.30),
-              ),
-            ],
-          ),
-          const SizedBox(height: 5),
-          Text(
-            'Friends join with your code — you BOTH get 14 Pro days. Every 5th paying friend = ₦500 airtime.',
-            style: TextStyle(
-              fontSize: 12.2,
-              height: 1.4,
-              color: scheme.onSurface.withValues(alpha: 0.58),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  code,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.5,
-                    color: scheme.onSurface,
-                  ),
-                ),
-              ),
-              TextButton.icon(
-                onPressed: () => _share(code),
-                style: TextButton.styleFrom(
-                  minimumSize: const Size(0, 34),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                icon: const Icon(Icons.send_outlined, size: 15),
-                label: const Text('Share'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(99),
-            child: LinearProgressIndicator(
-              value: pct,
-              minHeight: 6,
-              backgroundColor: scheme.onSurface.withValues(alpha: 0.08),
-              valueColor: AlwaysStoppedAnimation<Color>(scheme.primary),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${r['invited'] ?? 0} invited · ${r['qualified'] ?? 0} set up · $paying paying · ${r['nextMilestoneIn'] ?? every} more to ${_naira(r['milestoneAmount'])} airtime',
-            maxLines: 2,
-            style: TextStyle(
-              fontSize: 11,
-              height: 1.4,
-              color: scheme.onSurface.withValues(alpha: 0.45),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ── shared bits ────────────────────────────────────────────────────
 class _CardHead extends StatelessWidget {
   final String title;
@@ -1558,126 +1195,6 @@ class _CardHead extends StatelessWidget {
       ],
     );
   }
-}
-
-// ── painters ───────────────────────────────────────────────────────
-class _SparkPainter extends CustomPainter {
-  final List<int> data;
-  final Color line;
-  final Color fill;
-  final Color faint;
-
-  const _SparkPainter({
-    required this.data,
-    required this.line,
-    required this.fill,
-    required this.faint,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (data.isEmpty || size.width <= 0) return;
-    final maxV = math.max(1, data.fold<int>(0, math.max));
-    final dx = (size.width - 4) / math.max(1, data.length - 1);
-    final pts = <Offset>[
-      for (var i = 0; i < data.length; i++)
-        Offset(2 + dx * i, size.height - 4 - (data[i] / maxV) * (size.height - 10)),
-    ];
-    final area = Path()
-      ..moveTo(pts.first.dx, size.height - 2)
-      ..lineTo(pts.first.dx, pts.first.dy);
-    for (var i = 1; i < pts.length; i++) {
-      area.lineTo(pts[i].dx, pts[i].dy);
-    }
-    area
-      ..lineTo(pts.last.dx, size.height - 2)
-      ..close();
-    canvas.drawPath(area, Paint()..color = fill);
-
-    final path = Path()..moveTo(pts.first.dx, pts.first.dy);
-    for (var i = 1; i < pts.length; i++) {
-      path.lineTo(pts[i].dx, pts[i].dy);
-    }
-    final stroke = Paint()
-      ..color = line
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    canvas.drawPath(path, stroke);
-    canvas.drawCircle(pts.last, 2.5, Paint()..color = line);
-    canvas.drawCircle(pts.last, 5, Paint()..color = faint);
-  }
-
-  @override
-  bool shouldRepaint(_SparkPainter old) =>
-      old.data != data || old.line != line || old.fill != fill || old.faint != faint;
-}
-
-class _DonutPainter extends CustomPainter {
-  final int handled;
-  final int catalog;
-  final int needs;
-  final Color purple;
-  final Color sky;
-  final Color faint;
-  final Color track;
-
-  const _DonutPainter({
-    required this.handled,
-    required this.catalog,
-    required this.needs,
-    required this.purple,
-    required this.sky,
-    required this.faint,
-    required this.track,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final segs = [
-      (handled.toDouble(), purple, 54.0),
-      (catalog.toDouble(), sky, 42.0),
-      (needs.toDouble(), faint, 30.0),
-    ];
-    for (final s in segs) {
-      canvas.drawCircle(
-        center,
-        s.$3,
-        Paint()
-          ..color = track.withValues(alpha: 0.55)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 9,
-      );
-    }
-    for (final s in segs) {
-      final frac = (s.$1 / 100).clamp(0.0, 0.98);
-      if (frac <= 0) continue;
-      final rect = Rect.fromCircle(center: center, radius: s.$3);
-      canvas.drawArc(
-        rect,
-        -math.pi / 2,
-        frac * 2 * math.pi,
-        false,
-        Paint()
-          ..color = s.$2
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 9
-          ..strokeCap = StrokeCap.round,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_DonutPainter old) =>
-      old.handled != handled ||
-      old.catalog != catalog ||
-      old.needs != needs ||
-      old.purple != purple ||
-      old.sky != sky ||
-      old.faint != faint ||
-      old.track != track;
 }
 
 // ── loading ────────────────────────────────────────────────────────

@@ -143,8 +143,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
               ),
               const SizedBox(height: 5),
               Text(
-                'Every WhatsApp and Telegram chat, in one inbox. Green = AI '
-                'handled. Gold = needs your human touch.',
+                'Every chat from your channels, in one place.',
                 style: TextStyle(
                   fontSize: 12.5,
                   height: 1.45,
@@ -496,15 +495,24 @@ class _ChatRow extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        fmtTime(chat['updated_at']),
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w600,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                          color: scheme.onSurface.withValues(alpha: 0.38),
-                        ),
-                      ),
+                      needsHuman
+                          ? Text(
+                              'Needs you',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: VeloSalesTheme.coralText(context),
+                              ),
+                            )
+                          : Text(
+                              fmtTime(chat['updated_at']),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                fontFeatures: const [FontFeature.tabularFigures()],
+                                color: scheme.onSurface.withValues(alpha: 0.65),
+                              ),
+                            ),
                     ],
                   ),
                   const SizedBox(height: 2),
@@ -518,18 +526,13 @@ class _ChatRow extends StatelessWidget {
                       color: scheme.onSurface.withValues(alpha: 0.58),
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 4,
-                    runSpacing: 4,
-                    children: [
-                      needsHuman
-                          ? const _Tag(label: 'needs you', kind: _TagKind.gold)
-                          : const _Tag(label: 'handled', kind: _TagKind.green),
-                      _Tag(label: channel.label, kind: _TagKind.blue),
-                      if (paused)
-                        const _Tag(label: 'you talk', kind: _TagKind.blue),
-                    ],
+                  const SizedBox(height: 3),
+                  Text(
+                    paused ? '${channel.label}, you are answering' : channel.label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: scheme.onSurface.withValues(alpha: 0.65),
+                    ),
                   ),
                 ],
               ),
@@ -587,7 +590,7 @@ class _Avatar extends StatelessWidget {
                 width: 11,
                 height: 11,
                 decoration: BoxDecoration(
-                  color: VeloSalesTheme.goldColor(context),
+                  color: VeloSalesTheme.accent(context),
                   shape: BoxShape.circle,
                   border: Border.all(color: scheme.surface, width: 2),
                 ),
@@ -606,55 +609,6 @@ class _Avatar extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-enum _TagKind { green, gold, blue }
-
-class _Tag extends StatelessWidget {
-  final String label;
-  final _TagKind kind;
-  const _Tag({required this.label, required this.kind});
-
-  @override
-  Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final (fg, bg, line) = switch (kind) {
-      _TagKind.green => (
-          VeloSalesTheme.successColor(context),
-          VeloSalesTheme.successColor(context).withValues(alpha: 0.10),
-          VeloSalesTheme.successColor(context).withValues(alpha: 0.28),
-        ),
-      _TagKind.gold => (
-          VeloSalesTheme.goldColor(context),
-          VeloSalesTheme.goldColor(context).withValues(alpha: 0.10),
-          VeloSalesTheme.goldColor(context).withValues(alpha: 0.30),
-        ),
-      _TagKind.blue => (
-          dark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB),
-          (dark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB))
-              .withValues(alpha: 0.10),
-          (dark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB))
-              .withValues(alpha: 0.26),
-        ),
-    };
-    return Container(
-      padding: const EdgeInsets.fromLTRB(8, 3, 8, 3),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: line),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.1,
-          color: fg,
-        ),
       ),
     );
   }

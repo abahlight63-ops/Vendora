@@ -11,13 +11,10 @@ import { api, toast } from '../lib/api.js'; // api() for the logout call (+ vers
 import ThemeToggle from './ThemeToggle.jsx'; // sun/moon button (topbar — light mode for sensitive eyes!)
 import Notifications from './Notifications.jsx'; // bell (payment + update alerts)
 import Tour from './Tour.jsx'; // first-run coachmarks (mounted once here = available everywhere)
-const GROUPS = [ // sidebar sections: label + [iconKey, label, route] rows (data-driven nav = add a row, get a link)
-  { label: 'Sell', items: [['overview', 'Overview', '/dashboard'], ['chats', 'Inbox', '/chats'], ['catalog', 'Catalog', '/catalog'], ['connect', 'Connect', '/connect'], ['playground', 'Test bot', '/playground']] }, // nested arrays: [icon, label, href] per item
-  { label: 'Grow', items: [['insights', 'Insights', '/insights'], ['velosalesai', 'Chat with Velo', '/velosales-ai'], ['gift', 'Refer & Earn', '/refer-earn'], ['billing', 'Billing', '/billing']] },
-  { label: 'Setup', items: [['profile', 'Business', '/profile'], ['aisettings', 'AI settings', '/ai-settings'], ['settings', 'Settings', '/settings'], ['help', 'Help', '/help']] }, // AI settings = the assistant's voice; Settings = the account hub (photo, plan, alerts)
-];
-const ALL = GROUPS.flatMap((g) => g.items); // flatMap = map + flatten one level (all nav rows in one array for the mobile bar filter)
-const TITLES = { '/dashboard': 'Overview', '/chats': 'Inbox', '/catalog': 'Catalog', '/connect': 'Connect channels', '/playground': 'Test your bot', '/insights': 'Insights', '/velosales-ai': 'Chat with Velo', '/refer-earn': 'Refer & Earn', '/billing': 'Billing', '/profile': 'Business profile', '/ai-settings': 'AI settings', '/settings': 'Settings', '/help': 'Help', '/onboarding': 'Get started', '/login': 'Sign in' }; // object lookup: path → human title (topbar breadcrumb + document.title)
+const MAIN = [['overview', 'Home', '/dashboard'], ['chats', 'Inbox', '/chats'], ['catalog', 'Catalog', '/catalog'], ['connect', 'Channels', '/connect'], ['insights', 'Insights', '/insights']]; // the five daily jobs (same words on the phone)
+const MORE = [['billing', 'Plan and usage', '/billing'], ['playground', 'Test bot', '/playground'], ['velosalesai', 'Chat with Velo', '/velosales-ai'], ['gift', 'Refer & Earn', '/refer-earn'], ['profile', 'Business', '/profile'], ['aisettings', 'AI settings', '/ai-settings'], ['settings', 'Settings', '/settings'], ['help', 'Help', '/help']]; // everything else, one tap behind More
+const ALL = [...MAIN, ...MORE]; // all pages in one array (page search)
+const TITLES = { '/dashboard': 'Home', '/chats': 'Inbox', '/catalog': 'Catalog', '/connect': 'Channels', '/playground': 'Test your bot', '/insights': 'Insights', '/velosales-ai': 'Chat with Velo', '/refer-earn': 'Refer & Earn', '/billing': 'Plan and usage', '/profile': 'Business profile', '/ai-settings': 'AI settings', '/settings': 'Settings', '/help': 'Help', '/onboarding': 'Get started', '/login': 'Sign in' }; // object lookup: path → human title (topbar breadcrumb + document.title)
 
 function Icon({ k }) { // tiny inline SVG set (stroke = inherits text color; no icon library installed)
   const p = { viewBox: '0 0 24 24', width: 18, height: 18, fill: 'none', stroke: 'currentColor', strokeWidth: 1.75, strokeLinecap: 'round', strokeLinejoin: 'round' }; // shared props object spread into every <svg> (currentColor = matches surrounding text)
@@ -32,6 +29,8 @@ function Icon({ k }) { // tiny inline SVG set (stroke = inherits text color; no 
   if (k === 'profile') return (<svg {...p}><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5" /></svg>); // person
   if (k === 'settings') return (<svg {...p}><circle cx="12" cy="12" r="3" /><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z" /></svg>); // gear
   if (k === 'aisettings') return (<svg {...p}><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h10M18 18h2" /><circle cx="16" cy="6" r="2" /><circle cx="10" cy="12" r="2" /><circle cx="16" cy="18" r="2" /></svg>); // sliders (AI settings — the assistant's dials)
+  if (k === 'more') return (<svg {...p}><circle cx="5" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="19" cy="12" r="1.2" /></svg>); // three dots (the More menu)
+  if (k === 'chev') return (<svg {...p} width="16" height="16"><path d="M6 9l6 6 6-6" /></svg>); // More opens downward
   if (k === 'x') return (<svg {...p}><path d="M18 6L6 18M6 6l12 12" /></svg>); // close (drawer + dialogs — drawn, never a text glyph)
   if (k === 'logout') return (<svg {...p}><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><path d="M10 16l4-4-4-4" /><path d="M14 12H3" /></svg>); // door + arrow leaving it (sign out — never a bare X, which reads "close panel")
   if (k === 'gift') return (<svg {...p}><rect x="3" y="8" width="18" height="4" rx="1" /><path d="M12 8v13M5 12v9h14v-9M12 8s-1.5-5-4.5-5S5 8 12 8zM12 8s1.5-5 4.5-5S19 8 12 8z" /></svg>); // gift box (Refer & Earn!)
@@ -69,6 +68,8 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
   const { pathname } = useLocation(); // destructure current path from router (re-renders on navigation)
   const navigate = useNavigate(); // navigate('/login') = go there in code (after logout)
   const [menuOpen, setMenuOpen] = useState(false); // mobile drawer open? (desktop sidebar always visible via CSS)
+  const inMore = MORE.some(([, , href]) => href === pathname); // the current page lives under More, so More stays open
+  const [moreOpen, setMoreOpen] = useState(false); // the owner opened More by hand
   const [confirmOut, setConfirmOut] = useState(false); // the sign-out confirmation (one tap away from losing your chat list)
   const [updateBanner, setUpdateBanner] = useState(null); // {version} while the 2-min NEW window is open (null = hidden!)
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine)); // the browser's own network verdict (instant, no polling)
@@ -80,7 +81,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
     return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down); };
   }, []);
   useEffect(() => { // side-effects: tab title + robots, both follow the route
-    document.title = 'VeloSales Ai — ' + (TITLES[pathname] || 'Overview'); // || fallback keeps the tab readable
+    document.title = 'VeloSales Ai — ' + (TITLES[pathname] || 'Home'); // || fallback keeps the tab readable
     const meta = document.getElementById('route-robots');
     if (meta) meta.setAttribute('content', 'noindex,follow'); // private app pages: don't let Google index an empty shell
     return () => { if (meta) meta.setAttribute('content', 'index,follow'); }; // leaving the app (sign-out → /login) restores indexing for public pages
@@ -125,7 +126,9 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
   } // logout() = server destroy + local clear + go to login (all three, every time)
   const safeName = biz?.name || 'Your business'; // ?. + || : biz may load late — never render "undefined"
   const initial = (safeName.trim()[0] || 'V').toUpperCase(); // avatar letter: first char uppercased ([0] = first character)
-  const mobile = ALL.filter(([k]) => ['overview', 'chats', 'catalog', 'billing', 'help'].includes(k)); // bottom-bar subset: destructure [k] (first array item) + .includes whitelist (Help included so support is one tap away on phones!)
+  const mobile = MAIN.filter(([k]) => k !== 'insights'); // bottom bar: four jobs + More (Insights sits in the drawer on phones)
+  const showMore = moreOpen || inMore || menuOpen; // the phone's drawer always shows everything
+  const moreActive = inMore || pathname === '/insights'; // the bar's More lights up for anything behind it
   return (
     <> {/* fragment: multiple roots without wrapper div */}
       <div className="shell"> {/* flex row: sidebar + main column (CSS) */}
@@ -134,12 +137,9 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
           <div className="logo"><Logo alt="VeloSales Ai" /><span>VeloSales Ai</span>
             <button className="drawer-close" onClick={() => setMenuOpen(false)} aria-label="Close menu"><Icon k="x" /></button> {/* drawn X, mobile only (CSS) */}
           </div>
-          {GROUPS.map((g) => ( // map sections → JSX (key = stable identity for React's reconciler — NEVER use array index when order can change; here labels are stable)
-            <div key={g.label}>
-              <div className="nav-label">{g.label}</div> {/* SELL / GROW / SETUP eyebrows */}
-              <nav>{g.items.map(([k, label, href]) => (<NavLink key={k} to={href} onClick={() => setMenuOpen(false)}><Icon k={k} /><span>{label}</span></NavLink>))}</nav> {/* NavLink adds .active on current route (CSS highlights); destructure [k,label,href] per row */}
-            </div>
-          ))}
+          <nav aria-label="Main">{MAIN.map(([k, label, href]) => (<NavLink key={k} to={href} onClick={() => setMenuOpen(false)}><Icon k={k} /><span>{label}</span></NavLink>))}</nav>
+          <button className="nav-more-btn" aria-expanded={showMore} onClick={() => setMoreOpen((v) => !v)}><Icon k="more" /><span>More</span><span className="chev"><Icon k="chev" /></span></button>
+          {showMore && <nav aria-label="More">{MORE.map(([k, label, href]) => (<NavLink key={k} to={href} onClick={() => setMenuOpen(false)}><Icon k={k} /><span>{label}</span></NavLink>))}</nav>}
           <div className="foot">
             <div className="foot-note">AI replies 24/7 so you never miss a sale.<br />© 2026 VeloSales Ai</div>
             <button className="drawer-signout" onClick={() => { setMenuOpen(false); setConfirmOut(true); }}><Icon k="logout" /><span>Sign out</span></button> {/* mobile-only: the topbar has no room for it on a phone, so the drawer carries it */}
@@ -151,10 +151,11 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
               <button className="menu-btn" onClick={() => setMenuOpen(true)} aria-label="Open menu"> {/* hamburger: 3 spans = 3 lines (CSS); desktop-hidden */}
                 <span /><span /><span /> {/* self-closing spans (no children) */}
               </button>
-              <div><div className="crumb">VeloSales Ai / {TITLES[pathname] || 'Overview'}</div><h1>{safeName}</h1></div> {/* breadcrumb + shop name */}
+              <div><div className="crumb">VeloSales Ai / {TITLES[pathname] || 'Home'}</div><h1>{safeName}</h1></div> {/* breadcrumb + shop name */}
             </div>
             <TopSearch /> {/* page finder sits center (desktop only via CSS) */}
             <div className="top-right">
+              {biz?.tier === 'free' && <NavLink className="upgrade-pill" to="/billing">Upgrade</NavLink>}
               <span className="live-dot"><i />AI online</span> {/* pulsing status pill (<i> = the dot, CSS) */}
               <Notifications /> {/* bell sits before theme toggle (thumb-side on mobile) */}
               <ThemeToggle theme={theme} onToggle={onToggleTheme} /> {/* sun/moon switch */}
@@ -184,6 +185,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
       </div>
       <nav className="mobile-bar"> {/* bottom tab bar: mobile only (CSS), 5 key sections */}
         {mobile.map(([k, label, href]) => (<NavLink key={k} to={href}><Icon k={k} /><span>{label}</span></NavLink>))}
+        <button className={'mb-more' + (moreActive ? ' active' : '')} onClick={() => setMenuOpen(true)} aria-label="More pages"><Icon k="more" /><span>More</span></button>
       </nav>
       <Tour /> {/* coachmarks overlay (renders null until triggered) */}
       {confirmOut && (

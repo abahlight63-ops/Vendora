@@ -1,8 +1,8 @@
 // ── frontend/src/pages/Dashboard.jsx ─────────────────────────────
-// WHAT: the home screen after login. Greeting hero, trial strip, four real
-// KPIs, a 7-day activity chart, the AI reply mix, chats that need a human,
-// and the first-15-minutes checklist. Real shop data only — no invented
-// numbers (DESIGN.md §Dashboard Overview).
+// WHAT: Home, the screen after login. A greeting, four things to do next (chats
+// that need you comes first and turns coral when it is real), today's reply
+// meter, the way into Chat with Velo, then activity and the checklist. Real
+// shop data only, no invented numbers. The phone's copy is home_screen.dart.
 // DATA: four parallel API calls on mount, crunched into one summary object `s`.
 import { useEffect, useState } from 'react'; // useState = s/bill/guideOff; useEffect = fetch-on-mount
 import { Link } from 'react-router-dom'; // Link = client-side nav (no page reload, unlike <a>)
@@ -24,6 +24,7 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']; // for the activ
 export default function Dashboard({ biz }) { // biz = business object from App (useMe) — name, hours, owner_number…
   const [s, setS] = useState(null); // s = summary {convos, pct, needs, products, flagged[], latest[], days[]} (null = loading → skeletons!)
   const [bill, setBill] = useState(null); // billing object (status, trial_ends… for the trial strip)
+  const [usage, setUsage] = useState(null); // today's replies: { used, limit, unlimited } from /api/me/channels
   const [live, setLive] = useState(false); // any channel LIVE? (WhatsApp inbound seen OR Telegram connected — Connect page owns this!)
   const [failed, setFailed] = useState(null); // null | { status, detail } — total load failure (Retry card, never eternal skeletons!)
   const [tries, setTries] = useState(0); // retry counter (bumps refetch — no page reload!)
@@ -36,6 +37,7 @@ export default function Dashboard({ biz }) { // biz = business object from App (
           api('/api/me/products', { timeout: 15000 }), api('/api/me/conversations', { timeout: 15000 }), api('/api/me/billing', { timeout: 15000 }), api('/api/me/channels', { timeout: 15000 }),
         ]);
         if (dead) return;
+        if (ch && ch.whatsapp) setUsage({ used: Number(ch.whatsapp.dailyUsed) || 0, limit: ch.whatsapp.dailyLimit, unlimited: !!ch.whatsapp.dailyUnlimited });
         if (ch && ch.whatsapp && (ch.whatsapp.live || (ch.telegram && ch.telegram.connected))) setLive(true); // checklist step ticks (WhatsApp TEST passed OR Telegram on!)
         const c = convos || [], needs = c.filter((x) => x.needs_human); // || [] guards null; .filter picks flagged chats
         const days = [0, 0, 0, 0, 0, 0, 0]; // active chats per day, last 7 days (oldest → today) for the activity chart
@@ -97,24 +99,11 @@ export default function Dashboard({ biz }) { // biz = business object from App (
   if (failed && !s) return ( // total failure BEFORE first paint (nothing to show yet — failed card INSTEAD of skeletons!)
     <>
       <div className="ov-hero">
-        <div className="ov-greet"><h1>Overview</h1><p>Your shop at a glance.</p></div>
+        <div className="ov-greet"><h1>Home</h1><p>Your shop at a glance.</p></div>
       </div>
       <LoadFailed title="Couldn't load overview" status={failed.status} detail={failed.detail} tries={tries} onRetry={() => { setS(null); setTries((t) => t + 1); }} backTo="/help" backLabel="Get help" />
     </>
   );
-
-  function Spark({ data }) { // 7-day activity sparkline (pure SVG, real counts only)
-    const w = 96, h = 30, max = Math.max(1, ...data);
-    const pts = data.map((v, i) => `${(i / (data.length - 1)) * (w - 4) + 2},${h - 4 - (v / max) * (h - 10)}`).join(' ');
-    const area = `2,${h - 3} ${pts} ${w - 2},${h - 3}`;
-    return (
-      <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label="Chats per day, last 7 days" className="ov-spark">
-        <polygon points={area} style={{ fill: 'var(--purple-soft)' }} />
-        <polyline points={pts} fill="none" style={{ stroke: 'var(--purple)' }} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx={w - 2} cy={h - 4 - ((data[data.length - 1] || 0) / max) * (h - 10)} r="3" style={{ fill: 'var(--purple)' }} />
-      </svg>
-    );
-  }
 
   function Bars({ data }) { // 7-day activity bars (yesterday→today), real counts, today highlighted
     const max = Math.max(1, ...data);
@@ -134,126 +123,61 @@ export default function Dashboard({ biz }) { // biz = business object from App (
     );
   }
 
-  function Donut({ handled, needs }) { // reply mix ring (purple = AI handled, sky = catalog answers, faint = human)
-    const segs = [
-      { v: handled, color: 'var(--purple)', r: 54 },
-      { v: Math.max(8, 100 - handled - needs), color: 'var(--sky)', r: 42 },
-      { v: Math.max(6, needs), color: 'var(--faint)', r: 30 },
-    ];
-    return (
-      <div className="ov-donut">
-        <svg viewBox="0 0 130 130" width="150" height="150" role="img" aria-label="Reply mix chart">
-          {segs.map((sg, i) => (
-            <circle key={'t' + i} cx="65" cy="65" r={sg.r} fill="none" style={{ stroke: 'var(--line)' }} strokeWidth="9" opacity="0.7" />
-          ))}
-          {segs.map((sg, i) => {
-            const c = 2 * Math.PI * sg.r;
-            const frac = Math.max(0.06, Math.min(0.92, sg.v / 100));
-            return <circle key={'f' + i} cx="65" cy="65" r={sg.r} fill="none" stroke={sg.color} strokeWidth="9" strokeLinecap="round" strokeDasharray={`${frac * c} ${c}`} transform="rotate(-90 65 65)" />;
-          })}
-        </svg>
-        <div className="ov-donut-center"><b>{s ? s.convos : '—'}</b><span>Chats</span></div>
-      </div>
-    );
-  }
-
-  const handledPct = s ? s.pct : 0; // % handled by AI
-  const needsPct = s && s.convos ? Math.round((s.needs / Math.max(1, s.convos)) * 100) : 0;
-  const catalogPct = Math.max(0, 100 - handledPct - needsPct);
-  const botLine = live ? 'Your bot is live and answering customers.' : 'Add a product and connect a channel to go live.';
-  const statusLabel = live ? 'Bot online' : 'Bot ready';
-
-  function StatTile({ label, value, sub, to, tone = '' }) { // one KPI (real number + tiny context line)
-    const inner = (
-      <>
-        <span className="ov-stat-lbl">{label}</span>
-        <b className={'ov-stat-num ' + tone}>{value}</b>
-        <span className="ov-stat-sub">{sub}</span>
-      </>
-    );
-    return to ? <Link className="ov-stat" to={to}>{inner}</Link> : <div className="ov-stat">{inner}</div>;
-  }
+  const botLine = live ? 'Velo is answering your customers right now.' : 'Add a product and connect a channel to go live.';
+  const pct = usage && !usage.unlimited && usage.limit ? Math.min(100, Math.round((usage.used / usage.limit) * 100)) : 0;
+  const hot = !!(s && s.needs > 0); // coral only when a real chat is waiting
+  const Go = () => <svg className="hm-action-go" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8" /></svg>;
 
   return (
     <>
-      <div className="ov-hero">
-        <div className="ov-greet">
-          <h1>{greeting()}, {first}.</h1>
-          <p>{botLine}</p>
-        </div>
-        <div className="ov-hero-actions">
-          <span className={'ov-status' + (live ? ' on' : '')}><i />{statusLabel}</span>
-          <Link className="btn" to="/playground"><Ic n="play" s={16} />Test bot</Link>
-          <Link className="btn ghost" to="/catalog"><Ic n="plus" s={16} />Add product</Link>
-        </div>
+      <div className="hm-greet">
+        <h1><span>Hi {first},</span>what do you need today?</h1>
+        <p>{botLine}</p>
       </div>
 
       {trialLeft !== null && ( // trial strip ONLY during trial (null → renders nothing)
-        <div className="trial-strip"><Ic n="clock" s={16} /><span><b>{trialLeft} day{trialLeft === 1 ? '' : 's'} of Pro trial left.</b> Keep Pro sync, or stay free forever with manual catalog.</span><Link to="/billing">Billing<Ic n="next" s={14} /></Link></div>
+        <div className="trial-strip"><Ic n="clock" s={16} /><span><b>{trialLeft} day{trialLeft === 1 ? '' : 's'} of Pro trial left.</b> Keep Pro sync, or stay free forever with manual catalog.</span><Link to="/billing">See plans<Ic n="next" s={14} /></Link></div>
       )}
 
-      {!s ? ( // LOADING: the skeleton mirrors the whole page, not just the tiles
-        <>
-          <div className="ov-skels">
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="ov-stat"><div className="skel" style={{ width: '45%', height: 12 }} /><div className="skel" style={{ width: '60%', height: 30, marginTop: 12 }} /><div className="skel" style={{ width: '75%', marginTop: 12 }} /></div>
-            ))}
-          </div>
-          <div className="ov-grid">
-            {[0, 1].map((i) => (
-              <div key={i} className="ov-card">
-                <div className="skel" style={{ width: 110, height: 14 }} />
-                <div className="skel" style={{ width: 168, height: 11, marginTop: 10 }} />
-                <div className="skel" style={{ height: 188, marginTop: 18, borderRadius: 12 }} />
-              </div>
-            ))}
-          </div>
-          <div className="ov-grid">
-            {[0, 1].map((i) => (
-              <div key={i} className="ov-card">
-                <div className="skel" style={{ width: 148, height: 14, marginBottom: 6 }} />
-                {[0, 1, 2].map((r) => (
-                  <div key={r} className="skel-row">
-                    <div className="skel skel-dot" />
-                    <div className="skel-lines"><div className="skel" style={{ width: '52%', height: 12 }} /><div className="skel" style={{ width: '82%', height: 10 }} /></div>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </>
+      <div className="hm-actions">
+        <Link className={'hm-action' + (hot ? ' is-hot' : '')} to="/chats">
+          <span className="hm-action-top">{s ? <span className="hm-action-num">{s.needs}</span> : <span className="skel" style={{ width: 28, height: 28 }} />}<Go /></span>
+          <b>{s && s.needs === 0 ? 'All chats handled' : s && s.needs === 1 ? 'Chat needs you' : 'Chats need you'}</b>
+        </Link>
+        <Link className="hm-action" to="/catalog"><span className="hm-action-top"><span className="hm-action-ic"><Ic n="plus" s={18} /></span><Go /></span><b>Add a product</b></Link>
+        <Link className="hm-action" to="/playground"><span className="hm-action-top"><span className="hm-action-ic"><Ic n="chat" s={18} /></span><Go /></span><b>Test your bot</b></Link>
+        <Link className="hm-action" to="/connect"><span className="hm-action-top"><span className="hm-action-ic"><Ic n="next" s={18} /></span><Go /></span><b>Connect a channel</b></Link>
+      </div>
+
+      {usage && (
+        <div className="hm-meter">
+          <div className="hm-meter-row"><span>Replies today</span><span>{usage.unlimited ? usage.used : usage.used + ' of ' + usage.limit}</span></div>
+          {!usage.unlimited && <div className={'hm-meter-bar' + (pct >= 80 ? ' is-near' : '')} role="progressbar" aria-valuemin={0} aria-valuemax={usage.limit} aria-valuenow={usage.used} aria-label="Replies used today"><i style={{ width: pct + '%' }} /></div>}
+        </div>
+      )}
+
+      <div className="hm-ask">
+        <Link className="hm-ask-box" to="/velosales-ai">Ask Velo anything</Link>
+        <Link className="hm-ask-go" to="/velosales-ai" aria-label="Open Chat with Velo"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" /></svg></Link>
+      </div>
+
+      {!s ? (
+        <div className="hm-grid">
+          {[0, 1].map((i) => (
+            <div key={i} className="ov-card">
+              <div className="skel" style={{ width: 148, height: 14, marginBottom: 6 }} />
+              {[0, 1, 2].map((r) => (
+                <div key={r} className="skel-row">
+                  <div className="skel skel-dot" />
+                  <div className="skel-lines"><div className="skel" style={{ width: '52%', height: 12 }} /><div className="skel" style={{ width: '82%', height: 10 }} /></div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
       ) : (
         <>
-          <div className="ov-stats">
-            <div className="ov-stat">
-              <span className="ov-stat-lbl">Conversations</span>
-              <b className="ov-stat-num">{s.convos}</b>
-              <div className="ov-stat-foot"><span className="ov-stat-sub">Last 7 days</span><Spark data={s.days} /></div>
-            </div>
-            <StatTile label="Products live" value={s.products} sub={s.products ? 'In your catalog' : 'Add your first one'} to="/catalog" />
-            <StatTile label="Handled by AI" value={handledPct + '%'} sub="No human needed" tone="good" />
-            <StatTile label="Needs you" value={s.needs} sub={s.needs ? 'Flagged chats' : 'All clear'} to="/chats" tone={s.needs ? 'warn' : ''} />
-          </div>
-
-          <div className="ov-grid">
-            <div className="ov-card">
-              <div className="ov-head"><h2>Activity</h2><Link className="mini-link" to="/insights">Insights <Ic n="next" s={13} /></Link></div>
-              <p className="ov-sub">Chats per day, last 7 days</p>
-              <Bars data={s.days} />
-            </div>
-            <div className="ov-card">
-              <div className="ov-head"><h2>Reply mix</h2><span className="pill">Live</span></div>
-              <p className="ov-sub">How your chats are handled</p>
-              <Donut handled={handledPct} needs={needsPct} />
-              <div className="ov-legend">
-                <div><i style={{ background: 'var(--purple)' }} />{handledPct}%<span>AI handled</span></div>
-                <div><i style={{ background: 'var(--sky)' }} />{catalogPct}%<span>Catalog</span></div>
-                <div><i style={{ background: 'var(--faint)' }} />{needsPct}%<span>Human</span></div>
-              </div>
-            </div>
-          </div>
-
-          <div className="ov-grid">
+          <div className="hm-grid">
             <div className="ov-card">
               <div className="ov-head"><h2>Needs your attention</h2><Link className="mini-link" to="/chats">Inbox <Ic n="next" s={13} /></Link></div>
               {s.flagged.length === 0 ? (
@@ -270,7 +194,6 @@ export default function Dashboard({ biz }) { // biz = business object from App (
                 </div>
               )}
             </div>
-
             {showGuide ? (
               <div className="ov-card">
                 <div className="ov-head"><h2>First 15 minutes</h2><button className="mini-link" onClick={hideGuide}>Dismiss</button></div>
@@ -287,64 +210,14 @@ export default function Dashboard({ biz }) { // biz = business object from App (
               </div>
             ) : (
               <div className="ov-card">
-                <div className="ov-head"><h2>Recent chats</h2><Link className="mini-link" to="/chats">Inbox <Ic n="next" s={13} /></Link></div>
-                {s.latest.length === 0 ? (
-                  <div className="ov-empty"><span className="ov-empty-ic"><Ic n="chat" s={22} /></span><b>No chats yet</b><span>Share your WhatsApp number — conversations land here.</span></div>
-                ) : (
-                  <div className="ov-list">
-                    {s.latest.map((c, i) => (
-                      <Link className="ov-row" key={i} to="/chats">
-                        <span className="ov-row-ic"><Ic n="chat" s={16} /></span>
-                        <span className="ov-row-main"><b>{c.customer_name || c.customer_number || 'Customer'}</b><span>{((c.last_message || '').slice(0, 64)) || 'Latest conversation.'}</span></span>
-                        <span className="ov-row-time">{fmtTime(c.updated_at || c.created_at)}</span>
-                      </Link>
-                    ))}
-                  </div>
-                )}
+                <div className="ov-head"><h2>Activity</h2><Link className="mini-link" to="/insights">Insights <Ic n="next" s={13} /></Link></div>
+                <p className="ov-sub">Chats per day, last 7 days</p>
+                <Bars data={s.days} />
               </div>
             )}
           </div>
         </>
       )}
-
-      <ReferCard /> {/* Refer & Earn: code, share, funnel, milestone progress (drives itself!) */}
     </>
-  );
-}
-
-
-function ReferCard() { // REFER & EARN: your code + share buttons + live funnel (invited → setup → paying!) + milestone bar to ₦500 airtime.
-  const [r, setR] = useState(null); // null = loading (renders nothing); object = myStats (code, counts, earnings!)
-  const [copied, setCopied] = useState(false); // copy feedback (tick + "Copied!" for 2s!)
-  useEffect(() => { api('/api/me/referral', { timeout: 15000 }).then(({ ok, data }) => { if (ok && data && data.code) setR(data); }).catch(() => {}); }, []); // [] = mount-only (fresh each dashboard visit!); fail silent — full page has Retry!
-  if (!r || !r.code) return null; // loading/error → render NOTHING (card pops in when ready — no skeleton flash for a bonus card! full /refer-earn page owns the error UI!)
-  const every = Number(r.milestoneEvery) > 0 ? Number(r.milestoneEvery) : 5;
-  const link = window.location.origin + '/login?ref=' + encodeURIComponent(r.code); // share link (Login prefills + validates the code!)
-  const text = `I use VeloSales Ai — my WhatsApp shop answers customers 24/7, even at 2am. Start free with my code ${r.code} (we BOTH get 14 Pro days free): ${link}`;
-  async function copy() { // clipboard with fallback (older browsers / permissions!)
-    try { await navigator.clipboard.writeText(r.code); }
-    catch { const ta = document.createElement('textarea'); ta.value = r.code; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch {} ta.remove(); }
-    setCopied(true); setTimeout(() => setCopied(false), 2000); // tick 2s (then back to copy icon!)
-  }
-  const pct = Math.min(100, Math.round(((Number(r.paying) || 0) % every) / every * 100)); // milestone bar (0–100 — resets each 5-pack, by design!)
-  const naira = (kobo) => '₦' + (Number(kobo || 0) / 100).toLocaleString(); // minor → major (ledger stores kobo!)
-  return (
-    <div className="ov-refer">
-      <div className="ov-refer-main">
-        <h2><Ic n="gift" s={16} /> Refer &amp; Earn</h2>
-        <p className="ov-sub">Friends join with your code and <b>start using</b> (connect or first chat) → you <b>both</b> get 14 Pro days. Every 5th paying friend = <b>₦500 airtime</b> from us.</p>
-        <div className="ov-refer-code">
-          <code>{r.code}</code>
-          <button className="btn sm ghost" onClick={copy}><Ic n={copied ? 'check' : 'copy'} s={14} />{copied ? 'Copied!' : 'Copy code'}</button>
-          <a className="btn sm" href={'https://wa.me/?text=' + encodeURIComponent(text)} target="_blank" rel="noreferrer"><Ic n="send" s={14} />Share on WhatsApp</a>
-        </div>
-        <div className="guide-bar" style={{ marginTop: 14 }}><i style={{ width: `${pct}%` }} /></div>
-        <p className="hint" style={{ marginTop: 8 }}>
-          {r.invited} invited · {r.qualified} finished setup · {r.paying} paying · {r.nextMilestoneIn} more to {naira(r.milestoneAmount)} airtime
-          {r.airtimeDue > 0 ? ` · ${naira(r.airtimeDue)} on the way!` : ''}
-        </p>
-      </div>
-      <Link className="btn ghost sm ov-refer-link" to="/refer-earn">Open full page <Ic n="next" s={14} /></Link>
-    </div>
   );
 }

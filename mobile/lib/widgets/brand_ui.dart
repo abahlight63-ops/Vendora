@@ -220,7 +220,7 @@ class GradientPill extends StatelessWidget {
           decoration: BoxDecoration(
             // One fill, both themes — the web's `--accent-solid`. The old
             // gradient read as a different product from the browser button.
-            color: VeloSalesTheme.accentSolid,
+            color: VeloSalesTheme.accent(context),
             borderRadius: BorderRadius.circular(999),
             border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
             boxShadow: [
@@ -235,7 +235,7 @@ class GradientPill extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 18, color: Colors.white),
+                Icon(icon, size: 18, color: VeloSalesTheme.onAccent(context)),
                 const SizedBox(width: 8),
               ],
               Flexible(
@@ -244,7 +244,7 @@ class GradientPill extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.white,
+                    color: VeloSalesTheme.onAccent(context),
                     fontSize: dense ? 13 : 15,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.1,

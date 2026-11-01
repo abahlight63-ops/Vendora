@@ -142,6 +142,13 @@ Check every text/background pair at 4.5:1 in both themes.
   where the button keeps its size and says what it is doing.
 - Pull to refresh on the phone shows the turning logo with a soft tick.
 
+### Catalog
+- Products Velo cannot quote come first, highlighted in coral. A health ring counts what is ready.
+- Web rows have a stock switch and Edit. On the phone, tap to edit, swipe left for sold out, swipe right to edit.
+- Add and Edit share one sheet. Its questions follow the shop's kind of business, from
+  `frontend/src/lib/productFields.js` and `mobile/lib/product_fields.dart`. Change both together.
+- Answers save into Details and a sale into Price, because Velo already reads both.
+
 ### Shell
 - Main menu, same words on both clients: Home, Inbox, Catalog, Channels, Insights.
   Everything else sits behind More. Never add a sixth main item.

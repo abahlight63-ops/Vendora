@@ -326,6 +326,10 @@ class ApiClient {
 
   /// Stock toggle: re-POST same product with flipped available.
   /// image_url OMITTED on purpose — absent key = preserve the photo (web parity!).
+  /// The Add and Edit sheet: it sends exactly the keys it means to change.
+  Future<Map<String, dynamic>> saveProduct(Map<String, dynamic> body) async =>
+      (await post('/api/me/products', body) as Map).cast<String, dynamic>();
+
   Future<Map<String, dynamic>> toggleProduct(
       Map<String, dynamic> p) async =>
       (await post('/api/me/products', {

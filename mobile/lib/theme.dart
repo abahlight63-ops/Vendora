@@ -50,19 +50,19 @@ class VeloSalesTheme {
           child: inner,
         );
     return ColoredBox(
-      color: dark ? const Color(0xFF0B0630) : const Color(0xFFFFF8F6),
+      color: dark ? const Color(0xFF0B0630) : const Color(0xFFFFEFEA),
       child: blob(
         const Alignment(1.0, -1.0),
         1.0,
-        dark ? const Color(0x47FF8A6B) : const Color(0xFFFFB7A1),
+        dark ? const Color(0x47FF8A6B) : const Color(0xFFFF9C7F),
         blob(
           const Alignment(-1.0, -1.0),
           1.1,
-          dark ? const Color(0xB35B3FC7) : const Color(0xFFCFC4FF),
+          dark ? const Color(0xB35B3FC7) : const Color(0xFFB5A6FF),
           blob(
             const Alignment(-1.0, 0.85),
             1.0,
-            dark ? const Color(0x575B3FC7) : const Color(0xFFD9D1FF),
+            dark ? const Color(0x575B3FC7) : const Color(0xFFC1B4FF),
             child,
           ),
         ),
@@ -72,25 +72,34 @@ class VeloSalesTheme {
 
   /// Frosted glass, without live blur: blur is heavy on cheap phones, and this
   /// see-through fill, bright edge and soft lift read the same in the hand.
-  static BoxDecoration glass(BuildContext c, {double radius = 22, double opacity = 0.66}) {
+  static BoxDecoration glass(BuildContext c, {double radius = 22, bool bright = false}) {
     final dark = Theme.of(c).brightness == Brightness.dark;
     return BoxDecoration(
-      color: dark
-          ? const Color(0xFF261D6E).withValues(alpha: 0.72)
-          : Colors.white.withValues(alpha: opacity),
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: dark
+            ? [
+                const Color(0xFF4838AA).withValues(alpha: bright ? 0.82 : 0.6),
+                const Color(0xFF1B1450).withValues(alpha: bright ? 0.72 : 0.46),
+              ]
+            : [
+                Colors.white.withValues(alpha: bright ? 0.86 : 0.62),
+                Colors.white.withValues(alpha: bright ? 0.62 : 0.32),
+              ],
+      ),
       borderRadius: BorderRadius.circular(radius),
       border: Border.all(
-        color: dark
-            ? Colors.white.withValues(alpha: 0.13)
-            : Colors.white.withValues(alpha: 0.85),
+        width: 1.5,
+        color: Colors.white.withValues(alpha: dark ? 0.16 : 0.82),
       ),
       boxShadow: [
         BoxShadow(
           color: dark
-              ? Colors.black.withValues(alpha: 0.34)
-              : const Color(0xFF593278).withValues(alpha: 0.12),
-          blurRadius: 36,
-          offset: const Offset(0, 16),
+              ? Colors.black.withValues(alpha: 0.4)
+              : const Color(0xFF593278).withValues(alpha: 0.18),
+          blurRadius: 40,
+          offset: const Offset(0, 18),
         ),
       ],
     );
@@ -100,7 +109,7 @@ class VeloSalesTheme {
   static Color glassInk(BuildContext c) =>
       Theme.of(c).brightness == Brightness.dark
           ? const Color(0xFFC9C2F5)
-          : const Color(0xFF4B4670);
+          : const Color(0xFF3F3A63);
   static Color goodInk(BuildContext c) =>
       Theme.of(c).brightness == Brightness.dark
           ? const Color(0xFF6EE7B7)

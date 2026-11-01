@@ -1,9 +1,12 @@
 // ── frontend/src/pages/Chats.jsx ──────────────────────────────────
-// WHAT: the inbox — 3-panel on desktop (list | thread | contact), list→thread
-// on mobile. Filters: status (All / Needs you / Handled) + channel chips +
-// text search. AI/human takeover toggle per thread. All data from
+// WHAT: the inbox on frosted glass — list and conversation side by side on
+// desktop, list then conversation on a phone. Chats that need you come first.
+// One row of filters, text search, and one Velo/You switch per chat. All data from
 // /api/me/conversations (list) + /messages (thread) — no fake content.
+// Outgoing bubbles carry no sender name: messages do not record yet whether Velo
+// or the owner sent them, so the UI must not guess.
 import CustomerFace from '../components/CustomerFace.jsx'; // real photo, or a person-shaped icon
+import { waitedShort } from '../lib/waited.js'; // "12m" beside a waiting chat
 import { useEffect, useRef, useState } from 'react'; // useState ×8; useEffect = load inbox on mount
 import { api, fmtTime, toast } from '../lib/api.js'; // api() fetches; fmtTime stamps; toast() send errors
 import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures (offline? waking? stale?)
@@ -57,7 +60,8 @@ export default function Chats() {
   const list = (convos || []).filter((c) =>
     (chan === 'all' || (c.channel || 'whatsapp') === chan)
     && (filter === 'all' ? true : filter === 'needs' ? c.needs_human : !c.needs_human)
-    && (!needle || ((c.customer_name || '') + ' ' + (c.customer_number || '') + ' ' + (c.last_message || '')).toLowerCase().includes(needle)));
+    && (!needle || ((c.customer_name || '') + ' ' + (c.customer_number || '') + ' ' + (c.last_message || '')).toLowerCase().includes(needle)))
+    .sort((a, b) => (b.needs_human ? 1 : 0) - (a.needs_human ? 1 : 0)); // chats that need you come first; each group keeps the server's newest-first order
   const chanCount = (k) => (convos || []).filter((c) => (c.channel || 'whatsapp') === k).length; // only offer a channel tab that actually has chats
   const needsCount = (convos || []).filter((c) => c.needs_human).length; // badge on the Needs-you tab (real count!)
 
@@ -86,103 +90,81 @@ export default function Chats() {
       <LoadFailed title="Couldn't load inbox" status={failed.status} detail={failed.detail} tries={tries} onRetry={() => { setConvos(null); setTries((t) => t + 1); }} backTo="/dashboard" backLabel="Back to Home" />
     </>
   );
-  return ( // 3-panel inbox: list | thread | contact (mobile shows list OR thread)
-    <>
-      <div className="page-head"><div><h1>Inbox</h1><p>Every chat from your channels, in one place.</p></div></div>
-      <div className={'wx-layout' + (thread ? ' wx-has-thread' : '')}>
-        {/* LEFT: conversation list */}
-        <section className="wx-list" aria-label="Conversations">
-          <div className="wx-search">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, number, message…" aria-label="Search conversations" />
-            {q && <button className="wx-clear" onClick={() => setQ('')} aria-label="Clear search">×</button>}
-          </div>
-          <div className="wx-tabs" role="tablist" aria-label="Filter by status">
-            {[['all', 'All', (convos || []).length], ['needs', 'Needs you', needsCount], ['handled', 'Handled', (convos || []).length - needsCount]].map(([k, l, n]) => (
-              <button key={k} role="tab" aria-selected={filter === k} className={'wx-tab' + (filter === k ? ' on' : '') + (k === 'needs' && needsCount > 0 ? ' needs' : '')} onClick={() => setFilter(k)}>{l}<b>{convos === null ? '·' : n}</b></button>
+  const firstName = (c) => String((c && (c.customer_name || c.customer_number)) || 'them').trim().split(/\s+/)[0];
+  const channelName = (c) => ((c.channel || 'whatsapp') === 'telegram' ? 'Telegram' : 'WhatsApp');
+  const ChanDot = ({ c }) => (
+    (c.channel || 'whatsapp') === 'telegram'
+      ? <span className="wx-chan-dot is-tg"><svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor" aria-hidden="true"><path d="M2.7 20.1L22.1 12 2.7 3.9v5.9L15.2 12 2.7 14.2z" /></svg></span>
+      : <span className="wx-chan-dot is-wa"><svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor" aria-hidden="true"><path d="M12 3a9 9 0 0 0-7.7 13.6L3 21l4.5-1.2A9 9 0 1 0 12 3z" /></svg></span>
+  );
+  return ( // the inbox: list | conversation (a phone shows list OR conversation)
+    <div className={'wx-layout' + (thread ? ' wx-has-thread' : '')}>
+      {/* LEFT: conversation list */}
+      <section className="wx-list" aria-label="Conversations">
+        <div className="wx-list-head"><h1>Inbox</h1><span>{convos === null ? '' : convos.length + (convos.length === 1 ? ' chat' : ' chats')}</span></div>
+        <div className="wx-search">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search chats" aria-label="Search conversations" />
+          {q && <button className="wx-clear" onClick={() => setQ('')} aria-label="Clear search">×</button>}
+        </div>
+        <div className="wx-pills" role="group" aria-label="Filter chats">
+          <button className={'wx-pill' + (filter === 'all' && chan === 'all' ? ' on' : '')} aria-pressed={filter === 'all' && chan === 'all'} onClick={() => { setFilter('all'); setChan('all'); }}>All</button>
+          <button className={'wx-pill' + (filter === 'needs' ? ' on is-hot' : needsCount > 0 ? ' is-hot-soft' : '')} aria-pressed={filter === 'needs'} onClick={() => setFilter(filter === 'needs' ? 'all' : 'needs')}>Needs you {convos === null ? '' : needsCount}</button>
+          <button className={'wx-pill' + (filter === 'handled' ? ' on' : '')} aria-pressed={filter === 'handled'} onClick={() => setFilter(filter === 'handled' ? 'all' : 'handled')}>Handled</button>
+          {[['whatsapp', 'WhatsApp'], ['telegram', 'Telegram']].filter(([k]) => chanCount(k) > 0).map(([k, l]) => (
+            <button key={k} className={'wx-pill' + (chan === k ? ' on' : '')} aria-pressed={chan === k} onClick={() => setChan(chan === k ? 'all' : k)}>{l}</button>
+          ))}
+        </div>
+        <div className="wx-rows">
+          {convos === null ? ([0, 1, 2, 3, 4].map((i) => (<div key={i} className="wx-skel"><div className="skel skel-dot" /><div className="skel-lines"><div className="skel" style={{ width: '35%' }} /><div className="skel" style={{ width: '80%' }} /></div></div>)))
+            : list.length === 0 ? (<div className="empty"><b>Nothing here</b>{needle || filter !== 'all' || chan !== 'all' ? 'No chats match. Clear your search or try All.' : 'Chats appear once you connect a channel.'}</div>)
+            : list.map((c) => (
+              <button key={c.id} className={'wx-row' + (c.needs_human ? ' is-needs' : '') + (thread && thread.id === c.id ? ' sel' : '')} onClick={() => open(c)} aria-current={thread && thread.id === c.id ? 'true' : undefined}>
+                <span className="wx-ava" aria-hidden="true"><CustomerFace photo={c.customer_photo} /><ChanDot c={c} /></span>
+                <span className="wx-main">
+                  <span className="wx-top"><b>{c.customer_name || c.customer_number}</b>{c.needs_human ? <span className="wx-needs">Needs you, {waitedShort(c.updated_at || c.created_at)}</span> : <small>{fmtTime(c.updated_at)}</small>}</span>
+                  <span className="wx-sub"><span>{(c.last_message || '').slice(0, 60) || 'No messages yet'}</span></span>
+                  {c.bot_paused ? <span className="wx-chan-line">You are answering</span> : null}
+                </span>
+              </button>
             ))}
-          </div>
-          <div className="wx-chans">
-            {[['all', 'All'], ['whatsapp', 'WhatsApp'], ['telegram', 'Telegram']].filter(([k]) => k === 'all' || chanCount(k) > 0).map(([k, l]) => (
-              <button key={k} className={'wx-chip' + (chan === k ? ' on' : '')} onClick={() => setChan(k)} aria-pressed={chan === k}>{l}{k !== 'all' ? ` (${chanCount(k)})` : ''}</button>
-            ))}
-          </div>
-          <div className="wx-rows">
-            {convos === null ? ([0, 1, 2, 3, 4].map((i) => (<div key={i} className="wx-skel"><div className="skel skel-dot" /><div className="skel-lines"><div className="skel" style={{ width: '35%' }} /><div className="skel" style={{ width: '80%' }} /></div></div>)))
-              : list.length === 0 ? (<div className="empty"><b>Nothing here</b>{needle || filter !== 'all' || chan !== 'all' ? 'No chats match — clear search or try All.' : 'Chats appear once you connect WhatsApp or Telegram.'}</div>)
-              : list.map((c) => (
-                <button key={c.id} className={'wx-row' + (thread && thread.id === c.id ? ' sel' : '')} onClick={() => open(c)} aria-current={thread && thread.id === c.id ? 'true' : undefined}>
-                  <span className="wx-ava" aria-hidden="true"><CustomerFace photo={c.customer_photo} />{c.needs_human ? <i className="wx-dot" /> : null}</span>
-                  <span className="wx-main">
-                    <span className="wx-top"><b>{c.customer_name || c.customer_number}</b>{c.needs_human ? <span className="wx-needs">Needs you</span> : <small>{fmtTime(c.updated_at)}</small>}</span>
-                    <span className="wx-sub"><span>{(c.last_message || '').slice(0, 60) || '—'}</span></span>
-                    <span className="wx-chan-line">{(c.channel || 'whatsapp') === 'telegram' ? 'Telegram' : 'WhatsApp'}{c.bot_paused ? ', you are answering' : ''}</span>
-                  </span>
-                </button>
-              ))}
-          </div>
-        </section>
+        </div>
+      </section>
 
-        {/* MIDDLE: thread */}
-        <section className="wx-thread" aria-label={thread ? 'Conversation thread' : 'No conversation selected'}>
-          {!thread ? (<div className="empty"><span className="empty-ic"><Ic n="chat" s={24} /></span><b>Select a chat</b>Pick a conversation to read and reply.</div>)
-            : (
-              <>
-                <div className="wx-thead">
-                  <button className="btn ghost sm wx-back" onClick={() => { setThread(null); if (window.innerWidth <= 760) window.scrollTo({ top: 0 }); load(); }} aria-label="Back to list"><Ic n="back" s={14} /></button>
-                  <span className="wx-ava" aria-hidden="true"><CustomerFace photo={thread.customer_photo} /></span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <b style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{thread.customer_name || thread.customer_number}</b>
-                    <span className="hint">{thread.customer_number} · {thread.needs_human ? 'needs you' : 'handled by AI'}</span>
-                  </div>
+      {/* RIGHT: conversation */}
+      <section className="wx-thread" aria-label={thread ? 'Conversation' : 'No conversation selected'}>
+        {!thread ? (<div className="empty"><span className="empty-ic"><Ic n="chat" s={24} /></span><b>Select a chat</b>Pick a conversation to read and reply.</div>)
+          : (
+            <>
+              <div className="wx-thead">
+                <button className="wx-back" onClick={() => { setThread(null); if (window.innerWidth <= 760) window.scrollTo({ top: 0 }); load(); }} aria-label="Back to Inbox"><Ic n="back" s={18} /></button>
+                <span className="wx-ava" aria-hidden="true"><CustomerFace photo={thread.customer_photo} /></span>
+                <div className="wx-thead-main">
+                  <b>{thread.customer_name || thread.customer_number}</b>
+                  <span>{channelName(thread)}{thread.customer_name && thread.customer_number ? ', ' + thread.customer_number : ''}</span>
                 </div>
-                {/* One switch, both states visible — same control as the phone. */}
-                <div className="wx-modebar">
-                  <div className="wx-mode" role="group" aria-label="Who answers this chat">
-                    <button className={'wx-seg' + (!thread.bot_paused ? ' on' : '')} aria-pressed={!thread.bot_paused} onClick={() => takeover(false)}>AI answers</button>
-                    <button className={'wx-seg' + (thread.bot_paused ? ' on' : '')} aria-pressed={thread.bot_paused} onClick={() => takeover(true)}>You answer</button>
-                  </div>
+                {/* One switch, both states visible. Same control as the phone. */}
+                <div className="wx-mode" role="group" aria-label="Who answers this chat">
+                  <button className={'wx-seg' + (!thread.bot_paused ? ' on' : '')} aria-pressed={!thread.bot_paused} onClick={() => takeover(false)}>Velo answers</button>
+                  <button className={'wx-seg' + (thread.bot_paused ? ' on' : '')} aria-pressed={!!thread.bot_paused} onClick={() => takeover(true)}>You answer</button>
                 </div>
-                {thread.bot_paused
-                  ? <p className="hint" style={{ margin: '8px 2px 0' }}>The bot is paused on this chat — the customer hears only you. Hand back anytime.</p>
-                  : (thread.flag_reason || thread.needs_human) ? <p className="hint" style={{ margin: '8px 2px 0' }}>{thread.flag_reason || 'Flagged for your human touch.'}</p> : null}
-                <div className="thread" ref={threadRef}>
-                  {msgs === null ? (<div className="skel-grid"><div className="skel" style={{ width: '70%', height: 44, borderRadius: 14 }} /><div className="skel" style={{ width: '60%', height: 44, borderRadius: 14, justifySelf: 'end' }} /><div className="skel" style={{ width: '50%', height: 44, borderRadius: 14 }} /></div>)
-                    : msgs.length === 0 ? <p className="hint">No messages.</p>
-                    : msgs.map((m, i) => (<div key={i} className={m.direction === 'in' ? 'bubble-in' : 'bubble-out'}>{m.media_url && <img src={m.media_url} alt="" />}{m.body}<div className="ts">{fmtTime(m.created_at)}</div></div>))}
-                </div>
-                <div className="row-input" style={{ marginTop: 10 }}>
-                  <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={thread.needs_human ? 'Answer them here — sending pauses the bot…' : 'Reply as yourself…'} maxLength={2000} disabled={sending} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }} aria-label="Reply message" />
-                  <button className="btn sm" disabled={sending || !draft.trim()} onClick={send}>{sending ? (<><Loader size={15} />Sending…</>) : 'Send'}</button>
-                </div>
-                {!thread.bot_paused && <p className="hint" style={{ marginTop: 6 }}>Sending pauses the bot on this chat — hand back to AI when you&apos;re done.</p>}
-              </>
-            )}
-        </section>
-
-        {/* RIGHT: contact panel */}
-        {thread && (
-          <aside className="wx-side" aria-label="Contact details">
-            <div style={{ textAlign: 'center', padding: '6px 0 12px' }}>
-              <span className="wx-ava lg" aria-hidden="true"><CustomerFace photo={thread.customer_photo} /></span>
-              <b style={{ display: 'block', marginTop: 8 }}>{thread.customer_name || thread.customer_number}</b>
-              <span className="hint">{thread.customer_number}</span>
-            </div>
-            <div className="wx-facts">
-              <div><span>Channel</span><b>{(thread.channel || 'whatsapp') === 'telegram' ? 'Telegram' : 'WhatsApp'}</b></div>
-              <div><span>Status</span><b>{thread.needs_human ? 'Needs you' : thread.bot_paused ? 'You talk' : 'AI handles'}</b></div>
-              <div><span>Messages</span><b>{msgs === null ? '…' : msgs.length}</b></div>
-              <div><span>Last active</span><b>{fmtTime(thread.updated_at)}</b></div>
-            </div>
-            {thread.flag_reason && <p className="hint" style={{ marginTop: 10 }}>Flag: {thread.flag_reason}</p>}
-            <p className="hint" style={{ marginTop: 12 }}>
-              {thread.bot_paused
-                ? 'You are answering this chat. The bot stays quiet until you hand it back.'
-                : 'The bot answers this chat. Take over from the switch above whenever you want.'}
-            </p>
-          </aside>
-        )}
-      </div>
-    </>
+              </div>
+              {thread.needs_human ? (
+                <div className="wx-flag"><span className="wx-flag-ic"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 16V11a6 6 0 0 0-12 0v5l-2 2h16zM10 21h4" /></svg></span><span><b>Velo needs you.</b> {thread.flag_reason || 'It was not sure how to answer this one.'}</span></div>
+              ) : thread.bot_paused ? <p className="wx-note">Velo is paused on this chat, so the customer only hears from you. Hand back anytime.</p> : null}
+              <div className="thread" ref={threadRef}>
+                {msgs === null ? (<div className="skel-grid"><div className="skel" style={{ width: '70%', height: 44, borderRadius: 14 }} /><div className="skel" style={{ width: '60%', height: 44, borderRadius: 14, justifySelf: 'end' }} /><div className="skel" style={{ width: '50%', height: 44, borderRadius: 14 }} /></div>)
+                  : msgs.length === 0 ? <p className="hint">No messages.</p>
+                  : msgs.map((m, i) => (<div key={i} className={m.direction === 'in' ? 'bubble-in' : 'bubble-out'}>{m.media_url && <img src={m.media_url} alt="" />}{m.body}<div className="ts">{fmtTime(m.created_at)}</div></div>))}
+              </div>
+              <div className="wx-compose">
+                <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={'Reply to ' + firstName(thread)} maxLength={2000} disabled={sending} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }} aria-label="Reply message" />
+                <button className="wx-send" disabled={sending || !draft.trim()} onClick={send} aria-label="Send">{sending ? <Loader size={17} /> : <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" /></svg>}</button>
+              </div>
+              {!thread.bot_paused && <p className="wx-note is-center">Sending pauses Velo on this chat. Hand back when you are done.</p>}
+            </>
+          )}
+      </section>
+    </div>
   );
 }

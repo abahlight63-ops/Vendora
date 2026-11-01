@@ -113,11 +113,11 @@ Check every text/background pair at 4.5:1 in both themes.
 
 ## Glass rules (brought back by the owner, 2026-11)
 - The signed-in app sits on a soft peach and lilac colour field (violet in dark).
-- Home's stat cards, panels, the desktop sidebar and the Ask bar are frosted glass:
-  see-through fill, bright edge, soft lift. Use the `.glass` class (web) and
+- Home's stat cards and panels, the Inbox panels, the desktop sidebar and the Ask bar
+  are strong frosted glass: see-through fill, bright edge, soft lift. Use the `.glass` class (web) and
   `VeloSalesTheme.glass` (phone).
 - Readable surfaces stay nearly solid, so prices and chats survive sunlight: cards,
-  forms, tables and the inbox use `--glass-solid`, never the see-through fill.
+  forms and tables use `--glass-solid`, and Inbox bubbles and rows use brighter fills.
 - Live blur runs only on desktop web. Phones get the same look without blur,
   because blur is heavy on cheap devices.
 - Text on glass uses `--glass-ink`, which is darker than ordinary muted text.
@@ -180,17 +180,17 @@ Check every text/background pair at 4.5:1 in both themes.
 - Everything shows REAL counts only. No invented analytics.
 
 ### Inbox / Chats
-- Desktop 3-panel: conversation list (search, channel + AI/human filters,
-  unread badges) + thread (ticks, media, AI vs human-labeled messages) +
-  contact side panel.
-- One height for list and thread (`min(700px, 100dvh - 210px)`), each panel
-  scrolls inside itself so the composer stays pinned. At <=760px the list and
-  thread become two pages (`wx-has-thread`), never a squeezed pair of columns.
-- Mobile: list -> thread, with the same search (name, number, preview) and the
-  same three filters. The thread header is one segmented switch — `AI answers`
-  / `You answer` — not two competing buttons: both states are visible at once
-  and the live one is marked before you tap.
-- Purple reserved for outbound + send. AI drafts visually distinct.
+- Desktop: list and conversation side by side, both on glass, filling the screen
+  height, each scrolling inside itself. At <=760px they become two pages, and a
+  conversation hides the bottom menu because it has its own back button.
+- One row of filters: All, Needs you, Handled, then channels that have chats.
+- Chats that need you come first in brighter surfaces, showing "Needs you, 12m".
+  A row carries one status. Customers appear as CustomerFace with a channel dot.
+- The conversation header holds one switch: `Velo answers` / `You answer`, with the
+  live one filled indigo. A flagged chat shows a coral "Velo needs you" note with the reason.
+- Customer bubbles are frosted, outgoing bubbles are indigo. Outgoing bubbles have no
+  sender name until messages record who sent them: never guess between Velo and the owner.
+- The reply box is a glass pill with a round coral send button.
 
 ### Catalog
 - Rows, not grids of identical cards. Thumbnail 44px, name, price, a

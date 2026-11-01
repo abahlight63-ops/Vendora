@@ -10,6 +10,7 @@ import { api, pop } from '../lib/api.js'; // api() fetches; pop() celebrates pay
 import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures (offline? waking? stale?)
 import LoadFailed from '../components/LoadFailed.jsx'; // branded failed card + Retry (never eternal skeletons!)
 import Ic from '../components/icons.jsx'; // <Ic n="chat"/> icon set
+import { waitedLong, waitedShort } from '../lib/waited.js'; // "12 minutes" / "12m"
 import CustomerFace from '../components/CustomerFace.jsx'; // real photo, or a person-shaped icon
 
 
@@ -21,26 +22,6 @@ function greeting() { // NOT a component (lowercase, returns a string): time-bas
 }
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']; // for the activity chart labels
-
-function waitedShort(stamp) { // "12m" / "3h" / "2d" beside a waiting chat
-  const t = new Date(stamp).getTime();
-  if (Number.isNaN(t)) return '';
-  const m = Math.max(1, Math.floor((Date.now() - t) / 60000));
-  if (m < 60) return m + 'm';
-  const h = Math.floor(m / 60);
-  return h < 24 ? h + 'h' : Math.floor(h / 24) + 'd';
-}
-
-function waited(stamp) { // "12 minutes" / "3 hours" / "2 days": how long a chat has been waiting
-  const t = new Date(stamp).getTime();
-  if (Number.isNaN(t)) return '';
-  const m = Math.max(1, Math.floor((Date.now() - t) / 60000));
-  if (m < 60) return m + (m === 1 ? ' minute' : ' minutes');
-  const h = Math.floor(m / 60);
-  if (h < 24) return h + (h === 1 ? ' hour' : ' hours');
-  const d = Math.floor(h / 24);
-  return d + (d === 1 ? ' day' : ' days');
-}
 
 export default function Dashboard({ biz }) { // biz = business object from App (useMe) — name, hours, owner_number…
   const [s, setS] = useState(null); // s = summary {convos, pct, needs, products, flagged[], latest[], days[]} (null = loading → skeletons!)
@@ -185,7 +166,7 @@ export default function Dashboard({ biz }) { // biz = business object from App (
       <div className="dg-stats">
         <Link className={'dg-stat dg-hot' + (hot ? ' is-on' : ' glass')} to="/chats">
           <span className="dg-hot-top">{s ? <span className="dg-hot-num">{s.needs}</span> : <span className="skel" style={{ width: 44, height: 44 }} />}<span className="dg-hot-go"><Arrow /></span></span>
-          <span className="dg-hot-text"><b>{s && s.needs === 0 ? 'All chats handled' : s && s.needs === 1 ? 'Chat needs you' : 'Chats need you'}</b><span>{s && s.oldestWaiting ? 'Oldest waiting ' + waited(s.oldestWaiting) : 'Nobody is waiting on you'}</span></span>
+          <span className="dg-hot-text"><b>{s && s.needs === 0 ? 'All chats handled' : s && s.needs === 1 ? 'Chat needs you' : 'Chats need you'}</b><span>{s && s.oldestWaiting ? 'Oldest waiting ' + waitedLong(s.oldestWaiting) : 'Nobody is waiting on you'}</span></span>
         </Link>
         <div className="dg-stat glass">
           <div className="dg-stat-top"><span className="dg-lbl">Replies today</span>

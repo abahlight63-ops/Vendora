@@ -1130,17 +1130,6 @@ class _ThreadsCard extends StatelessWidget {
   }
 }
 
-/// "12m", "3h" or "2d" beside a waiting chat.
-String _short(dynamic at) {
-  final t = DateTime.tryParse('${at ?? ''}');
-  if (t == null) return '';
-  final m = DateTime.now().difference(t).inMinutes;
-  if (m < 1) return '1m';
-  if (m < 60) return '${m}m';
-  final h = m ~/ 60;
-  return h < 24 ? '${h}h' : '${h ~/ 24}d';
-}
-
 class _ThreadRow extends StatelessWidget {
   final Map<String, dynamic> row;
   final bool warn;
@@ -1208,7 +1197,7 @@ class _ThreadRow extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              _short(at),
+              waitedShort(at),
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,

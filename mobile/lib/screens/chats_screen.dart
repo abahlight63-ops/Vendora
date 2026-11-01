@@ -1,18 +1,19 @@
 // ── lib/screens/chats_screen.dart ─────────────────────────────────
 // WHAT: the phone inbox — the web's Chats.jsx in one column.
 //
-// Web parity: page head, search, status tabs with real counts, channel chips,
-// conversation rows (avatar + gold dot + channel mark + status tags), then a
-// pushed thread with the same AI/human switch, bubbles and composer. The web's
-// right-hand contact panel becomes a bottom sheet behind the header's info key,
-// because a phone has no third column.
+// Web parity, on frosted glass: the title, search, one row of filters, chats that
+// need you first in brighter cards, then the rest in one glass panel. A pushed
+// conversation has the same Velo/You switch, bubbles and composer. Customer details
+// sit in a bottom sheet behind the header's info key.
+//
+// Outgoing bubbles carry no sender name: messages do not record yet whether Velo
+// or the owner sent them, so the UI must not guess.
 //
 // Every list comes from /api/me/conversations; every thread from /messages.
 // No sample chats, no invented counts.
 import 'package:flutter/material.dart';
 
 import '../api.dart';
-import '../depth.dart';
 import '../format.dart';
 import '../glass.dart';
 import '../motion.dart';
@@ -123,157 +124,152 @@ class _ChatsScreenState extends State<ChatsScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
             children: [
-              Text(
-                'Inbox',
-                style: TextStyle(
-                  fontSize: 26,
-                  height: 1.1,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.8,
-                  color: scheme.onSurface,
+              Expanded(
+                child: Text(
+                  'Inbox',
+                  style: TextStyle(
+                    fontSize: 31,
+                    height: 1.1,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -1,
+                    color: scheme.onSurface,
+                  ),
                 ),
               ),
-              const SizedBox(height: 5),
-              Text(
-                'Every chat from your channels, in one place.',
-                style: TextStyle(
-                  fontSize: 12.5,
-                  height: 1.45,
-                  fontWeight: FontWeight.w500,
-                  color: scheme.onSurface.withValues(alpha: 0.58),
+              if (_chats != null)
+                Text(
+                  '${_chats!.length} chat${_chats!.length == 1 ? '' : 's'}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: VeloSalesTheme.glassInk(context),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-            child: Container(
-              decoration: BoxDecoration(
-                color: scheme.surface,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: scheme.outline),
-                boxShadow: softShadow(context, lift: 0.35),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: _SearchField(
+            controller: _find,
+            value: _q,
+            onChanged: (v) => setState(() => _q = v),
+            onClear: () {
+              _find.clear();
+              setState(() => _q = '');
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 44,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: [
+              _Pill(
+                label: 'All',
+                on: _filter == 'all' && _chan == 'all',
+                onTap: () => setState(() {
+                  _filter = 'all';
+                  _chan = 'all';
+                }),
               ),
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-                    child: _SearchField(
-                      controller: _find,
-                      value: _q,
-                      onChanged: (v) => setState(() => _q = v),
-                      onClear: () {
-                        _find.clear();
-                        setState(() => _q = '');
-                      },
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      children: [
-                        _Tab(
-                          label: 'All',
-                          count: _chats == null ? '·' : '${_chats!.length}',
-                          on: _filter == 'all',
-                          onTap: () => setState(() => _filter = 'all'),
+              _Pill(
+                label: _chats == null ? 'Needs you' : 'Needs you $_needsCount',
+                on: _filter == 'needs',
+                hot: true,
+                soft: _needsCount > 0,
+                onTap: () => setState(
+                    () => _filter = _filter == 'needs' ? 'all' : 'needs'),
+              ),
+              _Pill(
+                label: 'Handled',
+                on: _filter == 'handled',
+                onTap: () => setState(
+                    () => _filter = _filter == 'handled' ? 'all' : 'handled'),
+              ),
+              if (_count(SalesChannel.whatsapp) > 0)
+                _Pill(
+                  label: 'WhatsApp',
+                  on: _chan == 'whatsapp',
+                  onTap: () => setState(
+                      () => _chan = _chan == 'whatsapp' ? 'all' : 'whatsapp'),
+                ),
+              if (_count(SalesChannel.telegram) > 0)
+                _Pill(
+                  label: 'Telegram',
+                  on: _chan == 'telegram',
+                  onTap: () => setState(
+                      () => _chan = _chan == 'telegram' ? 'all' : 'telegram'),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: _loading
+              ? const _InboxSkeleton()
+              : _err != null
+                  ? EmptyState("Couldn't load your inbox", _err!, retry: _load)
+                  : _list.isEmpty
+                      ? _EmptyInbox(filtered: filtered, onClear: _clearFilters)
+                      : RefreshIndicator(
+                          onRefresh: _load,
+                          child: _groupedList(),
                         ),
-                        const SizedBox(width: 6),
-                        _Tab(
-                          label: 'Needs you',
-                          count: _chats == null ? '·' : '$_needsCount',
-                          on: _filter == 'needs',
-                          onTap: () => setState(() => _filter = 'needs'),
-                        ),
-                        const SizedBox(width: 6),
-                        _Tab(
-                          label: 'Handled',
-                          count: _chats == null
-                              ? '·'
-                              : '${_chats!.length - _needsCount}',
-                          on: _filter == 'handled',
-                          onTap: () => setState(() => _filter = 'handled'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          _Chip(
-                            label: 'All',
-                            on: _chan == 'all',
-                            onTap: () => setState(() => _chan = 'all'),
-                          ),
-                          if (_count(SalesChannel.whatsapp) > 0)
-                            _Chip(
-                              label: 'WhatsApp (${_count(SalesChannel.whatsapp)})',
-                              on: _chan == 'whatsapp',
-                              onTap: () =>
-                                  setState(() => _chan = 'whatsapp'),
-                            ),
-                          if (_count(SalesChannel.telegram) > 0)
-                            _Chip(
-                              label: 'Telegram (${_count(SalesChannel.telegram)})',
-                              on: _chan == 'telegram',
-                              onTap: () =>
-                                  setState(() => _chan = 'telegram'),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Divider(height: 1, thickness: 1, color: scheme.outline),
-                  Expanded(
-                    child: _loading
-                        ? const _InboxSkeleton()
-                        : _err != null
-                            ? EmptyState("Couldn't load your inbox", _err!,
-                                retry: _load)
-                            : _list.isEmpty
-                                ? _EmptyInbox(
-                                    filtered: filtered,
-                                    onClear: _clearFilters,
-                                  )
-                                : RefreshIndicator(
-                                    onRefresh: _load,
-                                    child: ListView.separated(
-                                      padding: const EdgeInsets.fromLTRB(
-                                          6, 6, 6, 12),
-                                      itemCount: _list.length,
-                                      separatorBuilder: (_, _) =>
-                                          const SizedBox(height: 2),
-                                      itemBuilder: (context, i) {
-                                        final chat = (_list[i] as Map)
-                                            .cast<String, dynamic>();
-                                        return FadeSlideIn(
-                                          delayMs: (i * 45).clamp(0, 240),
-                                          child: _ChatRow(
-                                            chat: chat,
-                                            onTap: () => _open(chat),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                  ),
-                ],
+        ),
+      ],
+    );
+  }
+
+  /// Chats that need you first, each in its own bright card. Everything else
+  /// shares one glass panel, so the urgent ones are the easy ones to spot.
+  Widget _groupedList() {
+    final all = [for (final c in _list) (c as Map).cast<String, dynamic>()];
+    final needs = all.where((c) => c['needs_human'] == true).toList();
+    final rest = all.where((c) => c['needs_human'] != true).toList();
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      children: [
+        for (var i = 0; i < needs.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: FadeSlideIn(
+              delayMs: (i * 45).clamp(0, 240),
+              child: Container(
+                decoration: VeloSalesTheme.glass(context, radius: 24, bright: true),
+                child: _ChatRow(chat: needs[i], onTap: () => _open(needs[i])),
               ),
             ),
           ),
-        ),
+        if (rest.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            decoration: VeloSalesTheme.glass(context, radius: 24),
+            child: Column(
+              children: [
+                for (var i = 0; i < rest.length; i++) ...[
+                  if (i > 0)
+                    Divider(
+                      height: 1,
+                      indent: 14,
+                      endIndent: 14,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.09),
+                    ),
+                  _ChatRow(chat: rest[i], onTap: () => _open(rest[i])),
+                ],
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -298,23 +294,24 @@ class _SearchField extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return SizedBox(
-      height: 40,
+      height: 48,
       child: TextField(
         controller: controller,
         onChanged: onChanged,
         textInputAction: TextInputAction.search,
         style: TextStyle(fontSize: 14, color: scheme.onSurface),
         decoration: InputDecoration(
-          hintText: 'Search name, number, message…',
+          hintText: 'Search chats',
           hintStyle: TextStyle(
-            fontSize: 13.5,
-            color: scheme.onSurface.withValues(alpha: 0.38),
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: VeloSalesTheme.glassInk(context),
           ),
           isDense: true,
           filled: true,
-          fillColor: scheme.surfaceContainerLowest,
+          fillColor: scheme.surface.withValues(alpha: 0.46),
           prefixIcon: Icon(Icons.search_rounded,
-              size: 18, color: scheme.onSurface.withValues(alpha: 0.45)),
+              size: 18, color: VeloSalesTheme.glassInk(context)),
           prefixIconConstraints:
               const BoxConstraints(minWidth: 38, minHeight: 38),
           suffixIcon: value.isEmpty
@@ -330,8 +327,8 @@ class _SearchField extends StatelessWidget {
               const BoxConstraints(minWidth: 38, minHeight: 38),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          border: _border(scheme.outline, 1),
-          enabledBorder: _border(scheme.outline, 1),
+          border: _border(Colors.white.withValues(alpha: 0.7), 1.5),
+          enabledBorder: _border(Colors.white.withValues(alpha: 0.7), 1.5),
           focusedBorder: _border(scheme.primary, 1.4),
         ),
       ),
@@ -344,100 +341,70 @@ class _SearchField extends StatelessWidget {
       );
 }
 
-class _Tab extends StatelessWidget {
+/// One filter. Coral when it is the needs-you filter and something is waiting.
+class _Pill extends StatelessWidget {
   final String label;
-  final String count;
   final bool on;
+  final bool hot;
+  final bool soft;
   final VoidCallback onTap;
 
-  const _Tab({
+  const _Pill({
     required this.label,
-    required this.count,
     required this.on,
+    this.hot = false,
+    this.soft = false,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final fg = on ? VeloSalesTheme.purpleDark : scheme.onSurface.withValues(alpha: 0.64);
-    return Expanded(
-      child: Pressable(
-        onTap: onTap,
-        radius: BorderRadius.circular(999),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          height: 40,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: on ? VeloSalesTheme.purpleSoft : scheme.surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-                color: on ? VeloSalesTheme.purpleLine : scheme.outline),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: on ? FontWeight.w800 : FontWeight.w600,
-                    color: fg,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                count,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: fg.withValues(alpha: 0.66),
-                ),
-              ),
-            ],
-          ),
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final Color fg;
+    final BoxDecoration deco;
+    if (on && hot) {
+      fg = VeloSalesTheme.onAccent(context);
+      deco = BoxDecoration(
+        gradient: VeloSalesTheme.cta(context),
+        borderRadius: BorderRadius.circular(999),
+      );
+    } else if (on) {
+      fg = scheme.surface;
+      deco = BoxDecoration(
+        color: scheme.onSurface,
+        borderRadius: BorderRadius.circular(999),
+      );
+    } else if (hot && soft) {
+      fg = VeloSalesTheme.coralText(context);
+      deco = BoxDecoration(
+        color: dark ? const Color(0xFF2D1730) : const Color(0xFFFFF4EF),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: dark ? const Color(0xFF6E3440) : const Color(0xFFF3C3B3),
         ),
-      ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  final String label;
-  final bool on;
-  final VoidCallback onTap;
-
-  const _Chip({required this.label, required this.on, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Pressable(
-      onTap: onTap,
-      radius: BorderRadius.circular(999),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        height: 34,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: on ? scheme.surface : Colors.transparent,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: on ? scheme.primary : scheme.outline,
-            width: on ? 1.3 : 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11.5,
-            fontWeight: FontWeight.w700,
-            color: on ? scheme.primary : scheme.onSurface.withValues(alpha: 0.55),
+      );
+    } else {
+      fg = scheme.onSurface;
+      deco = VeloSalesTheme.glass(context, radius: 999);
+    }
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: Semantics(
+        button: true,
+        selected: on,
+        child: Pressable(
+          onTap: onTap,
+          radius: BorderRadius.circular(999),
+          child: Container(
+            height: 44,
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: deco.copyWith(boxShadow: const []),
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: fg),
+            ),
           ),
         ),
       ),
@@ -463,11 +430,10 @@ class _ChatRow extends StatelessWidget {
       onTap: onTap,
       radius: BorderRadius.circular(14),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _Avatar(photo: chat['customer_photo']?.toString(), channel: channel, flagged: needsHuman),
+            _Avatar(photo: chat['customer_photo']?.toString(), channel: channel),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -483,7 +449,7 @@ class _ChatRow extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 13.5,
+                            fontSize: 15,
                             fontWeight: FontWeight.w800,
                             letterSpacing: -0.15,
                             color: scheme.onSurface,
@@ -493,7 +459,7 @@ class _ChatRow extends StatelessWidget {
                       const SizedBox(width: 8),
                       needsHuman
                           ? Text(
-                              'Needs you',
+                              'Needs you, ${waitedShort(chat['updated_at'])}',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w800,
@@ -506,7 +472,7 @@ class _ChatRow extends StatelessWidget {
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 fontFeatures: const [FontFeature.tabularFigures()],
-                                color: scheme.onSurface.withValues(alpha: 0.65),
+                                color: VeloSalesTheme.glassInk(context),
                               ),
                             ),
                     ],
@@ -517,19 +483,22 @@ class _ChatRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 12.5,
+                      fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: scheme.onSurface.withValues(alpha: 0.58),
+                      color: VeloSalesTheme.glassInk(context),
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    paused ? '${channel.label}, you are answering' : channel.label,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: scheme.onSurface.withValues(alpha: 0.65),
+                  if (paused)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        'You are answering',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: VeloSalesTheme.glassInk(context),
+                        ),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -543,12 +512,10 @@ class _ChatRow extends StatelessWidget {
 class _Avatar extends StatelessWidget {
   final String? photo;
   final SalesChannel channel;
-  final bool flagged;
 
   const _Avatar({
     required this.photo,
     required this.channel,
-    required this.flagged,
   });
 
   @override
@@ -561,20 +528,6 @@ class _Avatar extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           CustomerFace(photo: photo, size: 42),
-          if (flagged)
-            Positioned(
-              top: -1,
-              right: 2,
-              child: Container(
-                width: 11,
-                height: 11,
-                decoration: BoxDecoration(
-                  color: VeloSalesTheme.accent(context),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: scheme.surface, width: 2),
-                ),
-              ),
-            ),
           Positioned(
             right: 0,
             bottom: 0,
@@ -826,8 +779,8 @@ class _ThreadScreenState extends State<ThreadScreen> {
     final scheme = Theme.of(context).colorScheme;
     final bottom = MediaQuery.paddingOf(context).bottom;
     final canSend = _draft.text.trim().isNotEmpty && !_sending;
-    return Scaffold(
-      backgroundColor: scheme.surfaceContainerLowest,
+    return VeloSalesTheme.glow(context, child: Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -845,27 +798,26 @@ class _ThreadScreenState extends State<ThreadScreen> {
                 onChanged: _takeover,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
-              child: Text(
-                _paused
-                    ? 'The bot is paused on this chat — the customer hears only you. '
-                        'Hand back anytime.'
-                    : '${widget.chat['flag_reason'] ?? ''}'.trim().isNotEmpty
-                        ? '${widget.chat['flag_reason']}'
-                        : _needsHuman
-                            ? 'Flagged for your human touch.'
-                            : 'The bot answers this chat. Take over whenever you want.',
-                style: TextStyle(
-                  fontSize: 12,
-                  height: 1.45,
-                  fontWeight: FontWeight.w500,
-                  color: _paused
-                      ? VeloSalesTheme.goldColor(context)
-                      : scheme.onSurface.withValues(alpha: 0.52),
+            if (_needsHuman)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: _FlagNote(
+                  reason: '${widget.chat['flag_reason'] ?? ''}'.trim(),
+                ),
+              )
+            else if (_paused)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
+                child: Text(
+                  'Velo is paused on this chat, so the customer only hears from you. '
+                  'Hand back anytime.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.4,
+                    color: VeloSalesTheme.glassInk(context),
+                  ),
                 ),
               ),
-            ),
             Expanded(
               child: _err != null
                   ? EmptyState("Couldn't load this chat", _err!, retry: _load)
@@ -899,12 +851,71 @@ class _ThreadScreenState extends State<ThreadScreen> {
               paused: _paused,
               sending: _sending,
               canSend: canSend,
-              needsHuman: _needsHuman,
+              firstName: '${widget.chat['customer_name'] ?? widget.chat['customer_number'] ?? 'them'}'
+                  .trim()
+                  .split(RegExp(r'\s+'))
+                  .first,
               bottomInset: bottom,
               onSend: _send,
             ),
           ],
         ),
+      ),
+    ));
+  }
+}
+
+/// Why Velo handed this chat to the owner.
+class _FlagNote extends StatelessWidget {
+  final String reason;
+  const _FlagNote({required this.reason});
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: dark ? const Color(0xFF2D1730) : const Color(0xFFFFF4EF),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: dark ? 0.16 : 0.82)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: VeloSalesTheme.accent(context),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.notifications_none_rounded,
+                size: 17, color: VeloSalesTheme.onAccent(context)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                style: TextStyle(
+                  fontSize: 13.5,
+                  height: 1.4,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+                children: [
+                  const TextSpan(
+                    text: 'Velo needs you. ',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  TextSpan(
+                    text: reason.isEmpty
+                        ? 'It was not sure how to answer this one.'
+                        : reason,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -926,7 +937,6 @@ class _ThreadHeader extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final name = '${chat['customer_name'] ?? chat['customer_number'] ?? '?'}';
     final channel = _channelOf(chat);
-    final needsHuman = chat['needs_human'] == true;
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       child: Row(
@@ -935,20 +945,17 @@ class _ThreadHeader extends StatelessWidget {
             onTap: onBack,
             radius: BorderRadius.circular(999),
             child: Container(
-              width: 38,
-              height: 38,
+              width: 44,
+              height: 44,
               alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: scheme.surface,
-                shape: BoxShape.circle,
-                border: Border.all(color: scheme.outline),
-              ),
+              decoration: VeloSalesTheme.glass(context, radius: 999)
+                  .copyWith(boxShadow: const []),
               child: Icon(Icons.arrow_back_rounded,
                   size: 19, color: scheme.onSurface),
             ),
           ),
           const SizedBox(width: 10),
-          _Avatar(photo: chat['customer_photo']?.toString(), channel: channel, flagged: needsHuman),
+          _Avatar(photo: chat['customer_photo']?.toString(), channel: channel),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -959,7 +966,7 @@ class _ThreadHeader extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 15.5,
+                    fontSize: 17,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.3,
                     color: scheme.onSurface,
@@ -967,13 +974,13 @@ class _ThreadHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${chat['customer_number'] ?? ''} · ${needsHuman ? 'needs you' : 'handled by AI'}',
+                  channel.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 11.5,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: scheme.onSurface.withValues(alpha: 0.5),
+                    color: VeloSalesTheme.glassInk(context),
                   ),
                 ),
               ],
@@ -983,14 +990,11 @@ class _ThreadHeader extends StatelessWidget {
             onTap: onFacts,
             radius: BorderRadius.circular(999),
             child: Container(
-              width: 38,
-              height: 38,
+              width: 44,
+              height: 44,
               alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: scheme.surface,
-                shape: BoxShape.circle,
-                border: Border.all(color: scheme.outline),
-              ),
+              decoration: VeloSalesTheme.glass(context, radius: 999)
+                  .copyWith(boxShadow: const []),
               child: Icon(Icons.info_outline_rounded,
                   size: 19,
                   color: scheme.onSurface.withValues(alpha: 0.62)),
@@ -1011,25 +1015,41 @@ class _Bubble extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final incoming = message['direction'] == 'in';
     final media = '${message['media_url'] ?? ''}';
-    final fg = scheme.onSurface;
+    final fg = incoming ? scheme.onSurface : Colors.white;
     return Align(
       alignment: incoming ? Alignment.centerLeft : Alignment.centerRight,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 3),
-        padding: const EdgeInsets.fromLTRB(13, 10, 13, 8),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
         constraints: BoxConstraints(
             maxWidth: MediaQuery.sizeOf(context).width * 0.82),
         decoration: BoxDecoration(
-          color: incoming ? scheme.surface : VeloSalesTheme.purpleSoft,
+          color: incoming ? scheme.surface.withValues(alpha: 0.72) : null,
+          gradient: incoming
+              ? null
+              : const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF4F3FC7), Color(0xFF3B2E9E)],
+                ),
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(incoming ? 4 : 14),
-            topRight: Radius.circular(incoming ? 14 : 4),
-            bottomLeft: const Radius.circular(14),
-            bottomRight: const Radius.circular(14),
+            topLeft: Radius.circular(incoming ? 6 : 20),
+            topRight: Radius.circular(incoming ? 20 : 6),
+            bottomLeft: const Radius.circular(20),
+            bottomRight: const Radius.circular(20),
           ),
-          border: Border.all(
-            color: incoming ? scheme.outline : VeloSalesTheme.purpleLine,
-          ),
+          border: incoming
+              ? Border.all(color: Colors.white.withValues(alpha: 0.82))
+              : null,
+          boxShadow: incoming
+              ? null
+              : [
+                  BoxShadow(
+                    color: const Color(0xFF4F3FC7).withValues(alpha: 0.3),
+                    blurRadius: 24,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1053,15 +1073,17 @@ class _Bubble extends StatelessWidget {
               ),
             Text(
               '${message['body'] ?? ''}',
-              style: TextStyle(fontSize: 14, height: 1.5, color: fg),
+              style: TextStyle(fontSize: 15, height: 1.45, color: fg),
             ),
             const SizedBox(height: 3),
             Text(
               fmtTime(message['created_at']),
               style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-                color: scheme.onSurface.withValues(alpha: 0.42),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: incoming
+                    ? VeloSalesTheme.glassInk(context)
+                    : const Color(0xFFE0DBFF),
               ),
             ),
           ],
@@ -1076,7 +1098,7 @@ class _Composer extends StatelessWidget {
   final bool paused;
   final bool sending;
   final bool canSend;
-  final bool needsHuman;
+  final String firstName;
   final double bottomInset;
   final VoidCallback onSend;
 
@@ -1085,7 +1107,7 @@ class _Composer extends StatelessWidget {
     required this.paused,
     required this.sending,
     required this.canSend,
-    required this.needsHuman,
+    required this.firstName,
     required this.bottomInset,
     required this.onSend,
   });
@@ -1093,82 +1115,86 @@ class _Composer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: EdgeInsets.fromLTRB(12, 10, 12, 10 + bottomInset),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        border: Border(top: BorderSide(color: scheme.outline)),
-      ),
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 6, 16, 12 + bottomInset),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Container(
-                  constraints: const BoxConstraints(minHeight: 46),
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainerLowest,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: scheme.outline),
-                  ),
+          Container(
+            padding: const EdgeInsets.fromLTRB(18, 6, 6, 6),
+            decoration: VeloSalesTheme.glass(context, radius: 28, bright: true),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
                   child: TextField(
                     controller: controller,
                     minLines: 1,
                     maxLines: 4,
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => onSend(),
-                    style: TextStyle(fontSize: 14, color: scheme.onSurface),
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: scheme.onSurface,
+                    ),
                     decoration: InputDecoration(
-                      hintText: needsHuman
-                          ? 'Answer them here…'
-                          : 'Reply as yourself…',
+                      hintText: 'Reply to $firstName',
                       hintStyle: TextStyle(
-                        fontSize: 13.5,
-                        color: scheme.onSurface.withValues(alpha: 0.4),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: VeloSalesTheme.glassInk(context),
                       ),
                       border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      filled: false,
                       isDense: true,
-                      contentPadding:
-                          const EdgeInsets.fromLTRB(14, 13, 14, 13),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Pressable(
-                onTap: canSend ? onSend : null,
-                radius: BorderRadius.circular(14),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: 46,
-                  height: 46,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: canSend
-                        ? VeloSalesTheme.accentSolid
-                        : VeloSalesTheme.accentSolid.withValues(alpha: 0.30),
-                    borderRadius: BorderRadius.circular(14),
+                const SizedBox(width: 8),
+                Semantics(
+                  button: true,
+                  label: 'Send',
+                  excludeSemantics: true,
+                  child: Pressable(
+                    onTap: canSend ? onSend : null,
+                    radius: BorderRadius.circular(999),
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 150),
+                      opacity: canSend || sending ? 1 : 0.45,
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          gradient: VeloSalesTheme.cta(context),
+                          shape: BoxShape.circle,
+                        ),
+                        child: sending
+                            ? OrbitLoader(
+                                size: 17, color: VeloSalesTheme.onAccent(context))
+                            : Icon(Icons.arrow_upward_rounded,
+                                size: 20, color: VeloSalesTheme.onAccent(context)),
+                      ),
+                    ),
                   ),
-                  child: sending
-                      ? const OrbitLoader(size: 17, color: Colors.white)
-                      : const Icon(Icons.arrow_upward_rounded,
-                          size: 20, color: Colors.white),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           if (!paused)
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(
-                'Sending pauses the bot on this chat — hand back to AI when you are done.',
+                'Sending pauses Velo on this chat. Hand back when you are done.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 10.5,
+                  fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: scheme.onSurface.withValues(alpha: 0.42),
+                  color: VeloSalesTheme.glassInk(context),
                 ),
               ),
             ),
@@ -1255,8 +1281,7 @@ class _ContactSheet extends StatelessWidget {
               const SizedBox(height: 20),
               _Avatar(
                   photo: chat['customer_photo']?.toString(),
-                  channel: channel,
-                  flagged: needsHuman),
+                  channel: channel),
               const SizedBox(height: 10),
               Text(
                 name,
@@ -1363,22 +1388,15 @@ class _ModeSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final dark = Theme.of(context).brightness == Brightness.dark;
     return Opacity(
       opacity: busy ? 0.6 : 1,
       child: Container(
-        height: 42,
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: dark
-              ? Colors.black.withValues(alpha: 0.26)
-              : scheme.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: scheme.outline),
-        ),
+        height: 50,
+        padding: const EdgeInsets.all(4),
+        decoration: VeloSalesTheme.glass(context, radius: 999)
+            .copyWith(boxShadow: const []),
         child: Row(children: [
-          _seg(context, 'AI answers', Icons.auto_awesome_rounded, !paused,
+          _seg(context, 'Velo answers', Icons.auto_awesome_rounded, !paused,
               () => onChanged(false)),
           _seg(context, 'You answer', Icons.person_outline_rounded, paused,
               () => onChanged(true)),
@@ -1390,46 +1408,35 @@ class _ModeSwitch extends StatelessWidget {
   Widget _seg(BuildContext context, String label, IconData icon, bool on,
       VoidCallback tap) {
     final scheme = Theme.of(context).colorScheme;
-    final dark = Theme.of(context).brightness == Brightness.dark;
+    final fg = on ? scheme.onPrimary : scheme.onSurface;
     return Expanded(
-      child: GestureDetector(
-        onTap: busy ? null : tap,
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: on ? scheme.surface : Colors.transparent,
-            borderRadius: BorderRadius.circular(999),
-            boxShadow: on
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: dark ? 0.3 : 0.08),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(icon,
-                size: 15,
-                color: on
-                    ? scheme.primary
-                    : scheme.onSurface.withValues(alpha: 0.45)),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: on ? FontWeight.w800 : FontWeight.w600,
-                color: on
-                    ? scheme.onSurface
-                    : scheme.onSurface.withValues(alpha: 0.5),
-              ),
+      child: Semantics(
+        button: true,
+        selected: on,
+        child: GestureDetector(
+          onTap: busy ? null : tap,
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: on ? scheme.primary : Colors.transparent,
+              borderRadius: BorderRadius.circular(999),
             ),
-          ]),
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(icon, size: 15, color: fg),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: on ? FontWeight.w800 : FontWeight.w700,
+                  color: fg,
+                ),
+              ),
+            ]),
+          ),
         ),
       ),
     );

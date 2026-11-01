@@ -56,3 +56,14 @@ int? trialDaysLeft(dynamic trialEnds) {
   final days = (t.difference(DateTime.now()).inMilliseconds / 86400000).ceil();
   return days < 0 ? 0 : days;
 }
+
+/// "12m", "3h" or "2d" beside a waiting chat. Same as the web's lib/waited.js.
+String waitedShort(dynamic at) {
+  final t = _parse(at);
+  if (t == null) return '';
+  final m = DateTime.now().difference(t).inMinutes;
+  if (m < 1) return '1m';
+  if (m < 60) return '${m}m';
+  final h = m ~/ 60;
+  return h < 24 ? '${h}h' : '${h ~/ 24}d';
+}

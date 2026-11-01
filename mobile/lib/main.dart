@@ -767,7 +767,7 @@ class _Dock extends StatelessWidget {
         child: Container(
           height: 66,
           padding: const EdgeInsets.all(6),
-          decoration: VeloSalesTheme.glass(context, radius: 26, opacity: 0.86),
+          decoration: VeloSalesTheme.glass(context, radius: 26, bright: true),
           child: Row(
             children: [
               for (final e in _entries)

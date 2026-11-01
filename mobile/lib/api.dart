@@ -270,6 +270,26 @@ class ApiClient {
   Future<Map<String, dynamic>> catalogMeta() async =>
       (await get('/api/me/catalog-meta') as Map).cast<String, dynamic>();
 
+  /// Profile sync: has this shop synced, and when? (web Catalog's "Last synced").
+  Future<Map<String, dynamic>> profileSync() async =>
+      (await get('/api/me/profile-sync') as Map).cast<String, dynamic>();
+
+  /// Pro: paste WhatsApp Business profile text → the AI scaffolds the catalog.
+  /// Throws ApiException(402) when the plan does not cover profile sync.
+  Future<Map<String, dynamic>> syncProfile(String text) async =>
+      (await post('/api/me/profile-sync', {'profile_text': text}) as Map)
+          .cast<String, dynamic>();
+
+  /// Upload media: a picked picture as a data URL → a hosted https URL the bot
+  /// can send inside a chat bubble (same endpoint the web picker uses).
+  Future<String?> uploadProductPhoto(String filename, String dataUrl) async {
+    final r = await post('/api/me/product-photo', {
+      'filename': filename,
+      'dataUrl': dataUrl,
+    });
+    return (r as Map)['url'] as String?;
+  }
+
   Future<Map<String, dynamic>> addProduct(
     String name,
     String price,

@@ -349,30 +349,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
       bottomNavigationBar: _loading || _err != null
           ? null
-          : SafeArea(
-              minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: Row(children: [
-                Expanded(
-                  child: Text(
-                    _dirty ? 'Unsaved changes' : 'Everything saved',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: _dirty
-                          ? VeloSalesTheme.gold
-                          : scheme.onSurface.withValues(alpha: 0.6),
+          : Container(
+              decoration: BoxDecoration(
+                color: scheme.surface,
+                border: Border(top: BorderSide(color: scheme.outline)),
+              ),
+              child: SafeArea(
+                minimum: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                child: Row(children: [
+                  Expanded(
+                    child: Text(
+                      _dirty ? 'Unsaved changes' : 'Everything saved',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: _dirty
+                            ? VeloSalesTheme.goldColor(context)
+                            : scheme.onSurface.withValues(alpha: 0.6),
+                      ),
                     ),
                   ),
-                ),
-                SizedBox(
-                  width: 160,
-                  child: GradientPill(
-                    label: _saving ? 'Saving…' : 'Save profile',
-                    height: 48,
-                    onTap: _saving || !_dirty ? null : _save,
+                  SizedBox(
+                    width: 160,
+                    child: GradientPill(
+                      label: _saving ? 'Saving…' : 'Save profile',
+                      height: 48,
+                      onTap: _saving || !_dirty ? null : _save,
+                    ),
                   ),
-                ),
-              ]),
+                ]),
+              ),
             ),
     );
   }

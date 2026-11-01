@@ -214,7 +214,17 @@ class _InsightsScreenState extends State<InsightsScreen> {
     final hmax = _maxInt(hours) == 0 ? 1 : _maxInt(hours);
     final vol = (d['vol'] as List).cast<int>();
     final labels = (d['labels'] as List).cast<String>();
-    final up = (d['delta'] as int) >= 0;
+    final delta = d['delta'] as int;
+    // Green means "more chats than last week"; grey means no change. A 0%
+    // delta in success green was claiming a win that did not happen.
+    final deltaInk = delta > 0
+        ? VeloSalesTheme.successColor(context)
+        : delta < 0
+            ? VeloSalesTheme.goldColor(context)
+            : scheme.onSurface.withValues(alpha: 0.55);
+    final deltaText = delta == 0
+        ? 'No change vs prior week'
+        : '${delta > 0 ? '▲' : '▼'} ${delta.abs()}% vs prior week';
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -267,16 +277,15 @@ class _InsightsScreenState extends State<InsightsScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
-                  color: (up ? VeloSalesTheme.green : VeloSalesTheme.gold)
-                      .withValues(alpha: 0.12),
+                  color: deltaInk.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  '${up ? '▲' : '▼'} ${(d['delta'] as int).abs()}% vs prior wk',
+                  deltaText,
                   style: TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w800,
-                      color: up ? VeloSalesTheme.greenDark : VeloSalesTheme.gold),
+                      color: deltaInk),
                 ),
               ),
             ]),
@@ -388,9 +397,11 @@ class _InsightsScreenState extends State<InsightsScreen> {
             ),
             const SizedBox(height: 12),
             Wrap(spacing: 8, runSpacing: 8, children: [
-              _Band('Cooling · 7–13d', d['cooling'] as int, VeloSalesTheme.gold),
-              _Band('Cold · 14–29d', d['cold'] as int, const Color(0xFFEA8A2E)),
-              _Band('Lost · 30d+', d['lost'] as int, VeloSalesTheme.red),
+              _Band('Cooling · 7–13d', d['cooling'] as int,
+                  VeloSalesTheme.goldColor(context)),
+              _Band('Cold · 14–29d', d['cold'] as int,
+                  const Color(0xFFEA8A2E)),
+              _Band('Lost · 30d+', d['lost'] as int, scheme.error),
             ]),
             const SizedBox(height: 14),
             if ((d['quiet'] as List).isEmpty)
@@ -464,19 +475,20 @@ class _Kpi extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final color = tone == 'good'
-        ? VeloSalesTheme.greenDark
+        ? VeloSalesTheme.successColor(context)
         : tone == 'warn'
-            ? VeloSalesTheme.gold
+            ? VeloSalesTheme.goldColor(context)
             : scheme.onSurface;
     return SoftPanel(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label.toUpperCase(),
+        // Sentence case, like every other label in the app. The all-caps
+        // eyebrow read as a different, older product next to Catalog/Billing.
+        Text(label,
             style: TextStyle(
-                fontSize: 9.5,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.8,
-                color: scheme.onSurface.withValues(alpha: 0.45))),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                color: scheme.onSurface.withValues(alpha: 0.62))),
         const SizedBox(height: 4),
         Text(value,
             style: TextStyle(
@@ -542,9 +554,9 @@ class _QuietRow extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final days = row['days'] as int;
     final pillColor = days >= 30
-        ? VeloSalesTheme.red
+        ? scheme.error
         : days >= 14
-            ? VeloSalesTheme.gold
+            ? VeloSalesTheme.goldColor(context)
             : scheme.primary;
     final msg = '${row['last_message'] ?? '—'}';
     return Row(children: [
@@ -695,12 +707,12 @@ class _Donut extends StatelessWidget {
                     fontSize: 23,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.8)),
-            Text('BY AI',
+            Text('by AI',
                 style: TextStyle(
-                    fontSize: 8.5,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.8,
-                    color: scheme.onSurface.withValues(alpha: 0.45))),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.1,
+                    color: scheme.onSurface.withValues(alpha: 0.5))),
           ]),
         ]),
       ),
@@ -730,7 +742,10 @@ class _LinePainter extends CustomPainter {
     if (values.isEmpty) return;
     const bottom = 18.0;
     const left = 4.0;
-    final w = size.width - left;
+    // Right padding keeps the "today" halo inside the panel instead of
+    // slicing it in half at the edge.
+    const right = 9.0;
+    final w = size.width - left - right;
     final h = size.height - bottom;
     final maxV = math.max(1, _maxInt(values));
     final step = w / math.max(1, values.length - 1);

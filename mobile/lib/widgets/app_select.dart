@@ -139,7 +139,7 @@ class AppSelect extends StatelessWidget {
                       fontWeight: sel == null ? FontWeight.w400 : FontWeight.w600,
                       color: enabled
                           ? (sel == null
-                              ? VeloSalesTheme.purpleDark.withValues(alpha: 0.55)
+                              ? theme.colorScheme.onSurface.withValues(alpha: 0.45)
                               : theme.colorScheme.onSurface)
                           : theme.colorScheme.onSurface.withValues(alpha: 0.45),
                     ),

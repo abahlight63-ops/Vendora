@@ -149,16 +149,15 @@ class _BillingScreenState extends State<BillingScreen> {
 
     final pro = tierOf('pro');
     final plus = tierOf('plus');
-    final planName = bill['tier'] == 'plus'
-        ? 'Pro Plus'
-        : bill['tier'] == 'pro'
-            ? 'Pro'
-            : 'Free';
-    final allowance = bill['tier'] == 'plus'
-        ? 'Unlimited'
-        : bill['tier'] == 'pro'
-            ? '500 per day'
-            : '50 per day';
+    final isPro = '${bill['tier'] ?? 'free'}' == 'pro';
+    final purchased = '${bill['plan_tier'] ?? 'pro'}';
+    final planName =
+        !isPro ? 'Free' : (purchased == 'plus' ? 'Pro Plus' : 'Pro');
+    final allowance = !isPro
+        ? '50 per day'
+        : purchased == 'plus'
+            ? 'Unlimited'
+            : '500 per day';
     final renewal = status == 'active'
         ? _date(bill['expires'])
         : status == 'trialing'
@@ -180,8 +179,31 @@ class _BillingScreenState extends State<BillingScreen> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 28),
         children: [
+          // ── page head ──────────────────────────────────────────────
+          Text(
+            'Billing',
+            style: TextStyle(
+              fontSize: 26,
+              height: 1.1,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.8,
+              color: scheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            'Your plan, what it includes, and every receipt. Checkout opens '
+            'in your browser.',
+            style: TextStyle(
+              fontSize: 12.5,
+              height: 1.45,
+              fontWeight: FontWeight.w500,
+              color: scheme.onSurface.withValues(alpha: 0.58),
+            ),
+          ),
+          const SizedBox(height: 18),
           // ── where you are + what it costs ───────────────────────────
           SoftPanel(
             padding: const EdgeInsets.all(16),
@@ -189,12 +211,11 @@ class _BillingScreenState extends State<BillingScreen> {
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('CURRENT PLAN'.toUpperCase(),
+                    Text('Current plan',
                         style: TextStyle(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1,
-                            color: scheme.onSurface.withValues(alpha: 0.45))),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: scheme.onSurface.withValues(alpha: 0.5))),
                     const SizedBox(height: 4),
                     Text(planName,
                         style: const TextStyle(
@@ -221,7 +242,7 @@ class _BillingScreenState extends State<BillingScreen> {
                 Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                   _StatusPill(status: status),
                   const SizedBox(height: 6),
-                  Text(cur == 'USD' ? 'USD \$' : 'NGN ₦',
+                  Text(cur == 'USD' ? 'Prices in \$' : 'Prices in ₦',
                       style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w700,
@@ -261,13 +282,12 @@ class _BillingScreenState extends State<BillingScreen> {
           SoftPanel(
             padding: const EdgeInsets.all(16),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('THIS PLAN, IN NUMBERS',
+              Text('This plan, in numbers',
                   style: TextStyle(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1,
-                      color: scheme.onSurface.withValues(alpha: 0.45))),
-              const SizedBox(height: 4),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurface.withValues(alpha: 0.5))),
+              const SizedBox(height: 6),
               _NumRow('Bot replies', allowance),
               _NumRow('Billing cycle',
                   status == 'trialing'
@@ -320,7 +340,7 @@ class _BillingScreenState extends State<BillingScreen> {
               'Instant owner alerts',
               '50 bot replies per day',
             ],
-            badge: 'FREE FOREVER',
+            badge: 'Free forever',
             onTap: null,
           ),
           _TierCard(
@@ -342,7 +362,7 @@ class _BillingScreenState extends State<BillingScreen> {
                 : null,
             feats: [..._proFeats.sublist(0, 4), ..._plusExtras, ..._proFeats.sublist(4)],
             hot: true,
-            badge: 'MOST POWER',
+            badge: 'Most powerful',
             onTap: _checkout,
           ),
           const SizedBox(height: 20),
@@ -484,17 +504,27 @@ class _StatusPill extends StatelessWidget {
     final active = status == 'active';
     final trialing = status == 'trialing';
     final color = active
-        ? VeloSalesTheme.greenDark
+        ? VeloSalesTheme.successColor(context)
         : trialing
-            ? VeloSalesTheme.gold
+            ? VeloSalesTheme.goldColor(context)
             : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55);
+    final label = switch (status) {
+      'active' => 'Active',
+      'trialing' => 'Trialing',
+      'pending' => 'Pending',
+      'expired' => 'Expired',
+      'free' => 'Free',
+      _ => 'Free',
+    };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Text(status, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: color)),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 10.5, fontWeight: FontWeight.w800, color: color)),
     );
   }
 }
@@ -575,9 +605,9 @@ class _TierCard extends StatelessWidget {
                 ),
                 child: Text(badge!,
                     style: const TextStyle(
-                        fontSize: 9.5,
+                        fontSize: 10,
                         fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
+                        letterSpacing: 0.1,
                         color: Colors.white)),
               ),
               const SizedBox(height: 8),
@@ -588,11 +618,27 @@ class _TierCard extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.3)),
             const SizedBox(height: 2),
-            Text('$amount/$period',
-                style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.7)),
+            Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: amount,
+                    style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.7),
+                  ),
+                  TextSpan(
+                    text: ' / $period',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: scheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             if (save != null) ...[
               const SizedBox(height: 3),
               Text(save!,
@@ -647,10 +693,10 @@ class _HistoryRow extends StatelessWidget {
     final ok = st == 'paid' || st == 'successful' || st == 'success';
     final pending = st == 'pending';
     final color = ok
-        ? VeloSalesTheme.greenDark
+        ? VeloSalesTheme.successColor(context)
         : pending
-            ? VeloSalesTheme.gold
-            : VeloSalesTheme.red;
+            ? VeloSalesTheme.goldColor(context)
+            : Theme.of(context).colorScheme.error;
     final when = row['date'] ?? row['created_at'] ?? row['paid_at'];
     final d = DateTime.tryParse('$when');
     const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

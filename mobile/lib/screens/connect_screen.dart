@@ -501,101 +501,106 @@ class _ConnectScreenState extends State<ConnectScreen> {
     }
     return RefreshIndicator(
       onRefresh: () => _load(silent: true), // RefreshIndicator spins itself (no skeleton flash!)
-      child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 28), children: [
-        // The sentence that explains the page before the controls start. Every
-        // other line here assumes the reader knows why they are here.
+      child: ListView(padding: const EdgeInsets.fromLTRB(16, 6, 16, 28), children: [
+        // ── page head ──────────────────────────────────────────────
+        Text(
+          'Connect',
+          style: TextStyle(
+            fontSize: 26,
+            height: 1.1,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.8,
+            color: scheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 5),
         Text(
           'Plug in your channels once — the AI answers from then on. '
           '${_waLive || _tgOn ? 'You can switch brains or run a test any time.' : 'Pick one road below and you are two minutes from live.'}',
           style: TextStyle(
-              fontSize: 13.5,
-              height: 1.5,
-              color: scheme.onSurface.withValues(alpha: 0.62)),
+              fontSize: 12.5,
+              height: 1.45,
+              fontWeight: FontWeight.w500,
+              color: scheme.onSurface.withValues(alpha: 0.58)),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 18),
         // Status board.
-        GlassCard(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Expanded(
-                  child: _ChannelPill(
-                    on: _waLive,
-                    label: 'WhatsApp',
-                    sub: _waLive ? 'LIVE' : 'OFF',
-                  ),
+        SoftPanel(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(
+                child: _ChannelPill(
+                  on: _waLive,
+                  label: 'WhatsApp',
+                  sub: _waLive ? 'Live' : 'Off',
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _ChannelPill(
-                    on: _tgOn,
-                    label: 'Telegram',
-                    sub: _tgOn ? 'LIVE' : 'OFF',
-                  ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _ChannelPill(
+                  on: _tgOn,
+                  label: 'Telegram',
+                  sub: _tgOn ? 'Live' : 'Off',
                 ),
-              ]),
-              if ('${_wa['number'] ?? ''}'.isNotEmpty ||
-                  _wa['metaConnected'] == true) ...[
-                const SizedBox(height: 12),
-                Text(
-                  _wa['metaConnected'] == true
-                      ? 'Shop number ${_wa['number'] ?? ''} · linked through Meta — no credentials needed from you.'
-                      : 'Shop number ${_wa['number']}',
-                  style: TextStyle(
-                      fontSize: 12,
-                      height: 1.45,
-                      color: scheme.onSurface.withValues(alpha: 0.6)),
-                ),
-              ],
+              ),
             ]),
-          ),
+            if ('${_wa['number'] ?? ''}'.isNotEmpty ||
+                _wa['metaConnected'] == true) ...[
+              const SizedBox(height: 12),
+              Text(
+                _wa['metaConnected'] == true
+                    ? 'Shop number ${_wa['number'] ?? ''} · linked through Meta — no credentials needed from you.'
+                    : 'Shop number ${_wa['number']}',
+                style: TextStyle(
+                    fontSize: 12,
+                    height: 1.45,
+                    color: scheme.onSurface.withValues(alpha: 0.6)),
+              ),
+            ],
+          ]),
         ),
         const SizedBox(height: 12),
         // Verify row: token alive? webhook registered? Exact fix named (web parity!).
-        GlassCard(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Connection health',
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 4),
-                  Text(
-                    'A saved token is not proof Telegram and Meta can still reach us. One tap checks the real thing.',
+        SoftPanel(
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Connection health',
                     style: TextStyle(
-                        fontSize: 12.5,
-                        height: 1.45,
-                        color: scheme.onSurface.withValues(alpha: 0.6)),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(spacing: 8, runSpacing: 8, children: [
-                    OutlinedButton(
-                        onPressed: _busy ? null : _waVerify,
-                        child: const Text('Verify WhatsApp',
-                            style: TextStyle(fontSize: 13))),
-                    OutlinedButton(
-                        onPressed: _busy ? null : _tgVerify,
-                        child: const Text('Verify Telegram',
-                            style: TextStyle(fontSize: 13))),
-                    if (_tgNeedsRepair)
-                      FilledButton(
-                          onPressed: _busy ? null : _tgRepair,
-                          child: Text(_busy ? 'Repairing…' : 'Repair Telegram hook',
-                              style: const TextStyle(fontSize: 13))),
-                  ]),
-                  if ((_waHealth ?? '').isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    _HealthLine(label: 'WhatsApp', text: _waHealth!),
-                  ],
-                  if ((_tgHealth ?? '').isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    _HealthLine(label: 'Telegram', text: _tgHealth!),
-                  ],
+                        fontSize: 16.5, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
+                const SizedBox(height: 4),
+                Text(
+                  'A saved token is not proof Telegram and Meta can still reach us. One tap checks the real thing.',
+                  style: TextStyle(
+                      fontSize: 12.5,
+                      height: 1.45,
+                      color: scheme.onSurface.withValues(alpha: 0.6)),
+                ),
+                const SizedBox(height: 10),
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  OutlinedButton(
+                      onPressed: _busy ? null : _waVerify,
+                      child: const Text('Verify WhatsApp',
+                          style: TextStyle(fontSize: 13))),
+                  OutlinedButton(
+                      onPressed: _busy ? null : _tgVerify,
+                      child: const Text('Verify Telegram',
+                          style: TextStyle(fontSize: 13))),
+                  if (_tgNeedsRepair)
+                    FilledButton(
+                        onPressed: _busy ? null : _tgRepair,
+                        child: Text(_busy ? 'Repairing…' : 'Repair Telegram hook',
+                            style: const TextStyle(fontSize: 13))),
                 ]),
-          ),
+                if ((_waHealth ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  _HealthLine(label: 'WhatsApp', text: _waHealth!),
+                ],
+                if ((_tgHealth ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  _HealthLine(label: 'Telegram', text: _tgHealth!),
+                ],
+              ]),
         ),
         const SizedBox(height: 12),
         // Road picker: two big cards, not two chips. The road IS the decision
@@ -606,7 +611,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
               icon: Icons.chat_bubble_outline_rounded,
               title: 'Meta',
               sub: 'Official WhatsApp',
-              tag: 'FREE',
+              tag: 'Free',
               on: _road == 'meta',
               onTap: () => setState(() {
                 _road = 'meta';
@@ -620,7 +625,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
               icon: Icons.send_outlined,
               title: 'Telegram',
               sub: 'BotFather bot',
-              tag: 'FREE · 1 MIN',
+              tag: 'Free · 1 min',
               on: _road == 'telegram',
               onTap: () => setState(() {
                 _road = 'telegram';
@@ -630,60 +635,53 @@ class _ConnectScreenState extends State<ConnectScreen> {
           ),
         ]),
         const SizedBox(height: 12),
-        GlassCard(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (_road == 'meta') _metaFlow(webhook),
-                  if (_road == 'telegram') _telegramFlow(),
-                ]),
-          ),
-        ),
-        const SizedBox(height: 12),
+        SoftPanel(
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_road == 'meta') _metaFlow(webhook),
+                if (_road == 'telegram') _telegramFlow(),
+              ]),
+        ),        const SizedBox(height: 12),
         // Brain picker: one tap to change, and the deep control lives in AI
         // settings — the same sentence the web Connect card uses.
-        GlassCard(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Which AI answers WhatsApp?',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Fast, Normal or Smart — the same choice you make in AI settings. Pick it here for speed; open AI settings for the full picture (voice, greeting, discounts).',
+        SoftPanel(
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Which AI answers WhatsApp?',
                     style: TextStyle(
-                        fontSize: 12.5,
-                        height: 1.45,
-                        color: scheme.onSurface.withValues(alpha: 0.6)),
+                        fontSize: 16.5, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
+                const SizedBox(height: 4),
+                Text(
+                  'Fast, Normal or Smart — the same choice you make in AI settings. Pick it here for speed; open AI settings for the full picture (voice, greeting, discounts).',
+                  style: TextStyle(
+                      fontSize: 12.5,
+                      height: 1.45,
+                      color: scheme.onSurface.withValues(alpha: 0.6)),
+                ),
+                const SizedBox(height: 10),
+                AppSelect(
+                  value: brainValue,
+                  placeholder: 'Pick a speed',
+                  label: 'WhatsApp brain',
+                  sheetTitle: 'Which AI answers WhatsApp?',
+                  options: tierOptions,
+                  onChanged: (v) => _saveBrain(v),
+                ),
+                const SizedBox(height: 6),
+                TextButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const AiSettingsScreen()),
                   ),
-                  const SizedBox(height: 10),
-                  AppSelect(
-                    value: brainValue,
-                    placeholder: 'Pick a speed',
-                    label: 'WhatsApp brain',
-                    sheetTitle: 'Which AI answers WhatsApp?',
-                    options: tierOptions,
-                    onChanged: (v) => _saveBrain(v),
-                  ),
-                  const SizedBox(height: 6),
-                  TextButton.icon(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                          builder: (_) => const AiSettingsScreen()),
-                    ),
-                    style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 6)),
-                    icon: const Icon(Icons.tune_rounded, size: 16),
-                    label: const Text('Open AI settings',
-                        style: TextStyle(fontSize: 12.5)),
-                  ),
-                ]),
-          ),
+                  style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 6)),
+                  icon: const Icon(Icons.tune_rounded, size: 16),
+                  label: const Text('Open AI settings',
+                      style: TextStyle(fontSize: 12.5)),
+                ),
+              ]),
         ),
       ]),
     );
@@ -870,12 +868,11 @@ class _ConnectScreenState extends State<ConnectScreen> {
         child: Row(children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(label.toUpperCase(),
+              Text(label,
                   style: TextStyle(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.8,
-                      color: scheme.onSurface.withValues(alpha: 0.45))),
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurface.withValues(alpha: 0.55))),
               const SizedBox(height: 2),
               Text(value,
                   maxLines: 2,
@@ -905,19 +902,14 @@ class _ChannelPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final color =
-        on ? VeloSalesTheme.greenDark : scheme.onSurface.withValues(alpha: 0.5);
+    final ok = VeloSalesTheme.successColor(context);
+    final color = on ? ok : scheme.onSurface.withValues(alpha: 0.5);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: on
-            ? VeloSalesTheme.green.withValues(alpha: 0.10)
-            : scheme.surfaceContainerLowest,
+        color: on ? ok.withValues(alpha: 0.10) : scheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-            color: on
-                ? VeloSalesTheme.green.withValues(alpha: 0.35)
-                : scheme.outline),
+        border: Border.all(color: on ? ok.withValues(alpha: 0.35) : scheme.outline),
       ),
       child: Row(children: [
         Container(

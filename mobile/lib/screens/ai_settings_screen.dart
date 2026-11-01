@@ -302,15 +302,16 @@ class _AiSettingsScreenState extends State<AiSettingsScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: VeloSalesTheme.green.withValues(alpha: 0.12),
+                  color: VeloSalesTheme.successColor(context)
+                      .withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
                   '${_tier[0].toUpperCase()}${_tier.substring(1)} live',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w800,
-                      color: VeloSalesTheme.greenDark),
+                      color: VeloSalesTheme.successColor(context)),
                 ),
               ),
             ),
@@ -324,28 +325,36 @@ class _AiSettingsScreenState extends State<AiSettingsScreen> {
               : RefreshIndicator(onRefresh: _load, child: _body(scheme)),
       bottomNavigationBar: (_loading || _err != null)
           ? null
-          : SafeArea(
-              minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: Row(children: [
-                Expanded(
-                  child: Text(
-                    _dirty ? 'Unsaved changes' : 'Everything saved',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: _dirty ? VeloSalesTheme.gold : scheme.onSurface.withValues(alpha: 0.6),
+          : Container(
+              decoration: BoxDecoration(
+                color: scheme.surface,
+                border: Border(top: BorderSide(color: scheme.outline)),
+              ),
+              child: SafeArea(
+                minimum: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                child: Row(children: [
+                  Expanded(
+                    child: Text(
+                      _dirty ? 'Unsaved changes' : 'Everything saved',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: _dirty
+                            ? VeloSalesTheme.goldColor(context)
+                            : scheme.onSurface.withValues(alpha: 0.6),
+                      ),
                     ),
                   ),
-                ),
-                SizedBox(
-                  width: 170,
-                  child: GradientPill(
-                    label: _saving ? 'Saving…' : 'Save settings',
-                    height: 48,
-                    onTap: _saving || !_dirty ? null : _save,
+                  SizedBox(
+                    width: 170,
+                    child: GradientPill(
+                      label: _saving ? 'Saving…' : 'Save settings',
+                      height: 48,
+                      onTap: _saving || !_dirty ? null : _save,
+                    ),
                   ),
-                ),
-              ]),
+                ]),
+              ),
             ),
     );
   }
@@ -358,7 +367,7 @@ class _AiSettingsScreenState extends State<AiSettingsScreen> {
     final discounted = (sample * (1 - pct / 100)).round();
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
       children: [
         FadeSlideIn(
           child: Text(

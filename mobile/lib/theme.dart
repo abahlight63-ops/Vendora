@@ -152,6 +152,10 @@ class VeloSalesTheme {
       onSurface: ink,
       surfaceContainerLowest: bg,
       outline: line,
+      // ColorScheme.light falls back outlineVariant to the deprecated
+      // onBackground (pure black) when it is not set — which drew black
+      // hairlines on Settings' tiles. Always state it.
+      outlineVariant: line,
       error: red,
     );
     return _build(scheme, bg, card, line, muted, ink, Brightness.light);
@@ -172,6 +176,7 @@ class VeloSalesTheme {
       onSurface: ink,
       surfaceContainerLowest: bg,
       outline: line,
+      outlineVariant: line,
       error: Color(0xFFF87171),
     );
     return _build(scheme, bg, card, line, muted, ink, Brightness.dark);

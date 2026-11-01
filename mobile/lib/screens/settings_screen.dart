@@ -277,11 +277,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 10),
           child: Text(
-            title.toUpperCase(),
+            title,
             style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.9,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
               color: Theme.of(context)
                   .colorScheme
                   .onSurface

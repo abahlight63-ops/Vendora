@@ -582,14 +582,30 @@ class _AiScreenState extends State<AiScreen> {
             icon: const Icon(Icons.add_comment_outlined, size: 19),
             onPressed: _busy ? null : _newChat,
           ),
-        IconButton(
-          tooltip: 'Test your bot as a customer',
-          visualDensity: VisualDensity.compact,
-          icon: const Icon(Icons.smart_toy_outlined, size: 20),
-          onPressed: () => setState(() {
+        Pressable(
+          onTap: () => setState(() {
             _testBot = true;
             _msgs.clear();
           }),
+          radius: BorderRadius.circular(999),
+          child: Container(
+            height: 34,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.smart_toy_outlined,
+                  size: 16, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 6),
+              const Text(
+                'Test bot',
+                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+              ),
+            ]),
+          ),
         ),
       ]),
     );
@@ -632,12 +648,11 @@ class _AiScreenState extends State<AiScreen> {
               child: Padding(
                 padding: const EdgeInsets.only(left: 4, bottom: 10),
                 child: Text(
-                  'SUGGESTED',
+                  'Suggested',
                   style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.9,
-                    color: scheme.onSurface.withValues(alpha: 0.42),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
               ),
@@ -851,15 +866,10 @@ class _BrainSwitch extends StatelessWidget {
     required this.onLocked,
   });
 
-  /// The track behind the three words. It has to sit BELOW the active pill in
-  /// both themes: light darkens the page colour slightly, but dark already has
-  /// the darkest page in the palette, so the track IS the page there.
-  Color _track(BuildContext c) {
-    final s = Theme.of(c).colorScheme;
-    return Theme.of(c).brightness == Brightness.dark
-        ? s.surfaceContainerLowest
-        : Color.lerp(s.surfaceContainerLowest, s.onSurface, 0.055)!;
-  }
+  /// The track behind the three words. A flat card surface with a hairline
+  /// border — it reads as one control in both themes, instead of melting into
+  /// the page colour (which is what the old lerped fill did in light mode).
+  Color _track(BuildContext c) => Theme.of(c).colorScheme.surface;
 
   @override
   Widget build(BuildContext context) {
@@ -888,17 +898,13 @@ class _BrainSwitch extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 height: 32,
                 decoration: BoxDecoration(
-                  color: on ? scheme.surface : Colors.transparent,
+                  color: on ? scheme.primaryContainer : Colors.transparent,
                   borderRadius: BorderRadius.circular(999),
-                  boxShadow: on
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 6,
-                            offset: const Offset(0, 1),
-                          ),
-                        ]
-                      : null,
+                  border: Border.all(
+                    color: on
+                        ? scheme.primary.withValues(alpha: 0.26)
+                        : Colors.transparent,
+                  ),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Text(
@@ -908,13 +914,15 @@ class _BrainSwitch extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                       color: on
                           ? scheme.primary
-                          : scheme.onSurface.withValues(alpha: locked ? 0.4 : 0.6),
+                          : scheme.onSurface.withValues(alpha: locked ? 0.4 : 0.66),
                     ),
                   ),
                   if (locked) ...[
                     const SizedBox(width: 4),
                     Icon(Icons.lock_outline,
-                        size: 11, color: VeloSalesTheme.gold.withValues(alpha: 0.9)),
+                        size: 11,
+                        color: VeloSalesTheme.goldColor(context)
+                            .withValues(alpha: 0.9)),
                   ],
                 ]),
               ),
@@ -937,11 +945,13 @@ class _SuggestCard extends StatelessWidget {
     late final Color chip;
     late final Color ink;
     if (icon == Icons.sell_outlined) {
-      chip = VeloSalesTheme.gold.withValues(alpha: 0.13); // money → amber
-      ink = VeloSalesTheme.gold;
+      chip = VeloSalesTheme.goldColor(context).withValues(alpha: 0.13); // money → amber
+      ink = VeloSalesTheme.goldColor(context);
     } else if (icon == Icons.lightbulb_outline_rounded) {
       chip = VeloSalesTheme.tintSky(context); // ideas → sky
-      ink = const Color(0xFF0284C7);
+      ink = Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFF7DD3FC)
+          : const Color(0xFF0284C7);
     } else {
       chip = VeloSalesTheme.tintLavender(context); // writing & replies → purple
       ink = scheme.primary;

@@ -8,7 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api.dart';
-import '../glass.dart';
+import '../widgets/brand_ui.dart';
 import '../motion.dart';
 import '../theme.dart';
 
@@ -136,7 +136,9 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
           const SizedBox(width: 10),
           Expanded(
             child: _stat('Pro earned', '${s['daysEarned'] ?? 0}d', 'Banked on your account',
-                tone: VeloSalesTheme.greenDark),
+                tone: (num.tryParse('${s['daysEarned']}') ?? 0) > 0
+                    ? VeloSalesTheme.successColor(context)
+                    : null),
           ),
         ]),
         const SizedBox(height: 18),
@@ -165,8 +167,7 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
         if (history.isEmpty)
           _empty('Nothing yet', 'Share your code above — every reward lands here the moment it is credited.')
         else
-          GlassCard(
-            radius: 16,
+          SoftPanel(
             child: Column(children: [
               for (var i = 0; i < history.length; i++) ...[
                 _historyRow((history[i] as Map).cast<String, dynamic>()),
@@ -181,8 +182,7 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
         if (leaders.isEmpty)
           _empty('No paying referrals yet', 'Be the first name on this board.')
         else
-          GlassCard(
-            radius: 16,
+          SoftPanel(
             child: Column(children: [
               for (var i = 0; i < leaders.length; i++) ...[
                 _leaderRow(i, (leaders[i] as Map).cast<String, dynamic>()),
@@ -214,11 +214,11 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
         borderRadius: BorderRadius.circular(22),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('YOUR INVITE CODE',
+        Text('Your invite code',
             style: TextStyle(
                 fontSize: 10.5,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.2,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
                 color: VeloSalesTheme.railMuted)),
         const SizedBox(height: 6),
         Row(children: [
@@ -284,11 +284,11 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
             border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('AIRTIME EARNED',
+            const Text('Airtime earned',
                 style: TextStyle(
                     fontSize: 10.5,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.2,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
                     color: VeloSalesTheme.railMuted)),
             const SizedBox(height: 4),
             Row(children: [
@@ -304,11 +304,10 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
                   decoration: BoxDecoration(
                       color: const Color(0xFFFCD34D),
                       borderRadius: BorderRadius.circular(999)),
-                  child: const Text('ON THE WAY',
+                  child: const Text('On the way',
                       style: TextStyle(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w800,
-                          letterSpacing: 0.6,
                           color: Color(0xFF6B4D16))),
                 ),
             ]),
@@ -334,18 +333,14 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
 
   Widget _stat(String label, String value, String sub, {Color? tone}) {
     final theme = Theme.of(context);
-    return GlassCard(
-      radius: 16,
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label.toUpperCase(),
-              style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.9,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.55))),
+    return SoftPanel(
+      padding: const EdgeInsets.all(14),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label,
+            style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.62))),
           const SizedBox(height: 6),
           Text(value,
               style: TextStyle(
@@ -359,44 +354,45 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
                   fontSize: 11.5,
                   height: 1.35,
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.55))),
-        ]),
-      ),
+      ]),
     );
   }
 
   Widget _reward(IconData icon, String title, String body, {bool gold = false}) {
     final theme = Theme.of(context);
-    return GlassCard(
-      radius: 16,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: gold ? const Color(0xFFFFF7E6) : VeloSalesTheme.purpleSoft,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon,
-                size: 20,
-                color: gold ? VeloSalesTheme.gold : VeloSalesTheme.purpleDark),
+    final dark = theme.brightness == Brightness.dark;
+    return SoftPanel(
+      padding: const EdgeInsets.all(14),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: gold
+                ? VeloSalesTheme.goldColor(context).withValues(alpha: 0.14)
+                : theme.colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(12),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title,
-                  style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 3),
-              Text(body,
-                  style: TextStyle(
-                      fontSize: 12.5,
-                      height: 1.45,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
-            ]),
-          ),
-        ]),
-      ),
+          child: Icon(icon,
+              size: 20,
+              color: gold
+                  ? VeloSalesTheme.goldColor(context)
+                  : (dark ? const Color(0xFFBDB3FF) : VeloSalesTheme.purpleDark)),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title,
+                style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 3),
+            Text(body,
+                style: TextStyle(
+                    fontSize: 12.5,
+                    height: 1.45,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+          ]),
+        ),
+      ]),
     );
   }
 
@@ -426,7 +422,9 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
                   ? Icons.emoji_events_outlined
                   : Icons.card_giftcard_rounded,
           size: 19,
-          color: pending ? VeloSalesTheme.gold : VeloSalesTheme.purpleDark,
+          color: pending
+              ? VeloSalesTheme.goldColor(context)
+              : theme.colorScheme.primary,
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -443,14 +441,18 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
-            color: pending ? const Color(0xFFFFF7E6) : const Color(0xFFD9F7EA),
+            color: pending
+                ? VeloSalesTheme.goldColor(context).withValues(alpha: 0.14)
+                : VeloSalesTheme.successColor(context).withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(999),
           ),
           child: Text('${h['status'] ?? 'credited'}',
               style: TextStyle(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w800,
-                  color: pending ? VeloSalesTheme.gold : VeloSalesTheme.greenDark)),
+                  color: pending
+                      ? VeloSalesTheme.goldColor(context)
+                      : VeloSalesTheme.successColor(context))),
         ),
       ]),
     );
@@ -493,21 +495,18 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
 
   Widget _empty(String title, String body) {
     final theme = Theme.of(context);
-    return GlassCard(
-      radius: 16,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title,
-              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 3),
-          Text(body,
-              style: TextStyle(
-                  fontSize: 12.5,
-                  height: 1.45,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.55))),
-        ]),
-      ),
+    return SoftPanel(
+      padding: const EdgeInsets.all(16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title,
+            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 3),
+        Text(body,
+            style: TextStyle(
+                fontSize: 12.5,
+                height: 1.45,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.55))),
+      ]),
     );
   }
 }

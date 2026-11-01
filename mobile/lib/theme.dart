@@ -36,44 +36,75 @@ class VeloSalesTheme {
   static Color coralText(BuildContext c) =>
       Theme.of(c).brightness == Brightness.dark ? coralBright : coralInk;
 
-  /// The soft glow at the top of the app. Two layers, so it is built as widgets.
+  /// The soft colour field behind the whole app. Layered, so it is built as widgets.
   static Widget glow(BuildContext c, {required Widget child}) {
     final dark = Theme.of(c).brightness == Brightness.dark;
-    if (dark) {
-      return DecoratedBox(
-        decoration: const BoxDecoration(
-          color: Color(0xFF0B0630),
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF2A1C7A), Color(0xFF0B0630)],
-            stops: [0.0, 0.42],
+    Widget blob(Alignment at, double r, Color color, Widget inner) => DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: at,
+              radius: r,
+              colors: [color, color.withValues(alpha: 0)],
+            ),
+          ),
+          child: inner,
+        );
+    return ColoredBox(
+      color: dark ? const Color(0xFF0B0630) : const Color(0xFFFFF8F6),
+      child: blob(
+        const Alignment(1.0, -1.0),
+        1.0,
+        dark ? const Color(0x47FF8A6B) : const Color(0xFFFFB7A1),
+        blob(
+          const Alignment(-1.0, -1.0),
+          1.1,
+          dark ? const Color(0xB35B3FC7) : const Color(0xFFCFC4FF),
+          blob(
+            const Alignment(-1.0, 0.85),
+            1.0,
+            dark ? const Color(0x575B3FC7) : const Color(0xFFD9D1FF),
+            child,
           ),
         ),
-        child: child,
-      );
-    }
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        gradient: RadialGradient(
-          center: Alignment(1.0, -1.04),
-          radius: 1.05,
-          colors: [Color(0xFFFFD9CC), Color(0x00FFD9CC)],
-        ),
-      ),
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment(-1.0, -1.04),
-            radius: 1.0,
-            colors: [Color(0xFFE6E0FF), Color(0x00E6E0FF)],
-          ),
-        ),
-        child: child,
       ),
     );
   }
+
+  /// Frosted glass, without live blur: blur is heavy on cheap phones, and this
+  /// see-through fill, bright edge and soft lift read the same in the hand.
+  static BoxDecoration glass(BuildContext c, {double radius = 22, double opacity = 0.66}) {
+    final dark = Theme.of(c).brightness == Brightness.dark;
+    return BoxDecoration(
+      color: dark
+          ? const Color(0xFF261D6E).withValues(alpha: 0.72)
+          : Colors.white.withValues(alpha: opacity),
+      borderRadius: BorderRadius.circular(radius),
+      border: Border.all(
+        color: dark
+            ? Colors.white.withValues(alpha: 0.13)
+            : Colors.white.withValues(alpha: 0.85),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: dark
+              ? Colors.black.withValues(alpha: 0.34)
+              : const Color(0xFF593278).withValues(alpha: 0.12),
+          blurRadius: 36,
+          offset: const Offset(0, 16),
+        ),
+      ],
+    );
+  }
+
+  /// Text on glass, a little stronger than ordinary muted text.
+  static Color glassInk(BuildContext c) =>
+      Theme.of(c).brightness == Brightness.dark
+          ? const Color(0xFFC9C2F5)
+          : const Color(0xFF4B4670);
+  static Color goodInk(BuildContext c) =>
+      Theme.of(c).brightness == Brightness.dark
+          ? const Color(0xFF6EE7B7)
+          : const Color(0xFF046C4E);
 
   // ── the rail (drawer chrome) ──
   // The drawer is the phone's sidebar, so it wears the same deep-indigo wash the

@@ -8,7 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'api.dart';
-import 'depth.dart';
 import 'glass.dart';
 import 'theme.dart';
 import 'splash.dart';
@@ -761,20 +760,14 @@ class _Dock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return SafeArea(
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
         child: Container(
-          height: 64,
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
-          decoration: BoxDecoration(
-            color: scheme.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: scheme.outline),
-            boxShadow: softShadow(context, lift: 0.5),
-          ),
+          height: 66,
+          padding: const EdgeInsets.all(6),
+          decoration: VeloSalesTheme.glass(context, radius: 26, opacity: 0.86),
           child: Row(
             children: [
               for (final e in _entries)
@@ -864,7 +857,7 @@ class _DockItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final muted = scheme.onSurface.withValues(alpha: 0.52);
+    final muted = VeloSalesTheme.glassInk(context);
     return Semantics(
       button: true,
       selected: active,
@@ -876,8 +869,8 @@ class _DockItem extends StatelessWidget {
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 2),
           decoration: BoxDecoration(
-            color: active ? scheme.primaryContainer : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
+            color: active ? scheme.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(18),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -885,7 +878,7 @@ class _DockItem extends StatelessWidget {
               Icon(
                 active ? entry.activeIcon : entry.icon,
                 size: 20,
-                color: active ? scheme.primary : muted,
+                color: active ? scheme.onPrimary : muted,
               ),
               const SizedBox(height: 3),
               Text(
@@ -895,8 +888,8 @@ class _DockItem extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 10.5,
                   height: 1,
-                  fontWeight: active ? FontWeight.w700 : FontWeight.w600,
-                  color: active ? scheme.primary : muted,
+                  fontWeight: FontWeight.w700,
+                  color: active ? scheme.onPrimary : muted,
                 ),
               ),
             ],

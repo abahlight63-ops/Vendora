@@ -140,8 +140,15 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
           <nav aria-label="Main">{MAIN.map(([k, label, href]) => (<NavLink key={k} to={href} onClick={() => setMenuOpen(false)}><Icon k={k} /><span>{label}</span></NavLink>))}</nav>
           <button className="nav-more-btn" aria-expanded={showMore} onClick={() => setMoreOpen((v) => !v)}><Icon k="more" /><span>More</span><span className="chev"><Icon k="chev" /></span></button>
           {showMore && <nav aria-label="More">{MORE.map(([k, label, href]) => (<NavLink key={k} to={href} onClick={() => setMenuOpen(false)}><Icon k={k} /><span>{label}</span></NavLink>))}</nav>}
+          {biz?.tier === 'free' && (
+            <div className="nav-upsell">
+              <b>Get more replies</b>
+              <p>Go from 50 to 500 replies a day, with product photos.</p>
+              <NavLink to="/billing" onClick={() => setMenuOpen(false)}>See plans</NavLink>
+            </div>
+          )}
           <div className="foot">
-            <div className="foot-note">AI replies 24/7 so you never miss a sale.<br />© 2026 VeloSales Ai</div>
+            <div className="foot-note">© 2026 VeloSales Ai</div>
             <button className="drawer-signout" onClick={() => { setMenuOpen(false); setConfirmOut(true); }}><Icon k="logout" /><span>Sign out</span></button> {/* mobile-only: the topbar has no room for it on a phone, so the drawer carries it */}
           </div> {/* margin-top:auto in CSS pins this block to the bottom of the drawer */}
         </aside>

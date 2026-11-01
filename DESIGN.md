@@ -111,10 +111,16 @@ Check every text/background pair at 4.5:1 in both themes.
 - Desktop content max width 1160–1200px. Mobile page padding 16px.
 - Touch targets at least 44px.
 
-## Glass rules
-- Glass is retired in the app UI. No `backdrop-filter` on cards, rows, tables,
-  forms, chat bubbles, or numbers. (The old liquid-glass layer is removed.)
-- Auth/landing may use one soft gradient backdrop, nothing more.
+## Glass rules (brought back by the owner, 2026-11)
+- The signed-in app sits on a soft peach and lilac colour field (violet in dark).
+- Home's stat cards, panels, the desktop sidebar and the Ask bar are frosted glass:
+  see-through fill, bright edge, soft lift. Use the `.glass` class (web) and
+  `VeloSalesTheme.glass` (phone).
+- Readable surfaces stay nearly solid, so prices and chats survive sunlight: cards,
+  forms, tables and the inbox use `--glass-solid`, never the see-through fill.
+- Live blur runs only on desktop web. Phones get the same look without blur,
+  because blur is heavy on cheap devices.
+- Text on glass uses `--glass-ink`, which is darker than ordinary muted text.
 
 ## Components
 ### Brand mark
@@ -164,11 +170,13 @@ Check every text/background pair at 4.5:1 in both themes.
   The engine's real name never reaches the UI.
 
 ### Home
-- Greeting in two lines: "Hi {name}," in coral, then "what do you need today?".
-- Four action cards: chats that need you first, then Add a product, Test your bot,
-  Connect a channel. The first card fills coral only when a real chat is waiting.
-- Then the reply meter ("32 of 50"), the Ask Velo bar, Needs your attention, and the
-  checklist or Activity.
+- Status line, then the greeting: "Hi {name}," in coral, then the question.
+- Chats need you comes first, with how long the oldest has waited. It fills coral
+  only when a real chat is waiting.
+- Then replies today with a ring, answered by Velo, the catalog, Ask Velo, Chats this
+  week, Waiting for you, and the channels row. The free plan sees the upgrade card.
+- Customers appear as CustomerFace: their real photo if we have one, otherwise a
+  person-shaped icon. Never initials.
 - Everything shows REAL counts only. No invented analytics.
 
 ### Inbox / Chats
@@ -327,9 +335,9 @@ template writes its own `<html>`, it is a bug — the inbox must look like the a
 
 ## Don'ts (these make it look AI-made)
 - No stacks of identical cards. North-star metric first, details on demand.
-- No decorative gradients (except the signed-out welcome's brand sky and one
-  hero highlight elsewhere).
-- No glass on readable content. No cards inside cards. No gray text on fills.
+- No decorative gradients beyond the colour field, the coral action fill, the violet
+  upgrade card and the signed-out welcome's sky.
+- No see-through glass on lists, tables or forms. No cards inside cards. No gray text on fills.
 - No emoji as icons. Outline icons only, one stroke width.
 - No numbered markers (01 / 02) unless the content is a real sequence.
 - No new colors, radii, fonts, or shadows beyond this file.

@@ -194,7 +194,6 @@ class _DepthCardState extends State<DepthCard>
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
     final radius = BorderRadius.circular(widget.radius);
     final reduce = reducedMotion(context);
@@ -202,9 +201,16 @@ class _DepthCardState extends State<DepthCard>
     final surface = Container(
       padding: widget.padding,
       decoration: BoxDecoration(
-        color: widget.color ?? scheme.surface,
+        // Nearly solid frost: prices and chats must survive sunlight.
+        color: widget.color ??
+            (dark
+                ? const Color(0xFF261D6E).withValues(alpha: 0.78)
+                : Colors.white.withValues(alpha: 0.82)),
         borderRadius: radius,
-        border: widget.border ?? Border.all(color: scheme.outline),
+        border: widget.border ??
+            Border.all(
+              color: Colors.white.withValues(alpha: dark ? 0.13 : 0.85),
+            ),
         boxShadow: widget.shadow
             ? [
                 BoxShadow(

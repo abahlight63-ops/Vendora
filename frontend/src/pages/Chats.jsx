@@ -3,6 +3,7 @@
 // on mobile. Filters: status (All / Needs you / Handled) + channel chips +
 // text search. AI/human takeover toggle per thread. All data from
 // /api/me/conversations (list) + /messages (thread) — no fake content.
+import CustomerFace from '../components/CustomerFace.jsx'; // real photo, or a person-shaped icon
 import { useEffect, useRef, useState } from 'react'; // useState ×8; useEffect = load inbox on mount
 import { api, fmtTime, toast } from '../lib/api.js'; // api() fetches; fmtTime stamps; toast() send errors
 import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures (offline? waking? stale?)
@@ -85,7 +86,6 @@ export default function Chats() {
       <LoadFailed title="Couldn't load inbox" status={failed.status} detail={failed.detail} tries={tries} onRetry={() => { setConvos(null); setTries((t) => t + 1); }} backTo="/dashboard" backLabel="Back to Home" />
     </>
   );
-  const initialOf = (c) => (((c && (c.customer_name || c.customer_number)) || '?').trim()[0] || '?').toUpperCase();
   return ( // 3-panel inbox: list | thread | contact (mobile shows list OR thread)
     <>
       <div className="page-head"><div><h1>Inbox</h1><p>Every chat from your channels, in one place.</p></div></div>
@@ -112,7 +112,7 @@ export default function Chats() {
               : list.length === 0 ? (<div className="empty"><b>Nothing here</b>{needle || filter !== 'all' || chan !== 'all' ? 'No chats match — clear search or try All.' : 'Chats appear once you connect WhatsApp or Telegram.'}</div>)
               : list.map((c) => (
                 <button key={c.id} className={'wx-row' + (thread && thread.id === c.id ? ' sel' : '')} onClick={() => open(c)} aria-current={thread && thread.id === c.id ? 'true' : undefined}>
-                  <span className="wx-ava" aria-hidden="true">{initialOf(c)}{c.needs_human ? <i className="wx-dot" /> : null}</span>
+                  <span className="wx-ava" aria-hidden="true"><CustomerFace photo={c.customer_photo} />{c.needs_human ? <i className="wx-dot" /> : null}</span>
                   <span className="wx-main">
                     <span className="wx-top"><b>{c.customer_name || c.customer_number}</b>{c.needs_human ? <span className="wx-needs">Needs you</span> : <small>{fmtTime(c.updated_at)}</small>}</span>
                     <span className="wx-sub"><span>{(c.last_message || '').slice(0, 60) || '—'}</span></span>
@@ -130,7 +130,7 @@ export default function Chats() {
               <>
                 <div className="wx-thead">
                   <button className="btn ghost sm wx-back" onClick={() => { setThread(null); if (window.innerWidth <= 760) window.scrollTo({ top: 0 }); load(); }} aria-label="Back to list"><Ic n="back" s={14} /></button>
-                  <span className="wx-ava" aria-hidden="true">{initialOf(thread)}</span>
+                  <span className="wx-ava" aria-hidden="true"><CustomerFace photo={thread.customer_photo} /></span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <b style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{thread.customer_name || thread.customer_number}</b>
                     <span className="hint">{thread.customer_number} · {thread.needs_human ? 'needs you' : 'handled by AI'}</span>
@@ -164,7 +164,7 @@ export default function Chats() {
         {thread && (
           <aside className="wx-side" aria-label="Contact details">
             <div style={{ textAlign: 'center', padding: '6px 0 12px' }}>
-              <span className="wx-ava lg" aria-hidden="true">{initialOf(thread)}</span>
+              <span className="wx-ava lg" aria-hidden="true"><CustomerFace photo={thread.customer_photo} /></span>
               <b style={{ display: 'block', marginTop: 8 }}>{thread.customer_name || thread.customer_number}</b>
               <span className="hint">{thread.customer_number}</span>
             </div>

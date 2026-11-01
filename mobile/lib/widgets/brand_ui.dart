@@ -13,6 +13,41 @@ import '../theme.dart';
 ///
 /// A GestureDetector rather than an InkWell because these cards carry their own
 /// tint — Material's ripple paints a grey overlay that muddies a pastel fill.
+/// A customer's picture: their real photo when we have one, and a person-shaped
+/// icon otherwise, or if the photo fails to load. WhatsApp does not give businesses
+/// customer photos, so the icon is the normal case there. Same as the web's
+/// CustomerFace.jsx.
+class CustomerFace extends StatelessWidget {
+  final String? photo;
+  final double size;
+  const CustomerFace({super.key, this.photo, this.size = 44});
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final bg = dark ? const Color(0xFF3A2F8C) : const Color(0xFFFFD9CC);
+    final ink = dark ? const Color(0xFFFFD3C4) : const Color(0xFFA92E0D);
+    final icon = Icon(Icons.person_rounded, size: size * 0.66, color: ink);
+    final url = photo?.trim() ?? '';
+    return Container(
+      width: size,
+      height: size,
+      clipBehavior: Clip.antiAlias,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+      child: url.isEmpty
+          ? icon
+          : Image.network(
+              url,
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => icon,
+            ),
+    );
+  }
+}
+
 class Pressable extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
@@ -284,14 +319,15 @@ class SoftPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
     final panel = Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: scheme.surface,
+        color: dark
+            ? const Color(0xFF261D6E).withValues(alpha: 0.78)
+            : Colors.white.withValues(alpha: 0.82),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.outline),
+        border: Border.all(color: Colors.white.withValues(alpha: dark ? 0.13 : 0.85)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: dark ? 0.28 : 0.045),

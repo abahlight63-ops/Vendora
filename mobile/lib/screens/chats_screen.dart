@@ -28,10 +28,6 @@ SalesChannel _channelOf(Map c) =>
         ? SalesChannel.telegram
         : SalesChannel.whatsapp;
 
-String _initialOf(Map c) {
-  final name = '${c['customer_name'] ?? c['customer_number'] ?? '?'}'.trim();
-  return name.isEmpty ? '?' : name.substring(0, 1).toUpperCase();
-}
 
 class ChatsScreen extends StatefulWidget {
   const ChatsScreen({super.key});
@@ -471,7 +467,7 @@ class _ChatRow extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _Avatar(initial: _initialOf(chat), channel: channel, flagged: needsHuman),
+            _Avatar(photo: chat['customer_photo']?.toString(), channel: channel, flagged: needsHuman),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -545,12 +541,12 @@ class _ChatRow extends StatelessWidget {
 }
 
 class _Avatar extends StatelessWidget {
-  final String initial;
+  final String? photo;
   final SalesChannel channel;
   final bool flagged;
 
   const _Avatar({
-    required this.initial,
+    required this.photo,
     required this.channel,
     required this.flagged,
   });
@@ -564,24 +560,7 @@ class _Avatar extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Container(
-            width: 42,
-            height: 42,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerLowest,
-              shape: BoxShape.circle,
-              border: Border.all(color: scheme.outline),
-            ),
-            child: Text(
-              initial,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: scheme.onSurface,
-              ),
-            ),
-          ),
+          CustomerFace(photo: photo, size: 42),
           if (flagged)
             Positioned(
               top: -1,
@@ -969,7 +948,7 @@ class _ThreadHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          _Avatar(initial: _initialOf(chat), channel: channel, flagged: needsHuman),
+          _Avatar(photo: chat['customer_photo']?.toString(), channel: channel, flagged: needsHuman),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -1275,7 +1254,7 @@ class _ContactSheet extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               _Avatar(
-                  initial: _initialOf(chat),
+                  photo: chat['customer_photo']?.toString(),
                   channel: channel,
                   flagged: needsHuman),
               const SizedBox(height: 10),

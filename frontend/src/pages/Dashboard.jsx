@@ -1,15 +1,16 @@
 // ── frontend/src/pages/Dashboard.jsx ─────────────────────────────
-// WHAT: Home, the screen after login. A greeting, four things to do next (chats
-// that need you comes first and turns coral when it is real), today's reply
-// meter, the way into Chat with Velo, then activity and the checklist. Real
-// shop data only, no invented numbers. The phone's copy is home_screen.dart.
+// WHAT: Home, the screen after login, on frosted glass. The chats that need you
+// come first and turn coral when they are real, then today's replies, Velo's
+// answer rate, the catalog, this week's chats, who is waiting, and the channels.
+// Real shop data only, no invented numbers. The phone's copy is home_screen.dart.
 // DATA: four parallel API calls on mount, crunched into one summary object `s`.
 import { useEffect, useState } from 'react'; // useState = s/bill/guideOff; useEffect = fetch-on-mount
 import { Link } from 'react-router-dom'; // Link = client-side nav (no page reload, unlike <a>)
-import { api, fmtTime, pop } from '../lib/api.js'; // api() fetches; fmtTime formats inbox timestamps; pop() celebrates payment returns
+import { api, pop } from '../lib/api.js'; // api() fetches; pop() celebrates payment returns
 import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures (offline? waking? stale?)
 import LoadFailed from '../components/LoadFailed.jsx'; // branded failed card + Retry (never eternal skeletons!)
 import Ic from '../components/icons.jsx'; // <Ic n="chat"/> icon set
+import CustomerFace from '../components/CustomerFace.jsx'; // real photo, or a person-shaped icon
 
 
 function greeting() { // NOT a component (lowercase, returns a string): time-based hello.
@@ -21,9 +22,30 @@ function greeting() { // NOT a component (lowercase, returns a string): time-bas
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']; // for the activity chart labels
 
+function waitedShort(stamp) { // "12m" / "3h" / "2d" beside a waiting chat
+  const t = new Date(stamp).getTime();
+  if (Number.isNaN(t)) return '';
+  const m = Math.max(1, Math.floor((Date.now() - t) / 60000));
+  if (m < 60) return m + 'm';
+  const h = Math.floor(m / 60);
+  return h < 24 ? h + 'h' : Math.floor(h / 24) + 'd';
+}
+
+function waited(stamp) { // "12 minutes" / "3 hours" / "2 days": how long a chat has been waiting
+  const t = new Date(stamp).getTime();
+  if (Number.isNaN(t)) return '';
+  const m = Math.max(1, Math.floor((Date.now() - t) / 60000));
+  if (m < 60) return m + (m === 1 ? ' minute' : ' minutes');
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + (h === 1 ? ' hour' : ' hours');
+  const d = Math.floor(h / 24);
+  return d + (d === 1 ? ' day' : ' days');
+}
+
 export default function Dashboard({ biz }) { // biz = business object from App (useMe) — name, hours, owner_number…
   const [s, setS] = useState(null); // s = summary {convos, pct, needs, products, flagged[], latest[], days[]} (null = loading → skeletons!)
   const [bill, setBill] = useState(null); // billing object (status, trial_ends… for the trial strip)
+  const [chan, setChan] = useState(null); // channel status for the Channels row
   const [usage, setUsage] = useState(null); // today's replies: { used, limit, unlimited } from /api/me/channels
   const [live, setLive] = useState(false); // any channel LIVE? (WhatsApp inbound seen OR Telegram connected — Connect page owns this!)
   const [failed, setFailed] = useState(null); // null | { status, detail } — total load failure (Retry card, never eternal skeletons!)
@@ -37,6 +59,7 @@ export default function Dashboard({ biz }) { // biz = business object from App (
           api('/api/me/products', { timeout: 15000 }), api('/api/me/conversations', { timeout: 15000 }), api('/api/me/billing', { timeout: 15000 }), api('/api/me/channels', { timeout: 15000 }),
         ]);
         if (dead) return;
+        if (ch) setChan(ch);
         if (ch && ch.whatsapp) setUsage({ used: Number(ch.whatsapp.dailyUsed) || 0, limit: ch.whatsapp.dailyLimit, unlimited: !!ch.whatsapp.dailyUnlimited });
         if (ch && ch.whatsapp && (ch.whatsapp.live || (ch.telegram && ch.telegram.connected))) setLive(true); // checklist step ticks (WhatsApp TEST passed OR Telegram on!)
         const c = convos || [], needs = c.filter((x) => x.needs_human); // || [] guards null; .filter picks flagged chats
@@ -51,6 +74,9 @@ export default function Dashboard({ biz }) { // biz = business object from App (
           convos: c.length, // total chats
           pct: c.length ? Math.round(((c.length - needs.length) / c.length) * 100) : 100, // % handled by AI (ternary avoids divide-by-zero → 100% when empty)
           needs: needs.length, products: (products || []).length, // flagged count, catalog size
+          answered: c.length - needs.length, // chats Velo handled without a person
+          missingPrice: (products || []).filter((p) => !p.price).length, // catalog gaps the owner can fix
+          oldestWaiting: needs.reduce((old, x) => { const u = x.updated_at || x.created_at; return !old || new Date(u) < new Date(old) ? u : old; }, null),
           flagged: needs.slice(0, 3), latest: c.slice(0, 3), // .slice(0,3) = first 3 for the two lists (convos already newest-first from API)
           days, // 7-day activity source (real timestamps only)
         });
@@ -105,119 +131,133 @@ export default function Dashboard({ biz }) { // biz = business object from App (
     </>
   );
 
-  function Bars({ data }) { // 7-day activity bars (yesterday→today), real counts, today highlighted
-    const max = Math.max(1, ...data);
+  function WeekChart({ data }) { // this week's chats, drawn to scale from real counts
+    const W = 660, top = 20, base = 190, max = Math.max(4, ...data);
+    const x = (i) => 10 + i * ((W - 20) / 6);
+    const y = (v) => base - (v / max) * (base - top);
+    const pts = data.map((v, i) => x(i) + ',' + y(v)).join(' ');
+    const dayName = (i) => { const d = new Date(); d.setDate(d.getDate() - (6 - i)); return DAYS[d.getDay()]; };
+    const words = data.map((v, i) => dayName(i) + ' ' + v).join(', ');
     return (
-      <div className="ov-bars" role="img" aria-label="Chats per day, last 7 days">
-        {data.map((v, i) => {
-          const d = new Date(); d.setDate(d.getDate() - (6 - i)); // label = the real date this bar covers
-          const last = i === data.length - 1;
-          return (
-            <div className="ov-bar" key={i} title={`${v} chat${v === 1 ? '' : 's'}`}>
-              <i className={last ? 'on' : ''} style={{ height: Math.max(6, (v / max) * 100) + '%' }} />
-              <span>{DAYS[d.getDay()]}</span>
-            </div>
-          );
-        })}
-      </div>
+      <svg className="dg-chart" viewBox={'0 0 ' + W + ' 226'} role="img" aria-label={'Chats per day: ' + words}>
+        <defs>
+          <linearGradient id="dg-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" className="dg-stop-a" /><stop offset="1" className="dg-stop-b" /></linearGradient>
+          <linearGradient id="dg-line" x1="0" y1="0" x2="1" y2="0"><stop offset="0" className="dg-stop-c" /><stop offset="1" className="dg-stop-d" /></linearGradient>
+        </defs>
+        {[top, (top + base) / 2, base].map((g) => <line key={g} className="dg-grid" x1="10" x2={W - 10} y1={g} y2={g} />)}
+        <polygon fill="url(#dg-fill)" points={'10,' + base + ' ' + pts + ' ' + (W - 10) + ',' + base} />
+        <polyline fill="none" stroke="url(#dg-line)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" points={pts} />
+        <circle className="dg-dot" cx={W - 16} cy={y(data[6])} r="7" />
+        {data.map((_, i) => <text key={i} className="dg-day" x={Math.min(W - 24, Math.max(22, x(i)))} y="218" textAnchor="middle">{dayName(i)}</text>)}
+      </svg>
     );
   }
 
-  const botLine = live ? 'Velo is answering your customers right now.' : 'Add a product and connect a channel to go live.';
+  const week = s ? s.days.reduce((a, b) => a + b, 0) : 0;
   const pct = usage && !usage.unlimited && usage.limit ? Math.min(100, Math.round((usage.used / usage.limit) * 100)) : 0;
   const hot = !!(s && s.needs > 0); // coral only when a real chat is waiting
-  const Go = () => <svg className="hm-action-go" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8" /></svg>;
+  const ringLen = 2 * Math.PI * 22;
+  const Arrow = ({ size = 18 }) => <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8" /></svg>;
+  const channels = chan ? [
+    ['WhatsApp', chan.whatsapp && chan.whatsapp.live ? 'live' : 'off', !!(chan.whatsapp && chan.whatsapp.live)],
+    ['Telegram', chan.telegram && chan.telegram.connected ? 'live' : 'off', !!(chan.telegram && chan.telegram.connected)],
+    ['Facebook', 'soon', false],
+    ['Instagram', 'soon', false],
+  ] : [];
 
   return (
-    <>
-      <div className="hm-greet">
-        <h1><span>Hi {first},</span>what do you need today?</h1>
-        <p>{botLine}</p>
+    <div className="dg">
+      <div className="dg-head">
+        <div className="dg-greet">
+          <div className={'dg-status' + (live ? ' on' : '')}><i />{live ? 'Velo is answering customers' : 'Connect a channel to go live'}</div>
+          <h1><span>Hi {first},</span> what do you need today?</h1>
+        </div>
+        <div className="dg-head-actions">
+          <Link className="btn ghost lg" to="/catalog"><Ic n="plus" s={18} />Add product</Link>
+          <Link className="btn lg btn-go" to="/playground">Test your bot<span className="btn-go-ic"><Arrow /></span></Link>
+        </div>
       </div>
 
       {trialLeft !== null && ( // trial strip ONLY during trial (null → renders nothing)
         <div className="trial-strip"><Ic n="clock" s={16} /><span><b>{trialLeft} day{trialLeft === 1 ? '' : 's'} of Pro trial left.</b> Keep Pro sync, or stay free forever with manual catalog.</span><Link to="/billing">See plans<Ic n="next" s={14} /></Link></div>
       )}
 
-      <div className="hm-actions">
-        <Link className={'hm-action' + (hot ? ' is-hot' : '')} to="/chats">
-          <span className="hm-action-top">{s ? <span className="hm-action-num">{s.needs}</span> : <span className="skel" style={{ width: 28, height: 28 }} />}<Go /></span>
-          <b>{s && s.needs === 0 ? 'All chats handled' : s && s.needs === 1 ? 'Chat needs you' : 'Chats need you'}</b>
+      <div className="dg-stats">
+        <Link className={'dg-stat dg-hot' + (hot ? ' is-on' : ' glass')} to="/chats">
+          <span className="dg-hot-top">{s ? <span className="dg-hot-num">{s.needs}</span> : <span className="skel" style={{ width: 44, height: 44 }} />}<span className="dg-hot-go"><Arrow /></span></span>
+          <span className="dg-hot-text"><b>{s && s.needs === 0 ? 'All chats handled' : s && s.needs === 1 ? 'Chat needs you' : 'Chats need you'}</b><span>{s && s.oldestWaiting ? 'Oldest waiting ' + waited(s.oldestWaiting) : 'Nobody is waiting on you'}</span></span>
         </Link>
-        <Link className="hm-action" to="/catalog"><span className="hm-action-top"><span className="hm-action-ic"><Ic n="plus" s={18} /></span><Go /></span><b>Add a product</b></Link>
-        <Link className="hm-action" to="/playground"><span className="hm-action-top"><span className="hm-action-ic"><Ic n="chat" s={18} /></span><Go /></span><b>Test your bot</b></Link>
-        <Link className="hm-action" to="/connect"><span className="hm-action-top"><span className="hm-action-ic"><Ic n="next" s={18} /></span><Go /></span><b>Connect a channel</b></Link>
-      </div>
-
-      {usage && (
-        <div className="hm-meter">
-          <div className="hm-meter-row"><span>Replies today</span><span>{usage.unlimited ? usage.used : usage.used + ' of ' + usage.limit}</span></div>
-          {!usage.unlimited && <div className={'hm-meter-bar' + (pct >= 80 ? ' is-near' : '')} role="progressbar" aria-valuemin={0} aria-valuemax={usage.limit} aria-valuenow={usage.used} aria-label="Replies used today"><i style={{ width: pct + '%' }} /></div>}
+        <div className="dg-stat glass">
+          <div className="dg-stat-top"><span className="dg-lbl">Replies today</span>
+            {usage && !usage.unlimited && <svg className="dg-ring" viewBox="0 0 56 56" role="img" aria-label={pct + ' percent of today\'s replies used'}><circle className="dg-ring-bg" cx="28" cy="28" r="22" /><circle className={'dg-ring-fg' + (pct >= 80 ? ' is-near' : '')} cx="28" cy="28" r="22" strokeDasharray={(pct / 100) * ringLen + ' ' + ringLen} transform="rotate(-90 28 28)" /></svg>}
+          </div>
+          <div><span className="dg-num">{usage ? usage.used : '–'}</span>{usage && !usage.unlimited && <span className="dg-of"> of {usage.limit}</span>}<div className="dg-sub">Resets at midnight</div></div>
         </div>
-      )}
-
-      <div className="hm-ask">
-        <Link className="hm-ask-box" to="/velosales-ai">Ask Velo anything</Link>
-        <Link className="hm-ask-go" to="/velosales-ai" aria-label="Open Chat with Velo"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" /></svg></Link>
+        <div className="dg-stat glass">
+          <span className="dg-lbl">Answered by Velo</span>
+          <div><span className="dg-num is-good">{s ? s.pct + '%' : '–'}</span><div className="dg-sub">{s ? s.answered + ' of ' + s.convos + ' chats' : ' '}</div></div>
+        </div>
+        <Link className="dg-stat dg-catalog glass" to="/catalog">
+          <span className="dg-lbl">Catalog</span>
+          <div><span className="dg-num">{s ? s.products : '–'}</span><span className="dg-of"> product{s && s.products === 1 ? '' : 's'}</span><div className={'dg-sub' + (s && s.missingPrice ? ' is-warn' : '')}>{s && s.missingPrice ? s.missingPrice + (s.missingPrice === 1 ? ' needs a price' : ' need a price') : 'All priced'}</div></div>
+        </Link>
       </div>
 
-      {!s ? (
-        <div className="hm-grid">
-          {[0, 1].map((i) => (
-            <div key={i} className="ov-card">
-              <div className="skel" style={{ width: 148, height: 14, marginBottom: 6 }} />
-              {[0, 1, 2].map((r) => (
-                <div key={r} className="skel-row">
-                  <div className="skel skel-dot" />
-                  <div className="skel-lines"><div className="skel" style={{ width: '52%', height: 12 }} /><div className="skel" style={{ width: '82%', height: 10 }} /></div>
-                </div>
+      <div className="dg-quick">
+        <Link className="dg-q glass" to="/catalog"><span className="dg-q-ic"><Ic n="plus" s={18} /></span>Add product</Link>
+        <Link className="dg-q glass" to="/playground"><span className="dg-q-ic"><Ic n="chat" s={18} /></span>Test bot</Link>
+        <Link className="dg-q glass" to="/connect"><span className="dg-q-ic"><Ic n="next" s={18} /></span>Connect</Link>
+      </div>
+
+      <div className="dg-ask glass">
+        <Link className="dg-ask-box" to="/velosales-ai">Ask Velo anything about your shop</Link>
+        <Link className="dg-ask-go" to="/velosales-ai" aria-label="Open Chat with Velo"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" /></svg></Link>
+      </div>
+
+      <div className="dg-panels">
+        <section className="dg-panel dg-panel-chart glass">
+          <div className="dg-panel-head"><h2>Chats this week</h2><span>{week} chat{week === 1 ? '' : 's'}, last 7 days</span></div>
+          {s ? <WeekChart data={s.days} /> : <div className="skel" style={{ height: 190, marginTop: 12, borderRadius: 12 }} />}
+        </section>
+        <section className="dg-panel glass">
+          <div className="dg-panel-head"><h2>Waiting for you</h2><Link to="/chats">Open inbox</Link></div>
+          {!s ? <div className="skel" style={{ height: 120, marginTop: 12, borderRadius: 12 }} /> : s.flagged.length === 0 ? (
+            <div className="ov-empty"><span className="ov-empty-ic"><Ic n="checkCircle" s={22} /></span><b>Nothing needs you right now</b><span>Chats land here when Velo needs a person.</span></div>
+          ) : (
+            <div className="dg-rows">
+              {s.flagged.map((c, i) => (
+                <Link className="dg-row" key={i} to="/chats">
+                  <span className="dg-face"><CustomerFace photo={c.customer_photo} /></span>
+                  <span className="dg-row-main"><b>{c.customer_name || c.customer_number || 'New chat'}</b><span>{(c.last_message || 'Needs review').slice(0, 64)}</span></span>
+                  <span className="dg-row-time">{waitedShort(c.updated_at || c.created_at)}</span>
+                </Link>
               ))}
             </div>
-          ))}
-        </div>
-      ) : (
-        <>
-          <div className="hm-grid">
-            <div className="ov-card">
-              <div className="ov-head"><h2>Needs your attention</h2><Link className="mini-link" to="/chats">Inbox <Ic n="next" s={13} /></Link></div>
-              {s.flagged.length === 0 ? (
-                <div className="ov-empty"><span className="ov-empty-ic"><Ic n="checkCircle" s={22} /></span><b>Nothing needs you right now</b><span>Flagged chats land here when the bot hands off.</span></div>
-              ) : (
-                <div className="ov-list">
-                  {s.flagged.map((c, i) => (
-                    <Link className="ov-row" key={i} to="/chats">
-                      <span className="ov-row-ic warn"><Ic n="hand" s={16} /></span>
-                      <span className="ov-row-main"><b>{c.customer_name || c.customer_number || 'New chat'}</b><span>{(c.last_message || 'Needs review').slice(0, 64)}</span></span>
-                      <span className="ov-row-time">{fmtTime(c.updated_at || c.created_at)}</span>
-                    </Link>
-                  ))}
-                </div>
-              )}
+          )}
+          {channels.length > 0 && (
+            <div className="dg-chans">
+              <b>Your channels</b>
+              <div>{channels.map(([n, st, on]) => <Link key={n} to="/connect" className={'dg-chan' + (on ? ' is-on' : '')}>{n} {st}</Link>)}</div>
             </div>
-            {showGuide ? (
-              <div className="ov-card">
-                <div className="ov-head"><h2>First 15 minutes</h2><button className="mini-link" onClick={hideGuide}>Dismiss</button></div>
-                <p className="ov-sub">{doneCount} of {steps.length} done</p>
-                <div className="ov-prog"><i style={{ width: `${(doneCount / steps.length) * 100}%` }} /></div>
-                <div className="ov-steps">
-                  {steps.map((st, i) => st.done ? null : (
-                    <Link key={i} className="ov-step" to={st.to}>
-                      <span className="ov-step-num">{i + 1}</span>
-                      <span className="ov-step-main"><b>{st.label}</b><span>{st.hint}</span></span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="ov-card">
-                <div className="ov-head"><h2>Activity</h2><Link className="mini-link" to="/insights">Insights <Ic n="next" s={13} /></Link></div>
-                <p className="ov-sub">Chats per day, last 7 days</p>
-                <Bars data={s.days} />
-              </div>
-            )}
+          )}
+        </section>
+      </div>
+
+      {showGuide && (
+        <section className="dg-panel glass">
+          <div className="dg-panel-head"><h2>First 15 minutes</h2><button className="mini-link" onClick={hideGuide}>Dismiss</button></div>
+          <p className="ov-sub">{doneCount} of {steps.length} done</p>
+          <div className="ov-prog"><i style={{ width: ((doneCount / steps.length) * 100) + '%' }} /></div>
+          <div className="ov-steps">
+            {steps.map((st, i) => st.done ? null : (
+              <Link key={i} className="ov-step" to={st.to}>
+                <span className="ov-step-num">{i + 1}</span>
+                <span className="ov-step-main"><b>{st.label}</b><span>{st.hint}</span></span>
+              </Link>
+            ))}
           </div>
-        </>
+        </section>
       )}
-    </>
+    </div>
   );
 }

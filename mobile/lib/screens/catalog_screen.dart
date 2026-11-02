@@ -984,16 +984,22 @@ class _Pill extends StatelessWidget {
           radius: BorderRadius.circular(999),
           child: Container(
             constraints: const BoxConstraints(minHeight: 44),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 18),
             alignment: Alignment.center,
             decoration: on
                 ? BoxDecoration(color: onBg, borderRadius: BorderRadius.circular(999))
-                : VeloSalesTheme.glass(context, radius: 999, bright: true),
+                : BoxDecoration(
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: dark ? Colors.white.withValues(alpha: 0.36) : const Color(0xFF1E1757).withValues(alpha: 0.26),
+                      width: 1.5,
+                    ),
+                  ),
             child: Text(
               label,
               style: TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: on ? onInk : (hot ? VeloSalesTheme.coralText(context) : scheme.onSurface),
               ),
             ),

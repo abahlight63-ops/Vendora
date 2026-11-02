@@ -4,10 +4,9 @@
 // Login with an unverified email drops you to OTP automatically (the backend
 // answers 403 for that).
 //
-// The look is built from widgets/auth_ui.dart — a purple band with the brand
-// on it, and a white panel that rises out of it. The logic below is the same
-// calls the app always made; only the order of the mode-3 branch was wrong
-// (it fell through to "verify code"), so it is written out explicitly now.
+// The look is built from widgets/auth_ui.dart, in the welcome's premium style:
+// a real photo with a WhatsApp message on it, then a dark glass panel with Sign
+// in and Create account tabs and the long coral button. The calls are unchanged.
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 
@@ -238,8 +237,8 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   String get _title => switch (_mode) {
-        0 => 'Sign in',
-        1 => 'Create An Account',
+        0 => 'Welcome back',
+        1 => 'Create your account',
         2 => _forReset ? 'Set a new password' : 'Verify your email',
         _ => 'Reset your password',
       };
@@ -255,95 +254,87 @@ class _AuthScreenState extends State<AuthScreen> {
 
   String get _action => switch (_mode) {
         0 => 'Sign in',
-        1 => 'Create my shop',
+        1 => 'Start my free trial',
         2 => _forReset ? 'Set new password' : 'Verify and enter',
         _ => 'Send reset link',
       };
 
   String get _tagline => switch (_mode) {
-        0 => 'Welcome back — your shop never slept.',
-        1 => 'Your 24/7 shop, live in minutes.',
-        2 => _forReset ? 'Almost there — one last step.' : 'One code and you are in.',
-        _ => 'We all forget things.',
+        0 => 'Your chats are waiting for you.',
+        1 => 'Hi! I can answer your customers 24/7.',
+        2 => _forReset ? 'Almost there. One last step.' : 'One code and you are in.',
+        _ => 'No wahala, we all forget.',
       };
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final signup = _mode == 1;
+    final tabs = _mode == 0 || _mode == 1;
+    final small = MediaQuery.sizeOf(context).height < 700;
 
     return Scaffold(
-      backgroundColor: scheme.surface,
+      backgroundColor: authNight,
       body: Column(
         children: [
-          AuthHeader(tagline: _tagline),
+          AuthHeader(tagline: _tagline, onBack: widget.onBack, height: small ? 170 : 230),
           Expanded(
-            child: AuthPanel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (widget.onBack != null) ...[
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: widget.onBack,
-                        icon: const Icon(Icons.arrow_back_rounded, size: 17),
-                        label: const Text('Back'),
-                        style: TextButton.styleFrom(
-                          foregroundColor:
-                              scheme.onSurface.withValues(alpha: 0.58),
-                          padding: EdgeInsets.zero,
-                          minimumSize: const Size(0, 0),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          textStyle: const TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+            child: Transform.translate(
+              offset: const Offset(0, -24),
+              child: AuthPanel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (tabs) ...[
+                      AuthTabs(value: _mode, onChanged: _busy ? null : _go),
+                      const SizedBox(height: 22),
+                    ],
+                    AuthPanelTitle(title: _title, subtitle: _subtitle),
+                    const SizedBox(height: 22),
+                    ..._fields(),
+                    if (signup) ...[
+                      const SizedBox(height: 14),
+                      AuthCheckRow(
+                        value: _agreed,
+                        onChanged: (v) => setState(() {
+                          _agreed = v;
+                          if (v) _err = null;
+                        }),
+                        label: _termsLabel(),
                       ),
+                    ],
+                    if (_err != null) ...[
+                      const SizedBox(height: 16),
+                      AuthNotice(message: _err!),
+                    ],
+                    if (_ok != null) ...[
+                      const SizedBox(height: 16),
+                      AuthNotice(message: _ok!, kind: AuthNoticeKind.done),
+                    ],
+                    const SizedBox(height: 22),
+                    AuthPrimaryButton(
+                      label: _action,
+                      busy: _busy,
+                      busyLabel: 'Please wait',
+                      onPressed: _busy ? null : _submit,
                     ),
-                    const SizedBox(height: 14),
+                    if (tabs) ...[
+                      const SizedBox(height: 20),
+                      const AuthOrDivider(),
+                      const SizedBox(height: 16),
+                      AuthSocialRow(onGoogle: () => _notWired('Google')),
+                      const SizedBox(height: 14),
+                      Text(
+                        'No card needed · 7 days of Pro free',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.7)),
+                      ),
+                    ],
+                    if (!tabs) ...[
+                      const SizedBox(height: 14),
+                      _footer(),
+                    ],
                   ],
-                  AuthPanelTitle(title: _title, subtitle: _subtitle),
-                  const SizedBox(height: 22),
-                  ..._fields(),
-                  if (signup) ...[
-                    const SizedBox(height: 16),
-                    AuthCheckRow(
-                      value: _agreed,
-                      onChanged: (v) => setState(() {
-                        _agreed = v;
-                        if (v) _err = null;
-                      }),
-                      label: _termsLabel(scheme),
-                    ),
-                  ],
-                  if (_err != null) ...[
-                    const SizedBox(height: 16),
-                    AuthNotice(message: _err!),
-                  ],
-                  if (_ok != null) ...[
-                    const SizedBox(height: 16),
-                    AuthNotice(message: _ok!, kind: AuthNoticeKind.done),
-                  ],
-                  const SizedBox(height: 20),
-                  AuthPrimaryButton(
-                    label: _action,
-                    busy: _busy,
-                    busyLabel: 'Please wait…',
-                    onPressed: _busy ? null : _submit,
-                  ),
-                  if (signup) ...[
-                    const SizedBox(height: 24),
-                    const AuthOrDivider(),
-                    const SizedBox(height: 18),
-                    AuthSocialRow(
-                      onGoogle: () => _notWired('Google'),
-                    ),
-                  ],
-                  const SizedBox(height: 18),
-                  _footer(),
-                ],
+                ),
               ),
             ),
           ),
@@ -352,33 +343,33 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _termsLabel(ColorScheme scheme) => Text.rich(
+  Widget _termsLabel() => Text.rich(
         TextSpan(
           style: TextStyle(
-            fontSize: 12.5,
+            fontSize: 13,
             height: 1.45,
-            color: scheme.onSurface.withValues(alpha: 0.66),
+            color: Colors.white.withValues(alpha: 0.74),
           ),
           children: [
             const TextSpan(text: 'I agree to the '),
             TextSpan(
               text: 'Terms of Service',
               recognizer: _termsTap,
-              style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  color: scheme.primary,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
                   decoration: TextDecoration.underline,
-                  decorationColor: scheme.primary.withValues(alpha: 0.45)),
+                  decorationColor: Colors.white),
             ),
             const TextSpan(text: ' and '),
             TextSpan(
               text: 'Privacy Policy',
               recognizer: _privacyTap,
-              style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  color: scheme.primary,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
                   decoration: TextDecoration.underline,
-                  decorationColor: scheme.primary.withValues(alpha: 0.45)),
+                  decorationColor: Colors.white),
             ),
             const TextSpan(text: '.'),
           ],
@@ -498,7 +489,7 @@ class _AuthScreenState extends State<AuthScreen> {
           fontSize: 24,
           letterSpacing: 10,
           fontWeight: FontWeight.w800,
-          color: Theme.of(context).colorScheme.onSurface,
+          color: Colors.white,
         ),
       ));
       if (_forReset) {
@@ -532,10 +523,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   fontSize: 12.5,
                   height: 1.4,
                   fontWeight: FontWeight.w600,
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.58),
+                  color: Colors.white.withValues(alpha: 0.7),
                 ),
               ),
             ),

@@ -387,7 +387,13 @@ class _Pill extends StatelessWidget {
       );
     } else {
       fg = scheme.onSurface;
-      deco = VeloSalesTheme.glass(context, radius: 999);
+      deco = BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: dark ? Colors.white.withValues(alpha: 0.36) : const Color(0xFF1E1757).withValues(alpha: 0.26),
+          width: 1.5,
+        ),
+      );
     }
     return Padding(
       padding: const EdgeInsets.only(right: 6),
@@ -400,11 +406,11 @@ class _Pill extends StatelessWidget {
           child: Container(
             height: 44,
             alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 18),
             decoration: deco.copyWith(boxShadow: const []),
             child: Text(
               label,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: fg),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: fg),
             ),
           ),
         ),

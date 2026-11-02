@@ -5,6 +5,8 @@
 // Everything here reads theme tokens only — no widget hard-codes a colour —
 // and every tappable surface is at least 48px and scales to 0.97 under the
 // finger, which is the one motion the whole app reuses.
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -306,7 +308,9 @@ class _IconChip extends StatelessWidget {
   }
 }
 
-/// The app's primary action: the one authored gradient, pill, white label.
+/// The app's primary action. Tall (50px or more) it is the premium pill from the
+/// owner's reference: words on the left, three chevrons, and a white circle with
+/// the arrow on the right. Short or dense it is a plain coral pill.
 class GradientPill extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
@@ -314,7 +318,7 @@ class GradientPill extends StatelessWidget {
   final double height;
   final bool dense;
 
-  /// A trailing white circle with an arrow — the "start" affordance.
+  /// Force the white circle with the arrow, even on a short pill.
   final bool arrowBadge;
 
   const GradientPill({
@@ -330,55 +334,70 @@ class GradientPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onTap != null;
+    final premium = !dense && (height >= 50 || arrowBadge);
+    final fg = VeloSalesTheme.onAccent(context);
+    final knob = height - 12;
     return Opacity(
       opacity: enabled ? 1 : 0.45,
       child: Pressable(
         onTap: onTap,
+        radius: BorderRadius.circular(999),
         child: Container(
-          height: height,
-          padding: EdgeInsets.symmetric(horizontal: dense ? 12 : 20),
+          height: premium ? math.max(height, 60) : height,
+          padding: premium
+              ? const EdgeInsets.only(left: 24, right: 6)
+              : EdgeInsets.symmetric(horizontal: dense ? 12 : 20),
           decoration: BoxDecoration(
-            // One fill, both themes — the web's `--accent-solid`. The old
-            // gradient read as a different product from the browser button.
             color: VeloSalesTheme.accent(context),
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF171532).withValues(alpha: 0.14),
-                blurRadius: 2,
-                offset: const Offset(0, 1),
+                color: VeloSalesTheme.accentSolid.withValues(alpha: 0.28),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
               ),
             ],
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: premium ? MainAxisAlignment.start : MainAxisAlignment.center,
             children: [
-              if (icon != null) ...[
-                Icon(icon, size: 18, color: VeloSalesTheme.onAccent(context)),
+              if (icon != null && !premium) ...[
+                Icon(icon, size: 18, color: fg),
                 const SizedBox(width: 8),
               ],
               Flexible(
                 child: Text(
                   label,
                   overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
+                  textAlign: premium ? TextAlign.start : TextAlign.center,
                   style: TextStyle(
-                    color: VeloSalesTheme.onAccent(context),
-                    fontSize: dense ? 13 : 15,
-                    fontWeight: FontWeight.w800,
+                    color: fg,
+                    fontSize: premium ? 17 : (dense ? 13 : 15),
+                    fontWeight: FontWeight.w600,
                     letterSpacing: -0.1,
                   ),
                 ),
               ),
-              if (arrowBadge) ...[
+              if (premium) ...[
+                const Spacer(),
+                for (final o in const [0.35, 0.65, 1.0])
+                  Icon(Icons.chevron_right_rounded, size: 18, color: fg.withValues(alpha: o)),
                 const SizedBox(width: 10),
                 Container(
-                  width: 30,
-                  height: 30,
-                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                  child: Icon(Icons.arrow_forward_rounded,
-                      size: 17, color: Theme.of(context).colorScheme.primary),
+                  width: math.max(knob, 44),
+                  height: math.max(knob, 44),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF1E1757).withValues(alpha: 0.18),
+                        blurRadius: 14,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Icon(icon ?? Icons.arrow_forward_rounded, size: 22, color: VeloSalesTheme.accentSolid),
                 ),
               ],
             ],

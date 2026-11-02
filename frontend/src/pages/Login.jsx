@@ -1,50 +1,20 @@
 // ── frontend/src/pages/Login.jsx ─────────────────────────────────
-// WHAT: the front door — sign-in + signup forms, animated brand panel with
-// LIVE demo chat, password eye + strength meter, verification resend.
+// WHAT: the front door — sign-in + signup forms in the welcome's premium style:
+// a real photo with WhatsApp messages on one side, a dark glass form with Sign in
+// and Create account tabs on the other. Password eye + strength meter, codes,
+// reset and verification resend are unchanged.
 // FLOW: login → /api/auth/login → setMe(business) → /dashboard. signup →
 // /api/auth/signup → /onboarding. afterAuth() refetches /api/me (single truth!).
 // React patterns: controlled form object, mode toggle, busy lock, live demo loop.
-import { useEffect, useState } from 'react'; // useState ×8 slices; useEffect = title + demo timers
+import { useEffect, useState } from 'react'; // useState ×8 slices; useEffect = title
 import Logo from '../components/Logo.jsx'; // theme-aware brand mark (blue dark / green light!)
-import { useNavigate } from 'react-router-dom'; // useNavigate = go somewhere in code (after auth)
+import { Link, useNavigate } from 'react-router-dom'; // useNavigate = go somewhere in code (after auth)
 import { api } from '../lib/api.js'; // api() auth calls
 import { normalizePhone, prettyPhone } from '../lib/phone.js'; // WhatsApp input help (validate + pretty-print on blur)
 import Ic from '../components/icons.jsx'; // bolt/spark/hand/check/mail/eye icons
 import Loader from '../components/Loader.jsx'; // mini orbit inside busy buttons (the brand, spinning!)
-import { setPageMeta, APP_URL } from '../lib/seo.js'; // title + description + canonical
-
-const DEMO = [ // scripted demo conversation (loops forever in the brand panel!)
-  { from: 'you', text: 'Abeg, do you have blue gown?' }, // from: 'you' = customer bubble (right)…
-  { from: 'ai', text: 'Yes — blue gown ₦45,000, in stock. Want me to reserve it for you?' }, // …'ai' = green reply bubble (sells the dream in 4 lines!)
-  { from: 'you', text: 'How much for delivery to Lekki?' },
-  { from: 'ai', text: 'Delivery to Lekki is ₦2,500, arrives in 2–3 days. Should I pack it?' },
-];
-
-function DemoChat() { // self-playing chat preview (NOT a component with props — pure presentational loop)
-  const [n, setN] = useState(1); // how many script lines shown (starts at 1 = first bubble)
-  const [typing, setTyping] = useState(true); // typing-dots visible? (alternates with message reveals)
-  useEffect(() => { // tiny STATE MACHINE driven by timers (n + typing steer each other):
-    if (n >= DEMO.length) { // all lines shown → pause 4.2s, then RESTART loop (n=1, typing on)…
-      const t = setTimeout(() => { setN(1); setTyping(true); }, 4200); // setTimeout returns id for cleanup…
-      return () => clearTimeout(t); // …cleanup cancels stale timers (effect re-runs on every n/typing change — without cleanup, timers pile up!)
-    }
-    if (typing) { // typing dots showing → after 1.1s hide them (message "arrives")…
-      const t = setTimeout(() => setTyping(false), 1100);
-      return () => clearTimeout(t);
-    } // (fall-through, no else needed: the two ifs cover all states)
-    const t = setTimeout(() => { setN(n + 1); setTyping(true); }, 900); // message visible → after 0.9s show next + typing dots…
-    return () => clearTimeout(t);
-  }, [n, typing]); // deps [n, typing] = re-run the machine on every state change (this IS the animation loop!)
-  return (
-    <div className="mock live">
-      <div className="mock-head"><i />Amaka Beauty Studio <span>online</span></div> {/* <i> = green dot (CSS); shop name + online sells "alive" */}
-      {DEMO.slice(0, n).map((m, i) => ( // slice(0,n) = first n lines (progressive reveal!); key={i} fine (static script order)
-        <div key={i} className={'bubble' + (m.from === 'ai' ? ' ai' : '')}>{m.text}</div>
-      ))}
-      {typing && n < DEMO.length && <div className="bubble ai typing"><span /><span /><span /></div>} {/* && conditional: dots only while typing AND script unfinished (3 spans = CSS bounce stagger) */}
-    </div>
-  );
-}
+import { setPageMeta, APP_URL } from '../lib/seo.js';
+import { CHANNEL_COINS } from '../lib/channelLogos.js'; // the real WhatsApp logo on the photo // title + description + canonical
 
 function GoogleButton({ busy, setBusy, fail, afterAuth, setMe, setOtpEmail, switchMode, setMsg, setMsgErr }) { // "Continue with Google" (GIS button + full flow: session OR one-tap business form OR OTP screen). Props drilled from Login (shared busy/fail/afterAuth = consistent UX!).
   const [gBusy, setGBusy] = useState(false); // google in-flight (separate from form busy — both lock!)
@@ -112,7 +82,7 @@ function GoogleButton({ busy, setBusy, fail, afterAuth, setMe, setOtpEmail, swit
         <label>Business WhatsApp</label><input value={g.wa} onChange={(e) => setG({ ...g, wa: e.target.value })} placeholder="0803 123 4567" inputMode="tel" />
         <label>Opening hours</label><input value={g.hours} onChange={(e) => setG({ ...g, hours: e.target.value })} placeholder="Mon–Sat, 9am–7pm" />
         <label>Referral code <span className="hint">(optional — bonus for you both)</span></label><input value={g.ref} onChange={(e) => setG({ ...g, ref: e.target.value })} placeholder="e.g. AMAKA-4F2K" spellCheck="false" autoComplete="off" style={{ textTransform: 'uppercase' }} />
-        <button className="btn login-cta" disabled={gBusy} onClick={finishSignup}>{gBusy ? (<><Loader size={15} />Creating…</>) : 'Create my shop →'}</button>
+        <button className="btn lg login-cta" disabled={gBusy} onClick={finishSignup}>{gBusy ? (<><Loader size={15} />Creating…</>) : 'Create my shop →'}</button>
         <p className="auth-toggle"><a onClick={() => setNeedBiz(null)}>Back</a></p> {/* Back drops the form (credential discarded — re-click to restart!) */}
       </div>
     );
@@ -310,27 +280,27 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
   }
 
   return (
-    <div className="auth-wrap"> {/* soft purple wash behind everything (see .auth-wrap::before) */}
-      <div className="auth-card"> {/* one white card: brand story + form, split by a hairline (was glass) */}
-        <div className="auth-side"> {/* LEFT: the brand card — the bright end of the page */}
-          <div className="side-lockup"><Logo alt="VeloSales Ai" height={34} /><span>VeloSales Ai</span></div> {/* mark + wordmark (the mark re-points its ramp at white here) */}
-          <h2>Get started with us</h2>
-          <p className="tagline">Complete these easy steps to register your account.</p>
-          <ol className="steps"> {/* the rail: what actually happens, in order */}
-            <li>
-              <span className="rail"><i className="line" /><i className="dot" /></span>
-              <div className="step-card"><b><i className="s-ic">🛍️</i>Create your account</b><span>Your shop name, an email and a password. That is the whole form.</span></div>
-            </li>
-            <li>
-              <span className="rail"><i className="line" /><i className="dot" /></span>
-              <div className="step-card"><b><i className="s-ic">💬</i>Connect WhatsApp</b><span>Link the number your customers already message you on.</span></div>
-            </li>
-            <li>
-              <span className="rail"><i className="line" /><i className="dot" /></span>
-              <div className="step-card"><b><i className="s-ic">🤖</i>Teach it your catalog</b><span>Send one LEARN: message and it starts replying for you.</span></div>
-            </li>
+    <div className="au">
+      <aside className="au-photo" aria-hidden="true">
+        <img src="/welcome/s1-1800.jpg" srcSet="/welcome/s1-900.jpg 900w, /welcome/s1-1800.jpg 1800w" sizes="(min-width: 900px) 50vw, 100vw" alt="" />
+        <i className="ws-tint" />
+        <i className="au-shade" />
+        <div className="ws-pill ws-pill-a au-pill-a"><span className="ws-pill-ic"><svg className="ws-coin" width="46" height="46" viewBox="0 0 64 64" dangerouslySetInnerHTML={{ __html: CHANNEL_COINS.whatsapp }} /></span><span><small>Customer</small>Do you deliver to Ikeja?</span></div>
+        <div className="ws-pill ws-pill-b au-pill-b"><span className="ws-pill-ic"><svg viewBox="0 0 24 24" width="20" height="20"><path fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" d="M5 12.5l4.5 4.5L19 7.5" /></svg></span><span><small>Velo</small>Yes! Tomorrow, ₦2,000 delivery.</span></div>
+        <div className="au-photo-copy">
+          <h2>{mode === 'login' ? 'Your chats are waiting' : "Your shop's AI is one step away"}</h2>
+          <ol className="au-steps">
+            <li><b>1</b>Create your account</li>
+            <li><b>2</b>Connect WhatsApp</li>
+            <li><b>3</b>Add your prices</li>
           </ol>
         </div>
+      </aside>
+      <main className="au-panel">
+        <header className="au-top">
+          <Link className="au-back" to="/" aria-label="Back to the welcome"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" d="M15 5l-7 7 7 7" /></svg></Link>
+          <span className="au-brand"><Logo size={22} alt="" />VeloSales Ai</span>
+        </header>
         <div className="auth-pane" key={mode}> {/* RIGHT: the form. key={mode} = React REMOUNTS on mode switch (fresh animations + no stale input focus — key change = new element!) */}
           {mode === 'otp' ? (<> {/* OTP screen: verify path signs in · reset path sets a NEW password (purpose flag switches it!) */}
             <h1>{otpPurpose === 'reset' ? 'Set a new password' : 'Check your email'}</h1>
@@ -347,7 +317,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
               <label>Repeat new password</label>
               <input type="password" value={rpw2} onChange={(e) => setRpw2(e.target.value)} placeholder="Same password again" autoComplete="new-password" onKeyDown={(e) => { if (e.key === 'Enter') verifyOtp(); }} />
             </>)}
-            <button className="btn login-cta" disabled={busy} onClick={verifyOtp}>{busy ? (<><Loader size={15} />Checking…</>) : otpPurpose === 'reset' ? 'Set password →' : 'Verify →'}</button>
+            <button className="btn lg login-cta" disabled={busy} onClick={verifyOtp}>{busy ? (<><Loader size={15} />Checking…</>) : otpPurpose === 'reset' ? 'Set password' : 'Verify'}</button>
             <div className="otp-fallback">
               <button type="button" className="btn ghost" disabled={busy || cool > 0} onClick={resendCode}>{cool > 0 ? `Resend code in ${cool}s` : 'Resend code'}</button>
               <button type="button" className="btn ghost" disabled={busy} onClick={sendLink}>Send a verification link instead</button>
@@ -359,15 +329,19 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
             <p className="switch-note">Enter your account email — if it exists, a 1-hour reset link is on its way.</p>
             <label>Email</label>
             <input value={f.email} onChange={set('email')} type="email" placeholder="you@business.com" autoComplete="email" onKeyDown={(e) => { if (e.key === 'Enter') forgotSend(); }} />
-            <button className="btn login-cta" disabled={busy} onClick={forgotSend}>{busy ? (<><Loader size={15} />Sending…</>) : 'Send reset link'}</button>
+            <button className="btn lg login-cta" disabled={busy} onClick={forgotSend}>{busy ? (<><Loader size={15} />Sending…</>) : 'Send reset link'}</button>
             <div className="otp-fallback">
               <button type="button" className="btn ghost" disabled={busy} onClick={forgotCode}>Send a code instead</button>
             </div>
             <p className="hint" style={{ textAlign: 'center', marginTop: 8 }}>Link or code — same inbox, same 10-minute code window. Pick whichever arrives first.</p>
             <p className="auth-toggle"><a onClick={() => switchMode('login')}>Back to sign in</a></p>
           </>) : (<> {/* login/signup form (existing — wrapped so otp/forgot replace it!) */}
-          <h1>{mode === 'login' ? 'Sign in to VeloSales Ai' : 'Create your account'}</h1> {/* ternaries everywhere = one form, two personalities */}
-          <p className="switch-note">{mode === 'login' ? 'Enter your details to sign in to your account.' : 'Join shops answering customers 24/7.'}</p>
+          <div className="au-tabs" role="tablist" aria-label="Sign in or create an account">
+            <button type="button" role="tab" aria-selected={mode === 'login'} className={mode === 'login' ? 'on' : ''} onClick={() => switchMode('login')}>Sign in</button>
+            <button type="button" role="tab" aria-selected={mode === 'signup'} className={mode === 'signup' ? 'on' : ''} onClick={() => switchMode('signup')}>Create account</button>
+          </div>
+          <h1>{mode === 'login' ? 'Welcome back' : 'Create your account'}</h1> {/* ternaries everywhere = one form, two personalities */}
+          <p className="switch-note">{mode === 'login' ? 'Sign in to see your chats, catalog and replies.' : 'Free for 7 days with Pro, then keep the free plan. No card needed.'}</p>
           {(mode === 'login' || mode === 'signup') && <GoogleButton busy={busy} setBusy={setBusy} fail={fail} afterAuth={afterAuth} setMe={setMe} setOtpEmail={setOtpEmail} switchMode={switchMode} setMsg={setMsg} setMsgErr={setMsgErr} />} {/* social login ABOVE the form (reference order: the quick way first, then the long one) */}
           {mode === 'signup' && (<> {/* && conditional BLOCK: signup-only fields (fragment groups 3 field sets without wrapper div!) */}
             <label>Business name</label><input value={f.name} onChange={set('name')} placeholder="Amaka Beauty Studio" autoComplete="organization" /> {/* autoComplete hints = browser autofill + password managers work (UX + a11y!) */}
@@ -388,7 +362,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
             <div className="pw-meter"><i className={pwScore >= 1 ? 'on' : ''} /><i className={pwScore >= 2 ? 'on' : ''} /><i className={pwScore >= 3 ? 'on' : ''} /><span>{pwScore >= 2 ? 'Strong enough' : 'Keep typing…'}</span></div>
           )}
           {mode === 'login' && <div className="auth-under"><a onClick={() => switchMode('forgot')}>Forgot password?</a></div>} {/* reference puts this opposite the password row. There is no "remember me" beside it: the session already lasts 7 days, and a checkbox that changes nothing would be a lie. */}
-          <button className="btn login-cta" disabled={busy} onClick={mode === 'login' ? login : signup}>{busy ? (<><Loader size={15} />Please wait…</>) : mode === 'login' ? 'Sign in →' : 'Start my free trial →'}</button> {/* disabled while busy (double-submit lock); mini orbit + label (busy? then mode?) */}
+          <button className="btn lg login-cta" disabled={busy} onClick={mode === 'login' ? login : signup}>{busy ? (<><Loader size={15} />Please wait…</>) : mode === 'login' ? 'Sign in' : 'Start my free trial'}</button> {/* disabled while busy (double-submit lock); mini orbit + label (busy? then mode?) */}
           <div className="trial-banner"> {/* BELOW the action, so the title is the first thing read (was a big pill above it) */}
             <span className="trial-badge">7 days free</span>
             <div><b>{mode === 'login' ? 'Your trial is waiting.' : 'Start selling tonight.'}</b><span>No card required · Cancel anytime</span></div> {/* headline flips with mode */}
@@ -401,15 +375,10 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
             </div>
           )} {/* unverified-login only (backend needsVerification flag drives this!) */}
           <div className={'auth-message' + (msgErr ? ' err shake' : '')}>{msg}</div> {/* status line: .err red + .shake animation on errors (re-triggers per message? shake replays when class re-added — msg change re-renders, animation restarts if key/msg differs… good enough visually) */}
-          <p className="auth-toggle">{mode === 'login' ? (<>New here? <a onClick={() => switchMode('signup')}>Create an account</a></>) : (<>Have an account? <a onClick={() => switchMode('login')}>Sign in</a></>)}</p> {/* mode toggle links (<a> without href + onClick = action links) */}
-          <div className="demo-mobile">
-            <p className="hint" style={{ textAlign: 'center', marginBottom: 8 }}>Watch it sell — live demo</p>
-            <DemoChat /> {/* mobile ALSO gets the demo (auth-side hidden on phones, so duplicate here for small screens!) */}
-          </div>
           <p className="auth-hint">Secure card checkout — only after your free days<br /><a href="/faq">FAQ</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p> {/* trust footer + legal links (plain <a href> = full navigation, fine for public pages) */}
           </>)} {/* close the login/signup wrapper (otp/forgot branches above replace it!) */}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

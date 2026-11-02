@@ -316,7 +316,13 @@ class VeloSalesTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radius),
-          side: BorderSide(color: line),
+          // A clean outline: the second choice next to the coral pill.
+          side: BorderSide(
+            color: brightness == Brightness.dark
+                ? Colors.white.withValues(alpha: 0.4)
+                : const Color(0xFF1E1757).withValues(alpha: 0.28),
+            width: 1.5,
+          ),
         ),
       ),
       // .btn: pill, semibold 14 (matches the web build).

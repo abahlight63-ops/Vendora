@@ -1,14 +1,13 @@
 // ── lib/widgets/auth_ui.dart ─────────────────────────────────────
-// WHAT: the sign-in / sign-up surface, as its own small kit.
+// WHAT: the sign-in / sign-up surface, as its own small kit, in the same premium
+// style as the welcome slides: a real photo at the top with a WhatsApp message
+// on it, then a dark glass panel with the form. Sign in and Create account are
+// two tabs, and the main action is the long coral pill with the white circle.
 //
-// WHY: this is the first screen anyone sees, so it gets real furniture rather
-// than four bare TextFields. A coloured band carries the brand, a white panel
-// rises out of it, each field leads with its own icon behind a hairline, and
-// the three states a form actually has — busy, wrong, done — each get a shape
-// instead of a line of coloured text.
-//
-// Every colour here is a theme token. Every tappable thing is a `Pressable`
-// from brand_ui.dart, so the press motion matches the rest of the app.
+// The screen is dark in both themes, like the welcome: it is the front door, not
+// the app. Every tappable thing is a `Pressable`, so the press motion matches.
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../brand_mark.dart';
@@ -16,139 +15,154 @@ import '../motion.dart';
 import '../theme.dart';
 import 'brand_ui.dart';
 
-/// The purple band the panel rises out of. Edge-to-edge under the status bar,
-/// so the page reads as one surface rather than a header floating in a gutter.
+const authNight = Color(0xFF0B0630);
+const _lilac = Color(0xFFC9C2F5);
+const _coral = Color(0xFFD03C16);
+const _coralBright = Color(0xFFFF8A6B);
+const _fieldFill = Color(0x14FFFFFF); // white 8%
+const _fieldLine = Color(0x2EFFFFFF); // white 18%
+
+/// The photo at the top: hands on a phone, a WhatsApp message tilted over it,
+/// the brand, and a back circle when the welcome sent us here.
 class AuthHeader extends StatelessWidget {
   final double height;
-  final String wordmark;
   final String tagline;
-  final double markSize;
+  final VoidCallback? onBack;
 
-  const AuthHeader({
-    super.key,
-    this.height = 226,
-    this.wordmark = 'VeloSales Ai',
-    this.tagline = 'Your shop, open 24/7',
-    this.markSize = 52,
-  });
+  const AuthHeader({super.key, this.height = 250, required this.tagline, this.onBack});
 
   @override
   Widget build(BuildContext context) {
     final top = MediaQuery.paddingOf(context).top;
     return SizedBox(
       height: height + top,
-      width: double.infinity,
-      child: DecoratedBox(
-        // The one authored gradient on this screen. Indigo → violet → periwinkle:
-        // the same family as the buttons, so the header belongs to the app and
-        // does not read as a stock "purple hero".
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF6D5BF6), Color(0xFF7C4DF0), Color(0xFF5B5BF0)],
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset('assets/welcome/s1.jpg', fit: BoxFit.cover, alignment: const Alignment(0, -0.2)),
+          const ColoredBox(color: Color(0x332A1C7A)),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0x990B0630), Color(0x110B0630), Color(0xF20B0630)],
+                stops: [0, 0.4, 1],
+              ),
+            ),
           ),
-        ),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // Two off-canvas circles give the band depth without a pattern.
-            const Positioned(top: -40, left: -54, child: _Bubble(196, 0.10)),
-            const Positioned(bottom: -52, right: -38, child: _Bubble(158, 0.08)),
-            const Positioned(top: 22, right: 30, child: _Bubble(74, 0.10)),
-            Padding(
-              padding: EdgeInsets.only(top: top),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  BrandMark(size: markSize, solid: Colors.white),
-                  const SizedBox(height: 12),
-                  Text(
-                    wordmark,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 21,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.4,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
-                    child: Text(
-                      tagline,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.84),
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
+          Positioned(
+            top: top + 14,
+            left: 16,
+            right: 16,
+            child: Row(
+              children: [
+                if (onBack != null) ...[
+                  Semantics(
+                    button: true,
+                    label: 'Back',
+                    excludeSemantics: true,
+                    child: Pressable(
+                      onTap: onBack,
+                      radius: BorderRadius.circular(999),
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.14),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
+                        ),
+                        child: const Icon(Icons.chevron_left_rounded, color: Colors.white, size: 26),
                       ),
                     ),
                   ),
+                  const SizedBox(width: 12),
                 ],
+                const BrandMark(size: 24),
+                const SizedBox(width: 8),
+                const Text('VeloSales Ai',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+              ],
+            ),
+          ),
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 36,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Transform.rotate(
+                angle: -8 * math.pi / 180,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(8, 8, 20, 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.95),
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.33), blurRadius: 30, offset: const Offset(0, 16)),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset('assets/channels/whatsapp.png', width: 42, height: 42),
+                        const SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Velo',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xB81E1757))),
+                            Text(tagline,
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1E1757))),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _Bubble extends StatelessWidget {
-  final double size;
-  final double alpha;
-  const _Bubble(this.size, this.alpha);
-
-  @override
-  Widget build(BuildContext context) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: alpha),
-        ),
-      );
-}
-
-/// The white sheet the form lives on. Rounded on top only and pulled up over
-/// the band by [overlap], so it reads as a page turning up rather than a card
-/// floating in the middle of nowhere.
+/// The dark glass panel that rises over the photo and scrolls the form.
 class AuthPanel extends StatelessWidget {
-  static const overlap = 26.0;
-  static const _radius = Radius.circular(30);
-
   final Widget child;
   final EdgeInsetsGeometry padding;
 
   const AuthPanel({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.fromLTRB(22, 30, 22, 34),
+    this.padding = const EdgeInsets.fromLTRB(20, 24, 20, 28),
   });
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Transform.translate(
-      offset: const Offset(0, -overlap),
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          borderRadius: const BorderRadius.vertical(top: _radius),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.07),
-              blurRadius: 26,
-              offset: const Offset(0, -8),
-            ),
-          ],
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    return Container(
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF231868), Color(0xFF120B4A), authNight],
+          stops: [0, 0.45, 1],
         ),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: _radius),
-          child: SingleChildScrollView(
-            padding: padding,
+        border: Border(top: BorderSide(color: Color(0x33FFFFFF))),
+      ),
+      child: ScrollConfiguration(
+        behavior: const ScrollBehavior().copyWith(overscroll: false),
+        child: SingleChildScrollView(
+          padding: padding.add(EdgeInsets.only(bottom: bottom)),
+          child: DefaultTextStyle.merge(
+            style: const TextStyle(color: Colors.white),
             child: child,
           ),
         ),
@@ -157,8 +171,52 @@ class AuthPanel extends StatelessWidget {
   }
 }
 
-/// "Create An Account" + one line under it. The line always says what the form
-/// is FOR, not a greeting.
+/// Sign in | Create account — an outlined pill with the chosen side solid white.
+class AuthTabs extends StatelessWidget {
+  final int value; // 0 sign in, 1 create account
+  final ValueChanged<int>? onChanged;
+  const AuthTabs({super.key, required this.value, this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget tab(int i, String label) => Expanded(
+          child: Semantics(
+            button: true,
+            selected: value == i,
+            child: Pressable(
+              onTap: onChanged == null ? null : () => onChanged!(i),
+              radius: BorderRadius.circular(999),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                height: 48,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: value == i ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: value == i ? const Color(0xFF1E1757) : Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.36), width: 1.5),
+      ),
+      child: Row(children: [tab(0, 'Sign in'), tab(1, 'Create account')]),
+    );
+  }
+}
+
 class AuthPanelTitle extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -166,29 +224,24 @@ class AuthPanelTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: TextStyle(
-            fontSize: 24,
-            height: 1.15,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.7,
-            color: scheme.onSurface,
+          style: const TextStyle(
+            fontSize: 34,
+            height: 1.05,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -1.2,
+            color: Colors.white,
           ),
         ),
         if (subtitle != null) ...[
-          const SizedBox(height: 7),
+          const SizedBox(height: 8),
           Text(
             subtitle!,
-            style: TextStyle(
-              fontSize: 13.5,
-              height: 1.45,
-              color: scheme.onSurface.withValues(alpha: 0.58),
-            ),
+            style: TextStyle(fontSize: 14, height: 1.5, color: Colors.white.withValues(alpha: 0.74)),
           ),
         ],
       ],
@@ -196,9 +249,8 @@ class AuthPanelTitle extends StatelessWidget {
   }
 }
 
-/// A form row: leading icon, hairline, then the field itself. The border and
-/// the icon pick up the accent while the field has focus, which is the only
-/// "is this the active row" signal the form needs.
+/// A dark glass field: icon, words, and an eye for passwords. The border turns
+/// coral while the field has focus.
 class AuthField extends StatefulWidget {
   final IconData icon;
   final String hint;
@@ -254,38 +306,22 @@ class _AuthFieldState extends State<AuthField> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final muted = scheme.onSurface.withValues(alpha: 0.42);
+    final muted = Colors.white.withValues(alpha: 0.6);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 140),
       curve: Curves.easeOut,
+      constraints: const BoxConstraints(minHeight: 58),
       decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(VeloSalesTheme.radiusSmall),
-        border: Border.all(
-          color: _focused ? scheme.primary : scheme.outline,
-          width: _focused ? 1.6 : 1,
-        ),
-        // The focus ring is a soft glow, not a hard outline — it lifts the
-        // active row off the panel instead of boxing it in.
-        boxShadow: _focused
-            ? [
-                BoxShadow(
-                  color: scheme.primary.withValues(alpha: 0.15),
-                  blurRadius: 14,
-                  offset: const Offset(0, 5),
-                ),
-              ]
-            : null,
+        color: _focused ? const Color(0x1FFFFFFF) : _fieldFill,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _focused ? _coralBright : _fieldLine, width: 1.5),
       ),
       child: Row(
         children: [
           Padding(
-            padding: const EdgeInsets.only(left: 13, right: 11),
-            child: Icon(widget.icon,
-                size: 19, color: _focused ? scheme.primary : muted),
+            padding: const EdgeInsets.only(left: 16, right: 4),
+            child: Icon(widget.icon, size: 20, color: _focused ? _coralBright : muted),
           ),
-          Container(width: 1, height: 20, color: scheme.outline),
           Expanded(
             child: TextField(
               controller: widget.controller,
@@ -295,17 +331,11 @@ class _AuthFieldState extends State<AuthField> {
               textCapitalization: widget.textCapitalization,
               maxLength: widget.maxLength,
               textAlign: widget.textAlign,
-              cursorColor: scheme.primary,
+              cursorColor: _coralBright,
               onChanged: widget.onChanged,
               onEditingComplete: widget.onEditingComplete,
               style: widget.textStyle ??
-                  TextStyle(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurface,
-                  ),
-              // The global input theme is overridden here: this field supplies
-              // its own container, so Material must not draw a second border.
+                  const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600, color: Colors.white),
               decoration: InputDecoration(
                 isDense: true,
                 counterText: '',
@@ -314,42 +344,29 @@ class _AuthFieldState extends State<AuthField> {
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
                 errorBorder: InputBorder.none,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
                 hintText: widget.hint,
-                hintStyle: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: scheme.onSurface.withValues(alpha: 0.36),
-                ),
+                hintStyle: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.white.withValues(alpha: 0.5)),
               ),
             ),
           ),
           if (widget.obscure)
             IconButton(
               onPressed: () => setState(() => _hidden = !_hidden),
-              icon: Icon(
-                _hidden
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
-                size: 19,
-              ),
+              icon: Icon(_hidden ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
               color: muted,
               tooltip: _hidden ? 'Show password' : 'Hide password',
             )
           else if (widget.suffix != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: widget.suffix,
-            ),
+            Padding(padding: const EdgeInsets.only(right: 10), child: widget.suffix),
         ],
       ),
     );
   }
 }
 
-/// One full-width primary action for the whole screen. Busy is a state of the
-/// SAME button, not a second widget, so the button never jumps position.
+/// The main action: the long coral pill with the white circle and arrow. Busy
+/// is a state of the same button, so it never jumps.
 class AuthPrimaryButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
@@ -369,92 +386,69 @@ class AuthPrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null && !busy;
-    // Busy keeps the button lit — it is still the way forward, just working.
     final lit = enabled || busy;
-    return Pressable(
-      onTap: enabled ? onPressed : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        height: 54,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: lit
-              ? VeloSalesTheme.accentSolid
-              : VeloSalesTheme.accentSolid.withValues(alpha: 0.42),
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: lit
-              ? [
-                  BoxShadow(
-                    color: VeloSalesTheme.accentSolid.withValues(alpha: 0.32),
-                    blurRadius: 20,
-                    offset: const Offset(0, 9),
-                  ),
-                ]
-              : null,
-        ),
-        child: busy
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const OrbitLoader(size: 18, color: Colors.white),
-                  const SizedBox(width: 11),
-                  Text(
-                    busyLabel ?? label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                ],
-              )
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (icon != null) ...[
-                    Icon(icon, size: 19, color: Colors.white),
-                    const SizedBox(width: 9),
-                  ],
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                ],
+    return Semantics(
+      button: true,
+      label: busy ? (busyLabel ?? label) : label,
+      excludeSemantics: true,
+      child: Pressable(
+        onTap: enabled ? onPressed : null,
+        radius: BorderRadius.circular(999),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          height: 66,
+          padding: const EdgeInsets.only(left: 26, right: 7),
+          decoration: BoxDecoration(
+            color: lit ? _coral : _coral.withValues(alpha: 0.42),
+            borderRadius: BorderRadius.circular(999),
+            boxShadow: lit
+                ? [BoxShadow(color: _coral.withValues(alpha: 0.38), blurRadius: 26, offset: const Offset(0, 12))]
+                : null,
+          ),
+          child: Row(
+            children: [
+              if (busy) ...[
+                const OrbitLoader(size: 18, color: Colors.white),
+                const SizedBox(width: 10),
+              ],
+              Expanded(
+                child: Text(
+                  busy ? (busyLabel ?? label) : label,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600),
+                ),
               ),
+              if (!busy)
+                for (final o in const [0.35, 0.65, 1.0])
+                  Icon(Icons.chevron_right_rounded, size: 18, color: Colors.white.withValues(alpha: o)),
+              const SizedBox(width: 10),
+              Container(
+                width: 52,
+                height: 52,
+                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                child: Icon(icon ?? Icons.arrow_forward_rounded, color: _coral, size: 24),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
-/// "Or sign up with" — a label sitting on a rule, so the alternative path is
-/// visually second to the button above it.
 class AuthOrDivider extends StatelessWidget {
   final String label;
-  const AuthOrDivider({super.key, this.label = 'Or sign up with'});
+  const AuthOrDivider({super.key, this.label = 'or'});
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final rule = Container(height: 1, color: scheme.outline);
+    final rule = Container(height: 1, color: Colors.white.withValues(alpha: 0.16));
     return Row(
       children: [
         Expanded(child: rule),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              color: scheme.onSurface.withValues(alpha: 0.48),
-            ),
-          ),
+          child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _lilac)),
         ),
         Expanded(child: rule),
       ],
@@ -462,67 +456,36 @@ class AuthOrDivider extends StatelessWidget {
   }
 }
 
-/// The social row. Visually complete but not wired to a provider yet — see the
-/// note on the screen itself; Google needs an Android OAuth client first.
-/// Apple was removed on purpose: the shop is web + Android, and offering a
-/// button that can never work is worse than offering none.
+/// Continue with Google: a white pill. Not wired on the phone yet; the screen
+/// says so plainly when tapped.
 class AuthSocialRow extends StatelessWidget {
   final VoidCallback? onGoogle;
   const AuthSocialRow({super.key, this.onGoogle});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _SocialButton(
-          onTap: onGoogle,
-          child: CustomPaint(
-            size: const Size(21, 21),
-            painter: _GoogleGlyph(),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SocialButton extends StatelessWidget {
-  final Widget child;
-  final VoidCallback? onTap;
-  const _SocialButton({required this.child, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Pressable(
-      onTap: onTap,
-      radius: const BorderRadius.all(Radius.circular(999)),
+      onTap: onGoogle,
+      radius: BorderRadius.circular(999),
       child: Container(
-        width: 56,
         height: 56,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          shape: BoxShape.circle,
-          border: Border.all(color: scheme.outline),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 5),
-            ),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(999)),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CustomPaint(size: const Size(20, 20), painter: _GoogleGlyph()),
+            const SizedBox(width: 10),
+            const Text('Continue with Google',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF1E1757))),
           ],
         ),
-        child: child,
       ),
     );
   }
 }
 
 /// The Google "G", drawn rather than packaged: four arcs whose angles are the
-/// official artwork's, plus the blue bar. An icon font would have shipped a
-/// 300KB dependency for one glyph.
+/// official artwork's, plus the blue bar.
 class _GoogleGlyph extends CustomPainter {
   static const _blue = Color(0xFF4285F4);
   static const _red = Color(0xFFEA4335);
@@ -533,93 +496,70 @@ class _GoogleGlyph extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final s = size.shortestSide;
     const stroke = 0.205;
-    final ring = Rect.fromCircle(
-      center: Offset(s / 2, s / 2),
-      radius: (s - s * stroke) / 2,
-    );
+    final ring = Rect.fromCircle(center: Offset(s / 2, s / 2), radius: (s - s * stroke) / 2);
     final p = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = s * stroke
       ..strokeCap = StrokeCap.butt
       ..isAntiAlias = true;
-
-    // Angles are degrees/radians measured from 3 o'clock, clockwise (y is down),
-    // which is how the canvas counts — and they are the logo's own sectors.
     void arc(Color c, double startDeg, double sweepDeg) {
       p.color = c;
-      canvas.drawArc(ring, startDeg * 3.14159265 / 180, sweepDeg * 3.14159265 / 180,
-          false, p);
+      canvas.drawArc(ring, startDeg * math.pi / 180, sweepDeg * math.pi / 180, false, p);
     }
 
-    arc(_red, -153.3, 119.3); // top
-    arc(_yellow, 141.9, 64.8); // left
-    arc(_green, 48.9, 93.0); // bottom
-    arc(_blue, -17.2, 66.1); // right
-
-    // The crossbar: from the centre out to the blue arc at the vertical middle.
-    canvas.drawRect(
-      Rect.fromLTRB(s * 0.5, s * 0.4167, s * 0.775, s * 0.605),
-      Paint()..color = _blue,
-    );
+    arc(_red, -153.3, 119.3);
+    arc(_yellow, 141.9, 64.8);
+    arc(_green, 48.9, 93.0);
+    arc(_blue, -17.2, 66.1);
+    canvas.drawRect(Rect.fromLTRB(s * 0.5, s * 0.4167, s * 0.775, s * 0.605), Paint()..color = _blue);
   }
 
   @override
   bool shouldRepaint(_GoogleGlyph old) => false;
 }
 
-/// A checkbox row whose whole surface toggles — a 24px box is a mean target.
+/// A checkbox row whose whole surface toggles.
 class AuthCheckRow extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
   final Widget label;
 
-  const AuthCheckRow({
-    super.key,
-    required this.value,
-    required this.onChanged,
-    required this.label,
-  });
+  const AuthCheckRow({super.key, required this.value, required this.onChanged, required this.label});
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Pressable(
-      onTap: () => onChanged(!value),
-      radius: BorderRadius.circular(10),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 140),
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                color: value ? VeloSalesTheme.accentSolid : Colors.transparent,
-                borderRadius: BorderRadius.circular(7),
-                border: Border.all(
-                  color: value
-                      ? VeloSalesTheme.accentSolid
-                      : scheme.onSurface.withValues(alpha: 0.28),
-                  width: 1.6,
+    return Semantics(
+      checked: value,
+      child: Pressable(
+        onTap: () => onChanged(!value),
+        radius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: value ? _coral : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: value ? _coral : Colors.white.withValues(alpha: 0.4), width: 1.6),
                 ),
+                child: value ? const Icon(Icons.check_rounded, size: 16, color: Colors.white) : null,
               ),
-              child: value
-                  ? const Icon(Icons.check_rounded, size: 15, color: Colors.white)
-                  : null,
-            ),
-            const SizedBox(width: 11),
-            Expanded(child: label),
-          ],
+              const SizedBox(width: 12),
+              Expanded(child: label),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// The three states the form can be in, each with its own colour and its own
-/// lift. Errors say what to do next; successes say what happens now.
+/// Wrong, done or a hint, each with its own colour. Errors say what to do next.
 class AuthNotice extends StatelessWidget {
   final String message;
   final AuthNoticeKind kind;
@@ -628,23 +568,16 @@ class AuthNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (base, icon) = switch (kind) {
-      AuthNoticeKind.error => (VeloSalesTheme.red, Icons.error_outline_rounded),
-      AuthNoticeKind.done => (VeloSalesTheme.green, Icons.check_circle_outline_rounded),
-      AuthNoticeKind.hint => (VeloSalesTheme.gold, Icons.info_outline_rounded),
+      AuthNoticeKind.error => (const Color(0xFFFF8A8A), Icons.error_outline_rounded),
+      AuthNoticeKind.done => (const Color(0xFF86EFAC), Icons.check_circle_outline_rounded),
+      AuthNoticeKind.hint => (const Color(0xFFFCD34D), Icons.info_outline_rounded),
     };
     return Container(
-      padding: const EdgeInsets.fromLTRB(13, 12, 14, 12),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
-        color: base.withValues(alpha: 0.09),
-        borderRadius: BorderRadius.circular(VeloSalesTheme.radiusSmall),
-        border: Border.all(color: base.withValues(alpha: 0.34)),
-        boxShadow: [
-          BoxShadow(
-            color: base.withValues(alpha: 0.16),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        color: base.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: base.withValues(alpha: 0.4)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -652,15 +585,8 @@ class AuthNotice extends StatelessWidget {
           Icon(icon, size: 18, color: base),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              message,
-              style: TextStyle(
-                fontSize: 13,
-                height: 1.42,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
+            child: Text(message,
+                style: const TextStyle(fontSize: 13.5, height: 1.42, fontWeight: FontWeight.w600, color: Colors.white)),
           ),
         ],
       ),
@@ -670,8 +596,7 @@ class AuthNotice extends StatelessWidget {
 
 enum AuthNoticeKind { error, done, hint }
 
-/// A quiet inline link (resend a code, use a link instead). Kept separate from
-/// the footer prompt because these sit inside the form flow, not under it.
+/// A quiet inline link (resend a code, use a link instead).
 class AuthInlineLink extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
@@ -679,72 +604,52 @@ class AuthInlineLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Pressable(
       onTap: onTap,
       radius: BorderRadius.circular(8),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: onTap == null
-                    ? scheme.onSurface.withValues(alpha: 0.35)
-                    : scheme.primary,
-              ),
-            ),
-          ],
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: onTap == null ? Colors.white.withValues(alpha: 0.35) : _coralBright,
+          ),
         ),
       ),
     );
   }
 }
 
-/// "Already have an account? Sign in" — the switch between the two modes.
+/// "Already have an account? Sign in" — used on the code and reset screens.
 class AuthFooterPrompt extends StatelessWidget {
   final String prompt;
   final String action;
   final VoidCallback? onTap;
 
-  const AuthFooterPrompt({
-    super.key,
-    required this.prompt,
-    required this.action,
-    required this.onTap,
-  });
+  const AuthFooterPrompt({super.key, required this.prompt, required this.action, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final dim = onTap == null;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(
-          prompt,
-          style: TextStyle(
-            fontSize: 13.5,
-            color: scheme.onSurface.withValues(alpha: dim ? 0.30 : 0.58),
-          ),
-        ),
+        Text(prompt, style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: dim ? 0.3 : 0.7))),
         Pressable(
           onTap: onTap,
           radius: BorderRadius.circular(8),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
             child: Text(
               action,
               style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w800,
-                color: dim
-                    ? scheme.primary.withValues(alpha: 0.40)
-                    : scheme.primary,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Colors.white.withValues(alpha: dim ? 0.4 : 1),
+                decoration: TextDecoration.underline,
+                decorationColor: Colors.white,
               ),
             ),
           ),
@@ -753,3 +658,6 @@ class AuthFooterPrompt extends StatelessWidget {
     );
   }
 }
+
+/// Kept for callers that still pass the old brand colours.
+Color authInk(BuildContext context) => VeloSalesTheme.nightInk;

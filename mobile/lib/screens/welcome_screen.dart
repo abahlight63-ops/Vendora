@@ -51,7 +51,7 @@ class _Slide {
 const _slides = [
   _Slide(
     photo: 's1',
-    align: Alignment(0.04, -0.2),
+    align: Alignment(0, -0.3),
     title: 'Never miss a customer again',
     text: 'Velo answers your WhatsApp in seconds, day and night, with your real prices.',
     a: _Msg('Customer', 'Is this bag still available?', 2, coin: 'whatsapp'),
@@ -59,15 +59,15 @@ const _slides = [
   ),
   _Slide(
     photo: 's2',
-    align: Alignment(-0.08, -0.2),
+    align: Alignment.center,
     title: 'Chats that turn into sales',
     text: 'Velo sends the product photo, quotes your price and tells buyers how to pay you.',
-    a: _Msg('Photo sent', 'Black leather bag · ₦45,000', 4, thumb: 's4'),
+    a: _Msg('Photo sent', 'Black leather bag · ₦45,000', 4, thumb: 's2'),
     b: _Msg('New order', '2 bags · ₦90,000', 76, naira: true),
   ),
   _Slide(
     photo: 's3',
-    align: Alignment(0, -0.4),
+    align: Alignment.center,
     title: 'Speaks Pidgin, never guesses',
     text: "Velo answers the way your customers write. It only quotes your prices, and calls you when it isn't sure.",
     a: _Msg('Customer', 'How much be this one?', 4, coin: 'whatsapp'),
@@ -85,7 +85,7 @@ const _slides = [
   ),
   _Slide(
     photo: 's4',
-    align: Alignment(0, -0.5),
+    align: Alignment.center,
     title: 'Start free and sell more today',
     text: '50 free replies every day. No card needed.',
     a: _Msg('Free plan', '50 replies every day', 8, gift: true),
@@ -513,27 +513,15 @@ class _ChannelsArtState extends State<_ChannelsArt> with TickerProviderStateMixi
   }
 
   Widget _sat(int i, double turn) {
-    final (id, name, live) = _channels[i];
+    final (id, name, _) = _channels[i];
     final a = (i * 90 - 45) * math.pi / 180 + turn;
     final x = 150 + 150 * math.cos(a), y = 150 + 150 * math.sin(a);
     return Positioned(
       left: x - 29,
       top: y - 29,
       child: Semantics(
-        label: live ? name : '$name, coming soon',
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Opacity(opacity: live ? 1 : 0.6, child: Image.asset('assets/channels/$id.png', width: 58, height: 58)),
-            if (!live)
-              Container(
-                margin: const EdgeInsets.only(top: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(99)),
-                child: const Text('Soon', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFE0DBFF))),
-              ),
-          ],
-        ),
+        label: name,
+        child: Image.asset('assets/channels/$id.png', width: 58, height: 58),
       ),
     );
   }
@@ -556,31 +544,25 @@ class _OrbitPainter extends CustomPainter {
       canvas.drawArc(Rect.fromCircle(center: c, radius: 150), a0, math.pi / 72, false, dash);
     }
     for (var i = 0; i < _channels.length; i++) {
-      final live = _channels[i].$3;
+      // Every channel orbits the same; the slide text says which are coming.
       final a = (i * 90 - 45) * math.pi / 180 + turn;
       final dir = Offset(math.cos(a), math.sin(a));
       final from = c + dir * 121, to = c + dir * 58;
-      if (live) {
-        canvas.drawLine(
-          from,
-          to,
-          Paint()
-            ..strokeWidth = 2
-            ..shader = LinearGradient(colors: [
-              const Color(0xFFFF8A6B).withValues(alpha: 0.5),
-              const Color(0xFFB9AEFB).withValues(alpha: 0.5),
-            ]).createShader(Rect.fromPoints(from, to)),
-        );
-        final p = (pulse + i * 0.5) % 1;
-        final dot = Offset.lerp(from, to, p)!;
-        final glow = (p < 0.15 ? p / 0.15 : p > 0.85 ? (1 - p) / 0.15 : 1.0).clamp(0.0, 1.0);
-        canvas.drawCircle(dot, 8, Paint()..color = const Color(0xFFFF8A6B).withValues(alpha: 0.3 * glow));
-        canvas.drawCircle(dot, 4, Paint()..color = const Color(0xFFFF8A6B).withValues(alpha: glow));
-      } else {
-        for (var t = 0.0; t < 1; t += 0.14) {
-          canvas.drawLine(Offset.lerp(from, to, t)!, Offset.lerp(from, to, t + 0.07)!, dash..strokeWidth = 2);
-        }
-      }
+      canvas.drawLine(
+        from,
+        to,
+        Paint()
+          ..strokeWidth = 2
+          ..shader = LinearGradient(colors: [
+            const Color(0xFFFF8A6B).withValues(alpha: 0.5),
+            const Color(0xFFB9AEFB).withValues(alpha: 0.5),
+          ]).createShader(Rect.fromPoints(from, to)),
+      );
+      final p = (pulse + i * 0.5) % 1;
+      final dot = Offset.lerp(from, to, p)!;
+      final glow = (p < 0.15 ? p / 0.15 : p > 0.85 ? (1 - p) / 0.15 : 1.0).clamp(0.0, 1.0);
+      canvas.drawCircle(dot, 8, Paint()..color = const Color(0xFFFF8A6B).withValues(alpha: 0.3 * glow));
+      canvas.drawCircle(dot, 4, Paint()..color = const Color(0xFFFF8A6B).withValues(alpha: glow));
     }
   }
 

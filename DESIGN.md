@@ -243,18 +243,32 @@ Check every text/background pair at 4.5:1 in both themes.
   clients use the same words. The dialog is not red — leaving is routine, and a
   red alarm would punish a normal tap.
 
+### Buttons (owner's reference)
+- Main action: a long coral pill, words on the left, three chevrons, and a white
+  circle with the arrow on the right. Web: `.btn.lg` or `.btn-go`. Phone:
+  `GradientPill` at 50px or taller, `AuthPrimaryButton`.
+- Second choice: a clean outline (`.btn.ghost`, OutlinedButton), never a grey fill.
+- Filters: outlined pills, the chosen one solid ink (white in dark mode).
+- One main action per screen.
+
+### Sign in and sign up
+- Same style as the welcome on both clients (`Login.jsx`, `auth_screen.dart` +
+  `widgets/auth_ui.dart`): a faceless photo with WhatsApp messages, then a dark
+  glass form with Sign in and Create account tabs and the long coral button.
+- Dark in both themes. Inputs are dark glass with a coral border on focus.
+
 ### Pre-signup welcome (web `/` + phone)
 - Six slides, the same on both clients (`frontend/src/pages/Landing.jsx`,
   `mobile/lib/screens/welcome_screen.dart`): three real sellers with the WhatsApp
   messages Velo sends for them, every channel around Velo, the one-tap Connect
   card, then the free offer. Keep the slide list the same in both files.
 - Photos sit full screen under a light violet tint and a dark fade, so white text
-  always reads. Message pills tilt and float; never cover a face.
-- Photos are free Unsplash photos (`frontend/public/welcome/CREDITS.md`). Before
-  big marketing, replace them with real customers who agreed in writing.
+  always reads. Message pills tilt and float over them.
+- Photos show no faces: hands, phones, bags and parcels only, so nobody's face is
+  used to sell. They are free Unsplash photos (`frontend/public/welcome/CREDITS.md`).
 - Channel logos are the real brand logos as round coins (`lib/channelLogos.js`,
-  `mobile/assets/channels`). A channel that has not shipped says "Soon"; never
-  show it as live.
+  `mobile/assets/channels`). The orbit shows all four the same (owner's call); the
+  slide text and the Connect card still say which are coming soon.
 - One action on every slide: the long "Try it free" pill with a white circle, then
   "No card needed · Already selling? Sign in".
 - Slides change every 7 seconds, stop while touched or hovered, and have a pause

@@ -2132,10 +2132,8 @@ a.ov-stat:hover { border-color: var(--purple-line); box-shadow: var(--shadow-md)
 .ws-beam { position: absolute; left: 56px; top: -1px; width: 65px; height: 2px; border-top: 2px dashed rgba(255, 255, 255, 0.22); }
 .ws-sat.is-live .ws-beam { border-top: 0; background: linear-gradient(90deg, rgba(255, 138, 107, 0.5), rgba(185, 174, 251, 0.5)); }
 .ws-sat.is-live .ws-beam::after { content: ''; position: absolute; top: -3px; left: 100%; width: 8px; height: 8px; border-radius: 50%; background: #ff8a6b; box-shadow: 0 0 10px #ff8a6b; animation: wsPulse 1.8s linear infinite; }
-.ws-sat:nth-child(2) .ws-beam::after { animation-delay: -0.9s; }
+.ws-sat:nth-child(even) .ws-beam::after { animation-delay: -0.9s; }
 .ws-sat-coin { position: absolute; left: 121px; top: -29px; width: 58px; height: 58px; transform: rotate(calc(-1 * var(--a))); animation: wsUnspin 36s linear infinite; }
-.ws-sat:not(.is-live) .ws-coin { opacity: 0.6; }
-.ws-soon { position: absolute; left: 50%; top: 62px; transform: translateX(-50%); padding: 2px 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.16); font-size: 11px; font-weight: 700; color: #e0dbff; }
 .ws-core { position: absolute; left: 50%; top: 50%; display: flex; align-items: center; justify-content: center; width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%; background: radial-gradient(circle at 30% 26%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.08) 30%, rgba(181, 166, 255, 0.12) 65%, rgba(255, 138, 107, 0.22)); border: 1px solid rgba(255, 255, 255, 0.3); box-shadow: inset 0 0 30px rgba(185, 174, 251, 0.35), 0 24px 50px rgba(0, 0, 0, 0.4), 0 0 60px rgba(255, 138, 107, 0.25); }
 @keyframes wsSpin { to { transform: rotate(360deg); } }
 @keyframes wsUnspin { to { rotate: -360deg; } }
@@ -2631,3 +2629,104 @@ body { min-height: 100vh; min-height: 100dvh; } /* the colour field must reach t
   @keyframes psUp { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 }
 @media (prefers-reduced-motion: reduce) { .ps, .ps-back { animation: none; } .pc-switch i, .pc-switch i::after { transition: none; } }
+
+/* ── premium buttons (owner's reference) ──────────────────────────────
+   Main actions: a long coral pill, words on the left, a white circle with the
+   arrow on the right. Second choices: a clean outline. Filters: outlined pills,
+   the chosen one solid. Same on the phone (GradientPill, the chips). */
+.btn { min-height: 48px; padding: 0 22px; font-size: 15px; font-weight: 600; letter-spacing: -0.1px; }
+.btn.sm { min-height: 40px; padding: 0 16px; font-size: 14px; }
+.btn.lg, .btn-go { min-height: 64px; padding: 0 7px 0 26px; justify-content: space-between; gap: 16px; font-size: 17px; font-weight: 600; }
+.btn.lg:not(.btn-go)::after { content: ''; flex: 0 0 50px; width: 50px; height: 50px; border-radius: 50%; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%23D03C16' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round' d='M5 12h13M13 6l6 6-6 6'/%3E%3C/svg%3E") center / 22px no-repeat; box-shadow: 0 6px 14px rgba(30, 23, 87, 0.18); transition: transform 0.2s ease; }
+.btn.lg:hover::after { transform: translateX(3px); }
+.btn.lg:disabled::after { display: none; }
+.btn-go-ic { width: 50px; height: 50px; background: #fff; color: #d03c16; box-shadow: 0 6px 14px rgba(30, 23, 87, 0.18); transition: transform 0.2s ease; }
+.btn-go:hover .btn-go-ic { transform: translateX(3px); }
+[data-theme="dark"] .btn-go-ic { color: #d03c16; }
+.btn.ghost { background: transparent; border: 1.5px solid rgba(30, 23, 87, 0.28); color: var(--ink); box-shadow: none; }
+.btn.ghost:hover { background: rgba(30, 23, 87, 0.06); border-color: var(--ink); color: var(--ink); }
+[data-theme="dark"] .btn.ghost { background: transparent; border-color: rgba(255, 255, 255, 0.4); color: #fff; }
+[data-theme="dark"] .btn.ghost:hover { background: rgba(255, 255, 255, 0.08); border-color: #fff; }
+.wx-pill { min-height: 44px; padding: 0 18px; background: transparent; border: 1.5px solid rgba(30, 23, 87, 0.26); font-size: 14px; font-weight: 600; transition: background 0.18s ease, border-color 0.18s ease; }
+.wx-pill:hover { border-color: var(--ink); }
+.wx-pill.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+[data-theme="dark"] .wx-pill { border-color: rgba(255, 255, 255, 0.36); color: #fff; }
+[data-theme="dark"] .wx-pill:hover { border-color: #fff; }
+[data-theme="dark"] .wx-pill.on { background: #fff; border-color: #fff; color: #1e1757; }
+.wx-pill.is-hot-soft { background: transparent; border-color: var(--coral-line); color: var(--coral-ink); }
+@media (prefers-reduced-motion: reduce) { .btn.lg::after, .btn-go-ic { transition: none; } }
+
+/* ── sign in and sign up (/login) ─────────────────────────────────────
+   Same premium style as the welcome: a real photo with WhatsApp messages on
+   the left, a dark glass form on the right (stacked on phones). Dark in both
+   themes, like the welcome. Same screen as the phone's auth_screen.dart. */
+.au { --au-fill: rgba(255, 255, 255, 0.08); --au-line: rgba(255, 255, 255, 0.2); min-height: 100vh; min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr); background: #0b0630; color: #fff; }
+.au-photo { position: relative; height: 270px; overflow: hidden; }
+.au-photo > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; }
+.au-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(11, 6, 48, 0.6) 0%, rgba(11, 6, 48, 0.05) 40%, #0b0630 100%); }
+.au-pill-a { --top: 64px; }
+.au-pill-b { --top: 150px; }
+.au-photo-copy { display: none; }
+.au-panel { position: relative; margin-top: -28px; padding: 0 20px calc(28px + env(safe-area-inset-bottom)); border-radius: 30px 30px 0 0; background: linear-gradient(180deg, #231868 0%, #120b4a 45%, #0b0630 100%); border-top: 1px solid rgba(255, 255, 255, 0.2); }
+.au-top { position: absolute; top: calc(-270px + 14px + env(safe-area-inset-top)); left: 16px; right: 16px; display: flex; align-items: center; gap: 12px; z-index: 3; }
+.au-back { display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%; background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.24); color: #fff; backdrop-filter: blur(14px); }
+.au-back:hover { text-decoration: none; background: rgba(255, 255, 255, 0.22); }
+.au-brand { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; color: #fff; }
+.au .auth-pane { width: 100%; max-width: 440px; margin: 0 auto; padding: 24px 0 0; display: block; animation: fadeSlide 0.35s ease-out both; }
+.au-tabs { display: flex; padding: 4px; margin-bottom: 24px; border-radius: 999px; border: 1.5px solid rgba(255, 255, 255, 0.36); }
+.au-tabs button { flex: 1; min-height: 48px; border: 0; border-radius: 999px; background: transparent; color: #fff; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.2s ease, color 0.2s ease; }
+.au-tabs button.on { background: #fff; color: #1e1757; }
+.au-tabs button:focus-visible { outline: 2px solid #ff8a6b; outline-offset: 2px; }
+.au .auth-pane h1 { margin: 0; font-size: 34px; line-height: 1.05; font-weight: 600; letter-spacing: -1.2px; color: #fff; text-align: left; }
+.au .auth-pane .switch-note { margin: 8px 0 22px; font-size: 14px; color: rgba(255, 255, 255, 0.74); text-align: left; }
+.au .auth-pane .switch-note b { color: #fff; }
+.au .auth-pane label { display: block; margin: 14px 0 6px; font-size: 14px; font-weight: 600; color: #e0dbff; }
+.au .auth-pane label .hint { color: #c9c2f5; }
+.au .auth-pane input { width: 100%; min-height: 56px; padding: 0 18px; border-radius: 18px; background: var(--au-fill); border: 1.5px solid var(--au-line); color: #fff; font-size: 15.5px; font-weight: 600; box-shadow: none; }
+.au .auth-pane input::placeholder { color: rgba(255, 255, 255, 0.5); font-weight: 500; }
+.au .auth-pane input:focus { outline: none; border-color: #ff8a6b; background: rgba(255, 255, 255, 0.12); box-shadow: 0 0 0 4px rgba(255, 138, 107, 0.18); }
+.au .pw-eye { color: rgba(255, 255, 255, 0.7); background: transparent; border: 0; width: 44px; height: 44px; right: 6px; }
+.au .pw-eye:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.au .pw-wrap input { padding-right: 54px; }
+.au .pw-meter i { background: rgba(255, 255, 255, 0.18); }
+.au .pw-meter i.on { background: #ff8a6b; }
+.au .pw-meter span, .au .hint { color: #c9c2f5; }
+.au .ok-line { color: #86efac; }
+.au .err-line { color: #ff9b9b; }
+.au .auth-under { margin-top: 10px; }
+.au .auth-under a, .au .auth-toggle a, .au .auth-hint a { color: #fff; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.au .social-btn { min-height: 56px; border-radius: 999px; background: #fff; border: 0; color: #1e1757; font-size: 15px; font-weight: 600; box-shadow: none; }
+.au .social-btn:hover:not(:disabled) { background: #f1edff; border: 0; }
+.au .or-row { margin: 18px 0 2px; color: #c9c2f5; }
+.au .or-row::before, .au .or-row::after { background: rgba(255, 255, 255, 0.16); }
+.au .login-cta { width: 100%; margin-top: 24px; min-height: 66px; padding: 0 7px 0 26px; border-radius: 999px; background: #d03c16; color: #fff; font-size: 17px; font-weight: 600; box-shadow: 0 14px 30px rgba(208, 60, 22, 0.38); }
+.au .login-cta:hover:not(:disabled) { background: #b83412; }
+.au .login-cta::after { width: 52px; height: 52px; flex-basis: 52px; }
+.au .trial-banner { margin-top: 18px; padding: 12px 14px; border-radius: 20px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16); }
+.au .trial-badge { background: #ff8a6b; color: #120b4a; }
+.au .trial-banner b { color: #fff; }
+.au .trial-banner div span { color: #c9c2f5; }
+.au .auth-message { color: #86efac; }
+.au .auth-message.err { color: #ff9b9b; }
+.au .auth-toggle { color: rgba(255, 255, 255, 0.74); }
+.au .auth-hint { color: rgba(255, 255, 255, 0.6); }
+.au .otp-help { background: rgba(252, 211, 77, 0.12); border: 1px solid rgba(252, 211, 77, 0.4); color: #fff; border-radius: 18px; }
+.au .resend-btn { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); color: #fff; }
+.au .otp-fallback .btn.ghost { color: #fff; border-color: rgba(255, 255, 255, 0.4); }
+.au .switch-note.auth-google, .au .auth-pane p { color: rgba(255, 255, 255, 0.74); }
+@media (min-width: 900px) {
+  .au { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); }
+  .au-photo { height: auto; min-height: 100vh; }
+  .au-shade { background: linear-gradient(180deg, rgba(11, 6, 48, 0.35) 0%, rgba(11, 6, 48, 0) 30%, rgba(11, 6, 48, 0.55) 62%, #0b0630 100%), linear-gradient(90deg, rgba(11, 6, 48, 0) 70%, rgba(11, 6, 48, 0.6) 100%); }
+  .au-pill-a { --top: 18%; scale: 1.1; }
+  .au-pill-b { --top: 32%; scale: 1.1; }
+  .au-photo-copy { display: block; position: absolute; left: 56px; right: 56px; bottom: 56px; }
+  .au-photo-copy h2 { margin: 0; max-width: 520px; font-size: clamp(40px, 4vw, 56px); line-height: 1.04; font-weight: 600; letter-spacing: -2px; color: #fff; }
+  .au-steps { list-style: none; display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0 0; padding: 0; }
+  .au-steps li { display: flex; align-items: center; gap: 10px; padding: 8px 16px 8px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.22); backdrop-filter: blur(14px); font-size: 14px; font-weight: 600; }
+  .au-steps b { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: #fff; color: #d03c16; font-size: 14px; }
+  .au-panel { margin: 0; padding: 40px 56px; border: 0; border-radius: 0; display: flex; flex-direction: column; justify-content: center; overflow-y: auto; max-height: 100vh; background: radial-gradient(600px 500px at 80% 0%, rgba(74, 46, 158, 0.55), rgba(74, 46, 158, 0) 70%), #0b0630; }
+  .au-top { position: absolute; top: 32px; left: 56px; right: 56px; }
+  .au .auth-pane { padding-top: 48px; }
+}
+@media (prefers-reduced-motion: reduce) { .au .auth-pane { animation: none; } .au-tabs button { transition: none; } }

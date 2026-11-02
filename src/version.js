@@ -7,6 +7,7 @@ const APP_VERSION = '1.15.0';
 const WHATS_NEW = [
   'A new welcome: six slides with real sellers showing what Velo does on WhatsApp',
   'See every channel Velo works on, and how WhatsApp connects in one tap',
-  'A new Try it free button, in the premium style coming to the whole app',
+  'New premium buttons across the app: a long pill with a white arrow circle, and cleaner filters',
+  'A new sign-in and sign-up screen in the same premium style',
 ];
 module.exports = { APP_VERSION, WHATS_NEW };

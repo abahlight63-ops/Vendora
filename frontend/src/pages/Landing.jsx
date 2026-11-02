@@ -21,21 +21,21 @@ const STEP_MS = 7000;
 
 const SLIDES = [
   {
-    photo: 's1', pos: '52% 40%',
+    photo: 's1', pos: '50% 30%',
     title: 'Never miss a customer again',
     text: 'Velo answers your WhatsApp in seconds, day and night, with your real prices.',
     a: { coin: 'whatsapp', who: 'Customer', say: 'Is this bag still available?', top: 2 },
     b: { tick: true, who: 'Velo', say: 'Yes! ₦45,000. We deliver tomorrow.', top: 25 },
   },
   {
-    photo: 's2', pos: '46% 40%',
+    photo: 's2', pos: '50% 50%',
     title: 'Chats that turn into sales',
     text: 'Velo sends the product photo, quotes your price and tells buyers how to pay you.',
-    a: { thumb: '/welcome/s4-900.jpg', who: 'Photo sent', say: 'Black leather bag · ₦45,000', top: 4 },
+    a: { thumb: '/welcome/s2-900.jpg', who: 'Photo sent', say: 'Black leather bag · ₦45,000', top: 4 },
     b: { naira: true, who: 'New order', say: '2 bags · ₦90,000', top: 76 },
   },
   {
-    photo: 's3', pos: '50% 30%',
+    photo: 's3', pos: '50% 50%',
     title: 'Speaks Pidgin, never guesses',
     text: "Velo answers the way your customers write. It only quotes your prices, and calls you when it isn't sure.",
     a: { coin: 'whatsapp', who: 'Customer', say: 'How much be this one?', top: 4 },
@@ -52,7 +52,7 @@ const SLIDES = [
     text: 'Log in with Facebook, choose your number and Velo starts answering. Telegram takes about a minute.',
   },
   {
-    photo: 's4', pos: '50% 26%',
+    photo: 's4', pos: '50% 50%',
     title: 'Start free and sell more today',
     text: '50 free replies every day. No card needed.',
     a: { gift: true, who: 'Free plan', say: '50 replies every day', top: 8 },
@@ -84,9 +84,9 @@ function ChannelsArt() {
       <div className="ws-ring" />
       <div className="ws-orbit">
         {CHANNELS.map((c, i) => (
-          <div key={c.id} className={'ws-sat' + (c.live ? ' is-live' : '')} style={{ '--a': (i * 90 - 45) + 'deg' }}>
+          <div key={c.id} className="ws-sat is-live" style={{ '--a': (i * 90 - 45) + 'deg' }}>
             <i className="ws-beam" />
-            <div className="ws-sat-coin"><Coin id={c.id} size={58} />{!c.live && <span className="ws-soon">Soon</span>}</div>
+            <div className="ws-sat-coin"><Coin id={c.id} size={58} /></div>
           </div>
         ))}
       </div>

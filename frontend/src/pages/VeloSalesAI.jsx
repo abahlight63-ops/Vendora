@@ -257,8 +257,8 @@ export default function VeloSalesAI({ biz }) {
         <div className="vai-view">
           <div className="vai-hero">
             <span className="vai-orb"><Logo alt="" size={34} /></span>
-            <h1>Hello! I&rsquo;m VeloSales Ai</h1>
-            <p>How can I help your business today? Ask about pricing, captions, customers — or send a photo.</p>
+            <h1>Hi {first},<br />how can I help your shop?</h1>
+            <p>Ask about prices, captions, customer replies, or send a product photo.</p>
             <div className="vai-sug">
               <span className="vai-suglab">Suggested</span>
               <div className="vai-suglist">

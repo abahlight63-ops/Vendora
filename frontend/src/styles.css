@@ -2824,3 +2824,33 @@ body { min-height: 100vh; min-height: 100dvh; } /* the colour field must reach t
   .ch-guide { padding: 6px 14px; }
 }
 @media (prefers-reduced-motion: reduce) { .ch-option { transition: none; } }
+
+/* ── Chat with Velo (premium) ──────────────────────────────────────────
+   Big calm greeting, glass suggestion cards, your words in an indigo bubble,
+   Velo's in a glass card, and a long glass message box with a coral send. */
+.vai-orb { width: 104px; height: 104px; border-radius: 50%; background: radial-gradient(circle at 30% 26%, #fff, rgba(255, 255, 255, 0.4) 40%, rgba(181, 166, 255, 0.35) 75%, rgba(255, 138, 107, 0.35)); border: 1px solid rgba(255, 255, 255, 0.95); box-shadow: 0 18px 40px rgba(89, 50, 120, 0.22); }
+.vai-hero h1 { margin-top: 22px; font-size: clamp(34px, 4.2vw, 52px); line-height: 1.04; font-weight: 600; letter-spacing: -2px; }
+.vai-hero > p { margin-top: 12px; font-size: 16px; color: var(--glass-ink); }
+.vai-suglab { display: none; }
+.vai-suglist { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.vai-scard { flex-direction: column; align-items: flex-start; gap: 12px; min-height: 132px; padding: 16px; border-radius: 24px; background: var(--glass-field); border: 1px solid var(--glass-line); font-size: 15px; font-weight: 600; line-height: 1.35; box-shadow: none; transition: transform 0.18s ease, background 0.18s ease; }
+.vai-scard:hover { transform: translateY(-2px); background: var(--glass-bright); }
+.vai-sic { width: 42px; height: 42px; border-radius: 50%; background: #fff; color: #4f3fc7; }
+[data-theme="dark"] .vai-sic { background: rgba(255, 255, 255, 0.14); color: #fff; }
+.vai-scg { display: none; }
+.vai-bubble { padding: 14px 18px; border-radius: 22px 22px 6px 22px; background: #4f3fc7; color: #fff; font-size: 15px; line-height: 1.45; }
+.vai-say > :first-child:not(.vai-via):not(.vai-acts) { padding: 16px 18px; border-radius: 6px 22px 22px 22px; background: var(--glass-field); border: 1px solid var(--glass-line); box-shadow: 0 14px 30px rgba(89, 50, 120, 0.1); }
+.vai-act { min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1.5px solid rgba(30, 23, 87, 0.26); background: transparent; font-weight: 600; }
+[data-theme="dark"] .vai-act { border-color: rgba(255, 255, 255, 0.36); }
+.vai-acts { gap: 8px; margin-top: 10px; }
+.vai-input { align-items: center; padding: 8px; border-radius: 999px; background: var(--glass-bright); border: 1.5px solid var(--glass-line); box-shadow: 0 20px 44px rgba(89, 50, 120, 0.18); }
+.vai-attach { width: 48px; height: 48px; border-radius: 50%; background: rgba(30, 23, 87, 0.07); }
+[data-theme="dark"] .vai-attach { background: rgba(255, 255, 255, 0.1); }
+.vai-send { width: 52px; height: 52px; border-radius: 50%; background: #d03c16; color: #fff; box-shadow: 0 10px 22px rgba(208, 60, 22, 0.35); }
+.vai-send:disabled { opacity: 0.45; box-shadow: none; }
+.vai-new { min-height: 44px; padding: 0 18px; border-radius: 999px; border: 1.5px solid rgba(30, 23, 87, 0.26); background: transparent; font-weight: 600; }
+[data-theme="dark"] .vai-new { border-color: rgba(255, 255, 255, 0.36); }
+@media (prefers-reduced-motion: reduce) { .vai-scard { transition: none; } }
+.vai-hero { max-width: 1000px; }
+.vai-suglist { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 760px) { .vai-suglist { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .vai-scard { min-height: 108px; padding: 14px; font-size: 14px; } .vai-orb { width: 84px; height: 84px; } }

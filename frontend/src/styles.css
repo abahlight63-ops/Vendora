@@ -2076,54 +2076,147 @@ a.ov-stat:hover { border-color: var(--purple-line); box-shadow: var(--shadow-md)
 }
 
 /* ── welcome (/) ─────────────────────────────────────────────────────
-   The signed-out front door, same screen as the phone's welcome_screen.dart.
-   The stage is indigo in both themes: it is brand, not chrome. */
-.wel { --stage-1: #1c1350; --stage-2: #34238d; --stage-3: #5b4bd6; --stage-4: #3a2596; --stage-ink: #fff; --stage-muted: rgba(255, 255, 255, 0.74); --stage-amber: #fbbf24; --stage-amber-ink: #2a1e6b;
-  position: relative; overflow: hidden; isolation: isolate; display: flex; flex-direction: column; min-height: 100vh; min-height: 100svh; color: var(--stage-ink);
-  background-color: var(--stage-1);
-  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25'><circle cx='8%25' cy='12%25' r='1.2' fill='white' fill-opacity='.3'/><circle cx='21%25' cy='28%25' r='0.8' fill='white' fill-opacity='.3'/><circle cx='34%25' cy='7%25' r='1' fill='white' fill-opacity='.3'/><circle cx='47%25' cy='19%25' r='0.7' fill='white' fill-opacity='.3'/><circle cx='63%25' cy='10%25' r='1.1' fill='white' fill-opacity='.3'/><circle cx='78%25' cy='24%25' r='0.8' fill='white' fill-opacity='.3'/><circle cx='91%25' cy='13%25' r='1.3' fill='white' fill-opacity='.3'/><circle cx='13%25' cy='46%25' r='0.7' fill='white' fill-opacity='.3'/><circle cx='29%25' cy='62%25' r='1' fill='white' fill-opacity='.3'/><circle cx='55%25' cy='52%25' r='0.8' fill='white' fill-opacity='.3'/><circle cx='72%25' cy='44%25' r='1.2' fill='white' fill-opacity='.3'/><circle cx='88%25' cy='63%25' r='0.7' fill='white' fill-opacity='.3'/><circle cx='6%25' cy='77%25' r='1' fill='white' fill-opacity='.3'/><circle cx='24%25' cy='91%25' r='0.8' fill='white' fill-opacity='.3'/><circle cx='41%25' cy='84%25' r='1.1' fill='white' fill-opacity='.3'/><circle cx='66%25' cy='79%25' r='0.7' fill='white' fill-opacity='.3'/><circle cx='83%25' cy='92%25' r='1' fill='white' fill-opacity='.3'/><circle cx='96%25' cy='74%25' r='0.8' fill='white' fill-opacity='.3'/></svg>"), linear-gradient(135deg, var(--stage-1) 0%, var(--stage-2) 38%, var(--stage-3) 72%, var(--stage-4) 100%); }
-.wel-glow { position: absolute; z-index: -1; border-radius: 50%; pointer-events: none; animation: welDrift 18s ease-in-out infinite alternate; }
-.wel-glow-a { width: 620px; height: 620px; left: -180px; top: -200px; background: radial-gradient(circle, rgba(139, 92, 246, 0.55), rgba(139, 92, 246, 0) 70%); }
-.wel-glow-b { width: 520px; height: 520px; right: -190px; top: 18%; background: radial-gradient(circle, rgba(236, 72, 153, 0.26), rgba(236, 72, 153, 0) 70%); animation-delay: -6s; }
-.wel-glow-c { width: 560px; height: 560px; left: 18%; bottom: -260px; background: radial-gradient(circle, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0) 70%); animation-delay: -12s; }
-@keyframes welDrift { from { transform: translate(-20px, -14px); } to { transform: translate(24px, 18px); } }
-.wel-bar { max-width: 1200px; width: 100%; margin: 0 auto; padding: 20px 32px 0; }
-.wel-brand { display: inline-flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 800; letter-spacing: -0.4px; }
-.wel-brand .vl-root { --lg-top: #fff; --lg-mid: #e4e0ff; --lg-bot: #b9aefb; }
-.wel-main { flex: 1; display: grid; grid-template-columns: 1fr 1.08fr; align-items: center; gap: 24px; max-width: 1200px; width: 100%; margin: 0 auto; padding: 12px 32px 40px; }
-.wel-scene { grid-column: 2; grid-row: 1; height: min(640px, 76vh); min-width: 0; }
-.wel-copy { grid-column: 1; grid-row: 1; min-width: 0; }
-.wel-copy h1 { margin: 0; font-size: clamp(38px, 5.2vw, 68px); line-height: 1.03; font-weight: 800; letter-spacing: -0.035em; color: var(--stage-ink); }
-.wel-copy h1 em { font-style: normal; white-space: nowrap; color: var(--stage-amber); }
-.wel-copy p { margin: 18px 0 0; max-width: 460px; font-size: 18px; line-height: 1.5; color: var(--stage-muted); }
-.wel-actions { display: flex; align-items: center; gap: 22px; margin-top: 30px; }
-.wel-cta { position: relative; display: flex; align-items: center; flex: 0 1 300px; min-width: 0; height: 56px; gap: 10px; color: var(--stage-amber-ink); text-decoration: none; transition: transform 160ms ease-out; }
-.wel-cta:hover { text-decoration: none; }
-.wel-cta:active { transform: scale(0.97); }
-.wel-cta:focus-visible { outline: 2px solid #fff; outline-offset: 4px; border-radius: 999px; }
-.wel-cta-pill { flex: 1; display: flex; align-items: center; justify-content: center; height: 56px; min-width: 0; border-radius: 999px; background: #fff; font-size: 16px; font-weight: 800; letter-spacing: -0.2px; }
-.wel-cta-arrow { flex: 0 0 56px; display: flex; align-items: center; justify-content: center; height: 56px; border-radius: 50%; background: var(--stage-amber); transition: transform 180ms ease-out; }
-.wel-cta:hover .wel-cta-arrow svg { transform: translate(2px, -2px); }
-.wel-cta-arrow svg { transition: transform 180ms ease-out; }
-.wel-cta-neck { position: absolute; right: 47.8px; top: 8.2px; width: 26.4px; height: 39.6px; }
-.wel-cta-neck path { fill: #fff; }
-.wel-signin { display: inline-flex; align-items: center; min-height: 44px; font-size: 15px; font-weight: 700; color: var(--stage-ink); text-decoration: none; }
-.wel-signin:hover { text-decoration: underline; }
-.wel-more { display: inline-block; margin-top: 18px; padding: 6px 0; font-size: 14px; font-weight: 600; color: var(--stage-muted); text-decoration: underline; text-underline-offset: 3px; }
-.wel-more:hover { color: var(--stage-ink); }
-@media (max-width: 900px) {
-  .wel-bar { padding: 14px 20px 0; }
-  .wel-main { grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 0 20px 28px; align-items: end; }
-  .wel-scene { grid-column: 1; grid-row: auto; height: min(46svh, 104vw); }
-  .wel-copy { grid-column: 1; grid-row: auto; }
-  .wel-copy h1 { font-size: clamp(34px, 10.4vw, 52px); }
-  .wel-copy p { margin-top: 12px; font-size: 16px; }
-  .wel-actions { margin-top: 20px; gap: 16px; }
-  .wel-cta { flex: 1 1 auto; }
-  .wel-more { margin-top: 10px; }
+   The signed-out front door: six slides, the same as the phone's
+   welcome_screen.dart. Real sellers under a violet tint, tilted WhatsApp
+   messages, then the channels, then the free offer. Dark in both themes. */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.ws { position: relative; height: 100vh; height: 100dvh; min-height: 560px; overflow: hidden; isolation: isolate; background: #0b0630; color: #fff; touch-action: pan-y; -webkit-user-select: none; user-select: none; }
+.ws-slide { position: absolute; inset: 0; display: flex; flex-direction: column; padding: calc(84px + env(safe-area-inset-top)) 0 calc(150px + env(safe-area-inset-bottom)); opacity: 0; visibility: hidden; transition: opacity 0.7s ease, visibility 0s linear 0.7s; }
+.ws-slide.on { opacity: 1; visibility: visible; transition: opacity 0.7s ease; }
+.ws-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scale(1.08); transition: transform 8s ease-out; pointer-events: none; }
+.ws-slide.on .ws-photo { transform: scale(1); }
+.ws-tint { position: absolute; inset: 0; background: rgba(42, 28, 122, 0.16); mix-blend-mode: multiply; }
+.ws-stage { position: absolute; inset: 0; background: radial-gradient(520px 520px at 50% 34%, #3a2a9a 0%, #2a1c7a 34%, #120b4a 70%, #0b0630 100%); }
+.ws-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(11, 6, 48, 0.55) 0%, rgba(11, 6, 48, 0) 18%, rgba(11, 6, 48, 0) 42%, rgba(18, 11, 74, 0.8) 60%, #0b0630 82%); }
+.ws-slide.is-art .ws-shade { background: linear-gradient(180deg, rgba(11, 6, 48, 0) 55%, #0b0630 82%); }
+.ws-art { position: relative; flex: 1; min-height: 0; }
+.ws-copy { position: relative; padding: 0 24px; }
+.ws-copy h2 { margin: 0; font-size: clamp(34px, 11.4vw, 46px); line-height: 1.04; font-weight: 600; letter-spacing: -1.8px; color: #fff; }
+.ws-copy p { margin: 14px 0 0; max-width: 340px; font-size: 14px; line-height: 1.5; color: rgba(255, 255, 255, 0.78); }
+
+/* top: brand, back and next, dots */
+.ws-top { position: absolute; z-index: 5; top: calc(16px + env(safe-area-inset-top)); left: 16px; right: 16px; display: flex; align-items: center; }
+.ws-brand { display: none; align-items: center; gap: 9px; font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+.ws-nav { flex: 1; display: flex; align-items: center; gap: 10px; }
+.ws-circ { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; transition: transform 0.18s ease; }
+.ws-circ:active { transform: scale(0.94); }
+.ws-circ.is-glass { background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.24); color: #fff; backdrop-filter: blur(14px); }
+.ws-circ.is-white { background: #fff; color: #1e1757; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25); }
+.ws-dots { margin-left: auto; display: flex; align-items: center; padding: 4px 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.2); backdrop-filter: blur(14px); }
+.ws-dots > button:not(.ws-pause) { position: relative; width: 20px; height: 32px; padding: 0; border: 0; background: none; cursor: pointer; transition: width 0.3s ease; }
+.ws-dots > button:not(.ws-pause)::before { content: ''; position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; transform: translate(-50%, -50%); border-radius: 99px; background: rgba(255, 255, 255, 0.45); transition: width 0.3s ease, background 0.3s ease; }
+.ws-dots > button.on { width: 30px; }
+.ws-dots > button.on::before { width: 20px; background: #fff; }
+.ws-pause { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-left: 2px; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.16); color: #fff; cursor: pointer; }
+.ws-circ:focus-visible, .ws-dots button:focus-visible, .ws-go:focus-visible, .ws-sign a:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+/* tilted message pills */
+.ws-pill { position: absolute; top: var(--top); display: flex; align-items: center; gap: 12px; max-width: calc(100% - 32px); padding: 8px 22px 8px 8px; border-radius: 999px; white-space: nowrap; animation: wsFloatA 7s ease-in-out infinite; }
+.ws-pill small { display: block; font-size: 11px; font-weight: 700; opacity: 0.72; }
+.ws-pill > span:last-child { font-size: 14px; font-weight: 600; line-height: 1.3; }
+.ws-pill-a { left: 6%; background: rgba(255, 255, 255, 0.95); color: #1e1757; transform: rotate(-11deg); box-shadow: 0 24px 40px rgba(0, 0, 0, 0.35); }
+.ws-pill-b { right: 4%; flex-direction: row-reverse; padding: 8px 8px 8px 22px; background: rgba(30, 23, 87, 0.42); border: 1px solid rgba(255, 255, 255, 0.28); backdrop-filter: blur(16px); color: #fff; transform: rotate(12deg); box-shadow: 0 24px 40px rgba(0, 0, 0, 0.3); animation-name: wsFloatB; animation-duration: 8s; animation-delay: -3s; }
+.ws-pill-ic { flex: 0 0 46px; display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; overflow: hidden; border-radius: 50%; }
+.ws-pill-ic img { width: 100%; height: 100%; object-fit: cover; }
+.ws-pill-ic b { font-size: 18px; color: #fff; }
+.ws-pill-b .ws-pill-ic, .ws-pill.is-gift .ws-pill-ic { background: #d03c16; box-shadow: 0 0 0 4px rgba(255, 138, 107, 0.25); }
+.ws-coin { display: block; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.28)); }
+@keyframes wsFloatA { 0%, 100% { translate: 0 0; } 50% { translate: 0 -8px; } }
+@keyframes wsFloatB { 0%, 100% { translate: 0 0; } 50% { translate: 0 7px; } }
+
+/* slide 4: every channel around Velo */
+.ws-orbit-wrap { position: absolute; left: 50%; top: 50%; width: 300px; height: 300px; margin: -150px 0 0 -150px; }
+.ws-ring { position: absolute; inset: 0; border-radius: 50%; border: 1.5px dashed rgba(255, 255, 255, 0.22); }
+.ws-orbit { position: absolute; inset: 0; animation: wsSpin 36s linear infinite; }
+.ws-sat { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform: rotate(var(--a)); }
+.ws-beam { position: absolute; left: 56px; top: -1px; width: 65px; height: 2px; border-top: 2px dashed rgba(255, 255, 255, 0.22); }
+.ws-sat.is-live .ws-beam { border-top: 0; background: linear-gradient(90deg, rgba(255, 138, 107, 0.5), rgba(185, 174, 251, 0.5)); }
+.ws-sat.is-live .ws-beam::after { content: ''; position: absolute; top: -3px; left: 100%; width: 8px; height: 8px; border-radius: 50%; background: #ff8a6b; box-shadow: 0 0 10px #ff8a6b; animation: wsPulse 1.8s linear infinite; }
+.ws-sat:nth-child(2) .ws-beam::after { animation-delay: -0.9s; }
+.ws-sat-coin { position: absolute; left: 121px; top: -29px; width: 58px; height: 58px; transform: rotate(calc(-1 * var(--a))); animation: wsUnspin 36s linear infinite; }
+.ws-sat:not(.is-live) .ws-coin { opacity: 0.6; }
+.ws-soon { position: absolute; left: 50%; top: 62px; transform: translateX(-50%); padding: 2px 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.16); font-size: 11px; font-weight: 700; color: #e0dbff; }
+.ws-core { position: absolute; left: 50%; top: 50%; display: flex; align-items: center; justify-content: center; width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%; background: radial-gradient(circle at 30% 26%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.08) 30%, rgba(181, 166, 255, 0.12) 65%, rgba(255, 138, 107, 0.22)); border: 1px solid rgba(255, 255, 255, 0.3); box-shadow: inset 0 0 30px rgba(185, 174, 251, 0.35), 0 24px 50px rgba(0, 0, 0, 0.4), 0 0 60px rgba(255, 138, 107, 0.25); }
+@keyframes wsSpin { to { transform: rotate(360deg); } }
+@keyframes wsUnspin { to { rotate: -360deg; } }
+@keyframes wsPulse { from { left: 100%; opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } to { left: -4px; opacity: 0; } }
+
+/* slide 5: the Connect page */
+.ws-connect { position: absolute; left: 50%; top: 50%; width: min(340px, calc(100% - 40px)); transform: translate(-50%, -50%) rotate(-3deg); padding: 16px; border-radius: 30px; background: linear-gradient(150deg, rgba(255, 255, 255, 0.2), rgba(185, 174, 251, 0.1)); border: 1px solid rgba(255, 255, 255, 0.3); backdrop-filter: blur(18px); box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4); animation: wsFloatA 8s ease-in-out infinite; }
+.ws-connect-head { display: flex; align-items: baseline; justify-content: space-between; margin: 0 4px 10px; }
+.ws-connect-head b { font-size: 18px; font-weight: 700; }
+.ws-connect-head span { font-size: 12px; color: #c9c2f5; }
+.ws-crow { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 20px; background: rgba(255, 255, 255, 0.08); }
+.ws-crow + .ws-crow { margin-top: 8px; }
+.ws-crow-name { flex: 1; min-width: 0; }
+.ws-crow-name b { display: block; font-size: 14px; font-weight: 700; }
+.ws-crow-name small { font-size: 12px; color: #c9c2f5; }
+.ws-chip { padding: 6px 12px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); font-size: 12px; font-weight: 700; color: #c9c2f5; white-space: nowrap; }
+.ws-chip.is-live { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+.ws-cbtn { position: relative; flex: 0 0 108px; height: 36px; }
+.ws-cbtn > span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 999px; font-size: 13px; font-weight: 700; white-space: nowrap; opacity: 0; }
+.ws-cbtn-a { background: #d03c16; color: #fff; animation: wsStepA 4.8s infinite; }
+.ws-cbtn-b { background: rgba(255, 255, 255, 0.16); color: #fff; animation: wsStepB 4.8s infinite; }
+.ws-cbtn-c { background: #047857; color: #fff; animation: wsStepC 4.8s infinite; }
+.ws-cspin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.35); border-top-color: #fff; animation: m3dArc 0.8s linear infinite; }
+.ws-tap { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(255, 255, 255, 0.55); opacity: 0; animation: wsTap 4.8s infinite; pointer-events: none; }
+@keyframes wsStepA { 0%, 32% { opacity: 1; } 36%, 100% { opacity: 0; } }
+@keyframes wsStepB { 0%, 33% { opacity: 0; } 37%, 60% { opacity: 1; } 64%, 100% { opacity: 0; } }
+@keyframes wsStepC { 0%, 61% { opacity: 0; } 65%, 96% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes wsTap { 0%, 24% { opacity: 0; transform: scale(0.3); } 28% { opacity: 0.8; transform: scale(0.5); } 38% { opacity: 0; transform: scale(1.5); } 100% { opacity: 0; } }
+
+/* the long button */
+.ws-actions { position: absolute; z-index: 5; left: 16px; right: 16px; bottom: calc(20px + env(safe-area-inset-bottom)); }
+.ws-go { display: flex; align-items: center; height: 72px; padding: 0 7px 0 26px; border-radius: 999px; background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.26); backdrop-filter: blur(18px); color: #fff; transition: background 0.2s ease, transform 0.18s ease; }
+.ws-go:hover { text-decoration: none; background: rgba(255, 255, 255, 0.2); }
+.ws-go:active { transform: scale(0.98); }
+.ws-go b { font-size: 18px; font-weight: 600; }
+.ws-chev { display: flex; margin-left: auto; margin-right: 14px; }
+.ws-chev svg:nth-child(1) { opacity: 0.3; }
+.ws-chev svg:nth-child(2) { opacity: 0.6; }
+.ws-knob { display: flex; align-items: center; justify-content: center; width: 58px; height: 58px; border-radius: 50%; background: #fff; color: #d03c16; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3); animation: wsNudge 2.8s ease-in-out infinite; transition: transform 0.2s ease; }
+.ws-go:hover .ws-knob { animation: none; transform: translateX(4px); }
+@keyframes wsNudge { 0%, 70%, 100% { transform: none; } 80% { transform: translateX(-10px); } 90% { transform: none; } }
+.ws-sign { margin: 12px 0 0; text-align: center; font-size: 14px; color: rgba(255, 255, 255, 0.74); }
+.ws-sign a { display: inline-block; padding: 6px 2px; color: #fff; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+
+@media (max-height: 700px) {
+  .ws-slide { padding-top: calc(76px + env(safe-area-inset-top)); padding-bottom: calc(132px + env(safe-area-inset-bottom)); }
+  .ws-copy h2 { font-size: 34px; letter-spacing: -1.2px; }
+  .ws-copy p { margin-top: 10px; }
+  .ws-go { height: 64px; }
+  .ws-knob { width: 52px; height: 52px; }
+  .ws-orbit-wrap { scale: 0.76; }
+  .ws-connect { scale: 0.74; }
+  .ws-crow-name small { display: none; }
 }
-@media (max-width: 900px) and (max-height: 700px) { .wel-scene { height: 36svh; } .wel-copy h1 { font-size: 31px; } .wel-copy p { margin-top: 8px; font-size: 14px; } .wel-actions { margin-top: 12px; } .wel-more { margin-top: 4px; } .wel-main { padding-bottom: 12px; } }
-@media (prefers-reduced-motion: reduce) { .wel-glow { animation: none; } .wel-cta, .wel-cta-arrow svg { transition: none; } }
+@media (min-width: 900px) {
+  .ws { min-height: 640px; }
+  .ws-top { top: 32px; left: 64px; right: 64px; }
+  .ws-brand { display: flex; }
+  .ws-nav { flex: 0 0 auto; margin-left: auto; }
+  .ws-dots { margin-left: 6px; }
+  .ws-slide { padding: 0; }
+  .ws-shade { background: linear-gradient(90deg, #0b0630 0%, rgba(11, 6, 48, 0.92) 30%, rgba(18, 11, 74, 0.35) 56%, rgba(11, 6, 48, 0) 76%), linear-gradient(0deg, rgba(11, 6, 48, 0.55), rgba(11, 6, 48, 0) 30%); }
+  .ws-slide.is-art .ws-shade { background: linear-gradient(90deg, #0b0630 0%, rgba(11, 6, 48, 0.6) 35%, rgba(11, 6, 48, 0) 60%); }
+  .ws-stage { background: radial-gradient(760px 700px at 72% 52%, #3a2a9a 0%, #2a1c7a 30%, #120b4a 70%, #0b0630 100%); }
+  .ws-art { position: absolute; top: 120px; right: 4%; bottom: 80px; width: 46%; flex: none; }
+  .ws-pill-a { left: 4%; scale: 1.12; }
+  .ws-pill-b { right: 2%; scale: 1.12; }
+  .ws-orbit-wrap, .ws-connect { scale: 1.3; }
+  .ws-copy { position: absolute; left: 96px; top: calc(50% - 230px); width: min(600px, 44%); padding: 0; }
+  .ws-copy h2 { font-size: clamp(52px, 5.4vw, 76px); letter-spacing: -3px; }
+  .ws-copy p { max-width: 470px; margin-top: 18px; font-size: 18px; }
+  .ws-actions { left: 96px; right: auto; bottom: auto; top: calc(50% + 120px); width: 440px; }
+  .ws-sign { text-align: left; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ws-slide, .ws-photo { transition: none; }
+  .ws-photo { transform: none; }
+  .ws-pill, .ws-connect, .ws-orbit, .ws-sat-coin, .ws-knob, .ws-sat.is-live .ws-beam::after, .ws-tap, .ws-cspin { animation: none; }
+  .ws-cbtn-a, .ws-cbtn-b { animation: none; opacity: 0; }
+  .ws-cbtn-c { animation: none; opacity: 1; }
+}
 
 /* ── coral + indigo: the app frame ── */
 .main-col { background-image: var(--glow); background-repeat: no-repeat; }

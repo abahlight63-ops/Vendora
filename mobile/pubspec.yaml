@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # Must stay in step with APP_VERSION in src/version.js — the Shell toasts
 # "VeloSales Ai updated" when the server value changes, and Play Store rejects
 # any upload whose versionCode has not gone UP. Bump both together.
-version: 1.14.0+4
+version: 1.15.0+5
 
 environment:
   sdk: ^3.12.2
@@ -64,10 +64,11 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # No assets are bundled: the mark is drawn from vectors
-  # (lib/brand_mark.dart), and the designer's 1024px icons stay in assets/ as
-  # reference only — undeclared, so they never reach the APK.
-  # (An empty `assets:` key is not valid, hence it is a comment.)
+  # Only the welcome photos and the channel logos are bundled. The mark is drawn
+  # from vectors (lib/brand_mark.dart); the designer icons in assets/ stay out.
+  assets:
+    - assets/welcome/
+    - assets/channels/
 
   # Manrope is the app's typeface (same family as the web build). Inter stays
   # registered only so any lingering `fontFamily: 'Inter'` call site still

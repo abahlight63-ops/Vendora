@@ -244,25 +244,22 @@ Check every text/background pair at 4.5:1 in both themes.
   red alarm would punish a normal tap.
 
 ### Pre-signup welcome (web `/` + phone)
-- One screen on both clients (`frontend/src/pages/Landing.jsx`,
-  `mobile/lib/screens/welcome_screen.dart`): the 3D mark, one promise ("Your
-  WhatsApp shop, open 24/7."), one sentence, then a choice. Pricing and detail
-  live on the marketing site; the web links to it once and keeps its legal
-  footer below the stage.
-- The stage is saturated indigo in both themes, with slow drifting brand glows
-  and a fine star field. This is marketing, not chrome: the backdrop and the
-  orbit may loop here, and nowhere inside the app.
-- The scene (`components/mark3d-core.js` + `Mark3D.jsx`, `widgets/mark_3d.dart`)
-  extrudes the mark's three triangles with no model file and no 3D library. The
-  pieces fly in and lock, the mark turns toward the cursor or finger, and channel
-  tiles orbit on a tilted ring, passing behind and in front. Both files hold the
-  same numbers: change one, change both.
-- Only live channels orbit untagged. A channel that has not shipped carries an
-  amber "soon" tag (Instagram today); remove the tag when it ships.
-- Headline on this screen may exceed the type scale (up to 68px on desktop).
-  The primary action is a white pill joined to an amber arrow, with "Sign in"
-  beside it. Either opens auth in that mode. It never says "Create my free shop".
-- Reduced motion: one still, angled pose with every channel visible, no drift.
+- Six slides, the same on both clients (`frontend/src/pages/Landing.jsx`,
+  `mobile/lib/screens/welcome_screen.dart`): three real sellers with the WhatsApp
+  messages Velo sends for them, every channel around Velo, the one-tap Connect
+  card, then the free offer. Keep the slide list the same in both files.
+- Photos sit full screen under a light violet tint and a dark fade, so white text
+  always reads. Message pills tilt and float; never cover a face.
+- Photos are free Unsplash photos (`frontend/public/welcome/CREDITS.md`). Before
+  big marketing, replace them with real customers who agreed in writing.
+- Channel logos are the real brand logos as round coins (`lib/channelLogos.js`,
+  `mobile/assets/channels`). A channel that has not shipped says "Soon"; never
+  show it as live.
+- One action on every slide: the long "Try it free" pill with a white circle, then
+  "No card needed · Already selling? Sign in".
+- Slides change every 7 seconds, stop while touched or hovered, and have a pause
+  button. Swipe and arrow keys move between them. Reduced motion: nothing moves
+  on its own.
 
 ### Welcome tour (web + phone)
 - Six slides, one idea each, shown once after sign-up, then never unprompted.

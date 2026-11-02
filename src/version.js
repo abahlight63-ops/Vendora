@@ -3,12 +3,10 @@
 // Bump VERSION + add a note on every user-visible release — the Shell checks
 // /api/version on load and toasts "VeloSales Ai updated" when it changes, and the
 // admin broadcast button can push the same notes into every inbox.
-const APP_VERSION = '1.14.0';
+const APP_VERSION = '1.15.0';
 const WHATS_NEW = [
-  'A new coral and indigo look across the app, with a new logo and a 3D opening animation',
-  'Catalog redesigned: products Velo cannot quote come first, with a health score at the top',
-  'Add Product now asks what fits your business: a phone seller gets storage and condition, a baker gets flavours and order notice',
-  'You can now show a sale price, and edit any product from one simple sheet',
-  'On the phone: swipe to mark a product sold out, plus pull to refresh with the new logo',
+  'A new welcome: six slides with real sellers showing what Velo does on WhatsApp',
+  'See every channel Velo works on, and how WhatsApp connects in one tap',
+  'A new Try it free button, in the premium style coming to the whole app',
 ];
 module.exports = { APP_VERSION, WHATS_NEW };

@@ -480,7 +480,8 @@ export default function Connect() {
   const waLinked = !!(wa && wa.metaConnected);
   const tgLive = tgOn && !!(tgHealth && tgHealth.configured && tgHealth.ok);
   const liveCount = (waLive ? 1 : 0) + (tgLive ? 1 : 0);
-  const coinSvg = (id, s = 48) => <svg className="ch-coin" width={s} height={s} viewBox="0 0 64 64" aria-hidden="true" dangerouslySetInnerHTML={{ __html: CHANNEL_COINS[id] }} />;
+  let coinN = 0; // each logo gets its own gradient ids, so a hidden copy never blanks a visible one
+  const coinSvg = (id, s = 48) => { coinN += 1; const n = coinN; return <svg className="ch-coin" width={s} height={s} viewBox="0 0 64 64" aria-hidden="true" dangerouslySetInnerHTML={{ __html: CHANNEL_COINS[id].replace(/(msg-g|ig-g)/g, '$1-' + n) }} />; };
   const fbIcon = (s = 26, c = '#fff') => <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden="true"><path fill={c} d="M13.5 21v-7.5H16l.4-3h-2.9V8.7c0-.9.3-1.5 1.5-1.5h1.5V4.6c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.8v2.2H8v3h2.6V21z" /></svg>;
 
   return (
@@ -506,11 +507,11 @@ export default function Connect() {
               <div className="ch-rows">
                 <div className="ch-row">
                   {coinSvg('whatsapp')}
-                  <span className="ch-row-main"><b>WhatsApp</b><small>{!st ? 'Checking…' : wa && wa.number ? `${wa.number}${wa.dailyUnlimited || wa.dailyLimit ? ` · ${wa.dailyUsed || 0} of ${wa.dailyUnlimited ? 'unlimited' : wa.dailyLimit} replies today` : ''}` : 'Not connected yet'}</small></span>
+                  <span className="ch-row-main"><b>WhatsApp</b><small>{!st ? 'Checking…' : wa && !wa.number && waLive ? 'Connected' : wa && wa.number ? `${wa.number}${wa.dailyUnlimited || wa.dailyLimit ? ` · ${wa.dailyUsed || 0} of ${wa.dailyUnlimited ? 'unlimited' : wa.dailyLimit} replies today` : ''}` : 'Not connected yet'}</small></span>
                   {waLive ? <span className="ch-chip live">✓ Live</span> : waLinked ? <span className="ch-chip ready">Waiting for a test</span> : null}
                   {waLinked
                     ? <button type="button" className="btn ghost sm" disabled={busy} onClick={waHealthCheck}>{busy ? 'Checking' : 'Verify'}</button>
-                    : <button type="button" className="btn sm" onClick={() => openRoad('meta')}>Connect</button>}
+                    : !waLive && <button type="button" className="btn sm" onClick={() => openRoad('meta')}>Connect</button>}
                 </div>
                 {waHealth && (
                   <p className={'ch-note' + (waHealth.connected ? ' ok' : ' warn')}>

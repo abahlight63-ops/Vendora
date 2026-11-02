@@ -2726,7 +2726,9 @@ body { min-height: 100vh; min-height: 100dvh; } /* the colour field must reach t
   .au-steps li { display: flex; align-items: center; gap: 10px; padding: 8px 16px 8px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.22); backdrop-filter: blur(14px); font-size: 14px; font-weight: 600; }
   .au-steps b { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: #fff; color: #d03c16; font-size: 14px; }
   .au-panel { margin: 0; padding: 40px 56px; border: 0; border-radius: 0; display: flex; flex-direction: column; justify-content: center; overflow-y: auto; max-height: 100vh; background: radial-gradient(600px 500px at 80% 0%, rgba(74, 46, 158, 0.55), rgba(74, 46, 158, 0) 70%), #0b0630; }
-  .au-top { position: absolute; top: 32px; left: 56px; right: 56px; }
-  .au .auth-pane { padding-top: 48px; }
+  .au-top { position: static; width: 100%; max-width: 440px; margin: 0 auto 36px; padding-bottom: 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); gap: 14px; }
+  .au-top .au-brand { font-size: 18px; }
+  .au .auth-pane { padding-top: 0; margin-top: 0; margin-bottom: auto; }
+  .au-panel { justify-content: flex-start; padding-top: 48px; }
 }
 @media (prefers-reduced-motion: reduce) { .au .auth-pane { animation: none; } .au-tabs button { transition: none; } }

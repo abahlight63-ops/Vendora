@@ -2732,3 +2732,95 @@ body { min-height: 100vh; min-height: 100dvh; } /* the colour field must reach t
   .au-panel { justify-content: flex-start; padding-top: 48px; }
 }
 @media (prefers-reduced-motion: reduce) { .au .auth-pane { animation: none; } .au-tabs button { transition: none; } }
+
+/* ── Channels (/connect) ─────────────────────────────────────────────
+   Meta apps behind one Facebook login, Telegram, then what is coming. Each
+   connect flow is a glass card of numbered steps that say what to tap and
+   what happens next. Same page as the phone's connect_screen.dart. */
+.ch { display: flex; flex-direction: column; gap: 18px; }
+.ch-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.ch-head h1 { margin-top: 8px; font-size: 44px; line-height: 1.05; font-weight: 600; letter-spacing: -1.6px; }
+.ch-head p { margin-top: 8px; font-size: 16px; color: var(--glass-ink); }
+.ch-coins { display: flex; gap: 10px; }
+.ch-coin { display: block; flex: 0 0 auto; filter: drop-shadow(0 6px 10px rgba(30, 23, 87, 0.18)); }
+.ch-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(260px, 1fr); gap: 18px; align-items: start; }
+.ch-main, .ch-side { min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+.ch-card { padding: 24px; }
+.ch-card h2 { font-size: 22px; font-weight: 600; letter-spacing: -0.5px; }
+.ch-card-head { display: flex; align-items: center; gap: 14px; }
+.ch-card-title { flex: 1; min-width: 0; }
+.ch-card-title p { margin-top: 4px; font-size: 14px; line-height: 1.45; color: var(--glass-ink); }
+.ch-fb { flex: 0 0 52px; display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 50%; background: #1877f2; }
+.ch-glyph { flex: 0 0 48px; display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%; background: #fff; color: #4f3fc7; }
+.ch-chip { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.ch-chip.live { background: rgba(5, 150, 105, 0.14); color: var(--good-ink); }
+.ch-chip.ready { background: rgba(79, 63, 199, 0.12); color: #3b2e9e; }
+.ch-chip.soon { background: rgba(30, 23, 87, 0.08); color: var(--glass-ink); }
+.ch-chip.hot { background: var(--coral-soft); color: var(--coral-ink); }
+[data-theme="dark"] .ch-chip.ready { color: #c9c2f5; background: rgba(185, 174, 251, 0.16); }
+[data-theme="dark"] .ch-chip.soon { background: rgba(255, 255, 255, 0.1); }
+.ch-rows { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+.ch-row { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 22px; background: var(--glass-field); }
+.ch-row.is-soon .ch-coin { opacity: 0.7; }
+.ch-row-main { flex: 1; min-width: 0; }
+.ch-row-main b { display: block; font-size: 16px; font-weight: 700; }
+.ch-row-main small { display: block; margin-top: 2px; overflow: hidden; font-size: 13px; color: var(--glass-ink); text-overflow: ellipsis; white-space: nowrap; }
+.ch-note { margin: 0 4px; padding: 10px 14px; border-radius: 16px; font-size: 13.5px; line-height: 1.45; }
+.ch-note.ok { background: rgba(5, 150, 105, 0.1); color: var(--good-ink); }
+.ch-note.warn { background: var(--coral-soft); color: var(--coral-ink); }
+.ch-card-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 18px; }
+.ch-foot-note { flex: 1 1 240px; font-size: 13px; line-height: 1.45; color: var(--glass-ink); }
+.btn.ch-fb-go { background: #1877f2; box-shadow: 0 14px 30px rgba(24, 119, 242, 0.32); }
+.btn.ch-fb-go:hover { background: #0f63d4; }
+.btn.ch-fb-go::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%231877F2' d='M13.5 21v-7.5H16l.4-3h-2.9V8.7c0-.9.3-1.5 1.5-1.5h1.5V4.6c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.8v2.2H8v3h2.6V21z'/%3E%3C/svg%3E"); background-size: 26px; }
+.ch-choose { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
+.ch-option { display: flex; flex-direction: column; gap: 6px; padding: 16px; border: 1.5px solid transparent; border-radius: 22px; background: var(--glass-field); color: var(--ink); text-align: left; cursor: pointer; transition: border-color 0.18s ease; }
+.ch-option:hover { border-color: var(--ink); }
+.ch-option:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ch-option b { font-size: 16px; font-weight: 700; }
+.ch-option em { margin-left: 4px; padding: 2px 8px; border-radius: 999px; background: rgba(79, 63, 199, 0.14); font-size: 11px; font-style: normal; color: #3b2e9e; }
+.ch-option span { font-size: 13.5px; line-height: 1.45; color: var(--glass-ink); }
+.ch-option i { margin-top: 4px; font-size: 14px; font-style: normal; font-weight: 700; color: var(--coral-ink); }
+.ch-soon-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.ch-card.is-soon { opacity: 0.72; padding: 20px; }
+.ch-card.is-soon h2 { font-size: 18px; }
+.ch-soon-text { margin-top: 12px; font-size: 14px; line-height: 1.45; color: var(--glass-ink); }
+.ch-side h2 { font-size: 18px; }
+.ch-side-text { margin: 6px 0 14px; font-size: 14px; line-height: 1.45; color: var(--glass-ink); }
+.ch-side-text:last-child { margin: 14px 0 0; }
+.ch-import { border-radius: 30px; background: linear-gradient(150deg, #4f3fc7, #2a1c7a); color: #fff; box-shadow: 0 16px 30px rgba(79, 63, 199, 0.32); }
+.ch-import p { margin: 6px 0 14px; font-size: 14px; color: #e0dbff; }
+.ch-import-go { width: 100%; min-height: 46px; border: 0; border-radius: 999px; background: #fff; color: #2a1c7a; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.ch-import-go:disabled { opacity: 0.7; cursor: default; }
+/* the step-by-step flows */
+.ch-flow { max-width: 760px; }
+.ch-flow-top { display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 700; color: var(--glass-ink); }
+.ch-back { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: var(--glass-bright); color: var(--ink); cursor: pointer; }
+.ch-back:focus-visible, .ch-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ch-flow-coins { display: flex; gap: 10px; margin-top: 18px; }
+.ch-flow .ch-flow-title { margin-top: 14px; font-size: 32px; line-height: 1.08; letter-spacing: -1px; }
+.ch-flow-lead { margin-top: 8px; max-width: 600px; font-size: 15px; line-height: 1.5; color: var(--glass-ink); }
+.ch-guide { list-style: none; counter-reset: chg; display: flex; flex-direction: column; gap: 4px; margin: 18px 0; padding: 8px 18px; border-radius: 24px; background: var(--glass-field); }
+.ch-guide li { counter-increment: chg; position: relative; padding: 12px 0 12px 46px; }
+.ch-guide li + li { border-top: 1px solid var(--ring-track); }
+.ch-guide li::before { content: counter(chg); position: absolute; left: 0; top: 12px; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: var(--ink); color: var(--card); font-size: 14px; font-weight: 700; }
+.ch-guide b { display: block; font-size: 15.5px; font-weight: 700; }
+.ch-guide span { display: block; margin-top: 3px; font-size: 14px; line-height: 1.5; color: var(--glass-ink); }
+.ch-guide a { font-weight: 700; color: var(--coral-ink); }
+.ch-safe { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; font-size: 13.5px; color: var(--good-ink); }
+.ch-help { margin-top: 12px; font-size: 13.5px; color: var(--glass-ink); }
+.ch-link { padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.ch-flow .btn.lg { width: 100%; max-width: 440px; }
+.ch-flow label { display: block; margin: 14px 0 6px; font-size: 14px; font-weight: 700; }
+@media (max-width: 1100px) { .ch-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) {
+  .ch-head h1 { font-size: 34px; }
+  .ch-coins { display: none; }
+  .ch-card { padding: 18px; }
+  .ch-row { padding: 12px; gap: 12px; }
+  .ch-row .ch-coin { width: 42px; height: 42px; }
+  .ch-choose, .ch-soon-grid { grid-template-columns: minmax(0, 1fr); }
+  .ch-flow .ch-flow-title { font-size: 28px; }
+  .ch-guide { padding: 6px 14px; }
+}
+@media (prefers-reduced-motion: reduce) { .ch-option { transition: none; } }

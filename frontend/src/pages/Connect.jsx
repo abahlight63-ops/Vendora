@@ -4,7 +4,8 @@
 // BotFather token, pick the WhatsApp brain, TEST-verify to LIVE.
 // One action per screen: road picker → connect → webhook verify → TEST.
 // DATA: GET /api/me/channels (status + Meta App ID/Config ID) + GET /api/me/ai-models.
-import { useEffect, useRef, useState } from 'react'; // state per step; effect loads status once
+import { useEffect, useRef, useState } from 'react';
+import { CHANNEL_COINS } from '../lib/channelLogos.js'; // the real channel logos // state per step; effect loads status once
 import { Link } from 'react-router-dom'; // in-page links (points at AI settings for the full picture)
 import { api, pop, toast } from '../lib/api.js'; // api() calls; pop() big outcomes; toast() small notes
 
@@ -475,103 +476,149 @@ export default function Connect() {
     return () => { clearInterval(t); clearTimeout(stop); }; // cleanup on unmount/stop (no leaked timers!)
   }, [testing]);
 
-  return (
-    <>
-      <div className="page-head"><div><h1>Channels</h1><p>Connect your channels once, and Velo answers from then on.</p></div></div>
+  const waLive = !!(wa && wa.live);
+  const waLinked = !!(wa && wa.metaConnected);
+  const tgLive = tgOn && !!(tgHealth && tgHealth.configured && tgHealth.ok);
+  const liveCount = (waLive ? 1 : 0) + (tgLive ? 1 : 0);
+  const coinSvg = (id, s = 48) => <svg className="ch-coin" width={s} height={s} viewBox="0 0 64 64" aria-hidden="true" dangerouslySetInnerHTML={{ __html: CHANNEL_COINS[id] }} />;
+  const fbIcon = (s = 26, c = '#fff') => <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden="true"><path fill={c} d="M13.5 21v-7.5H16l.4-3h-2.9V8.7c0-.9.3-1.5 1.5-1.5h1.5V4.6c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.8v2.2H8v3h2.6V21z" /></svg>;
 
-      <div className="card"> {/* status board: both doors at a glance */}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span className={'pill ' + (!st ? 'off' : wa && wa.live ? 'ok' : 'flag')} style={{ fontSize: 13 }}>
-            {!st ? 'Checking…' : `WhatsApp: ${wa.live ? 'LIVE' : 'OFF'}`} {/* LIVE = inbound seen (TEST passed!) */}
-          </span>
-          <span className={'pill ' + (!st ? 'off' : !tgOn ? 'flag' : tgHealth && tgHealth.configured ? (tgHealth.ok ? 'ok' : 'flag') : 'off')} style={{ fontSize: 13 }}>
-            {!st ? 'Checking…' : !tgOn ? 'Telegram: OFF'
-              : tgHealth && tgHealth.configured
-                ? (tgHealth.ok ? `Telegram: LIVE${st.telegram.shared ? ' · shared' : ''}${tgChecking ? ' (checking)' : ''}` : 'Telegram: NEEDS REPAIR')
-                : `Telegram: READY (not verified)${tgChecking ? ' — checking…' : ''}`} {/* "connected" is not "delivering" — the live hook verdict wins */}
-          </span>
-          {wa && wa.number && <span className="hint">Shop number: {wa.number}</span>}
-          {wa && wa.metaConnected && <span className="hint">Meta linked — no credentials needed from you.</span>}
-          {wa && (wa.dailyUnlimited || wa.dailyLimit) ? <span className="hint">Today: {wa.dailyUsed || 0}/{wa.dailyUnlimited ? 'Unlimited' : wa.dailyLimit} replies ({wa.tier || 'free'} plan)</span> : null}
-          {wa && wa.metaConnected && <button className="btn ghost sm" disabled={busy} onClick={metaDisconnect}>Disconnect</button>}
+  return (
+    <div className="ch">
+      <div className="ch-head">
+        <div>
+          <div className={'dg-status' + (liveCount ? ' on' : '')}><i />{!st ? 'Checking your channels' : liveCount ? `Velo is answering on ${liveCount} ${liveCount === 1 ? 'channel' : 'channels'}` : 'No channel is live yet'}</div>
+          <h1>Channels</h1>
+          <p>Connect once and Velo answers every customer, wherever they message you.</p>
         </div>
-        {wa && wa.metaConnected && (
-          <div style={{ marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <button className="btn ghost sm" disabled={busy} onClick={waHealthCheck}>{busy ? 'Verifying…' : 'Verify WhatsApp'}</button>
-              {waHealth && waHealth.connected && <span className="pill ok" style={{ fontSize: 12 }}>Token alive{waHealth.phone ? ` · ${waHealth.phone}` : ''}</span>}
-              {waHealth && !waHealth.connected && waHealth.reason && <span className="pill flag" style={{ fontSize: 12 }}>Needs attention</span>}
-            </div>
-            {waHealth && waHealth.connected && <p className="hint" style={{ marginTop: 6 }}>Meta accepts your token. If TEST messages still don&apos;t flip LIVE, the webhook paste in Meta (step 2) is the missing piece — not your credentials.</p>}
-            {waHealth && !waHealth.connected && <p className="hint" style={{ marginTop: 6 }}>{waHealth.reason === 'token-dead' ? 'Your Meta token expired (temp tokens last 24h) — reconnect with a fresh token from Meta API Setup.' : 'Not connected yet — finish step 1 first.'}</p>}
-          </div>
-        )}
-        {tgOn && (
-          <div style={{ marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <button className="btn ghost sm" disabled={tgChecking || busy} onClick={() => tgHealthCheck(false)}>{tgChecking ? 'Verifying…' : 'Verify Telegram connection'}</button>
-              {tgHealth && tgHealth.configured && !tgHealth.ok && <button className="btn sm" disabled={busy} onClick={() => tgHealthCheck(true)}>{busy ? 'Repairing…' : 'Repair now'}</button>}
-              {tgHealth && tgHealth.configured && tgHealth.ok && <span className="pill ok" style={{ fontSize: 12 }}>Webhook OK{tgHealth.pending ? ` · ${tgHealth.pending} queued` : ''}</span>}
-              {tgHealth && tgHealth.configured && !tgHealth.ok && <span className="pill flag" style={{ fontSize: 12 }}>{tgHealth.matches === false ? 'Hook pointing elsewhere' : 'Needs attention'}</span>}
-            </div>
-            {tgHealth && !tgHealth.configured && <p className="hint" style={{ marginTop: 6 }}>No bot saved yet — connect below first.</p>}
-            {tgHealth && tgHealth.configured && tgHealth.ok && <p className="hint" style={{ marginTop: 6 }}>Telegram delivers to us correctly. Message the bot — it answers. Customers: nothing to install, just open your bot/link and chat.</p>}
-            {tgHealth && tgHealth.configured && !tgHealth.ok && (
-              <p className="hint" style={{ marginTop: 6 }}>
-                {tgHealth.matches === false
-                  ? 'Your bot is delivering somewhere else (usually our server moved since you connected). '
-                  : (tgHealth.lastError ? `Telegram says: ${tgHealth.lastError}. ` : 'Webhook not registered. ')}
-                {tgHealth.matches === false
-                  ? 'Tap Repair now — it re-registers the hook in seconds and you do NOT need to re-paste your token.'
-                  : 'Tap Repair now. If repair cannot fix it, the token itself is dead (revoked in BotFather) — create a new bot and re-save it here.'}
-                {tgHealth.expectedUrl ? <><br />It must point at: <code>{tgHealth.expectedUrl}</code></> : null}
-              </p>
-            )}
-            {tgHealth && tgHealth.repaired && tgHealth.repaired.healed && <p className="hint" style={{ marginTop: 6, color: 'var(--good, #17a673)' }}>Repaired just now — your bot is delivering to us again. No queued messages were dropped.</p>}
-          </div>
-        )}
+        <div className="ch-coins" aria-hidden="true">{['whatsapp', 'telegram', 'messenger', 'instagram'].map((c) => <span key={c}>{coinSvg(c, 44)}</span>)}</div>
       </div>
 
-      {!road && ( // ROAD PICKER: visual cards (slideshow art up top, tap anywhere to enter!)
-        <div className="grid2">
-          <button className="card hover-lift" style={{ textAlign: 'left', cursor: 'pointer' }} onClick={() => openRoad('meta')}>
-            <GuideSlides slides={WA_SLIDES} label="How WhatsApp connecting works" />
-            <h2>WhatsApp — One-tap connect <span className="pill ok">FREE TO START</span></h2>
-            <p className="desc">Tap once, log in with Facebook, pick your business number — we handle the IDs and tokens for you. No copying, no console maze. 1,000 chats/month free.</p>
-            <p className="hint">Recommended for everyone. Takes ~2 minutes.</p>
-          </button>
-          <button className="card hover-lift" style={{ textAlign: 'left', cursor: 'pointer', gridColumn: '1 / -1' }} onClick={() => openRoad('telegram')}>
-            <GuideSlides slides={TG_SLIDES} label="How Telegram connecting works" />
-            <h2>Telegram — BotFather <span className="pill ok">FREE · 1 MIN</span></h2>
-            <p className="desc">Message @BotFather on Telegram → /newbot → paste the token here. No payment, ever.</p>
-          </button>
+      {!road && (
+        <div className="ch-grid">
+          <div className="ch-main">
+            <section className="ch-card glass" aria-labelledby="ch-meta">
+              <div className="ch-card-head">
+                <span className="ch-fb">{fbIcon()}</span>
+                <div className="ch-card-title"><h2 id="ch-meta">Meta apps</h2><p>One Facebook login connects WhatsApp, and soon Messenger and Instagram. No codes or IDs to copy.</p></div>
+                {waLinked && <span className="ch-chip live">Facebook linked</span>}
+              </div>
+              <div className="ch-rows">
+                <div className="ch-row">
+                  {coinSvg('whatsapp')}
+                  <span className="ch-row-main"><b>WhatsApp</b><small>{!st ? 'Checking…' : wa && wa.number ? `${wa.number}${wa.dailyUnlimited || wa.dailyLimit ? ` · ${wa.dailyUsed || 0} of ${wa.dailyUnlimited ? 'unlimited' : wa.dailyLimit} replies today` : ''}` : 'Not connected yet'}</small></span>
+                  {waLive ? <span className="ch-chip live">✓ Live</span> : waLinked ? <span className="ch-chip ready">Waiting for a test</span> : null}
+                  {waLinked
+                    ? <button type="button" className="btn ghost sm" disabled={busy} onClick={waHealthCheck}>{busy ? 'Checking' : 'Verify'}</button>
+                    : <button type="button" className="btn sm" onClick={() => openRoad('meta')}>Connect</button>}
+                </div>
+                {waHealth && (
+                  <p className={'ch-note' + (waHealth.connected ? ' ok' : ' warn')}>
+                    {waHealth.connected
+                      ? `Meta accepts your connection${waHealth.phone ? ` for ${waHealth.phone}` : ''}. If a test message still doesn't turn this live, finish step 2 (the webhook) in Meta.`
+                      : waHealth.reason === 'token-dead' ? 'Your Meta connection expired. Tap Reconnect with Facebook below.' : 'Not connected yet. Tap Connect to start.'}
+                  </p>
+                )}
+                <div className="ch-row is-soon">{coinSvg('messenger')}<span className="ch-row-main"><b>Facebook Messenger</b><small>Answer your Page's messages</small></span><span className="ch-chip soon">Coming soon</span></div>
+                <div className="ch-row is-soon">{coinSvg('instagram')}<span className="ch-row-main"><b>Instagram</b><small>Answer your Instagram DMs</small></span><span className="ch-chip soon">Coming soon</span></div>
+              </div>
+              <div className="ch-card-foot">
+                {waLinked ? (
+                  <>
+                    <button type="button" className="btn ghost" onClick={() => openRoad('meta')}>Reconnect with Facebook</button>
+                    <button type="button" className="btn ghost danger-text" disabled={busy} onClick={metaDisconnect}>Disconnect</button>
+                  </>
+                ) : (
+                  <button type="button" className="btn lg ch-fb-go" onClick={() => openRoad('meta')}>Continue with Facebook</button>
+                )}
+                <span className="ch-foot-note">Velo only reads and answers customer messages. You can disconnect any time.</span>
+              </div>
+            </section>
+
+            <section className="ch-card glass" aria-labelledby="ch-tg">
+              <div className="ch-card-head">
+                {coinSvg('telegram', 52)}
+                <div className="ch-card-title"><h2 id="ch-tg">Telegram</h2><p>{!tgOn ? 'Free, and takes about a minute.' : st.telegram.sharedBot ? `Shared bot @${st.telegram.sharedBot}` : 'Your own bot is connected.'}{tgHealth && tgHealth.pending ? ` · ${tgHealth.pending} waiting` : ''}</p></div>
+                {tgOn && (tgLive ? <span className="ch-chip live">✓ Live</span> : tgHealth && tgHealth.configured ? <span className="ch-chip hot">Needs a repair</span> : <span className="ch-chip ready">{tgChecking ? 'Checking' : 'Connected'}</span>)}
+              </div>
+              {tgOn ? (
+                <>
+                  <div className="ch-card-foot">
+                    <button type="button" className="btn ghost" disabled={tgChecking || busy} onClick={() => tgHealthCheck(false)}>{tgChecking ? 'Checking' : 'Verify'}</button>
+                    {tgHealth && tgHealth.configured && !tgHealth.ok && <button type="button" className="btn" disabled={busy} onClick={() => tgHealthCheck(true)}>{busy ? 'Repairing' : 'Repair now'}</button>}
+                    <button type="button" className="btn ghost" onClick={() => openRoad('telegram')}>Settings</button>
+                  </div>
+                  {tgHealth && tgHealth.configured && !tgHealth.ok && (
+                    <p className="ch-note warn">
+                      {tgHealth.matches === false ? 'Your bot is sending messages somewhere else. Tap Repair now; you do not need to paste the token again.' : `${tgHealth.lastError ? `Telegram says: ${tgHealth.lastError}. ` : ''}Tap Repair now. If that fails, the token was revoked in BotFather: make a new bot and connect it again.`}
+                    </p>
+                  )}
+                  {tgHealth && tgHealth.repaired && tgHealth.repaired.healed && <p className="ch-note ok">Repaired. Your bot is delivering again, and no messages were lost.</p>}
+                </>
+              ) : (
+                <div className="ch-choose">
+                  <button type="button" className="ch-option" onClick={() => openRoad('telegram')}><b>Your own bot</b><span>Make a free bot with @BotFather and paste its token. About a minute.</span><i>Start →</i></button>
+                  <button type="button" className="ch-option" onClick={() => openRoad('telegram')}><b>Our shared bot <em>Pro</em></b><span>No BotFather. Get a link for your customers in one tap.</span><i>Start →</i></button>
+                </div>
+              )}
+            </section>
+
+            <div className="ch-soon-grid">
+              {[['Website chat', 'A chat bubble on your website, answered by Velo.', 'web'], ['Email', 'Velo replies to customer emails from your shop address.', 'mail']].map(([n, d, g]) => (
+                <section key={n} className="ch-card glass is-soon">
+                  <div className="ch-card-head">
+                    <span className="ch-glyph" aria-hidden="true">{g === 'web'
+                      ? <svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" /><path fill="none" stroke="currentColor" strokeWidth="2" d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18" /></svg>
+                      : <svg width="24" height="24" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3" fill="none" stroke="currentColor" strokeWidth="2" /><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" d="M4 7l8 6 8-6" /></svg>}</span>
+                    <div className="ch-card-title"><h2>{n}</h2></div>
+                    <span className="ch-chip soon">Coming soon</span>
+                  </div>
+                  <p className="ch-soon-text">{d}</p>
+                </section>
+              ))}
+            </div>
+          </div>
+
+          <aside className="ch-side">
+            <section className="ch-card glass">
+              <h2>Who answers</h2>
+              <p className="ch-side-text">Fast, Normal or Smart: the same Velo on every channel. Heavier ones need a bigger plan.</p>
+              <ModelPicker models={models} model={brain} onPick={saveBrain} onLocked={() => setUpsell(true)} />
+              <p className="ch-side-text">Voice, greeting and discounts live in <Link to="/ai-settings">AI settings</Link>.</p>
+            </section>
+            <section className="ch-card ch-import">
+              <h2>Bring your catalog too</h2>
+              <p>Pull your WhatsApp Business products into Velo with one tap.</p>
+              <button type="button" className="ch-import-go" disabled={busy || !waLinked} onClick={metaPull}>{waLinked ? 'Import from WhatsApp' : 'Connect WhatsApp first'}</button>
+            </section>
+          </aside>
         </div>
       )}
 
       {road === 'meta' && (
-        <div className="card">
-          <Steps n={step} of={3} />
+        <div className="ch-card glass ch-flow">
+          <div className="ch-flow-top"><button type="button" className="ch-back" onClick={back} aria-label="Back to channels"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" d="M15 5l-7 7 7 7" /></svg></button><span>Step {step} of 3</span></div>
           {step === 1 && (<>
-            <h2>Let&apos;s connect your WhatsApp Business account</h2>
-            <p className="desc">Here&apos;s what happens next — it takes about 2 minutes:</p>
-            <ol className="desc" style={{ margin: '8px 0 8px 18px', display: 'grid', gap: 6 }}>
-              <li>You&apos;ll be asked to log in with the Facebook account linked to your WhatsApp Business.</li>
-              <li>Facebook will show you your WhatsApp Business number — confirm it&apos;s the right one.</li>
-              <li>Once confirmed, your account connects automatically — no codes or technical setup needed on your end.</li>
+            <div className="ch-flow-coins" aria-hidden="true">{coinSvg('whatsapp', 52)}{coinSvg('messenger', 52)}{coinSvg('instagram', 52)}</div>
+            <h2 className="ch-flow-title">Connect WhatsApp with Facebook</h2>
+            <p className="ch-flow-lead">It takes about 2 minutes. You log in with Facebook, choose your WhatsApp Business number, and Velo does the technical part.</p>
+            <ol className="ch-guide">
+              <li><b>Use the Facebook account that runs your business</b><span>Log in to Facebook in this browser with the account that manages your business Page. A staff or personal account without business access will not work.</span></li>
+              <li><b>Have your WhatsApp Business number nearby</b><span>Meta may send a code to that number by SMS or a call, to confirm it is yours.</span></li>
+              <li><b>Tap Continue with Facebook</b><span>A Meta window opens. If your browser asks, allow pop-ups for this site.</span></li>
+              <li><b>Follow every Meta screen to the end</b><span>Choose your business, pick your WhatsApp number, and tap Continue or Finish on each screen. Do not close the window early.</span></li>
+              <li><b>Come back here</b><span>The Meta window closes by itself and this page moves to the next step. There is nothing to copy.</span></li>
+              <li><b>Send one test message</b><span>From another phone, send any message to your shop number. This page turns green the moment it arrives, and Velo is live.</span></li>
             </ol>
-            <p className="hint">We never see or store your Facebook password — this login happens directly and securely through Meta.</p>
-            <div className="learn-box light" style={{ marginTop: 10 }}><b>Before you tap — 30 seconds that prevent 90% of failures:</b><br />1. Log into the RIGHT Facebook account in THIS browser (the one tied to your WhatsApp Business — business admin, not staff).<br />2. A new tab opens: finish EVERY step there, especially picking your business number.<br />3. When Meta finishes, it sends you straight back here — nothing to copy.<br />4. On a phone or the installed app this is the ONLY road we offer: popups simply cannot work there.</div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-              <button className="btn ghost sm" onClick={back}>Back</button>
-              <button className="btn sm" disabled={busy} onClick={embeddedConnect}>{busy ? (<><Loader size={15} />Opening Meta…</>) : 'Continue to connect'}</button>
-            </div>
+            <p className="ch-safe"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /></svg>Velo never sees your Facebook password. The login happens on Meta's own page.</p>
+            <button type="button" className="btn lg ch-fb-go" disabled={busy} onClick={embeddedConnect}>{busy ? (<><Loader size={17} />Opening Meta</>) : 'Continue with Facebook'}</button>
             {!st?.metaEmbeddedReady && st && (
               <div className="learn-box light" style={{ marginTop: 10 }}>
                 <b>One-tap popup isn&apos;t ready{!st.metaAppId ? ' — META_APP_ID missing on the server' : !st.metaConfigId ? ' — META_CONFIGURATION_ID missing on the server' : ''}.</b><br />
                 <span className="hint">Server keys set but popup still won&apos;t open? Two usual culprits: (1) Meta app dashboard → Facebook Login → Settings → Authorized JavaScript origins must include your app URL{typeof window !== 'undefined' && window.location && window.location.origin ? (<> — yours right now is <b>{window.location.origin}</b> (copy it exactly, https + domain, no trailing slash)</>) : ''}; (2) popup/ad-blocker (allow popups + connect.facebook.net). Still stuck? Talk to support from Help.</span>
               </div>
             )}
-            <p className="hint">Stuck? Allow new tabs/popups for this site and retry — or talk to support from Help.</p>
+            <p className="ch-help">Window did not open? Allow pop-ups for this site and tap again, or <button type="button" className="ch-link" onClick={() => setShowManual(true)}>enter the details by hand</button>.</p>
             {!showManual && (isStandaloneBrowser() || isInAppBrowser() || isMobileBrowser()) && <p className="hint" style={{ marginTop: 8 }}>On a phone{isInAppBrowser() ? ' inside another app' : ''}? Continue opens a full Meta page in a new tab (no popup can survive here) — or <button type="button" className="btn ghost sm" onClick={() => setShowManual(true)}>enter details manually</button> (same result, ~1 minute).</p>}
             {showManual && (<div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
               <h2>Enter details manually</h2>
@@ -590,8 +637,12 @@ export default function Connect() {
             </div>)}
           </>)}
           {step === 2 && (<>
-            <h2>Link VeloSales Ai in your Meta dashboard</h2>
-            <p className="desc">Open your Meta app dashboard → WhatsApp → Configuration. Paste BOTH values below there, then tap Verify and save. Nothing here navigates away — tap any box to copy it.</p>
+            <h2 className="ch-flow-title">Point Meta to Velo</h2>
+            <ol className="ch-guide">
+              <li><b>Open your Meta app dashboard</b><span>Go to developers.facebook.com, open your app, then WhatsApp, then Configuration.</span></li>
+              <li><b>Find Webhook and tap Edit</b><span>Paste value 1 into Callback URL and value 2 into Verify token. Tap a box below to copy it.</span></li>
+              <li><b>Tap Verify and save</b><span>Then, under Webhook fields, switch on <b>messages</b>. Come back here and continue.</span></li>
+            </ol>
             <CopyRow label="Value 1 — webhook URL" value={st?.webhookUrl || ''} />
             <div style={{ marginTop: 10 }}><CopyRow label="Value 2 — verify code" value={metaProof?.verifyToken || ''} /></div>
             <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
@@ -604,25 +655,24 @@ export default function Connect() {
       )}
 
       {road === 'telegram' && (
-        <div className="card">
-          <Steps n={step} of={2} />
+        <div className="ch-card glass ch-flow">
+          <div className="ch-flow-top"><button type="button" className="ch-back" onClick={back} aria-label="Back to channels"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" d="M15 5l-7 7 7 7" /></svg></button><span>Step {step} of 2</span></div>
           {step === 1 && (<>
-            <h2>Connect your Telegram bot</h2>
-            <p className="desc">To connect Telegram, you need a free bot token from Telegram itself — it takes under a minute.</p>
-            <ol className="desc" style={{ margin: '8px 0 8px 18px', display: 'grid', gap: 4 }}>
-              <li>Open Telegram and search for <b>@BotFather</b> (the official bot for creating bots).</li>
-              <li>Send the command <b>/newbot</b></li>
-              <li>Give your bot a name (this is what customers will see).</li>
-              <li>Give it a username — it must end in <b>bot</b> (e.g. YourShopBot).</li>
-              <li>BotFather will reply with a message containing your API token — a long string like <b>123456789:ABCdefGhIJKlmNoPQRsTuVwxyZ</b>.</li>
-              <li>Copy that token and paste it below.</li>
+            <div className="ch-flow-coins" aria-hidden="true">{coinSvg('telegram', 52)}</div>
+            <h2 className="ch-flow-title">Connect Telegram</h2>
+            <p className="ch-flow-lead">Telegram gives every shop a free bot. You make one with @BotFather, Telegram's official helper, then paste its token here. About a minute.</p>
+            <ol className="ch-guide">
+              <li><b>Open @BotFather in Telegram</b><span>Search for <b>BotFather</b> and open the one with the blue tick. Tap Start. <a href="https://t.me/BotFather" target="_blank" rel="noreferrer">Open BotFather</a></span></li>
+              <li><b>Send /newbot</b><span>Type <b>/newbot</b> and send it.</span></li>
+              <li><b>Type your shop name</b><span>This is the name customers see, for example <b>Amaka Beauty Studio</b>.</span></li>
+              <li><b>Type a username that ends in "bot"</b><span>For example <b>AmakaBeautyBot</b>. If BotFather says it is taken, try another.</span></li>
+              <li><b>Copy the token BotFather sends</b><span>It is the long line that looks like <b>123456789:ABCdef…</b>. Press and hold it, then copy.</span></li>
+              <li><b>Paste it below and tap Connect bot</b><span>Velo checks it with Telegram straight away. Keep the token private: anyone with it can control your bot.</span></li>
             </ol>
-            <p className="hint">⚠️ Keep this token private — anyone with it can control your bot.</p>
             <label>Bot token</label>
             <input value={tgToken} onChange={(e) => setTgToken(e.target.value)} placeholder="123456789:ABCdefGhIJKlmNoPQRsTuVwxyZ" spellCheck="false" autoComplete="off" />
             <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-              <button className="btn ghost sm" onClick={back}>Back</button>
-              <button className="btn sm" disabled={busy} onClick={tgConnect}>{busy ? (<><Loader size={15} />Checking…</>) : 'Connect bot'}</button>
+              <button className="btn lg" disabled={busy} onClick={tgConnect}>{busy ? (<><Loader size={17} />Checking</>) : 'Connect bot'}</button>
             </div>
             <p className="hint" style={{ marginTop: 8 }}>We check the token with Telegram instantly — a wrong or expired token is rejected right here.</p>
             <div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
@@ -657,14 +707,8 @@ export default function Connect() {
         </div>
       )}
 
-      <div className="card"> {/* the WhatsApp brain pick — same three tiers as AI settings */}
-        <h2>Which AI answers WhatsApp?</h2>
-        <p className="desc">Fast, Normal or Smart — the same choice you make in AI settings. Heavier tiers need the top plan.</p>
-        <ModelPicker models={models} model={brain} onPick={saveBrain} onLocked={() => setUpsell(true)} />
-        <p className="hint" style={{ marginTop: 10 }}>Want the whole picture (voice, greeting, discounts)? <Link to="/ai-settings">Open AI settings</Link>.</p>
-        <GlassUpsell show={upsell} onClose={() => setUpsell(false)} />
-      </div>
-    </>
+      <GlassUpsell show={upsell} onClose={() => setUpsell(false)} />
+    </div>
   );
 
   async function metaPull() { // one-tap auto-sync (Pro!): Meta profile → catalog scaffold

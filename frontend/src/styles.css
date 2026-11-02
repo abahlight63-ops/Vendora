@@ -2854,3 +2854,16 @@ body { min-height: 100vh; min-height: 100dvh; } /* the colour field must reach t
 .vai-hero { max-width: 1000px; }
 .vai-suglist { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 @media (max-width: 760px) { .vai-suglist { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .vai-scard { min-height: 108px; padding: 14px; font-size: 14px; } .vai-orb { width: 84px; height: 84px; } }
+/* Channels on phones: rows and card heads wrap instead of squeezing */
+@media (max-width: 760px) {
+  .ch-card-head { flex-wrap: wrap; }
+  .ch-card-head .ch-card-title { flex: 1 1 calc(100% - 70px); }
+  .ch-card-head > .ch-chip { margin-left: 66px; }
+  .ch-row { flex-wrap: wrap; row-gap: 10px; }
+  .ch-row .ch-row-main { flex: 1 1 calc(100% - 60px); }
+  .ch-row .ch-row-main small { white-space: normal; }
+  .ch-row > .ch-chip { margin-left: 54px; }
+  .ch-row > .ch-chip + .btn { margin-left: auto; }
+  .ch-row > .ch-row-main + .btn { margin-left: 54px; }
+  .ch-card-foot .btn { flex: 1 1 auto; }
+}

@@ -2867,3 +2867,32 @@ body { min-height: 100vh; min-height: 100dvh; } /* the colour field must reach t
   .ch-row > .ch-row-main + .btn { margin-left: 54px; }
   .ch-card-foot .btn { flex: 1 1 auto; }
 }
+/* Chat with Velo on phones: one calm column like ChatGPT, the message box sits above the bottom menu */
+@media (max-width: 760px) {
+  .vai { height: calc(100dvh - 186px - env(safe-area-inset-bottom)); min-height: 0; }
+  .vai-top { gap: 8px; }
+  .vai-top-hint { display: none; }
+  .vai-new { min-height: 40px; padding: 0 12px; }
+  .vai-new-label { display: none; }
+  .vai-hero { padding: 8px 2px 4px; }
+  .vai-orb { width: 56px; height: 56px; margin-bottom: 10px; }
+  .vai-orb svg { width: 24px; height: auto; }
+  .vai-hero h1 { margin-top: 6px; font-size: 27px; letter-spacing: -1px; }
+  .vai-hero > p { display: none; }
+  .vai-sug { margin-top: 18px; }
+  .vai-suglist { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .vai-scard { flex-direction: row; align-items: center; gap: 10px; min-height: 0; padding: 12px; border-radius: 18px; font-size: 13.5px; line-height: 1.3; }
+  .vai-sic { width: 32px; height: 32px; flex: 0 0 32px; }
+  .vai-sic svg { width: 15px; height: 15px; }
+  .vai-col { gap: 18px; padding: 4px 2px 8px; }
+  .vai-you .vai-bubble { max-width: 86%; font-size: 15px; }
+  .vai-ai { gap: 10px; }
+  .vai-mini { width: 26px; height: 26px; }
+  .vai-say > :first-child:not(.vai-via):not(.vai-acts) { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; font-size: 15px; line-height: 1.6; }
+  .vai-act { min-height: 36px; padding: 0 12px; font-size: 13px; }
+  .vai-bar { padding: 6px 0 0; }
+  .vai-input { padding: 5px; }
+  .vai-attach { width: 42px; height: 42px; }
+  .vai-send { width: 44px; height: 44px; }
+  .vai-note { display: none; }
+}

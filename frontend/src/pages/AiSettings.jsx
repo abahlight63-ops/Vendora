@@ -12,7 +12,8 @@
 // the whole row: business fields first (so validation passes), THEN settings.
 import { useEffect, useState } from 'react'; // useState = the form + the picked tier; useEffect = load tiers once
 import { api, pop } from '../lib/api.js'; // api() calls; pop() animated outcomes
-import Select from '../components/Select.jsx'; // the ONE dropdown control (same as catalog, billing, niche)
+import Select from '../components/Select.jsx';
+import GlassUpsell from '../components/GlassUpsell.jsx'; // the upgrade card for locked choices // the ONE dropdown control (same as catalog, billing, niche)
 import Ic from '../components/icons.jsx'; // check/tick glyphs
 import { BUCKETS, bucketOf, idFor, modelFor } from '../components/BrainPicker.jsx'; // the ONLY module that knows engines exist
 
@@ -41,6 +42,24 @@ function canonicalTone(raw) {
   return hit ? hit.value : (t || 'friendly and helpful');
 }
 
+// Ready-made lines for the dropdowns. {shop} becomes the shop name. "Write my own"
+// keeps a box for anything else, and an older custom line stays selectable.
+const GREETINGS = [
+  ['', 'Built-in welcome', 'Hello and welcome to {shop}! How can we help you today?'],
+  ['Welcome to {shop}! What can we get for you today? 💜', 'Welcome and ask what they need', ''],
+  ['Hello! Thanks for messaging {shop}. Ask me about any product, price or delivery.', 'Welcome and list what Velo can help with', ''],
+  ['Hello o! Welcome to {shop}. Wetin you dey find today?', 'Friendly Pidgin', ''],
+];
+const HANDOFFS = [
+  ['Thanks for your message! A member of our team will get back to you shortly.', 'Say the team will reply soon', ''],
+  ['Thanks for your message! {owner} will reply you shortly.', 'Promise a quick reply from you', ''],
+  ['Thanks for asking! Let me check with the team and get back to you soon.', 'Say the team will check', ''],
+  ['No wahala, {owner} go reply you sharp sharp. 🙏', 'Pidgin, friendly', ''],
+];
+const DISCOUNTS = [0, 5, 10, 15, 20, 25];
+const MIN_ORDERS = [0, 10000, 20000, 50000, 100000];
+const fill = (t, shop, owner) => String(t).replace(/\{shop\}/g, shop).replace(/\{owner\}/g, owner);
+
 export default function AiSettings({ biz, embedded = false }) {
   const [f, setF] = useState({
     tone: canonicalTone(biz?.tone),
@@ -53,6 +72,9 @@ export default function AiSettings({ biz, embedded = false }) {
   const [brainId, setBrainId] = useState(null); // the engine id the server stores today (never shown to anyone)
   const [tier, setTier] = useState('normal'); // which tier answers customers — the name we DO show
   const [busy, setBusy] = useState(false); // saving flag (disables the bar — no double submits)
+  const [upsell, setUpsell] = useState(null); // which locked feature's upgrade card is open
+  const [ownGreet, setOwnGreet] = useState(false);
+  const [ownHand, setOwnHand] = useState(false);
   const [dirty, setDirty] = useState(false); // any unsaved edit (drives the save bar + beforeunload)
   const set = (k) => (e) => { setF({ ...f, [k]: e.target.value }); setDirty(true); }; // curried setter factory + dirty flag (one line for every field)
 
@@ -78,7 +100,7 @@ export default function AiSettings({ biz, embedded = false }) {
   }, [dirty]);
 
   async function pickTier(b) { // choosing a tier writes the CONCRETE id behind it
-    if (b.locked) { pop('err', `${b.label} needs a bigger plan`, 'That tier runs the heaviest engines — open Billing to compare plans.'); return; }
+    if (b.locked) { setUpsell({ icon: 'bulb', title: `Unlock ${b.label} answers`, sub: 'Our smartest Velo: deeper answers, best at haggling and long questions.' }); return; }
     const prev = tier;
     const id = idFor(b.key, models);
     setTier(b.key); // optimistic: the radio moves instantly (feels like a switch, not a request)
@@ -117,7 +139,7 @@ export default function AiSettings({ biz, embedded = false }) {
       {/* ── 1. the brain ─────────────────────────────────────────────── */}
       <div className="card" data-guide="brain">
         <h2>Which Velo answers your customers</h2>
-        <p className="desc">Three settings, not thirty models. Pick how hard Velo should think on WhatsApp — you can change it any time.</p>
+        <p className="desc">Locked choices come with Pro. Tap one to see what you get.</p>
         <div className="ai-tiers">
           {BUCKETS.map((b) => {
             const m = modelFor(b.key, models);
@@ -125,21 +147,15 @@ export default function AiSettings({ biz, embedded = false }) {
             const on = tier === b.key;
             return (
               <button key={b.key} type="button" aria-pressed={on} className={'ai-tier' + (on ? ' on' : '') + (locked ? ' locked' : '')} onClick={() => pickTier({ ...b, locked })}>
-                <span className="ai-tier-top">
-                  <span className="ai-tier-name">{b.label}</span>
-                  {locked ? <span className="pill flag"><Ic n="lock" s={11} />Pro Plus</span> : <span className="pill ok">Included</span>}
-                  <span className="ai-tier-radio">{on ? <Ic n="check" s={12} /> : null}</span>
-                </span>
-                <span className="ai-tier-blurb">{b.blurb}</span>
-                <span className="ai-tier-for">
-                  {FOR[b.key].map((line) => <span key={line}><Ic n="check" s={12} />{line}</span>)}
-                </span>
-                {b.key === 'normal' && <span className="ai-tier-tag">Most owners keep this</span>}
+                {locked && <span className="lock-tag ai-tier-lock"><Ic n="lock" s={11} />Pro</span>}
+                <span className="ai-tier-ic"><Ic n={b.key === 'fast' ? 'bolt' : b.key === 'smart' ? 'bulb' : 'chart'} s={20} /></span>
+                <span className="ai-tier-name">{b.label}</span>
+                <span className="ai-tier-blurb">{b.key === 'fast' ? 'Quickest answers' : b.key === 'smart' ? 'Deepest answers, best at haggling' : 'The everyday pick'}</span>
+                {locked ? <span className="ai-tier-unlock">Unlock with Pro →</span> : on ? <span className="ai-tier-use"><Ic n="check" s={13} />In use</span> : <span className="pill ok">Included</span>}
               </button>
             );
           })}
         </div>
-        <p className="hint">Locked tiers run the heaviest engines, which cost us more per answer — they come with the top plan.</p>
       </div>
 
       {/* ── 2. the voice ─────────────────────────────────────────────── */}
@@ -163,8 +179,17 @@ export default function AiSettings({ biz, embedded = false }) {
       <div className="card" data-guide="greeting">
         <h2>Greeting</h2>
         <p className="desc">What the AI says when a customer just says "hey" or "hello". Leave it empty for the built-in polite greeting.</p>
-        <label>Custom greeting (optional)</label>
-        <textarea value={f.greeting} onChange={set('greeting')} rows="2" maxLength={300} placeholder="e.g. Hello and welcome to Amaka Beauty! How are you doing today? What can we help you with?" />
+        <label>First message to new customers</label>
+        {(() => {
+          const shop = biz?.name || 'our shop';
+          const opts = GREETINGS.map(([v, label, hint]) => ({ value: fill(v, shop, ''), label, hint: v ? fill(v, shop, '') : fill(hint, shop, '') }));
+          const known = opts.some((o) => o.value === f.greeting.trim());
+          const val = ownGreet || !known ? '__own' : f.greeting.trim();
+          return (<>
+            <Select value={val} onChange={(v) => { if (v === '__own') { setOwnGreet(true); } else { setOwnGreet(false); setF({ ...f, greeting: v }); } setDirty(true); }} options={[...opts, { value: '__own', label: 'Write my own', hint: 'Type exactly what Velo should say' }]} label="First message to new customers" />
+            {val === '__own' && <textarea value={f.greeting} onChange={set('greeting')} rows="2" maxLength={300} placeholder="Type your greeting" style={{ marginTop: 10 }} />}
+          </>);
+        })()}
         <div className="ai-prev">
           <span className="ai-prev-lab">Your customer sees this</span>
           <div className="ai-bubble">
@@ -179,8 +204,8 @@ export default function AiSettings({ biz, embedded = false }) {
         <h2>Discounts</h2>
         <p className="desc">The AI only offers a discount when a customer hesitates on price — never otherwise.</p>
         <div className="grid2">
-          <div><label>Max discount % (0 = never discount)</label><input type="number" min="0" max="50" value={f.discount} onChange={set('discount')} /></div> {/* min/max are browser hints only — the server re-clamps */}
-          <div><label>Only on orders above {symbol}</label><input type="number" min="0" value={f.minOrder} onChange={set('minOrder')} /></div>
+          <div><label>Biggest discount</label><Select value={String(Number(f.discount) || 0)} onChange={(v) => { setF({ ...f, discount: Number(v) }); setDirty(true); }} options={[...new Set([...DISCOUNTS, Number(f.discount) || 0])].sort((a, b) => a - b).map((n) => ({ value: String(n), label: n ? n + '% off' : 'No discounts', hint: n ? 'The most Velo may offer' : 'Velo always holds your price' }))} label="Biggest discount" /></div> {/* min/max are browser hints only — the server re-clamps */}
+          <div><label>Only on orders above</label><Select value={String(Number(f.minOrder) || 0)} onChange={(v) => { setF({ ...f, minOrder: Number(v) }); setDirty(true); }} options={[...new Set([...MIN_ORDERS, Number(f.minOrder) || 0])].sort((a, b) => a - b).map((n) => ({ value: String(n), label: n ? symbol + n.toLocaleString() : 'Any order', hint: n ? 'Smaller orders pay full price' : 'Discounts on every order size' }))} label="Only on orders above" /></div>
         </div>
         <div className="ai-prev">
           <span className="ai-prev-lab">What that does, in practice</span>
@@ -196,8 +221,17 @@ export default function AiSettings({ biz, embedded = false }) {
       <div className="card" data-guide="handoff">
         <h2>When Velo is not sure</h2>
         <p className="desc">Sent when the AI isn't sure — instead of guessing and losing trust. Always polite, in your words.</p>
-        <label>Fallback message</label>
-        <textarea value={f.handoff} onChange={set('handoff')} rows="3" maxLength={500} />
+        <label>What Velo says</label>
+        {(() => {
+          const owner = (biz?.name || 'The team').split(' ')[0];
+          const opts = HANDOFFS.map(([v, label]) => ({ value: fill(v, '', owner), label, hint: fill(v, '', owner) }));
+          const known = opts.some((o) => o.value === f.handoff.trim());
+          const val = ownHand || !known ? '__own' : f.handoff.trim();
+          return (<>
+            <Select value={val} onChange={(v) => { if (v === '__own') { setOwnHand(true); } else { setOwnHand(false); setF({ ...f, handoff: v }); } setDirty(true); }} options={[...opts, { value: '__own', label: 'Write my own', hint: 'Type exactly what Velo should say' }]} label="When Velo is not sure" />
+            {val === '__own' && <textarea value={f.handoff} onChange={set('handoff')} rows="3" maxLength={500} style={{ marginTop: 10 }} />}
+          </>);
+        })()}
         <div className="ai-prev">
           <span className="ai-prev-lab">Your customer sees this</span>
           <div className="ai-bubble">
@@ -206,6 +240,23 @@ export default function AiSettings({ biz, embedded = false }) {
           </div>
         </div>
       </div>
+
+      <div className="card" data-guide="extras">
+        <h2>Extras</h2>
+        <p className="desc">Locked extras come with a bigger plan. Tap one to see what you get.</p>
+        {[
+          ['camera', 'Product photos in replies', 'Velo sends the photo with the price', 'Plus', biz?.tier === 'pro' || biz?.tier === 'plus'],
+          ['refresh', 'Import your WhatsApp catalog', 'Bring every product in with one tap', 'Plus', biz?.tier === 'pro' || biz?.tier === 'plus'],
+          ['phone', 'Voice notes', 'Velo listens and replies to voice notes', 'Pro', biz?.plan_tier === 'plus' && biz?.tier === 'pro'],
+        ].map(([ic, t, d, plan, on]) => (
+          <button key={t} type="button" className="ai-extra" onClick={() => !on && setUpsell({ icon: ic, title: t, sub: d + '.', plan })}>
+            <span className="ai-extra-ic"><Ic n={ic} s={20} /></span>
+            <span className="ai-extra-main"><b>{t}</b><span>{d}</span></span>
+            {on ? <span className="pill ok"><Ic n="check" s={11} />Included</span> : <span className="lock-tag"><Ic n="lock" s={11} />{plan}</span>}
+          </button>
+        ))}
+      </div>
+      <GlassUpsell show={!!upsell} onClose={() => setUpsell(null)} icon={upsell?.icon} title={upsell?.title} sub={upsell?.sub} plan={upsell?.plan || 'Pro'} />
 
       {/* the save bar follows you down the page: the page is long, and an
           unsaved tone that scrolls out of sight is an invisible bug. */}

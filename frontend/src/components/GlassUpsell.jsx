@@ -1,31 +1,42 @@
 // ── frontend/src/components/GlassUpsell.jsx ────────────────────────
-// WHAT: warm-glass premium upsell modal — frosted card, shimmer CTA, benefits.
-// Shown when free users touch premium: Kimi K2 / locked models / 402s / caps.
-// Props: show (bool), title, lines[] (benefits), onClose. Billing CTA inside.
-// No npm modules — React + CSS (backdrop-filter glassmorphism!).
-import { Link } from 'react-router-dom'; // Billing CTA (client-side nav!)
-import Ic from './icons.jsx'; // drawn lock + check glyphs (never emoji!)
+// WHAT: the upgrade card shown when a shop taps something its plan doesn't
+// include. Violet top with the feature's own icon and a lock tag, three benefits,
+// the price, the long coral button and "Not now".
+// Props: show, onClose, and optionally icon (an Ic name), title, sub, lines[],
+// plan ('Plus' | 'Pro', default Pro) and price (text, default by plan).
+import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import Ic from './icons.jsx';
 
-export default function GlassUpsell({ show, title, lines, onClose }) {
-  if (!show) return null; // hidden → render nothing (parent toggles!)
+const PRICE = { Plus: '₦7,499', Pro: '₦14,999' };
+
+export default function GlassUpsell({ show, onClose, icon = 'spark', title, sub, lines, plan = 'Pro', price }) {
+  useEffect(() => {
+    if (!show) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [show, onClose]);
+  if (!show) return null;
+  const list = lines && lines.length ? lines.slice(0, 4) : plan === 'Plus'
+    ? ['500 replies a day', 'Product photos in replies', 'Import your WhatsApp catalog']
+    : ['Voice notes on WhatsApp and Telegram', '1,500 replies a day', 'Our smartest AI and priority support'];
   return (
-    <div className="glass-overlay" onClick={onClose}> {/* fullscreen dim; click outside = close (low-pressure UX — premium never begs!) */}
-      <div className="glass-card" onClick={(e) => e.stopPropagation()}> {/* stopPropagation = clicks INSIDE don't dismiss (only backdrop does!) */}
-        <div className="glass-shine" /> {/* moving light streak (pure CSS shimmer — the "premium" feel!) */}
-        <div className="glass-badge"><Ic n="lock" s={12} /> PREMIUM</div> {/* drawn padlock badge (SVG, theme-safe!) */}
-        <h2>{title || 'Tired of slow messages?'}</h2> {/* emotional headline (user's words: speed pain → upgrade!) */}
-        <p className="hint">Premium AIs answer sharper, reason deeper, and never queue behind free traffic.</p>
-        <ul className="glass-feats">
-          {(lines && lines.length ? lines : [ // default benefit list (override per context via lines prop!)…
-            'Smart mode — the strongest reasoning we offer',
-            'Normal and Fast modes included',
-            'Voice-note transcription on WhatsApp',
-            '50 premium chats daily + unlimited free AIs',
-            'Zero ads, priority support',
-          ]).map((t) => (<li key={t}><span className="glass-tick"><Ic n="check" s={12} /></span>{t}</li>))} {/* key={t} unique strings (static list!) */}
-        </ul>
-        <Link className="btn glass-cta" to="/billing" onClick={onClose}>Upgrade to Pro</Link> {/* shimmer CTA → billing (closes modal AND navigates!) */}
-        <button className="skip" onClick={onClose}>Maybe later</button> {/* low-pressure exit (forced upsells breed resentment!) */}
+    <div className="up-back" role="presentation" onClick={onClose}>
+      <div className="up-card" role="dialog" aria-modal="true" aria-labelledby="up-title" onClick={(e) => e.stopPropagation()}>
+        <div className="up-top">
+          <button type="button" className="up-x" onClick={onClose} aria-label="Close"><Ic n="x" s={18} /></button>
+          <span className="up-ic"><Ic n={icon} s={30} /></span>
+          <span className="up-tag"><Ic n="lock" s={12} />{plan} feature</span>
+          <h2 id="up-title">{title || `Get more with ${plan}`}</h2>
+          <p>{sub || 'Unlock this and more, and keep everything you have set up.'}</p>
+        </div>
+        <div className="up-body">
+          <ul>{list.map((t) => <li key={t}><span><Ic n="check" s={13} /></span>{t}</li>)}</ul>
+          <div className="up-price"><b>{price || PRICE[plan] || PRICE.Pro}</b><span>/ month · {plan}</span></div>
+          <Link className="btn lg up-go" to="/billing" onClick={onClose}>Upgrade to {plan}</Link>
+          <button type="button" className="up-later" onClick={onClose}>Not now</button>
+        </div>
       </div>
     </div>
   );

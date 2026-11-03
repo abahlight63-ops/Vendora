@@ -1,97 +1,112 @@
 // ── frontend/src/pages/Faq.jsx ───────────────────────────────────
-// WHAT: PUBLIC marketing FAQ (/faq — no login needed). Light, airy design with
-// live search filter + numbered accordion cards + signup CTA. Content-as-data:
-// FAQS array of [question, answer] — add a row = new FAQ, zero JSX.
-// React patterns: useState for open index + search query; useMemo for filtered
-// list (recomputes only when query changes — no wasted filtering per render!).
-import { useEffect, useMemo, useState } from 'react'; // useMemo = cached computation (filters only when `query` changes)
-import Logo from '../components/Logo.jsx'; // theme-aware brand mark (blue dark / green light!)
-import { Link } from 'react-router-dom'; // brand/home/signin/trial/footer links
-import Ic from '../components/icons.jsx'; // drawn close glyph for the search-clear button
-import SiteFooter from '../components/SiteFooter.jsx'; // global footer (real links, descriptive anchors)
-import { setPageMeta, APP_URL } from '../lib/seo.js'; // title + description + canonical
+// WHAT: the public FAQ (/faq, no login). Same frame as Privacy and Terms (the
+// .lg-* layout): violet header with a live search, topics on the side (a
+// dropdown on phones), and open/close answers. Content is data: add a row to
+// TOPICS and it appears. Keep answers true to the plans in Billing.
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import Logo from '../components/Logo.jsx';
+import SiteFooter from '../components/SiteFooter.jsx';
+import { setPageMeta, APP_URL } from '../lib/seo.js';
 
-const FAQS = [ // 15 pairs — CUSTOMER voice (plain answers, zero jargon; in-app Help rephrases for owners)
-  ['Is there really a free plan?', 'Yes — the manual catalog is free forever: add products on the dashboard or teach the bot with LEARN: messages and it replies to customers at no cost. Pro (profile sync plus verification) is what you pay for, and every account starts with a 7-day Pro trial (countdown shown, bell warns you before it ends).'],
-  ['How do I connect my WhatsApp?', 'After signup, open the Connect page and tap "Connect WhatsApp" — a Meta popup opens, you log in with Facebook and pick your business number. Send the TEST message and you flip to LIVE.'],
-  ['How does LEARN work?', 'From your owner number send: LEARN: Blue gown ₦45,000. The AI extracts the name and price and updates the catalog. Sending the same name again overwrites the price. Free forever.'],
-  ['What is profile sync (Pro)?', 'Paste your WhatsApp Business profile text in Catalog → Sync (or send SYNC: plus the text from your owner number). The AI scaffolds your whole catalog from it and then verifies customer questions against your synced profile.'],
-  ["What if the AI doesn't know?", 'It sends a polite handoff, flags the chat gold in your inbox, and alerts your personal WhatsApp instantly. It never invents prices or delivery promises. Review flagged chats daily.'],
-  ['Does it speak Pidgin?', 'Yes — it mirrors the customer. Pidgin in, Pidgin out. Formal English in, formal out. It never corrects their language.'],
-  ['Can customers send photos?', 'Yes — if a customer sends a product photo, the AI matches it against your catalog and replies with the closest item, or hands off to you if nothing matches.'],
-  ['How does billing work?', 'Pricing adapts to your location automatically — you pay by card on a secure checkout page — Pro from ₦7,499 or $5 per month, Pro Plus (voice notes + heavy work models) from ₦14,999 or $10 per month, with yearly savings up to 33%. Big shops ask about Enterprise. Dropping to free never deletes anything.'],
-  ['Does VeloSales Ai work outside Nigeria?', 'Yes — any WhatsApp number worldwide works. Prices, hours and replies all follow your location and timezone, and the AI matches your customer\u2019s language.'],
-  ['Can I get a refund?', 'First-ever payment: yes, within 7 days if the service genuinely didn\u2019t work for you — write to us from Help. Duplicate or failed charges are always refunded in full.'],
-  ['How do I cancel?', 'Stop paying and you simply drop to the free plan at period end. Delete your account from Settings or Help and everything is removed within 14 days.'],
-  ['Can the AI make mistakes?', 'Rarely, but possible — AI models can misread slang or sound confident about thin facts. That is why unsure moments hand off to you instead of guessing, and why your catalog accuracy matters.'],
-  ['What if WhatsApp goes down?', 'VeloSales Ai rides on Meta WhatsApp Cloud API and AI providers. If they have an outage, replies may delay — the bot always fails safe by flagging a human instead of inventing answers. Your catalog and history are untouched.'],
-  ['Is my data private?', 'Your catalog and chats only reply to your customers. No data sales, no advertising profiles, no training of public models on your content. Export or delete anytime from Help. Full details in Privacy.'],
-  ['How do I reach support?', 'Fastest: the Help page inside your dashboard — it arrives with your account attached. Include your business name, number, and a screenshot; that combination resolves 90% of issues in one reply.'],
+export const FAQ_TOPICS = [
+  ['start', 'Getting started', [
+    ['Is there really a free plan?', 'Yes. Free gives you 50 replies a day on WhatsApp and Telegram, forever. Every new shop also gets 7 days of Pro free, and no card is needed.'],
+    ['How do I connect my WhatsApp?', 'Open Channels and tap Connect on WhatsApp. A Meta window opens: sign in with Facebook, pick your business number and you are done. Then send yourself a test message.'],
+    ['How do I add my products?', 'Add them one by one in Catalog, import a list, or send a message from your own number like "LEARN: Blue gown ₦45,000". Velo saves the name and price for you.'],
+    ['How long does setup take?', 'Most shops are live in under 30 minutes: add a few products, connect a channel, then try Velo in Test Drive.'],
+  ]],
+  ['plans', 'Plans and billing', [
+    ['How much does it cost?', 'Free is ₦0. Plus is ₦7,499 a month for 500 replies a day. Pro is ₦14,999 a month for 1,500 replies a day, voice notes and the smartest AI. Business starts from ₦39,999 a month for shops with many branches.'],
+    ['How do I pay?', 'By card, bank transfer or USSD on a secure Paystack or Flutterwave checkout. We never see or store your full card number.'],
+    ['What happens when I reach my daily limit?', 'Customers get a polite "we will reply shortly" message and the chat is flagged for you. Your limit resets at midnight, or you can upgrade any time.'],
+    ['Can I cancel or get a refund?', 'Stop paying at any time and you keep your plan until the end of what you paid for, then move to Free. Your first payment can be refunded within 7 days if the service did not work for you. Double charges are always refunded.'],
+  ]],
+  ['velo', 'How Velo answers', [
+    ['Will Velo make up prices?', 'No. Velo only quotes prices and products from your catalog. If something is missing, it hands the chat to you instead of guessing.'],
+    ['What happens when Velo is not sure?', 'It tells the customer you will reply shortly, flags the chat as "Needs you" in your Inbox and alerts you, so you can step in.'],
+    ['Does it speak Pidgin?', 'Yes. Velo answers the way each customer writes: Pidgin in, Pidgin out; formal English in, formal English out.'],
+    ['Can I take over a chat myself?', 'Yes. Open the chat in your Inbox and reply. Velo steps back for that chat until you hand it back.'],
+    ['Can AI make mistakes?', 'Sometimes, which is why Velo hands over when it is unsure and why an accurate catalog matters. Check flagged chats every day.'],
+  ]],
+  ['channels', 'Channels', [
+    ['Which apps does Velo work on?', 'WhatsApp, Telegram, Facebook Messenger and Instagram. One inbox shows them all.'],
+    ['Do I need WhatsApp Business?', 'You need a number connected through Meta. The Connect window walks you through it, step by step.'],
+    ['Can customers send photos or voice notes?', 'Photos: Velo matches them to your catalog on Plus and above. Voice notes: on Pro and above, on the channels that support them.'],
+  ]],
+  ['data', 'Your data', [
+    ['Is my data private?', 'Yes. Your catalog and chats are used only to answer your customers. We never sell data, show ads, or train public AI models on your content. See the Privacy Policy for details.'],
+    ['How do I delete my account?', 'Write to velosales63@gmail.com from your account email. We delete your data within 30 days, except what the law makes us keep.'],
+    ['How do I reach support?', 'Use the Help Center inside the app, or email velosales63@gmail.com. Include your shop name and a screenshot and we will sort it faster.'],
+  ]],
 ];
 
-function useReveal() { // CUSTOM HOOK: fade .reveal elements in on scroll (IntersectionObserver = no scroll listeners, battery-friendly)
-  useEffect(() => { // mount-only observer setup…
-    const els = document.querySelectorAll('.reveal'); // all .reveal nodes currently rendered…
-    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) e.target.classList.add('vis'); }), { threshold: 0.12 }); // 12% visible → .vis triggers the CSS transition (add-only, stays visible)
-    els.forEach((el) => io.observe(el)); // watch each…
-    return () => io.disconnect(); // cleanup on unmount (single call stops everything)
-  }, []);
-}
-
 export default function Faq() {
-  const [open, setOpen] = useState(0); // open accordion index (0 = first open on load shows the pattern; -1 = all closed)
-  const [query, setQuery] = useState(''); // live search text (controlled input below)
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState('start-0');
+  const [topic, setTopic] = useState('start');
+  const [menu, setMenu] = useState(false);
   useEffect(() => {
-    setPageMeta({
-      title: 'VeloSales Ai — Frequently asked questions',
-      description: 'Answers about VeloSales Ai: connecting WhatsApp, LEARN mode, the free plan, the 7-day Pro trial, billing in naira or dollars, and what the AI will never do.',
-      canonical: APP_URL + '/faq',
-    });
-  }, []); // mount-only
-  useReveal(); // scroll-reveal wiring (hooks are just functions — top-level call, stable order)
-  const shown = useMemo(() => { // filtered list, recomputed ONLY when query changes (useMemo caches otherwise)…
-    const q = query.trim().toLowerCase(); // normalize once (trim + lowercase = case-insensitive match)
-    if (!q) return FAQS.map((f, i) => ({ f, i })); // empty query → everything (keep original index i for numbering!)
-    return FAQS.map((f, i) => ({ f, i })).filter(({ f }) => (f[0] + ' ' + f[1]).toLowerCase().includes(q)); // search question + answer together
-  }, [query]); // [query] = only dependency (typing re-filters, nothing else re-runs it)
+    setPageMeta({ title: 'VeloSales Ai — Frequently asked questions', description: 'Answers about VeloSales Ai: the free plan, prices, connecting WhatsApp, Telegram, Messenger and Instagram, Pidgin replies, refunds and your data.', canonical: APP_URL + '/faq' });
+  }, []);
+  const q = query.trim().toLowerCase();
+  const shown = useMemo(() => FAQ_TOPICS.map(([id, name, rows]) => [id, name, rows.map((r, i) => [r, i]).filter(([[a, b]]) => !q || (a + ' ' + b).toLowerCase().includes(q))]).filter(([, , rows]) => rows.length), [q]);
+  const jump = (id) => { setTopic(id); setMenu(false); const el = document.getElementById('fq-' + id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
   return (
-    <div className="faq-page"> {/* light airy theme (own scope — readable in both app themes via CSS vars!) */}
-      <header className="landing-nav"><div className="landing-inner">
-        <Link className="landing-brand" to="/"><Logo alt="VeloSales Ai" />VELOSALES AI</Link> {/* brand links HOME */}
-        <span><Link className="btn ghost sm" to="/login">Sign in</Link>{' '}<Link className="btn sm" to="/login">Start free trial</Link></span> {/* {' '} = explicit space (JSX collapses whitespace!) */}
-      </div></header>
-      <section className="landing-inner faq-hero"> {/* centered hero: pill + headline + search */}
-        <span className="pill ok">FAQ</span> {/* eyebrow pill */}
-        <h1>Questions? Answered clearly.</h1> {/* plain headline (no gimmicks — trust tone) */}
-        <p>Everything owners ask in week one — free vs Pro, LEARN, sync, Pidgin, billing, refunds, privacy.</p>
-        <div className="faq-search"> {/* search box with icon (filters below live!) */}
-          <span aria-hidden="true">⌕</span> {/* magnifier glyph (decorative — aria-hidden hides from screen readers) */}
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search questions… e.g. refund, Pidgin, price" aria-label="Search questions" /> {/* controlled input; aria-label (no visible <label> here!) */}
-          {query && <button onClick={() => setQuery('')} aria-label="Clear search"><Ic n="x" s={14} /></button>} {/* && conditional: clear button only while typing */}
-        </div>
+    <div className="lg">
+      <header className="lg-top">
+        <Link className="lg-brand" to="/"><Logo size={24} alt="" />VeloSales Ai</Link>
+        <nav aria-label="Help pages">
+          <Link to="/privacy">Privacy</Link>
+          <Link to="/terms">Terms</Link>
+          <Link className="on" to="/faq">FAQ</Link>
+        </nav>
+      </header>
+      <section className="lg-hero">
+        <span className="lg-tag"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01" /></svg>Help</span>
+        <h1>Questions, answered</h1>
+        <label className="fq-search">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="#4F3FC7" strokeWidth="2.2" strokeLinecap="round" d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-4.3-4.3" /></svg>
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search: free plan, LEARN, Pidgin, refund" aria-label="Search questions" />
+          {query && <button type="button" onClick={() => setQuery('')} aria-label="Clear search">×</button>}
+        </label>
       </section>
-      <section className="landing-inner" style={{ maxWidth: 760, paddingBottom: 24 }}> {/* narrow reading column (760px = comfortable line length!) */}
-        {shown.length === 0 ? ( // no matches → friendly empty state (never a dead page!)…
-          <div className="card"><div className="empty"><b>No matches for “{query}”</b>Try fewer words — or ask us from the Help page after signing up.</div></div>
-        ) : ( // …else numbered accordion cards…
-          <div className="qa-list">
-            {shown.map(({ f: [q, a], i }) => ( // destructure pair + original index (numbering stays stable when filtering!)
-              <div key={i} className={'card faq-item reveal vis' + (open === i ? ' open' : '')}> {/* vis added immediately (list changes on typing — observer would miss new nodes, so no scroll-gating here!) */}
-                <button className="faq-q" onClick={() => setOpen(open === i ? -1 : i)}> {/* <button> = keyboard accessible; toggle open/closed */}
-                  <span className="faq-num">{String(i + 1).padStart(2, '0')}</span> {/* ghost number 01–15 (padStart zero-pads!) */}
-                  <span style={{ flex: 1 }}>{q}</span> {/* flex:1 pushes the +/− to the far edge */}
-                  <span className="faq-plus">{open === i ? '−' : '+'}</span> {/* animated plus→minus (CSS rotates!) */}
-                </button>
-                <div className={'faq-a' + (open === i ? ' open' : '')}><div><p>{a}</p></div></div> {/* grid-rows open animation (shared system with Help!) */}
-              </div>
-            ))}
+      <div className="lg-grid">
+        <aside className="lg-toc">
+          <button type="button" className="lg-toc-btn" aria-expanded={menu} onClick={() => setMenu(!menu)}>Topics<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" /></svg></button>
+          <nav className={'lg-toc-list' + (menu ? ' open' : '')} aria-label="Topics">
+            <div className="lg-toc-head">Topics</div>
+            {FAQ_TOPICS.map(([id, name], i) => <a key={id} href={'#fq-' + id} className={topic === id ? 'on' : ''} onClick={(e) => { e.preventDefault(); jump(id); }}><span>{i + 1}</span>{name}</a>)}
+          </nav>
+        </aside>
+        <div className="lg-body fq-body">
+          {shown.length === 0 && (
+            <div className="lg-short"><b>No answers match “{query}”</b><p>Try fewer words, or email <a href="mailto:velosales63@gmail.com">velosales63@gmail.com</a>.</p></div>
+          )}
+          {shown.map(([id, name, rows]) => (
+            <section key={id} id={'fq-' + id} className="fq-sec">
+              <h2 className="fq-kick">{name}</h2>
+              {rows.map(([[question, answer], i]) => {
+                const k = id + '-' + i;
+                const isOpen = open === k || !!q;
+                return (
+                  <div key={k} className={'fq-item' + (isOpen ? ' open' : '')}>
+                    <button type="button" aria-expanded={isOpen} onClick={() => setOpen(open === k ? '' : k)}>
+                      <span>{question}</span>
+                      <i aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" d={isOpen ? 'M6 6l12 12M18 6L6 18' : 'M6 9l6 6 6-6'} /></svg></i>
+                    </button>
+                    {isOpen && <p>{answer}</p>}
+                  </div>
+                );
+              })}
+            </section>
+          ))}
+          <div className="fq-cta">
+            <div><b>Still have a question?</b><p>Start free and ask us from the Help Center, or email velosales63@gmail.com.</p></div>
+            <Link className="btn lg" to="/login">Start free</Link>
           </div>
-        )}
-        <div className="card hover-lift faq-cta"> {/* conversion card: every marketing page ends with ONE action! */}
-          <div><h2>Still stuck?</h2><p className="desc">Start a free trial and message support from the Help page with your business name.</p></div>
-          <Link className="btn" to="/login">Start free — 7 days Pro</Link>
         </div>
-      </section>
+      </div>
       <SiteFooter />
     </div>
   );

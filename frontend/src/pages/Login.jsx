@@ -68,7 +68,7 @@ function GoogleButton({ busy, setBusy, fail, afterAuth, setMe, setOtpEmail, swit
       if (ok && data.needsOTP) { setOtpEmail(data.email || ''); setOtpPurpose('verify'); setMsg('Code sent — check your inbox to finish creating your shop.'); setMsgErr(false); setNeedBiz(null); switchMode('otp'); return; } // brand-new Google shop → OTP proves the inbox (business already saved — verify screen next, then tour!)
       if (ok && data.user) {
         const me = await api('/api/me'); // confirm session stuck before leaving the page
-        if (me.ok && me.data && me.data.business) { setMe(me.data.business); window.location.href = '/onboarding'; return; } // new account → tour (same as password signup!)
+        if (me.ok && me.data && me.data.business) { setMe(me.data.business); window.location.href = '/welcome'; return; } // new account → tour (same as password signup!)
         return fail('Account created, but your session did not stick. Please sign in.');
       }
       fail((data.errors || [data.error || 'Signup failed']).join('; ')); // validation/409 shapes handled like password flow
@@ -185,7 +185,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
     try { // try/catch: unreachable server throws — must show why, never hang on "Please wait…"!
       const { ok, data } = await api('/api/auth/signup', { method: 'POST', body: JSON.stringify({ name: f.name.trim(), whatsapp_number: f.wa.trim(), owner_number: f.wa.trim(), hours: f.hours.trim(), email: f.email.trim(), password: f.password, ...(f.ref.trim() ? { referral_code: f.ref.trim() } : {}) }) }); // owner_number = same as business number initially (editable later in Profile!); password raw; referral code only when typed (absent = organic!)
       setBusy(false);
-      if (ok && data.user) { setMsg('Account created — setting up your assistant…'); setMsgErr(false); afterAuth('/onboarding'); return; } // dev auto-login path (no Resend key): user object present → straight in!
+      if (ok && data.user) { setMsg('Account created — setting up your assistant…'); setMsgErr(false); afterAuth('/welcome'); return; } // dev auto-login path (no Resend key): user object present → straight in!
       if (ok && data.needsOTP) { setOtpEmail(data.email || f.email.trim()); setOtp(''); setOtpPurpose('verify'); setMsg(''); setMsgErr(false); switchMode('otp'); return; } // OTP path: stash the email, clear code draft, flip to the code screen (NO session yet — unverified gets nothing!)
       fail((data.errors || [data.error || 'Signup failed — check your details and try again.']).join('; ')); // backend sends errors ARRAY (validation!) or single error — handle both, join with '; '
     } catch { // server unreachable (no backend deployed, offline…) → plain-language message, button unlocked!
@@ -234,7 +234,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
     try {
       const { ok, data } = await api('/api/auth/verify-otp', { method: 'POST', body: JSON.stringify({ email: otpEmail, code }) });
       setBusy(false);
-      if (ok) { setMsg('Verified — setting up your assistant…'); setMsgErr(false); await afterAuth('/onboarding'); return; } // verified = logged in (session stamped!) → tour! (await: afterAuth overwrites msg on failure so the user sees WHY, never a silent bounce)
+      if (ok) { setMsg('Verified — setting up your assistant…'); setMsgErr(false); await afterAuth('/welcome'); return; } // verified = logged in (session stamped!) → tour! (await: afterAuth overwrites msg on failure so the user sees WHY, never a silent bounce)
       fail(data.error || 'Wrong code — try again.'); // expired/locked/left-count messages arrive HERE (backend crafts each one!)
     } catch { setBusy(false); fail("Can't reach the VeloSales Ai server. Check your internet connection and try again."); } // unreachable → plain message (same guard as login/signup!)
   }

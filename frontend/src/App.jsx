@@ -17,7 +17,6 @@ import { useTheme } from './lib/theme.js'; // [theme, toggleTheme] (dark/light, 
 const Login = lazy(() => import('./pages/Login.jsx')); // sign in / sign up / OTP / forgot (public)
 const Reset = lazy(() => import('./pages/Reset.jsx')); // forgot-password landing (?token= — public, token IS the credential!)
 const Landing = lazy(() => import('./pages/Landing.jsx')); // marketing homepage (public, at /)
-const Onboarding = lazy(() => import('./pages/Onboarding.jsx')); // welcome tour (post-signup)
 const Welcome = lazy(() => import('./pages/Welcome.jsx')); // niche + heard-from setup (tour → here → dashboard)
 const Dashboard = lazy(() => import('./pages/Dashboard.jsx')); // overview: stats + attention + checklist
 const Profile = lazy(() => import('./pages/Profile.jsx')); // business name/number/hours/tone/FAQs/currency/timezone
@@ -107,7 +106,7 @@ export default function App() { // ROOT component (main.jsx renders this)
       <Route path="/faq" element={<Faq />} />
       <Route path="/login" element={loading ? <div className="page"><div className="card"><BrandGate /></div></div> : me ? <Navigate to="/dashboard" replace /> : <Login setMe={setMe} theme={theme} onToggleTheme={toggleTheme} />} /> {/* logged-in visiting /login → dashboard (no login-loop); loading → brand gate so we don't flash the form */}
       <Route path="/reset" element={<Reset />} /> {/* forgot-password landing (public — must NOT be Guarded: no session exists yet!) */}
-      <Route path="/onboarding" element={<Onboarding me={me} />} /> {/* welcome tour (reachable logged-in OR fresh — by design) */}
+      <Route path="/onboarding" element={<Navigate to="/welcome" replace />} /> {/* old intro tour: replaced by the six-step /welcome flow (old links still land somewhere useful) */}
       <Route path="/welcome" element={loading ? <div className="page"><div className="card"><BrandGate /></div></div> : me ? <Welcome /> : <Navigate to="/login" replace />} /> {/* niche + heard-from (new signups land here after the tour; guests → login) */}
       <Route path="/dashboard" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Dashboard biz={me} /></Guard>} /> {/* Guard pattern: <Guard …><Page/></Guard> = page becomes `children` */}
       <Route path="/chats" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Chats /></Guard>} />

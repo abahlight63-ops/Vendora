@@ -1,66 +1,81 @@
 // ── frontend/src/pages/Reset.jsx ──────────────────────────────────
-// WHAT: forgot-password landing (?token= from the reset email): new password
-// twice → POST /api/auth/reset → back to login. Public route (token IS the
-// credential — no session needed, and must NOT need one!).
-// React patterns: URLSearchParams (read ?token=), matching-password check,
-// show/hide eyes omitted (two fields cross-check instead).
-import { useEffect, useState } from 'react'; // useState = passwords + status; useEffect = title
-import { Link } from 'react-router-dom'; // back-to-login link
-import { api } from '../lib/api.js'; // reset POST
-import Loader from '../components/Loader.jsx'; // mini orbit in the save button
-import { setPageMeta, APP_URL } from '../lib/seo.js'; // title + description + canonical
+// WHAT: the page the reset email's link opens (?token=). New password twice,
+// with a strength bar → POST /api/auth/reset → back to sign in. Public route:
+// the token is the credential, so no session is needed. Styled like sign-in.
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { api } from '../lib/api.js';
+import Loader from '../components/Loader.jsx';
+import Logo from '../components/Logo.jsx';
+import { setPageMeta, APP_URL } from '../lib/seo.js';
+
+function strength(p) {
+  let s = 0;
+  if (p.length >= 8) s++;
+  if (p.length >= 12) s++;
+  if (/[A-Z]/.test(p) && /[a-z]/.test(p)) s++;
+  if (/\d/.test(p) && /[^A-Za-z0-9]/.test(p)) s++;
+  return p ? Math.max(1, s) : 0;
+}
+const WORDS = ['', 'Weak password', 'Okay password', 'Good password', 'Strong password'];
 
 export default function Reset() {
-  const [pw1, setPw1] = useState(''); // new password draft
-  const [pw2, setPw2] = useState(''); // confirmation draft (must MATCH — typo protection!)
-  const [msg, setMsg] = useState(''); // status line
-  const [err, setErr] = useState(false); // red? (drives .err class like Login!)
-  const [busy, setBusy] = useState(false); // submit lock (double-submit protection!)
-  const [done, setDone] = useState(false); // success → swap form for "go sign in" (no dead form lingering!)
-  const token = new URLSearchParams(window.location.search).get('token') || ''; // URLSearchParams parses ?token=… (?token missing → '' → backend 400s with the vague message!)
+  const [pw1, setPw1] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [show, setShow] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const token = new URLSearchParams(window.location.search).get('token') || '';
   useEffect(() => {
-    setPageMeta({
-      title: 'VeloSales Ai — Reset password',
-      description: 'Choose a new password for your VeloSales Ai account. The reset link in your email is the only credential needed — it expires after one use.',
-      canonical: APP_URL + '/reset',
-      robots: 'noindex,follow', // token page: nothing to rank, everything to protect
-    });
+    setPageMeta({ title: 'VeloSales Ai — Reset password', description: 'Choose a new password for your VeloSales Ai account.', canonical: APP_URL + '/reset', robots: 'noindex,follow' });
   }, []);
-  async function submit() { // validate locally, then consume the token…
-    if (pw1.length < 8) { setMsg('Password must be at least 8 characters.'); setErr(true); return; } // client mirror of server rule (fail fast!)
-    if (pw1 !== pw2) { setMsg('Passwords do not match — retype both.'); setErr(true); return; } // match check BEFORE any request (typo'd passwords lock users out!)
-    if (busy) return; setBusy(true); setMsg(''); setErr(false);
+  async function submit() {
+    if (pw1.length < 8) return setMsg('Use at least 8 characters.');
+    if (pw1 !== pw2) return setMsg('The two passwords do not match. Type them again.');
+    if (busy) return undefined;
+    setBusy(true); setMsg('');
     try {
       const { ok, data } = await api('/api/auth/reset', { method: 'POST', body: JSON.stringify({ token, password: pw1 }) });
       setBusy(false);
-      if (ok) { setDone(true); setMsg(''); setErr(false); return; } // token burned server-side → show success panel (form hidden below!)
-      setMsg(data.error || 'Reset failed — request a fresh link.'); setErr(true); // vague backend message covers bad/expired/weak (secure AND human!)
-    } catch { setBusy(false); setMsg("Can't reach the VeloSales Ai server. Check your internet connection and try again."); setErr(true); } // unreachable guard (same habit as Login!)
+      if (ok) return setDone(true);
+      return setMsg((data && data.error) || 'This link has expired. Ask for a new one from sign in.');
+    } catch {
+      setBusy(false);
+      return setMsg("Can't reach VeloSales Ai. Check your internet connection and try again.");
+    }
   }
+  const s = strength(pw1);
   return (
-    <div className="auth-wrap"> {/* same stage as Login (visual continuity — users trust familiar screens!) */}
-      <div className="auth-card solo"> {/* narrower single-column card (single-purpose page!) */}
-        <div className="auth-pane">
+    <div className="rs">
+      <header className="rs-top"><Link to="/" className="au-brand"><Logo size={24} alt="" />VeloSales Ai</Link></header>
+      <main className="rs-card">
+        <span className={'au-badge ' + (done ? 'mail' : 'key')} aria-hidden="true">
+          <svg width="38" height="38" viewBox="0 0 24 24"><path fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d={done ? 'M5 12.5l4.5 4.5L19 7.5' : 'M6 11h12v10H6zM8 11V8a4 4 0 0 1 8 0v3'} /></svg>
+        </span>
+        {done ? (<>
+          <h1>Password changed</h1>
+          <p className="rs-sub">You can sign in with your new password now.</p>
+          <Link className="btn lg login-cta" to="/login">Go to sign in</Link>
+        </>) : (<>
           <h1>Set a new password</h1>
-          {done ? ( // success panel (form REPLACED — no resubmitting a burned token!)…
-            <>
-              <div className="auth-message">Password updated — welcome back!</div> {/* .auth-message green variant (no .err!) */}
-              <Link className="btn login-cta" to="/login">Go to sign in</Link> {/* Link styled as button (client-side nav!) */}
-            </>
-          ) : ( // …else the form (password twice + submit)…
-            <>
-              <p className="switch-note">Choose something strong — 8+ characters.</p>
-              <label>New password</label>
-              <input value={pw1} onChange={(e) => setPw1(e.target.value)} type="password" placeholder="••••••••" autoComplete="new-password" /> {/* autoComplete=new-password (password managers OFFER to generate!) */}
-              <label>Type it again</label>
-              <input value={pw2} onChange={(e) => setPw2(e.target.value)} type="password" placeholder="••••••••" autoComplete="new-password" onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} /> {/* Enter submits from either field */}
-              <button className="btn login-cta" disabled={busy} onClick={submit}>{busy ? (<><Loader size={15} />Saving…</>) : 'Save new password'}</button>
-              <div className={'auth-message' + (err ? ' err' : '')}>{msg}</div> {/* status (err class only on failure — no shake here, calmer page) */}
-              <p className="auth-toggle"><Link to="/login">Back to sign in</Link></p> {/* Router Link (client-side — no reload!) */}
-            </>
-          )}
-        </div>
-      </div>
+          <p className="rs-sub">Use 8 or more characters. Then sign in with it.</p>
+          <label htmlFor="rs1">New password</label>
+          <div className="rs-pw">
+            <input id="rs1" value={pw1} onChange={(e) => setPw1(e.target.value)} type={show ? 'text' : 'password'} placeholder="8+ characters" autoComplete="new-password" autoFocus />
+            <button type="button" onClick={() => setShow(!show)}>{show ? 'Hide' : 'Show'}</button>
+          </div>
+          {pw1 && (<>
+            <div className="rs-meter" aria-hidden="true">{[1, 2, 3, 4].map((i) => <i key={i} className={i <= s ? 'on s' + s : ''} />)}</div>
+            <div className={'rs-word s' + s}>{WORDS[s]}</div>
+          </>)}
+          <label htmlFor="rs2">Type it again</label>
+          <input id="rs2" value={pw2} onChange={(e) => setPw2(e.target.value)} type={show ? 'text' : 'password'} placeholder="Same password again" autoComplete="new-password" onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} />
+          {msg && <div className="rs-err" role="alert">{msg}</div>}
+          <button type="button" className="btn lg login-cta" disabled={busy} onClick={submit}>{busy ? (<><Loader size={15} />Saving</>) : 'Save new password'}</button>
+          <Link className="rs-back" to="/login">Back to sign in</Link>
+        </>)}
+      </main>
     </div>
   );
 }

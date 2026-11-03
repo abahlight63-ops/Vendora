@@ -1,103 +1,92 @@
-// ── frontend/src/pages/Terms.jsx ──────────────────────────────────
-// WHAT: PUBLIC terms (/terms — no login). 13 sections: service definition →
-// eligibility → free/Pro/refunds → acceptable use → AI honesty clause →
-// dependencies → liability cap → Lagos arbitration. Same landing shell as
-// Privacy/Faq (nav + .card.legal + footer). File header only (see Privacy note:
-// per-line comments inside legal copy hurt readability + legal precision).
-import { useEffect } from 'react'; // tab title on mount
-import Logo from '../components/Logo.jsx'; // theme-aware brand mark (blue dark / green light!)
-import { Link } from 'react-router-dom'; // brand/login/privacy links
-import SiteFooter from '../components/SiteFooter.jsx'; // global footer (real links, descriptive anchors)
-import { setPageMeta, APP_URL } from '../lib/seo.js'; // title + description + canonical
+// ── frontend/src/pages/Terms.jsx ─────────────────────────────────
+// WHAT: the public Terms of Service (/terms, no login). Layout lives in
+// components/LegalPage.jsx. Keep prices and plan rules in step with Billing.
+import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import LegalPage, { CONTACT } from '../components/LegalPage.jsx';
+import { setPageMeta, APP_URL } from '../lib/seo.js';
+
+const S = (id, title, body) => ({ id, title, body });
+const SECTIONS = [
+  S('agree', 'Agreeing to these terms', <>
+    <p>These terms are an agreement between you and VeloSales Ai ("VeloSales", "we", "us"), a business based in Nigeria. By creating an account or using VeloSales Ai, you agree to them for yourself and for the business you represent. If you do not agree, please do not use the Service.</p>
+  </>),
+  S('service', 'What VeloSales Ai does', <>
+    <p>VeloSales Ai gives your shop an AI assistant, "Velo", that answers customers on the channels you connect, using the products, prices and rules you give it. It can pass a chat to you when it is not sure. Features differ by plan and may change as we improve the Service.</p>
+  </>),
+  S('account', 'Your account', <>
+    <ul>
+      <li>You must be at least 18 and able to enter a contract.</li>
+      <li>Give us true details and keep your password and sign-in codes private. You are responsible for what happens in your account.</li>
+      <li>Tell us straight away at <a href={`mailto:${CONTACT}`}>{CONTACT}</a> if you think someone else has access.</li>
+    </ul>
+  </>),
+  S('content', 'Your shop content and responsibility', <>
+    <p>You are responsible for your products, prices, photos and rules, and for keeping them accurate. Velo repeats what you give it. You must have the right to sell what you list and to use any photos you upload.</p>
+    <p>You keep ownership of your content. You give us permission to store and use it only to provide the Service to you.</p>
+  </>),
+  S('use', 'Acceptable use', <>
+    <p>You must not use VeloSales Ai to:</p>
+    <ul>
+      <li>sell anything illegal, counterfeit, stolen or dangerous, or anything the channels' own rules forbid;</li>
+      <li>deceive, scam, harass or spam people, or send messages people did not ask for;</li>
+      <li>break WhatsApp, Meta, Telegram or payment-provider rules;</li>
+      <li>try to break, overload or copy the Service, or get around its limits.</li>
+    </ul>
+    <p>We may pause or close accounts that break these rules.</p>
+  </>),
+  S('ai', "Velo's answers", <>
+    <p>Velo is designed to answer only from your catalog and to hand over when it is not sure, but AI can still make mistakes. Check your inbox regularly, especially chats Velo flags for you. You are responsible for any sale, price or promise made to your customers through your shop.</p>
+  </>),
+  S('plans', 'Plans, trials and payment', <>
+    <ul>
+      <li>The Free plan is free and includes a daily number of replies. When you reach it, customers are told you will reply soon.</li>
+      <li>New shops may get a free Pro trial. When it ends, you move to Free unless you choose a paid plan. No card is needed for the trial.</li>
+      <li>Paid plans are billed in advance, monthly or yearly, through Paystack or Flutterwave, at the price shown on <Link to="/billing">Plan and usage</Link> when you pay.</li>
+      <li>If we change prices, we will tell you at least 30 days before the change affects you.</li>
+    </ul>
+  </>),
+  S('refunds', 'Cancelling and refunds', <>
+    <p>You can stop paying at any time. You keep your paid plan until the end of the period you paid for, then move to Free, and your data is not deleted.</p>
+    <p>If the Service genuinely failed you, you can ask for a refund of your first payment within 7 days. Accidental double charges are always refunded in full. Write to <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.</p>
+  </>),
+  S('others', 'Services we depend on', <>
+    <p>VeloSales Ai relies on services we do not control, such as WhatsApp, Meta, Telegram, AI providers and payment providers. If one of them changes its rules, fails or blocks an account, parts of the Service may stop working. We will do our best to keep you informed and to restore the Service.</p>
+  </>),
+  S('end', 'Pausing or closing accounts', <>
+    <p>You can close your account at any time. We may pause or close an account that breaks these terms, puts others at risk or has not paid, and where possible we will tell you why first.</p>
+  </>),
+  S('liability', 'Limits of our responsibility', <>
+    <p>We provide the Service with reasonable care and skill, but "as available". As far as the law allows, we are not responsible for indirect losses, such as lost profits or sales, and our total responsibility to you is limited to what you paid us in the 12 months before the problem. Nothing in these terms removes rights you have under Nigerian consumer law.</p>
+  </>),
+  S('law', 'Law and disputes', <>
+    <p>These terms are governed by the laws of the Federal Republic of Nigeria. If we disagree, we will first try to settle it by talking. If that fails within 30 days, either of us may take it to the courts of Nigeria.</p>
+  </>),
+  S('changes', 'Changes to these terms', <>
+    <p>If we change these terms in a way that matters, we will tell you by email or in the app before the change takes effect. Using the Service after that means you accept the new terms.</p>
+  </>),
+  S('contact', 'Contact us', <>
+    <p>Questions about these terms: <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.</p>
+  </>),
+];
 
 export default function Terms() {
   useEffect(() => {
-    setPageMeta({
-      title: 'VeloSales Ai — Terms & Conditions',
-      description: 'The terms that govern your VeloSales Ai account: plans, trials, refunds, acceptable use, AI accuracy limits and Nigerian governing law.',
-      canonical: APP_URL + '/terms',
-    });
+    setPageMeta({ title: 'VeloSales Ai — Terms of Service', description: 'The rules for using VeloSales Ai: plans, payments, refunds, acceptable use and how Velo answers your customers.', canonical: APP_URL + '/terms' });
   }, []);
   return (
-    <div className="landing">
-      <header className="landing-nav"><div className="landing-inner">
-        <Link className="landing-brand" to="/"><Logo alt="VeloSales Ai" />VELOSALES AI</Link>
-        <span><Link className="btn ghost sm" to="/login">Sign in</Link></span>
-      </div></header>
-      <section className="landing-inner" style={{ padding: '48px 24px 64px' }}>
-        <div className="card legal reveal vis">
-          <p className="hint">Last updated: September 2026</p>
-          <h1>Terms &amp; Conditions</h1>
-          <p>Welcome to VeloSales Ai. These Terms &amp; Conditions constitute a binding legal agreement between you, the business owner ("you", "your"), and VeloSales Ai ("we", "us", "our") governing your access to and use of the VeloSales Ai platform, website, and AI-powered WhatsApp customer support services (collectively, the "Service"). By creating an account, accessing, or using the Service, you acknowledge that you have read, understood, and agree to be bound by these Terms.</p>
-
-          <h3>1. Description of the Service</h3>
-          <p>VeloSales Ai provides an artificial intelligence assistant that automatically responds to your WhatsApp customers on the basis of your product catalog and business information. The Service drafts replies from information you supply, escalates uncertain inquiries to you for human handling rather than speculating, and does not generate prices or product claims independently. You remain solely responsible for the accuracy of your catalog, pricing, availability representations, and all commercial promises made in connection with your business. The Service is a software tool and does not constitute an employee, agent, or representative of your business.</p>
-
-          <h3>2. Who can use it</h3>
-          <ul>
-            <li>You must be 18+ and able to enter contracts under Nigerian law.</li>
-            <li>One account per business WhatsApp number. Keep your password private — anything done under your login counts as done by you.</li>
-            <li>Your catalog must be yours to publish: real products, real prices, real availability.</li>
-          </ul>
-
-          <h3>3. Free plan, Pro trial &amp; paid plans</h3>
-          <ul>
-            <li><b>Free forever:</b> manual catalog (dashboard adds + LEARN: messages) with AI replies. No card, no expiry.</li>
-            <li><b>7-day Pro trial:</b> every new account gets full Pro (profile sync + verification) free for 7 days, no card required. The countdown shows in-app and your bell warns you before it ends; afterwards you drop to free automatically.</li>
-            <li><b>Paid plans:</b> Pro ₦7,499 / $5 monthly, ₦69,999 / $47 yearly (save ~22%) · Pro Plus ₦14,999 / $10 monthly, ₦119,999 / $80 yearly (save ~33%, adds voice-note transcription + heavy work models). Currency is set automatically from your WhatsApp number (+234 → Naira, else US Dollar) and can be changed in Business profile. You pay by card on a secure checkout page. Enterprise plans are handled personally through sales.</li>
-            <li><b>After trial / expiry / cancellation:</b> you drop to the free plan. Your catalog, chats and history stay. The bot keeps replying from your manual catalog — we never hold your data hostage.</li>
-          </ul>
-
-          <h3>4. Payments, renewals &amp; refunds</h3>
-          <ul>
-            <li>Card payments activate instantly on our secure checkout. Bank transfer is retired — pay by card on the Billing page.</li>
-            <li>Subscriptions renew for the same plan length. Cancel anytime from the Billing page — you keep Pro until the paid period ends.</li>
-            <li><b>Refunds:</b> first-ever payment refundable within 7 days if the service genuinely didn't work for you (write us from Help with details). Renewals are non-refundable after 7 days, except where the law says otherwise. Failed duplicate charges are always refunded in full.</li>
-            <li>Prices show in your currency (NGN or USD) and may change for NEW purchases; your active paid period always keeps the price you paid.</li>
-          </ul>
-
-          <h3>5. Acceptable use</h3>
-          <ul>
-            <li>No spam, bulk unsolicited messaging, fraud, counterfeit goods, or anything illegal under Nigerian law.</li>
-            <li>No teaching the AI false prices to bait customers, and no using VeloSales Ai to impersonate another business.</li>
-            <li>LEARN: / SYNC: only work from your registered owner number — if someone else gets your phone, tell us immediately.</li>
-            <li>Don't probe, scrape or attack the service. Automated abuse gets accounts paused without refund.</li>
-          </ul>
-
-          <h3>6. Accuracy of AI-generated responses</h3>
-          <p>Artificial intelligence systems may occasionally produce inaccurate, incomplete, or contextually inappropriate responses, including errors of tone, misinterpretation of colloquial language, or confidently stated inaccuracies. To mitigate this risk, the Service escalates uncertain inquiries to you for human handling rather than speculating, and issues owner alerts for flagged conversations. You agree to review flagged conversations promptly and to maintain accurate catalog and business information at all times. We shall not be liable for commercial losses arising from unanswered flagged conversations or from responses generated on the basis of inaccurate information you provided. The quality of AI responses depends directly on the accuracy of your catalog.</p>
-
-          <h3>7. Dependencies beyond our control</h3>
-          <p>VeloSales Ai rides on WhatsApp/Meta, Telegram, AI providers (Gemini/Groq/TokenRouter/SambaNova/Anthropic/OpenAI), Paystack, Flutterwave, and our hosts. If any of them has an outage, changes prices, or changes rules, parts of VeloSales Ai may degrade — and that isn't our breach. We'll always fail safe (flag to human, never invent answers) and post status in the dashboard when we can.</p>
-
-          <h3>8. Your content &amp; our license</h3>
-          <p>You own your catalog, profile and chats outright. You grant us only the narrow license needed to store them and feed them to the AI to serve your customers. We claim no ownership, run no ads against your content, and never sell it. Delete your account and the license ends (subject to legal retention in the Privacy Policy).</p>
-
-          <h3>9. Suspension &amp; termination</h3>
-          <ul>
-            <li>We may pause accounts for abuse, fraud, non-payment investigation, or legal orders — usually with a warning first, instantly for serious abuse.</li>
-            <li>You may leave anytime: cancel paid plans (keep Pro till period end), then delete your account from Settings or via Help. Export your catalog first — deletion is permanent after 14 days.</li>
-          </ul>
-
-          <h3>10. Limitation of liability</h3>
-          <p>To the maximum extent permitted by law, VeloSales Ai is provided "as is" without warranties of any kind. Our total liability for anything arising from the service is capped at the amount you paid us in the 3 months before the claim (or ₦10,000 / $7 if you never paid). We are never liable for indirect losses: lost profits, lost customers, or Meta/WhatsApp restricting your number for policy breaches on your side.</p>
-
-          <h3>11. Indemnity</h3>
-          <p>You agree to cover us if your use of VeloSales Ai (your catalog content, your messages, your breach of these terms or of WhatsApp's policies) gets us into legal trouble with a third party. We'll notify you promptly and let you lead the defense.</p>
-
-          <h3>12. Governing law &amp; disputes</h3>
-          <p>These terms are governed by the laws of the Federal Republic of Nigeria. Disputes first go to good-faith negotiation for 30 days (write us from Help), then to mediation/arbitration in Lagos under the Arbitration and Mediation Act 2023 before any court action. If any clause is found unenforceable, the rest stands.</p>
-
-          <h3>13. Changes</h3>
-          <p>We'll post updates here with a new date and flag material changes in the dashboard or by email at least 7 days before they bite. Keep using VeloSales Ai after that and you've accepted them; the version in force when you paid governs that payment.</p>
-
-          <div style={{ display: 'flex', gap: 10, marginTop: 22, flexWrap: 'wrap' }}>
-            <Link className="btn sm" to="/login">Start free trial</Link>
-            <Link className="btn ghost sm" to="/privacy">Privacy Policy</Link>
-          </div>
-        </div>
-      </section>
-      <SiteFooter />
-    </div>
+    <LegalPage
+      which="terms"
+      title="Terms of Service"
+      sub="The rules for using VeloSales Ai"
+      icon={<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7" /></svg>}
+      short={[
+        'Use VeloSales Ai for honest selling only.',
+        'You are responsible for your products and prices. Velo only repeats what you add.',
+        'Free stays free. Paid plans renew until you cancel, and you keep them until the end of what you paid for.',
+        'Your shop content stays yours.',
+      ]}
+      sections={SECTIONS}
+    />
   );
 }

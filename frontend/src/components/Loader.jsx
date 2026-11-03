@@ -3,21 +3,20 @@
 // buttons (it follows the text colour there). Larger, it is the small 3D logo
 // turning in its ring. Everything that says "working" says it with one of these.
 //
-// BrandGate (below): the full-page loading FACE — assembling mark + wordmark,
-// for route fallbacks, guards and session checks.
+// BrandGate (below): the full-page loading face, the brand loader alone in the
+// middle of the screen, for route fallbacks, guards and session checks.
 import { useEffect, useState } from 'react';
-import { MarkTurn } from './MarkReveal.jsx';
+import VeloLoader from './VeloLoader.jsx';
 
 export default function Loader({ size = 40, label = 'Loading' }) {
-  if (size > 28) return <MarkTurn size={size} />;
+  if (size > 28) return <VeloLoader size={size} label={label} />;
   return <span className="orbit-loader" style={{ width: size, height: size }} role="status" aria-label={label} />;
 }
 
-export function BrandGate({ size = 62, label = 'VeloSales Ai' }) { // full-page loading face (route fallbacks, guards, session checks)
+export function BrandGate({ size = 72 }) { // full-page loading face, centred on the screen
   return (
-    <div className="brandgate" role="status" aria-label="Loading">
-      <MarkTurn size={size} />
-      <div className="brandgate-name">{label}</div>
+    <div className="brandgate">
+      <VeloLoader size={size} />
     </div>
   );
 }

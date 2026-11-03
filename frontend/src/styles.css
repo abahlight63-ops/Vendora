@@ -3604,3 +3604,25 @@ body { min-height: 100vh; min-height: 100dvh; } /* the colour field must reach t
   .lg-toc-head { display: none; }
 }
 @media print { .lg-top, .lg-toc, .lg-acts, .site-footer, footer { display: none !important; } .lg-hero { background: none; color: #000; margin: 0; padding: 0; } .lg-hero h1, .lg-hero p { color: #000; } .lg-grid { display: block; padding: 0; } }
+
+/* ── brand loader (from the owner's reference video) ── */
+.brandgate { position: fixed; inset: 0; z-index: 150; display: flex; align-items: center; justify-content: center; padding: 0; background: var(--page-base); }
+.vl { --t: 2.9s; --vl-ink: #1e1757; display: inline-flex; flex-direction: column; align-items: center; gap: calc(var(--s) * 0.16); }
+[data-theme="dark"] .vl, .vl.vl-light { --vl-ink: #fff; }
+.vl-stage { position: relative; display: flex; align-items: center; justify-content: center; }
+.vl-mark { display: block; overflow: visible; animation: vlMark var(--t) cubic-bezier(0.5, 0, 0.3, 1) infinite; }
+.vl-line { fill: none; stroke: var(--vl-ink); stroke-width: 30; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 100; stroke-dashoffset: 100; animation: vlLine var(--t) ease-in-out infinite; }
+.vl-p { transform-box: fill-box; transform-origin: center; animation: var(--t) cubic-bezier(0.2, 1.5, 0.4, 1) infinite; }
+.vl-p1 { animation-name: vlP1; } .vl-p2 { animation-name: vlP2; } .vl-p3 { animation-name: vlP3; }
+.vl-rays { position: absolute; left: 50%; top: 50%; width: 0; height: 0; opacity: 0; animation: vlBurst var(--t) ease-out infinite; }
+.vl-rays i { position: absolute; left: calc(var(--s) * -0.03); top: calc(var(--s) * -0.1); width: calc(var(--s) * 0.06); height: calc(var(--s) * 0.2); border-radius: 99px; background: linear-gradient(180deg, #ffb199, #ff8a6b); }
+.vl-floor { width: calc(var(--s) * 1.05); height: calc(var(--s) * 0.12); border-radius: 50%; background: radial-gradient(closest-side, rgba(30, 23, 87, 0.22), rgba(30, 23, 87, 0)); animation: vlFloor var(--t) ease-in-out infinite; }
+[data-theme="dark"] .vl-floor, .vl-light .vl-floor { background: radial-gradient(closest-side, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0)); }
+@keyframes vlLine { 0%, 30% { stroke-dashoffset: 100; opacity: 1; } 62% { stroke-dashoffset: 0; opacity: 1; } 84%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes vlP2 { 0%, 25% { opacity: 1; transform: none; } 34%, 62% { opacity: 0; transform: scale(0.6); } 70%, 100% { opacity: 1; transform: none; } }
+@keyframes vlP3 { 0%, 25% { opacity: 1; transform: none; } 34%, 68% { opacity: 0; transform: scale(0.6); } 76%, 100% { opacity: 1; transform: none; } }
+@keyframes vlP1 { 0%, 25% { opacity: 1; transform: none; } 34%, 74% { opacity: 0; transform: translateY(-30%) scale(0.6); } 82%, 100% { opacity: 1; transform: none; } }
+@keyframes vlMark { 0%, 80%, 100% { transform: none; } 86% { transform: scale(1.06); } 92% { transform: scale(0.98); } }
+@keyframes vlBurst { 0%, 79% { opacity: 0; transform: scale(0.55); } 84% { opacity: 1; transform: scale(0.9); } 96%, 100% { opacity: 0; transform: scale(1.15); } }
+@keyframes vlFloor { 0%, 25%, 84%, 100% { transform: scaleX(1); opacity: 1; } 40%, 70% { transform: scaleX(0.7); opacity: 0.5; } }
+@media (prefers-reduced-motion: reduce) { .vl * { animation: none !important; } .vl-line { opacity: 0; } }

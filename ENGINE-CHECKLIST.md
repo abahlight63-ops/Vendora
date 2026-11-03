@@ -41,7 +41,7 @@ From the audit and review of 3 November 2026.
 
 ## 5. Real insights
 - [ ] Work out insights on the server: chats per day and per app, Velo vs. needed you, reply speed, most-asked products, unanswered questions, orders and revenue, busiest hours
-- [ ] Give Chat with Velo these numbers so it can answer "how did my shop do this week?"
+- [x] Give Chat with Velo real numbers so it can answer "how did my shop do this week?" (chats, customers, apps, busy times, most-asked products, logged stock; exact sales once orders exist)
 - [ ] Remove the "Coming soon" tag on the weekly breakdown
 
 ## 6. Follow-ups for customers who didn't buy

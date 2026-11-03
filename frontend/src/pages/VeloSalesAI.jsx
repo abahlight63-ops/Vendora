@@ -26,12 +26,13 @@ const MAX_PHOTO = 12 * 1024 * 1024; // 12MB picked — we downscale before it ev
 // per chip (every lane gets sensible icons for free).
 function chipIcon(s) {
   const t = String(s).toLowerCase();
+  if (/how did my shop|this week|\bsold\b|\bsales\b/.test(t)) return 'chart';
   if (/\bidea|ideas|brainstorm|content|outline|include|portfolio|should\b/.test(t)) return 'bulb';
   if (/\bprice|pricing|cost|charge|rate|quote|profit|package\b/.test(t)) return 'tag';
   if (/\breply|respond|answer|rebook|rebooking|enroll|qualify|buyer|viewing|follow|message\b/.test(t)) return 'chat';
   return 'pencil';
 }
-const TINT = { pencil: '', tag: 'w', bulb: 's', chat: '' }; // purple / gold / sky — three hues, one voice
+const TINT = { pencil: '', tag: 'w', bulb: 's', chat: '', chart: 's' }; // purple / gold / sky — three hues, one voice
 
 function savedBrain() {
   try {
@@ -90,7 +91,7 @@ export default function VeloSalesAI({ biz }) {
   }
 
   const first = (biz?.name || 'there').split(' ')[0];
-  const chips = chipsFor(biz?.business_niche);
+  const chips = ['How did my shop do this week?', ...chipsFor(biz?.business_niche).slice(0, 3)]; // first card asks for real shop numbers (src/services/shopStats.js)
   const canSend = !busy && (!!input.trim() || !!img);
 
   function onThreadScroll(e) { // track whether the reader is at the bottom…

@@ -156,6 +156,11 @@ async function askGeneral(message, history, choiceId, tier, bizName, niche, shop
     }
     if (shopCtx.catalog) bits.push(`SHOP CATALOG (single source of truth — quote these exact names/prices, never invent siblings):\n${shopCtx.catalog}`);
     if (bits.length) shopLine = `\nSHOP FACTS (answer shop questions ONLY from these — "${shop}" means THIS shop):\n${bits.join('\n')}`;
+    // SHOP NUMBERS (services/shopStats.js): real chats, customers, apps, busy times
+    // and logged stock. Exact sales are NOT recorded yet, so Velo must say so.
+    if (shopCtx.stats) {
+      shopLine += `\n\nSHOP NUMBERS (real, from this shop's chats and stock log, Lagos time):\n${shopCtx.stats}\n\nNUMBERS RULES: for any question about how the shop is doing (chats, customers, busy times, best sellers, today, this week, the last 7 or 30 days) answer ONLY from SHOP NUMBERS, quote the exact figures, compare with the period before when it is given, and end with one practical suggestion. NEVER invent, estimate or round up a number that is not listed. SALES AND REVENUE: the app does not record orders yet, so exact sales and money made are NOT known. If asked "how much did we sell" or similar, say plainly that exact sales are not tracked yet, then give the closest real figures (stock logged as taken out and its catalog value, most-asked products, chats), and say that order tracking is coming to VeloSales Ai so this will become exact. Periods that are not listed (for example last year) are not available: say so instead of guessing.`;
+    }
   }
   const system = `You are VeloSales Ai, a smart, warm general-purpose assistant inside the VeloSales Ai app.${nicheLine}${todayLine}${shopLine}
 

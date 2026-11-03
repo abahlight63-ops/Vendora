@@ -1129,6 +1129,12 @@ async function ask(req, res) {
         catalog: full.length > 2500 ? full.slice(0, 2500) + '\n…(catalog continues — ask about the rest!)' : full, // cap ~2500 chars (big catalogs stay cheap!)
       };
     } catch (e) { console.error('ask grounding error:', e.message); } // grounding failed → askGeneral runs ungrounded (never block a chat over context!)
+    // SHOP NUMBERS: real chats, customers, apps, busiest times and logged stock, so
+    // "how did my shop do this week?" gets true numbers. A failure only drops this block.
+    try {
+      const shopStats = require('../services/shopStats');
+      if (shopCtx) shopCtx.stats = shopStats.formatStats(await shopStats.getShopStats(req.session.businessId));
+    } catch (e) { console.error('ask stats error:', e.message); }
     const resolved = aiModels.resolveChoice(model, tier); // validate dropdown id: exists? below-floor? → {entry, model} or {error}
     if (resolved.error) return res.status(402).json({ error: resolved.error }); // 402 = paywall (locked premium model)
     const paid = resolved.entry.tier === 'paid'; // which counter to check/increment?

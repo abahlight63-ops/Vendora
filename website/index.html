@@ -1,520 +1,156 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>VeloSales Ai — AI WhatsApp Sales Assistant for Nigerian Shops</title>
-<meta name="description" content="Turn your WhatsApp number into a 24/7 AI sales rep. Instant answers in English or Pidgin, straight from your catalog. Free forever plan and a 7-day Pro trial — no card." />
-<link rel="canonical" href="https://velosalesai.com.ng/" />
-<meta name="theme-color" content="#4F3FC7" />
-<meta name="referrer" content="no-referrer-when-downgrade" />
-
-<!-- Open Graph / social -->
-<meta property="og:site_name" content="VeloSales Ai" />
-<meta property="og:title" content="VeloSales Ai — Your WhatsApp shop, open 24/7" />
-<meta property="og:description" content="AI sales assistant for WhatsApp. Instant answers in English or Pidgin, straight from your catalog. Free forever plan + 7-day Pro trial." />
-<meta property="og:type" content="website" />
-<meta property="og:url" content="https://velosalesai.com.ng/" />
-<meta property="og:image" content="https://velosalesai.com.ng/assets/og.png" />
-<meta property="og:image:width" content="1200" />
-<meta property="og:image:height" content="630" />
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="VeloSales Ai — Your WhatsApp shop, open 24/7" />
-<meta name="twitter:description" content="Instant AI answers in English or Pidgin, straight from your catalog. Free forever plan + 7-day Pro trial." />
-<meta name="twitter:image" content="https://velosalesai.com.ng/assets/og.png" />
-
-<!-- Ownership verification (keep while each dashboard shows "verified") -->
-<meta name="google-site-verification" content="BFuzp4Yg1ikNpWscJ6hz8A04ymD2OiGZCsjeoDPr4P8" />
-
-<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
-<link rel="icon" href="/favicon.ico" sizes="48x48 32x32 16x16" />
-<link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
-<noscript><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" /></noscript>
-<link rel="stylesheet" href="/styles.css" />
-<noscript><style>.reveal{opacity:1;transform:none}</style></noscript>
-
-<script type="application/ld+json">
-{"@context":"https://schema.org","@type":"Organization","@id":"https://velosalesai.com.ng/#org","name":"VeloSales Ai","url":"https://velosalesai.com.ng/","logo":{"@type":"ImageObject","url":"https://velosalesai.com.ng/assets/icon-512.png","width":512,"height":512},"description":"AI sales assistant that answers WhatsApp customers 24/7 in English or Pidgin, using the business's own catalog.","email":"velosales63@gmail.com","areaServed":"NG","contactPoint":{"@type":"ContactPoint","contactType":"customer support","email":"velosales63@gmail.com","availableLanguage":["en","pcm"]}}
-</script>
-<script type="application/ld+json">
-{"@context":"https://schema.org","@type":"WebSite","@id":"https://velosalesai.com.ng/#website","name":"VeloSales Ai","url":"https://velosalesai.com.ng/","publisher":{"@id":"https://velosalesai.com.ng/#org"},"inLanguage":"en-NG"}
-</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VeloSales Ai: AI sales assistant for WhatsApp, Telegram and Instagram</title>
+<meta name="description" content="Velo answers your customers on WhatsApp, Telegram, Messenger and Instagram in seconds, in English or Pidgin, from your own prices. Free: 50 replies a day.">
+<link rel="canonical" href="https://velosalesai.com.ng/">
+<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1">
+<meta name="theme-color" content="#4F3FC7">
+<meta name="google-site-verification" content="BFuzp4Yg1ikNpWscJ6hz8A04ymD2OiGZCsjeoDPr4P8">
+<meta property="og:site_name" content="VeloSales Ai">
+<meta property="og:locale" content="en_NG">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://velosalesai.com.ng/">
+<meta property="og:title" content="VeloSales Ai: your shop's AI, open 24/7">
+<meta property="og:description" content="Velo answers your customers on WhatsApp, Telegram, Messenger and Instagram in seconds, in English or Pidgin, from your own prices. Free: 50 replies a day.">
+<meta property="og:image" content="https://velosalesai.com.ng/assets/og-v2.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="VeloSales Ai: your shop's AI, open 24/7">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="VeloSales Ai: your shop's AI, open 24/7">
+<meta name="twitter:description" content="Velo answers your customers on WhatsApp, Telegram, Messenger and Instagram in seconds, in English or Pidgin, from your own prices. Free: 50 replies a day.">
+<meta name="twitter:image" content="https://velosalesai.com.ng/assets/og-v2.png">
+<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+<link rel="icon" href="/favicon.ico" sizes="48x48 32x32 16x16">
+<link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="/styles.css?v=2026-11-03">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://velosalesai.com.ng/#org","name":"VeloSales Ai","url":"https://velosalesai.com.ng/","logo":{"@type":"ImageObject","url":"https://velosalesai.com.ng/assets/icon-512.png","width":512,"height":512},"email":"velosales63@gmail.com","areaServed":"NG","description":"AI sales assistant that answers shop customers on WhatsApp, Telegram, Facebook Messenger and Instagram, in English or Pidgin, from the shop’s own catalog.","contactPoint":{"@type":"ContactPoint","contactType":"customer support","email":"velosales63@gmail.com","availableLanguage":["en","pcm"]}},{"@type":"WebSite","@id":"https://velosalesai.com.ng/#website","name":"VeloSales Ai","alternateName":"VeloSales","url":"https://velosalesai.com.ng/","publisher":{"@id":"https://velosalesai.com.ng/#org"},"inLanguage":"en-NG"},{"@type":"SoftwareApplication","@id":"https://velosalesai.com.ng/#app","name":"VeloSales Ai","applicationCategory":"BusinessApplication","operatingSystem":"Web, Android","url":"https://app.velosalesai.com.ng/","publisher":{"@id":"https://velosalesai.com.ng/#org"},"description":"An AI sales assistant for small shops. It answers customers on WhatsApp, Telegram, Facebook Messenger and Instagram in seconds, in English or Pidgin, using only your own prices, and hands the chat to you when it is not sure.","offers":[{"@type":"Offer","name":"Free","price":"0","priceCurrency":"NGN","url":"https://velosalesai.com.ng/pricing/"},{"@type":"Offer","name":"Plus","price":"7499","priceCurrency":"NGN","url":"https://velosalesai.com.ng/pricing/"},{"@type":"Offer","name":"Pro","price":"14999","priceCurrency":"NGN","url":"https://velosalesai.com.ng/pricing/"}]},{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is there really a free plan?","acceptedAnswer":{"@type":"Answer","text":"Yes. Free gives you 50 replies a day on WhatsApp and Telegram, forever. Every new shop also gets 7 days of Pro free, and no card is needed."}},{"@type":"Question","name":"Will Velo make up prices?","acceptedAnswer":{"@type":"Answer","text":"No. Velo only quotes prices and products from your catalog. If something is missing, it hands the chat to you instead of guessing."}},{"@type":"Question","name":"Can I take over a chat myself?","acceptedAnswer":{"@type":"Answer","text":"Yes. Open the chat in your inbox and reply. Velo steps back for that chat until you hand it back."}},{"@type":"Question","name":"Does it speak Pidgin?","acceptedAnswer":{"@type":"Answer","text":"Yes. Velo answers the way each customer writes: Pidgin in, Pidgin out; formal English in, formal English out."}},{"@type":"Question","name":"How do I pay?","acceptedAnswer":{"@type":"Answer","text":"By card, bank transfer or USSD on a secure Paystack or Flutterwave checkout. We never see or store your full card number."}}]}]}</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-
-<!-- ══ SVG SPRITE: every icon on this page (stroke style, no emoji) ══ -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <defs>
-    <linearGradient id="playGrad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#00A0FF"/><stop offset=".5" stop-color="#00F076"/>
-      <stop offset=".75" stop-color="#FFCE00"/><stop offset="1" stop-color="#FF3A44"/>
-    </linearGradient>
-  </defs>
-  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></symbol>
-  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.4 8.6 8.6 0 0 1-3.9-.9L3 21l2-5.3a8.3 8.3 0 0 1-.9-3.7A8.4 8.4 0 0 1 12.5 3a8.4 8.4 0 0 1 9 8.5z"/></symbol>
-  <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/></symbol>
-  <symbol id="i-sync" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></symbol>
-  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3"/></symbol>
-  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></symbol>
-  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></symbol>
-  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></symbol>
-  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10z"/><path d="M9 11.5l2 2 4-4.5"/></symbol>
-  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5.5"/></symbol>
-  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></symbol>
-  <symbol id="i-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5z"/></symbol>
-  <symbol id="i-card" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/></symbol>
-  <symbol id="i-mega" viewBox="0 0 24 24"><path d="M3 11l18-7v16L3 13v-2z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></symbol>
-  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></symbol>
-  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
-  <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></symbol>
-  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol>
-  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
-  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
-  <symbol id="i-hand" viewBox="0 0 24 24"><path d="M18 9a6 6 0 1 0-12 0c0 6-2.5 7-2.5 7h17S18 15 18 9M10 20a2.2 2.2 0 0 0 4 0"/></symbol>
-  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
-  <!-- Google Play triangle (official 4-colour shape, not a brand claim) -->
-  <symbol id="i-gplay" viewBox="0 0 24 24"><path fill="url(#playGrad)" d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z"/></symbol>
-  <symbol id="i-apple" viewBox="0 0 384 512"><path fill="currentColor" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></symbol>
-</svg>
-
-<div class="bg-stage" aria-hidden="true">
-  <span class="orb orb-a"></span><span class="orb orb-b"></span><span class="orb orb-c"></span>
-  <span class="grain"></span>
-</div>
-<div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
-
-<!-- Preloader -->
-<div class="loader" id="loader" aria-hidden="true">
-  <div class="loader-inner">
-    <span class="loader-orbit"><img src="/assets/mark.svg" alt="" width="52" height="60" /></span>
-    <b>VELOSALES AI</b>
-    <span class="loader-bar"><i></i></span>
-  </div>
-</div>
-
-<header class="nav glass">
-  <div class="wrap nav-row">
-    <a class="brand" href="/"><img src="/assets/mark.svg" alt="VeloSales Ai logo" width="26" height="30" />VELOSALES AI</a>
-    <nav class="nav-links" id="navLinks" aria-label="Primary">
-      <a href="/how-it-works/">How it works</a>
-      <a href="/pricing/">Pricing</a>
-      <a href="/free-plan/">Free plan</a>
-      <a href="/pro-trial/">Pro trial</a>
-      <a href="/contact/">Contact</a>
-      <a class="nav-signin" href="/login/">Sign in</a>
-    </nav>
-    <span class="nav-cta">
-      <a class="btn ghost sm" href="/login/">Sign in</a>
-      <a class="btn sm btn-shine" href="https://app.velosalesai.com.ng/login">Start free</a>
-      <button class="nav-toggle" id="navToggle" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks"><span></span><span></span><span></span></button>
-    </span>
-  </div>
+<header class="nav">
+  <a class="brand" href="/" aria-label="VeloSales Ai home"><svg width="28" height="32" viewBox="0 0 602 696" aria-hidden="true"><defs><linearGradient id="m1a" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB199"/><stop offset="1" stop-color="#D03C16"/></linearGradient><linearGradient id="m1b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9C8FFA"/><stop offset="1" stop-color="#3B2E9E"/></linearGradient><linearGradient id="m1c" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF8A6B"/><stop offset=".5" stop-color="#B44BA0"/><stop offset="1" stop-color="#4F3FC7"/></linearGradient></defs><path fill="url(#m1a)" d="M301 0 L602 189 L0 189 Z"/><path fill="url(#m1b)" d="M0 189 L0 513 L301 696 Z"/><path fill="url(#m1c)" d="M602 189 L602 513 L301 696 Z"/></svg><span>VeloSales Ai</span></a>
+  <nav class="nav-links" id="nav-links" aria-label="Main">
+    <a href="/how-it-works/">How it works</a>
+    <a href="/pricing/">Pricing</a>
+    <a href="/free-plan/">Free plan</a>
+    <a href="/faq/">FAQ</a>
+    <a href="/contact/">Contact</a>
+    <a class="pill line nav-in" href="https://app.velosalesai.com.ng/login">Sign in</a>
+  </nav>
+  <a class="pill coral nav-go" href="https://app.velosalesai.com.ng/login?mode=signup">Start free</a>
+  <button class="nav-menu" type="button" aria-controls="nav-links" aria-expanded="false" aria-label="Open menu"><svg class="ic " width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
 </header>
-
 <main id="main">
-  <!-- ══ HERO ══ -->
-  <section class="wrap hero">
-    <div class="hero-copy">
-      <span class="pill ok pulse-dot"><span class="dot"></span>LIVE — AI SELLING RIGHT NOW</span>
-      <h1>Your WhatsApp shop, <em class="gold-text">open 24/7.</em></h1>
-      <p class="lede">Customers message you at midnight. VeloSales Ai answers in seconds — prices, stock, delivery, hours — in English or Pidgin, straight from <b>your</b> catalog. You only step in when a human touch truly matters.</p>
-      <div class="cta-row">
-        <a class="btn lg btn-shine" href="https://app.velosalesai.com.ng/login">Start free — 7 days Pro</a>
-        <a class="btn ghost lg glass" href="#demo"><svg class="ic"><use href="#i-play"/></svg>Watch it sell</a>
-      </div>
-      <p class="hint">No card required · Set up in 15 minutes · Manual catalog free forever</p>
-      <div class="stats glass">
-        <div class="stat reveal"><b><span data-count="247">0</span>/7</b><span>always answering</span></div>
-        <div class="stat reveal"><b><span data-count="3">0</span> tiers</b><span>Fast · Normal · Smart</span></div>
-        <div class="stat reveal"><b>&lt;<span data-count="4">0</span>s</b><span>median reply time</span></div>
-        <div class="stat reveal"><b><span data-count="2">0</span> langs</b><span>English + Pidgin</span></div>
-      </div>
-    </div>
-    <div class="hero-stage">
-      <div class="float-chip chip-a glass"><svg class="ic"><use href="#i-bolt"/></svg>instant reply · 4s</div>
-      <div class="float-chip chip-b glass"><svg class="ic"><use href="#i-shield"/></svg>never invents prices</div>
-      <div class="phone-tilt" id="phoneTilt">
-        <div class="phone glass-strong">
-          <div class="phone-shine" aria-hidden="true"></div>
-          <div class="phone-head"><i></i><span>Amaka Beauty Studio<br /><small>online · AI on duty</small></span><b class="live-tag">LIVE DEMO</b></div>
-          <div class="chat" id="liveChat" aria-live="polite"></div>
-          <div class="phone-foot">
-            <button type="button" data-scenario="0" class="chip on">Price ask</button>
-            <button type="button" data-scenario="1" class="chip">LEARN stock</button>
-            <button type="button" data-scenario="2" class="chip">Hot handoff</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
 
-  <!-- ══ MARQUEE ══ -->
-  <div class="marquee glass" aria-hidden="true"><div class="marquee-track" id="marqueeTrack">
-    <span>Boutiques</span><span>Salons</span><span>Thrift vendors</span><span>Food spots</span><span>Phone sellers</span><span>Cosmetics</span><span>Bakeries</span><span>Tailors</span><span>Pharmacies</span><span>Instagram shops</span>
-  </div></div>
-
-  <!-- ══ AI ENGINE: three tiers, one shop ══ -->
-  <section class="wrap section" id="engine">
-    <p class="eyebrow reveal">THREE TIERS · ONE TIRELESS SHOP</p>
-    <h2 class="reveal">Fast for speed. <em class="gold-text">Smart for the tricky ones.</em></h2>
-    <p class="desc reveal">Every answer is produced by a model tier you choose in <b>AI settings</b>: <b>Fast</b> for quick price checks, <b>Normal</b> for everyday selling, <b>Smart</b> when the question deserves a careful read. If one engine is busy, the next one answers — your customer never sees an error.</p>
-    <div class="engine-status glass reveal"><span class="pulse-dot dot-live"><span class="dot"></span></span><b>ALL SYSTEMS SELLING</b><span class="hint">median reply &lt;4s · light enough for any phone</span></div>
-    <div class="marquee models glass" aria-hidden="true"><div class="marquee-track" id="modelTrack">
-      <span>Fast · instant replies</span><span>Normal · everyday selling</span><span>Smart · careful answers</span><span>Backup on standby</span><span>English + Pidgin</span><span>Photos in replies</span><span>Voice notes</span><span>Zero invented prices</span>
-    </div></div>
-    <div class="grid3">
-      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-bolt"/></svg><h3>&lt;4s median reply</h3><p class="desc">Price, stock, delivery — answered before the customer can tab away. Watch the live phone above count it down.</p></div>
-      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-sync"/></svg><h3>Zero-miss fallback</h3><p class="desc">Every tier has hot backups. If one engine is busy, the next answers mid-sentence — the reply still lands in seconds.</p></div>
-      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-gplay"/></svg><h3>Flies on small phones</h3><p class="desc">No heavy download, sips data and battery. Use it in the browser today, install it to your home screen, or use the Android build.</p></div>
-    </div>
-  </section>
-
-  <!-- ══ LEARN / ENLIGHTEN ══ -->
-  <section class="wrap section" id="learn">
-    <p class="eyebrow reveal">KNOW MORE · GET ENLIGHTENED</p>
-    <h2 class="reveal">Don't just buy it — <em class="gold-text">understand it.</em></h2>
-    <p class="desc reveal">Four ideas run your whole shop on VeloSales Ai. Tap each one, try the live playground, and walk in already knowing more than most owners.</p>
-    <div class="tabs glass reveal" role="tablist" aria-label="Learn VeloSales Ai">
-      <button class="tab on" data-tab="t-learn" role="tab">LEARN mode</button>
-      <button class="tab" data-tab="t-sync" role="tab">Profile SYNC · Pro</button>
-      <button class="tab" data-tab="t-pidgin" role="tab">Pidgin mirror</button>
-      <button class="tab" data-tab="t-hand" role="tab">Handoff + ComeBack</button>
-    </div>
-
-    <div class="tabpanes">
-      <div class="tabpane on glass" id="t-learn">
-        <div class="split">
-          <div>
-            <h3><svg class="ic gold"><use href="#i-box"/></svg>Teach it by chatting</h3>
-            <p class="desc">From your owner number, send <code>LEARN: Blue gown ₦45,000</code>. The AI extracts the name + price and updates your catalog. Send the same name again and the price overwrites. Free forever — try it:</p>
-            <div class="playground">
-              <div class="row-input">
-                <input id="learnInput" placeholder="LEARN: Bone straight 20&quot; ₦95,000" aria-label="Try a LEARN message" maxlength="120" />
-                <button class="btn sm btn-shine" id="learnBtn"><svg class="ic"><use href="#i-send"/></svg>Teach</button>
-              </div>
-              <div class="play-out" id="learnOut" aria-live="polite"><span class="hint">Your AI reply preview appears here…</span></div>
-            </div>
-          </div>
-          <div class="mini-list">
-            <div><svg class="ic"><use href="#i-check"/></svg><span><b>Same name = price update.</b> No duplicates, ever.</span></div>
-            <div><svg class="ic"><use href="#i-check"/></svg><span><b>Works for stock too:</b> "sold 3 bags of rice" adjusts inventory (Pro).</span></div>
-            <div><svg class="ic"><use href="#i-check"/></svg><span><b>Every change logged + undoable.</b> No silent edits.</span></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="tabpane glass" id="t-sync">
-        <div class="split">
-          <div>
-            <h3><svg class="ic gold"><use href="#i-sync"/></svg>Profile SYNC — Pro's superpower</h3>
-            <p class="desc">Paste your WhatsApp Business profile text in <b>Catalog → Sync</b> (or send <code>SYNC:</code> + the text from your owner number). VeloSales Ai scaffolds your whole catalog from it — then <b>verifies</b> customer questions against your synced profile.</p>
-            <ol class="steps">
-              <li>Copy your Business profile text.</li>
-              <li>Paste in Catalog → Sync (or SYNC: from WhatsApp).</li>
-              <li>AI builds + verifies products. Photos ride along in replies.</li>
-            </ol>
-          </div>
-          <div class="mini-list">
-            <div><svg class="ic"><use href="#i-check"/></svg><span><b>Free answers questions.</b> Pro does the work.</span></div>
-            <div><svg class="ic"><use href="#i-check"/></svg><span><b>Suggestive selling:</b> up to 5 options per answer.</span></div>
-            <div><svg class="ic"><use href="#i-check"/></svg><span><b>Product photos</b> inside WhatsApp + Telegram replies.</span></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="tabpane glass" id="t-pidgin">
-        <div class="split">
-          <div>
-            <h3><svg class="ic gold"><use href="#i-chat"/></svg>It mirrors your customer</h3>
-            <p class="desc">Pidgin in → Pidgin out. Formal English in → formal out. It never corrects their language. Toggle to feel it:</p>
-            <div class="tabs small" role="tablist" aria-label="Language demo">
-              <button class="tab on" data-lang="pidgin">Pidgin</button>
-              <button class="tab" data-lang="english">English</button>
-            </div>
-            <div class="chat-demo" id="langDemo" aria-live="polite"></div>
-          </div>
-          <div class="mini-list">
-            <div><svg class="ic"><use href="#i-check"/></svg><span><b>Voice notes transcribed</b> and answered (Pro Plus).</span></div>
-            <div><svg class="ic"><use href="#i-check"/></svg><span><b>Customer photos matched</b> against your catalog.</span></div>
-            <div><svg class="ic"><use href="#i-check"/></svg><span><b>Any WhatsApp number in Nigeria</b> works.</span></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="tabpane glass" id="t-hand">
-        <div class="split">
-          <div>
-            <h3><svg class="ic gold"><use href="#i-hand"/></svg>Unsure? It calls YOU, never guesses</h3>
-            <p class="desc">Low-confidence moments get a polite handoff, a gold flag in your inbox, and an instant alert on your personal WhatsApp — with the customer's exact words attached.</p>
-            <div class="flow">
-              <span class="flow-node">Customer asks</span><i>→</i>
-              <span class="flow-node">AI unsure</span><i>→</i>
-              <span class="flow-node hot">YOU close it</span>
-            </div>
-            <p class="desc" style="margin-top:12px"><b>ComeBack follow-ups:</b> abandoned buyers get a gentle nudge while intent is warm. <b>Owner digest:</b> daily chats, flags + sales signals in one read.</p>
-          </div>
-          <div class="mini-list">
-            <div><svg class="ic"><use href="#i-bell"/></svg><span><b>Instant owner alerts</b> for hot orders.</span></div>
-            <div><svg class="ic"><use href="#i-chart"/></svg><span><b>Insights:</b> handled %, flag reasons, peak hours.</span></div>
-            <div><svg class="ic"><use href="#i-clock"/></svg><span><b>Full inbox + chat history</b> on every plan.</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <p class="hint reveal" style="margin-top:16px">Want the long version, in order? <a href="/how-it-works/">Read how VeloSales Ai works, step by step</a>.</p>
-  </section>
-
-  <!-- ══ LIVE DEMO SECTION ══ -->
-  <section class="wrap section" id="demo">
-    <p class="eyebrow reveal">LIVE SIMULATION</p>
-    <h2 class="reveal">Watch a real conversation happen.</h2>
-    <p class="desc reveal">Same brain that answers your customers. Tap a scenario on the phone above — or open the playground inside the app.</p>
-    <div class="demo-row">
-      <div class="card glass tilt reveal">
-        <svg class="ic big gold"><use href="#i-bolt"/></svg>
-        <h3>Why owners switch</h3>
-        <ul class="ticks">
-          <li><b>Midnight sales:</b> 2am questions get 2am answers — no missed buyers.</li>
-          <li><b>Zero invented prices:</b> every answer comes from YOUR catalog.</li>
-          <li><b>Hot-lead flags:</b> unsure moments land in your inbox with exact words.</li>
-        </ul>
-        <a class="btn btn-shine" href="https://app.velosalesai.com.ng/login">Try it on your own shop</a>
-      </div>
-      <div class="card glass tilt reveal">
-        <svg class="ic big gold"><use href="#i-send"/></svg>
-        <h3>From your WhatsApp in 3 steps</h3>
-        <ol class="steps">
-          <li>Connect your business number (Meta Embedded Signup — free to start).</li>
-          <li>Teach it once — <code>LEARN: Blue gown ₦45,000</code> or Catalog page.</li>
-          <li>It sells while you sleep; you close the flagged hot ones.</li>
-        </ol>
-        <a class="btn ghost glass" href="/how-it-works/">See the full setup walkthrough</a>
-      </div>
-    </div>
-  </section>
-
-  <!-- ══ FEATURES BENTO ══ -->
-  <section class="wrap section" id="features">
-    <p class="eyebrow reveal">EVERYTHING A ONE-PERSON SHOP NEEDS</p>
-    <h2 class="reveal">Small team of one. <em class="gold-text">Staff of ten.</em></h2>
-    <div class="bento">
-      <div class="card glass tilt span2 reveal"><svg class="ic big gold"><use href="#i-bolt"/></svg><h3>Instant replies, 24/7</h3><p class="desc">Hours, prices, stock, delivery — answered in seconds, day or night. 50/day free, 500 Pro, unlimited Plus.</p></div>
-      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-chat"/></svg><h3>Pidgin + English</h3><p class="desc">"Abeg, e still dey?" gets a straight answer.</p></div>
-      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-box"/></svg><h3>LEARN mode</h3><p class="desc">Text your ad copy to your own number; catalog updates itself.</p></div>
-      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-sync"/></svg><h3>Profile SYNC · Pro</h3><p class="desc">Scaffold + verify your catalog from your Business profile.</p></div>
-      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-camera"/></svg><h3>Photos in replies · Pro</h3><p class="desc">Product photos ride inside WhatsApp + Telegram answers.</p></div>
-      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-mic"/></svg><h3>Voice notes · Plus</h3><p class="desc">Customer voice notes are transcribed, then answered.</p></div>
-      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-bell"/></svg><h3>Hot-lead flags</h3><p class="desc">Low-confidence moments route to you instantly.</p></div>
-      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-mega"/></svg><h3>ComeBack nudges</h3><p class="desc">Abandoned buyers re-engaged while intent is warm.</p></div>
-      <div class="card glass tilt span2 reveal"><svg class="ic big gold"><use href="#i-spark"/></svg><h3>VeloSales Ai — your second brain</h3><p class="desc">A general AI chat inside the dashboard for captions, price lists and replies. Pick Fast, Normal or Smart in AI settings — 50 free messages a day.</p><a class="btn ghost glass sm" href="/how-it-works/">See what is inside the app</a></div>
-      <div class="card glass tilt reveal"><svg class="ic big gold"><use href="#i-chart"/></svg><h3>Insights</h3><p class="desc">AI-handled %, flag reasons, peak hours.</p></div>
-    </div>
-  </section>
-
-  <!-- ══ APP TOUR ══ -->
-  <section class="wrap section" id="tour">
-    <p class="eyebrow reveal">INSIDE THE APP</p>
-    <h2 class="reveal">One login. <em class="gold-text">Every tool.</em></h2>
-    <p class="desc reveal">What waits after you hit Start free — the exact pages of the web app.</p>
-    <div class="tour-grid">
-      <div class="tour-card glass tilt reveal"><b>Overview</b><span>Greeting hero, trial countdown, 15-min checklist, flagged chats.</span><div class="tour-bars"><i style="width:82%"></i><i style="width:64%"></i><i style="width:91%"></i></div></div>
-      <div class="tour-card glass tilt reveal"><b>Inbox</b><span>Every chat, gold flags, full history, instant alerts.</span><div class="tour-chat"><i class="l"></i><i class="r"></i><i class="l s"></i></div></div>
-      <div class="tour-card glass tilt reveal"><b>Catalog</b><span>Products, photos, LEARN + Pro SYNC verification.</span><div class="tour-bars"><i style="width:70%"></i><i style="width:88%"></i><i style="width:55%"></i></div></div>
-      <div class="tour-card glass tilt reveal"><b>Connect</b><span>WhatsApp Embedded Signup + Telegram. TEST → LIVE.</span><div class="tour-live"><i></i>LIVE</div></div>
-      <div class="tour-card glass tilt reveal"><b>VeloSales Ai</b><span>Chat assistant with Fast / Normal / Smart + daily quota.</span><div class="tour-chat"><i class="r"></i><i class="l"></i></div></div>
-      <div class="tour-card glass tilt reveal"><b>Billing</b><span>Free / Pro / Pro Plus, monthly–yearly, instant activation.</span><div class="tour-bars"><i style="width:95%" class="gold"></i></div></div>
-    </div>
-  </section>
-
-  <!-- ══ HOW ══ -->
-  <section class="wrap section" id="how">
-    <p class="eyebrow reveal">GO LIVE TODAY</p>
-    <h2 class="reveal">Live in an afternoon.</h2>
-    <div class="grid3">
-      <div class="card glass tilt hover-lift reveal"><div class="step-n">1</div><h3>Connect WhatsApp</h3><p class="desc">Join the sandbox free, or attach your Business number via Meta Embedded Signup. One webhook, guided setup.</p></div>
-      <div class="card glass tilt hover-lift reveal"><div class="step-n">2</div><h3>Stock the catalog</h3><p class="desc">Add products here or text LEARN: from your own phone. Same name always updates the price.</p></div>
-      <div class="card glass tilt hover-lift reveal"><div class="step-n">3</div><h3>Let it sell</h3><p class="desc">Instant answers 24/7, ComeBack follow-ups, hot-lead flags + a daily digest of what needs you.</p></div>
-    </div>
-    <p class="hint reveal" style="margin-top:18px"><a href="/how-it-works/">Follow the detailed setup guide →</a></p>
-  </section>
-
-  <!-- ══ PRICING ══ -->
-  <section class="wrap section" id="pricing">
-    <p class="eyebrow reveal">TWO TIERS · ZERO GUESSWORK</p>
-    <h2 class="reveal">Free forever. Pro when you're ready.</h2>
-    <p class="desc reveal">7-day Pro trial on every account · Manual catalog free forever · Cancel anytime — nothing is ever deleted by downgrading.</p>
-    <div class="price-toggles glass reveal">
-      <div class="seg" role="group" aria-label="Currency">
-        <button class="seg-btn on" data-cur="NGN">₦ NGN</button>
-        <button class="seg-btn" data-cur="USD">$ USD</button>
-      </div>
-      <div class="seg" role="group" aria-label="Billing period">
-        <button class="seg-btn" data-per="monthly">Monthly</button>
-        <button class="seg-btn on" data-per="yearly">Yearly</button>
-      </div>
-    </div>
-    <div class="grid3">
-      <div class="card glass tilt hover-lift reveal">
-        <span class="badge ghost">FREE FOREVER</span><h3>Free</h3>
-        <div class="price" id="priceFree">₦0<small>/forever</small></div>
-        <p class="desc">The honest starter — bot never stops replying.</p>
-        <ul class="feats">
-          <li><svg class="ic"><use href="#i-check"/></svg>AI replies from your manual catalog</li>
-          <li><svg class="ic"><use href="#i-check"/></svg>LEARN: teaching from WhatsApp</li>
-          <li><svg class="ic"><use href="#i-check"/></svg>Full inbox + chat history</li>
-          <li><svg class="ic"><use href="#i-check"/></svg>Hot-order owner alerts</li>
-          <li><svg class="ic"><use href="#i-check"/></svg>50 bot replies / day</li>
-        </ul>
-        <a class="btn ghost glass sm" href="/free-plan/">What the free plan includes</a>
-      </div>
-      <div class="card glass tilt hover-lift reveal">
-        <span class="badge">PRO</span><h3>Pro</h3>
-        <div class="price" id="pricePro">₦69,999<small>/year</small></div>
-        <p class="desc" id="priceProSave">Save ₦19,989 — 22% off monthly</p>
-        <ul class="feats">
-          <li><svg class="ic"><use href="#i-check"/></svg>500 replies/day, Pidgin + English</li>
-          <li><svg class="ic"><use href="#i-check"/></svg>Profile SYNC + verified products</li>
-          <li><svg class="ic"><use href="#i-check"/></svg>Product photos in replies</li>
-          <li><svg class="ic"><use href="#i-check"/></svg>Suggestive selling (5 options)</li>
-          <li><svg class="ic"><use href="#i-check"/></svg>ComeBack follow-ups + Insights</li>
-        </ul>
-        <a class="btn ghost glass sm" href="/pro-trial/">Start the 7-day Pro trial</a>
-      </div>
-      <div class="card glass tilt hover-lift hot reveal">
-        <span class="badge gold">MOST POWER</span><h3>Pro Plus</h3>
-        <div class="price" id="pricePlus">₦119,999<small>/year</small></div>
-        <p class="desc" id="pricePlusSave">Save ₦59,989 — 33% off monthly</p>
-        <ul class="feats">
-          <li><svg class="ic"><use href="#i-check"/></svg>Everything in Pro</li>
-          <li><svg class="ic"><use href="#i-check"/></svg>Unlimited replies</li>
-          <li><svg class="ic"><use href="#i-check"/></svg>Voice-note transcription</li>
-          <li><svg class="ic"><use href="#i-check"/></svg>Smart tier + the full model roster</li>
-          <li><svg class="ic"><use href="#i-check"/></svg>Priority support — jump the queue</li>
-        </ul>
-        <a class="btn sm btn-shine" href="https://app.velosalesai.com.ng/billing">Choose Pro Plus</a>
-      </div>
-    </div>
-    <div class="card glass reveal compare">
-      <h3>Compare at a glance</h3>
-      <div class="table-wrap"><table>
-        <thead><tr><th>What you get</th><th>Free</th><th>Pro</th><th>Pro Plus</th></tr></thead>
-        <tbody id="compareBody"></tbody>
-      </table></div>
-      <p class="hint">Enterprise (chains, franchises): multi-branch dashboard + onboarding call — <a href="/contact/">contact sales</a>. Full breakdown on the <a href="/pricing/">pricing page</a>.</p>
-    </div>
-  </section>
-
-  <!-- ══ FAQ ══ -->
-  <section class="wrap section" id="faq">
-    <p class="eyebrow reveal">QUICK ANSWERS</p>
-    <h2 class="reveal">Questions? Answered clearly.</h2>
-    <div class="faq-search glass reveal">
-      <svg class="ic"><use href="#i-search"/></svg>
-      <input id="faqSearch" placeholder="Search questions… e.g. refund, Pidgin, price" aria-label="Search questions" />
-      <button id="faqClear" aria-label="Clear search" hidden><svg class="ic"><use href="#i-x"/></svg></button>
-    </div>
-    <div class="faq" id="faqList"></div>
-    <p class="hint reveal">Still stuck? <a href="/contact/">Contact VeloSales Ai support</a> or read the <a href="https://app.velosalesai.com.ng/faq">full FAQ in the app</a>.</p>
-  </section>
-
-  <!-- ══ GET APP ══ -->
-  <section class="wrap section" id="getapp">
-    <div class="getapp glass-strong reveal">
-      <div class="getapp-shine" aria-hidden="true"></div>
-      <p class="eyebrow">VELOSALES AI ON YOUR PHONE</p>
-      <h2>Web today. <em class="gold-text">Android in testing.</em></h2>
-      <p class="desc">Same account everywhere — catalog, inbox, flags and VeloSales Ai in your pocket. The web app installs to your home screen in one tap; the Android build is in testing, and iPhone follows after. Drop your email and be first in.</p>
-      <div class="store-row">
-        <span class="store-badge" aria-label="Google Play — in testing" title="Android build in testing">
-          <svg class="store-ic" aria-hidden="true"><use href="#i-gplay"/></svg>
-          <span class="store-txt"><small>ANDROID</small><b>In testing</b></span>
-          <span class="soon">BETA</span>
-        </span>
-        <span class="store-badge" aria-label="App Store — not yet available" title="iPhone build later">
-          <svg class="store-ic apple" aria-hidden="true"><use href="#i-apple"/></svg>
-          <span class="store-txt"><small>Download on the</small><b>App Store</b></span>
-          <span class="soon">LATER</span>
-        </span>
-      </div>
-      <form class="notify" name="launch-notify" method="POST" data-netlify="true" netlify-honeypot="bot-field">
-        <input type="hidden" name="form-name" value="launch-notify" />
-        <p class="hidden"><label>Don't fill this: <input name="bot-field" /></label></p>
-        <input type="email" name="email" placeholder="Email for launch + Pro tips" required aria-label="Email" />
-        <button class="btn sm btn-shine" type="submit">Notify me</button>
-      </form>
-      <p class="hint">No spam, ever · Your free plan and trial carry over · <a href="https://app.velosalesai.com.ng/help">Install the web app from the Help page</a></p>
-    </div>
-  </section>
-
-  <!-- ══ FINAL CTA ══ -->
-  <section class="wrap section final reveal">
-    <h2>Midnight customers are waiting.</h2>
-    <p class="desc">Open your shop around the clock — free for 7 days.</p>
-    <div class="cta-row center">
-      <a class="btn lg btn-shine" href="https://app.velosalesai.com.ng/login">Start selling tonight</a>
-      <a class="btn ghost lg glass" href="/pricing/">Compare the plans</a>
-    </div>
-  </section>
-</main>
-
-<footer class="site-foot">
-  <div class="wrap">
-    <section class="sitelinks" aria-labelledby="sitelinks-h">
-      <h2 class="sitelinks-h" id="sitelinks-h">Explore VeloSales Ai</h2>
-      <div class="sitelinks-grid">
-        <a href="/how-it-works/"><b>How it works</b><span>From your first product to a 24/7 AI sales rep, step by step.</span></a>
-        <a href="/pricing/"><b>Pricing</b><span>Free forever, Pro and Pro Plus — monthly or yearly, in naira or dollars.</span></a>
-        <a href="/free-plan/"><b>Free plan</b><span>50 AI replies a day, full inbox, no card and no expiry date.</span></a>
-        <a href="/pro-trial/"><b>7-day Pro trial</b><span>Every Pro feature for a week, then you choose what happens next.</span></a>
-        <a href="/contact/"><b>Contact</b><span>Talk to a human about setup, connecting WhatsApp or billing.</span></a>
-        <a href="/login/"><b>Sign in</b><span>Open your dashboard, inbox, catalog and AI settings.</span></a>
-      </div>
-    </section>
-    <div class="foot-grid">
-      <div class="foot-brand">
-        <a class="brand" href="/"><img src="/assets/mark.svg" alt="VeloSales Ai" width="24" height="28" />VELOSALES AI</a>
-        <p>Your WhatsApp shop, open 24/7. Built in Nigeria for businesses that sell in chat — in English and Pidgin.</p>
-      </div>
-      <nav class="foot-col" aria-label="Product">
-        <h3>Product</h3>
-        <ul>
-          <li><a href="/how-it-works/">How it works</a></li>
-          <li><a href="/pricing/">Pricing</a></li>
-          <li><a href="/free-plan/">Free plan</a></li>
-          <li><a href="/pro-trial/">Pro trial</a></li>
-        </ul>
-      </nav>
-      <nav class="foot-col" aria-label="Account">
-        <h3>Account</h3>
-        <ul>
-          <li><a href="/login/">Sign in</a></li>
-          <li><a href="https://app.velosalesai.com.ng/login">Create an account</a></li>
-          <li><a href="https://app.velosalesai.com.ng/billing">Billing and invoices</a></li>
-          <li><a href="https://app.velosalesai.com.ng/help">Help and install</a></li>
-        </ul>
-      </nav>
-      <nav class="foot-col" aria-label="Company">
-        <h3>Company</h3>
-        <ul>
-          <li><a href="/contact/">Contact us</a></li>
-          <li><a href="https://app.velosalesai.com.ng/faq">FAQ</a></li>
-          <li><a href="https://app.velosalesai.com.ng/privacy">Privacy policy</a></li>
-          <li><a href="https://app.velosalesai.com.ng/terms">Terms of service</a></li>
-        </ul>
-      </nav>
-    </div>
-    <div class="foot-bottom">
-      <span>© <span data-year>2026</span> VeloSales Ai · Made for shops that never sleep</span>
-      <span><a href="mailto:velosales63@gmail.com">velosales63@gmail.com</a></span>
-    </div>
+<section class="hero">
+  <div class="hero-copy">
+    <p class="eyebrow"><i></i>Free to start · No card needed</p>
+    <h1>Your shop's AI,<br><em>open 24/7.</em></h1>
+    <p class="lede">Velo answers your customers on WhatsApp, Telegram, Messenger and Instagram in seconds, in English or Pidgin, straight from your own prices.</p>
+    <div class="cta-row"><a class="go " href="https://app.velosalesai.com.ng/login?mode=signup">Start free<span class="knob"><svg class="ic " width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a><a class="pill line big" href="/how-it-works/"><svg class="ic " width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM10 8.5l6 3.5-6 3.5z"/></svg>See how it works</a></div>
+    <p class="trust"><span class="coins"><svg width="38" height="38" viewBox="0 0 64 64" role="img" aria-label="Whatsapp"><circle cx="32" cy="32" r="32" fill="#25D366"/><path fill="#fff" d="M32 14a18 18 0 0 0-15.5 27.2L14 50l9-2.4A18 18 0 1 0 32 14zm0 32.6c-2.8 0-5.5-.8-7.8-2.2l-.6-.3-5.3 1.4 1.4-5.2-.4-.6A14.6 14.6 0 1 1 32 46.6zm8-10.9c-.4-.2-2.6-1.3-3-1.4-.4-.2-.7-.2-1 .2l-1.4 1.7c-.3.3-.5.3-.9.1a12 12 0 0 1-6-5.2c-.4-.8.4-.7 1.3-2.4.1-.3 0-.5 0-.7l-1.4-3.3c-.3-.8-.7-.7-1-.7h-.8c-.3 0-.7.1-1.1.5-.4.4-1.4 1.4-1.4 3.4s1.5 4 1.7 4.2c.2.3 2.9 4.5 7.1 6.3 2.6 1.1 3.7 1.2 5 1 .8-.1 2.6-1 2.9-2.1.4-1 .4-1.9.3-2.1-.1-.2-.4-.3-.8-.5z"/></svg><svg width="38" height="38" viewBox="0 0 64 64" role="img" aria-label="Telegram"><circle cx="32" cy="32" r="32" fill="#229ED9"/><path fill="#fff" d="M46.5 18.6 14.9 30.8c-2.2.9-2.1 2.1-.4 2.6l8.1 2.5 3.1 9.6c.4 1.1.2 1.5 1.3 1.5.9 0 1.3-.4 1.8-.9l3.9-3.8 8.1 6c1.5.8 2.6.4 3-1.4l5.4-25.5c.6-2.2-.8-3.2-2.7-2.8zM24.6 35.3l17.6-11.1c.9-.5 1.7-.2 1 .4L28.1 38.2l-.6 6.3z"/></svg><svg width="38" height="38" viewBox="0 0 64 64" role="img" aria-label="Messenger"><circle cx="32" cy="32" r="32" fill="#7B5CFF"/><path fill="#fff" d="M32 15c-9.6 0-17 7-17 16.5 0 5 2 9.3 5.4 12.3V49l5-2.8c2 .6 4.2.8 6.6.8 9.6 0 17-7 17-16.5S41.6 15 32 15zm1.7 22.2-4.3-4.6-8.5 4.6 9.3-9.9 4.4 4.6 8.4-4.6z"/></svg><svg width="38" height="38" viewBox="0 0 64 64" role="img" aria-label="Instagram"><circle cx="32" cy="32" r="32" fill="#E1306C"/><rect x="18" y="18" width="28" height="28" rx="8" fill="none" stroke="#fff" stroke-width="3.4"/><circle cx="32" cy="32" r="6.5" fill="none" stroke="#fff" stroke-width="3.4"/><circle cx="40.5" cy="23.5" r="2" fill="#fff"/></svg></span><span>One assistant for every channel your customers use</span></p>
   </div>
-</footer>
+  
+  <figure class="photo">
+    <img src="/assets/photos/s1-900.jpg" srcset="/assets/photos/s1-900.jpg 900w, /assets/photos/s1-1800.jpg 1800w" sizes="(max-width: 900px) 100vw, 640px" width="900" height="1125" alt="A shop owner holding a phone" fetchpriority="high" decoding="async">
+    <p class="bub in">How much be the bone straight, 20 inch?<small>2:14 AM</small></p>
+    <p class="bub me">Na ₦95,000, e still dey. You want make I hold one for you?<small>Velo · just now</small></p>
+    <figcaption class="photo-bar"><svg width="36" height="36" viewBox="0 0 64 64" role="img" aria-label="Whatsapp"><circle cx="32" cy="32" r="32" fill="#25D366"/><path fill="#fff" d="M32 14a18 18 0 0 0-15.5 27.2L14 50l9-2.4A18 18 0 1 0 32 14zm0 32.6c-2.8 0-5.5-.8-7.8-2.2l-.6-.3-5.3 1.4 1.4-5.2-.4-.6A14.6 14.6 0 1 1 32 46.6zm8-10.9c-.4-.2-2.6-1.3-3-1.4-.4-.2-.7-.2-1 .2l-1.4 1.7c-.3.3-.5.3-.9.1a12 12 0 0 1-6-5.2c-.4-.8.4-.7 1.3-2.4.1-.3 0-.5 0-.7l-1.4-3.3c-.3-.8-.7-.7-1-.7h-.8c-.3 0-.7.1-1.1.5-.4.4-1.4 1.4-1.4 3.4s1.5 4 1.7 4.2c.2.3 2.9 4.5 7.1 6.3 2.6 1.1 3.7 1.2 5 1 .8-.1 2.6-1 2.9-2.1.4-1 .4-1.9.3-2.1-.1-.2-.4-.3-.8-.5z"/></svg><span><b>Replied in seconds</b><small>While the owner was asleep</small></span><span class="chip good">Example chat</span></figcaption>
+  </figure>
+</section>
 
-<script src="/site.js" defer></script>
+<section class="sec">
+  <p class="kick">What Velo does</p>
+  <h2>A sales assistant that never sleeps</h2>
+  <div class="feats"><article class="feat"><span class="fic c"><svg class="ic " width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></span><h3>Answers in seconds</h3><p>Prices, stock, delivery and opening hours, any time of day or night.</p></article><article class="feat"><span class="fic v"><svg class="ic " width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/></svg></span><h3>Speaks like your customers</h3><p>Clear English or Pidgin, matched to how each customer writes.</p></article><article class="feat"><span class="fic c"><svg class="ic " width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4"/></svg></span><h3>Never invents a price</h3><p>Velo only quotes what is in your catalog. Nothing made up.</p></article><article class="feat"><span class="fic v"><svg class="ic " width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/></svg></span><h3>Calls you when unsure</h3><p>If Velo isn't sure, it hands the chat to you and alerts you.</p></article></div>
+</section>
+
+<section class="sec split">
+  <figure class="photo tall"><img src="/assets/photos/s3-900.jpg" srcset="/assets/photos/s3-900.jpg 900w, /assets/photos/s3-1800.jpg 1800w" sizes="(max-width: 900px) 100vw, 640px" width="900" height="1125" alt="Someone sitting with a phone, replying to customers" loading="lazy" decoding="async"></figure>
+  <div>
+    <p class="kick">How it works</p>
+    <h2>Live in an afternoon</h2>
+    <ol class="steps"><li><b>Add your products</b><span>Type them in, import a list, or send prices with LEARN: from your phone.</span></li><li><b>Connect your channels</b><span>WhatsApp, Telegram, Messenger and Instagram, one tap each.</span></li><li><b>Test, then switch on</b><span>Ask Velo like a customer in Test Drive. When you like the answers, go live.</span></li></ol>
+    <a class="more" href="/how-it-works/">Read how it works <svg class="ic " width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+  </div>
+</section>
+
+<section class="sec" id="pricing">
+  <div class="center"><p class="kick">Pricing</p><h2>Start free. Grow when you're ready.</h2></div>
+  <div class="plans">
+  <article class="plan">
+    <div class="plan-top"><h3>Free</h3><span class="chip good">Free forever</span></div>
+    <p class="price">₦0<small> </small></p>
+    <p class="plan-year">&nbsp;</p>
+    <ul><li><svg class="ic " width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>50 replies a day</li><li><svg class="ic " width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>WhatsApp and Telegram</li><li><svg class="ic " width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Inbox and catalog</li><li><svg class="ic " width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Answers in English and Pidgin</li></ul>
+    <a class="pill ink" href="https://app.velosalesai.com.ng/login?mode=signup">Start free</a>
+  </article>
+  <article class="plan">
+    <div class="plan-top"><h3>Plus</h3></div>
+    <p class="price">₦7,499<small> / month</small></p>
+    <p class="plan-year">or ₦69,999 a year (save 22%)</p>
+    <ul><li><svg class="ic " width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>500 replies a day</li><li><svg class="ic " width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>All four channels</li><li><svg class="ic " width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Product photos in replies</li><li><svg class="ic " width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Catalog import</li></ul>
+    <a class="pill line" href="https://app.velosalesai.com.ng/login?mode=signup">Choose Plus</a>
+  </article>
+  <article class="plan best">
+    <div class="plan-top"><h3>Pro</h3><span class="chip white">Best value</span></div>
+    <p class="price">₦14,999<small> / month</small></p>
+    <p class="plan-year">or ₦119,999 a year (save 33%)</p>
+    <ul><li><svg class="ic " width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>1,500 replies a day</li><li><svg class="ic " width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Voice notes</li><li><svg class="ic " width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Smartest AI</li><li><svg class="ic " width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Everything in Plus</li></ul>
+    <a class="pill coral" href="https://app.velosalesai.com.ng/login?mode=signup">Choose Pro</a>
+  </article>
+  <article class="plan">
+    <div class="plan-top"><h3>Business</h3></div>
+    <p class="price"><small>From </small>₦39,999<small> / month</small></p>
+    <p class="plan-year">Set up with our team</p>
+    <ul><li><svg class="ic " width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>5,000 replies a day</li><li><svg class="ic " width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Many branches</li><li><svg class="ic " width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Priority help</li><li><svg class="ic " width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>We set it up with you</li></ul>
+    <a class="pill line" href="/contact/">Talk to us</a>
+  </article>
+</div>
+<p class="plans-note"><svg class="ic " width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h16v10H4zM2 7h20v4H2zM12 7v14M12 7S10 3 7.5 3 5 6 7 7M12 7s2-4 4.5-4S19 6 17 7"/></svg><span>Every new shop gets <b>7 days of Pro free</b>. No card needed. Prices in naira.</span></p>
+  <p class="center"><a class="more" href="/pricing/">Compare every feature <svg class="ic " width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></p>
+</section>
+
+<section class="sec split faq-split">
+  <div><p class="kick">FAQ</p><h2>Questions, answered</h2><p class="lede">Still unsure? Write to <a href="mailto:velosales63@gmail.com">velosales63@gmail.com</a> and we'll reply within a day.</p><a class="pill line" href="/faq/">See all questions</a></div>
+  <div class="faq"><details open><summary>Is there really a free plan?<span><svg class="ic " width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></summary><p>Yes. Free gives you 50 replies a day on WhatsApp and Telegram, forever. Every new shop also gets 7 days of Pro free, and no card is needed.</p></details><details><summary>Will Velo make up prices?<span><svg class="ic " width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></summary><p>No. Velo only quotes prices and products from your catalog. If something is missing, it hands the chat to you instead of guessing.</p></details><details><summary>Can I take over a chat myself?<span><svg class="ic " width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></summary><p>Yes. Open the chat in your inbox and reply. Velo steps back for that chat until you hand it back.</p></details><details><summary>Does it speak Pidgin?<span><svg class="ic " width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></summary><p>Yes. Velo answers the way each customer writes: Pidgin in, Pidgin out; formal English in, formal English out.</p></details><details><summary>How do I pay?<span><svg class="ic " width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></summary><p>By card, bank transfer or USSD on a secure Paystack or Flutterwave checkout. We never see or store your full card number.</p></details></div>
+</section>
+
+<section class="sec getapp">
+  <div>
+    <p class="kick">On your phone</p>
+    <h2>Use it in your browser today. Android is in testing.</h2>
+    <p class="lede">The web app installs to your home screen in one tap. Leave your email and we'll tell you when the Android app is ready.</p>
+  </div>
+  <form class="notify" name="launch-notify" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="/thanks/">
+    <input type="hidden" name="form-name" value="launch-notify">
+    <p class="hidden"><label>Leave this empty <input name="bot-field"></label></p>
+    <label class="sr" for="notify-email">Email</label>
+    <input id="notify-email" type="email" name="email" placeholder="you@example.com" required autocomplete="email">
+    <button class="pill coral" type="submit">Notify me</button>
+  </form>
+</section>
+
+<section class="band">
+  <div><h2>Midnight customers are waiting.</h2><p>Let Velo answer them while you sleep. Set up in minutes, free.</p></div>
+  <a class="go white" href="https://app.velosalesai.com.ng/login?mode=signup">Start free<span class="knob"><svg class="ic " width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
+</section>
+</main>
+<footer class="foot">
+  <div class="foot-brand"><a class="brand" href="/"><svg width="26" height="30" viewBox="0 0 602 696" aria-hidden="true"><defs><linearGradient id="m2a" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB199"/><stop offset="1" stop-color="#D03C16"/></linearGradient><linearGradient id="m2b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9C8FFA"/><stop offset="1" stop-color="#3B2E9E"/></linearGradient><linearGradient id="m2c" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF8A6B"/><stop offset=".5" stop-color="#B44BA0"/><stop offset="1" stop-color="#4F3FC7"/></linearGradient></defs><path fill="url(#m2a)" d="M301 0 L602 189 L0 189 Z"/><path fill="url(#m2b)" d="M0 189 L0 513 L301 696 Z"/><path fill="url(#m2c)" d="M602 189 L602 513 L301 696 Z"/></svg><span>VeloSales Ai</span></a><p>The AI sales assistant for shops in Nigeria. A business based in Nigeria.</p><a href="mailto:velosales63@gmail.com">velosales63@gmail.com</a></div>
+  <div><h2>Product</h2><a href="/how-it-works/">How it works</a><a href="/pricing/">Pricing</a><a href="/free-plan/">Free plan</a><a href="/pro-trial/">7-day Pro trial</a></div>
+  <div><h2>Help</h2><a href="/faq/">FAQ</a><a href="/contact/">Contact us</a><a href="https://app.velosalesai.com.ng/login">Sign in</a><a href="https://app.velosalesai.com.ng/login?mode=signup">Create account</a></div>
+  <div><h2>Legal</h2><a href="https://app.velosalesai.com.ng/privacy">Privacy Policy</a><a href="https://app.velosalesai.com.ng/terms">Terms of Service</a></div>
+  <p class="foot-fine">© 2026 VeloSales Ai. Built in Nigeria for shops everywhere.</p>
+</footer>
+<script src="/site.js?v=2026-11-03" defer></script>
 </body>
 </html>

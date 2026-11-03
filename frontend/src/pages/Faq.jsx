@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Logo from '../components/Logo.jsx';
 import SiteFooter from '../components/SiteFooter.jsx';
-import { setPageMeta, APP_URL } from '../lib/seo.js';
+import { setPageMeta } from '../lib/seo.js';
 
 export const FAQ_TOPICS = [
   ['start', 'Getting started', [
@@ -47,7 +47,7 @@ export default function Faq() {
   const [topic, setTopic] = useState('start');
   const [menu, setMenu] = useState(false);
   useEffect(() => {
-    setPageMeta({ title: 'VeloSales Ai — Frequently asked questions', description: 'Answers about VeloSales Ai: the free plan, prices, connecting WhatsApp, Telegram, Messenger and Instagram, Pidgin replies, refunds and your data.', canonical: APP_URL + '/faq' });
+    setPageMeta({ title: 'VeloSales Ai — Frequently asked questions', description: 'Answers about VeloSales Ai: the free plan, prices, connecting WhatsApp, Telegram, Messenger and Instagram, Pidgin replies, refunds and your data.', canonical: 'https://velosalesai.com.ng/faq/' }); // the website's FAQ is the one Google should show (same answers)
   }, []);
   const q = query.trim().toLowerCase();
   const shown = useMemo(() => FAQ_TOPICS.map(([id, name, rows]) => [id, name, rows.map((r, i) => [r, i]).filter(([[a, b]]) => !q || (a + ' ' + b).toLowerCase().includes(q))]).filter(([, , rows]) => rows.length), [q]);

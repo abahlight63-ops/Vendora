@@ -35,7 +35,7 @@ function findPages(dir, out = []) {
     if (entry.name.startsWith('.') || entry.name === 'assets') continue;
     const full = join(dir, entry.name);
     if (entry.isDirectory()) findPages(full, out);
-    else if (entry.name === 'index.html') out.push(full);
+    else if (entry.name === 'index.html' && !/<meta name="robots" content="noindex/i.test(readFileSync(full, 'utf8'))) out.push(full); // noindex pages (sign-in, thanks) stay out of the sitemap
   }
   return out;
 }
@@ -77,7 +77,6 @@ writeFileSync(join(websiteDir, 'sitemap.xml'), websiteXml, 'utf8');
 const appPaths = [
   { path: '', priority: '1.0', changefreq: 'weekly' },
   { path: 'login', priority: '0.8', changefreq: 'monthly' },
-  { path: 'faq', priority: '0.6', changefreq: 'monthly' },
   { path: 'privacy', priority: '0.3', changefreq: 'yearly' },
   { path: 'terms', priority: '0.3', changefreq: 'yearly' },
 ];

@@ -16,23 +16,26 @@ import Loader, { BrandGate, useMinDisplay } from '../components/Loader.jsx'; // 
 import { useNavigate } from 'react-router-dom'; // nav() after save (dashboard or back)
 import { api, pop } from '../lib/api.js'; // api() calls; pop() for save outcomes
 import { NICHES, HEARD_FROM } from '../lib/niches.js'; // picker data (shared with VeloSalesAI chips!)
-import Ic from '../components/icons.jsx'; // check icons
+import Ic from '../components/icons.jsx';
+import { avatarsFor } from '../lib/avatars.js';
+import { CHANNEL_COINS } from '../lib/channelLogos.js'; // check icons
 
 const OTHER = 'Other / Custom Business'; // the free-text niche (reveals the input below the grid!)
 
 // Q2–Q4 option decks: value (stored) + title + sub (the ENCOURAGEMENT — each
 // pick tells them what the app will do with it, so answers feel powerful!).
-const SIZES = [ // Q2: how many products? (drives dashboard checklist wording!)
-  { v: 'starting', t: 'Just starting', sub: 'Zero products yet? Perfect — we will walk you from 0 to 5.', cheer: 'Fresh shelf energy — your first 5 products take 10 minutes.' },
-  { v: 'under-20', t: 'Under 20', sub: 'Small and mighty — manual catalog fits you like a glove.', cheer: 'Small catalog, big control — every item gets its moment.' },
-  { v: '20-100', t: '20 – 100', sub: 'Growing fast — we will show you bulk tricks like Pro SYNC.', cheer: 'Growth mode — bulk tools will save you hours weekly.' },
-  { v: '100-plus', t: '100+', sub: 'Serious shelves — Pro SYNC + verification were built for you.', cheer: 'Big shelves need big tools — we have got them ready.' },
+const SIZES = [ // Q2: how many products? (drives the Home checklist wording)
+  { v: 'starting', t: 'Just starting', sub: 'We will help you add your first 5 products.', cheer: '' },
+  { v: 'under-20', t: 'Under 20', sub: 'Quick to add by hand, or teach Velo from WhatsApp.', cheer: '' },
+  { v: '20-100', t: '20 to 100', sub: 'Import your WhatsApp catalog to save time.', cheer: '' },
+  { v: '100-plus', t: '100 or more', sub: 'Catalog import brings them all in at once.', cheer: '' },
 ];
 const CHANNELS = [ // Q3: where do customers message? (multi-pick — drives Connect highlights!)
   { v: 'whatsapp', t: 'WhatsApp', sub: 'The main stage — connect it first.' },
   { v: 'telegram', t: 'Telegram', sub: 'Nice — we will highlight the Telegram card.' },
-  { v: 'instagram', t: 'Instagram DMs', soon: true, sub: 'Post there, sell on WhatsApp — direct inbox coming soon.' },
-  { v: 'walkin', t: 'Walk-in / market', sub: 'Physical hustle — the bot handles the overflow.' },
+  { v: 'instagram', t: 'Instagram', sub: '' },
+  { v: 'messenger', t: 'Facebook Messenger', sub: '' },
+  { v: 'walkin', t: 'Walk-in or market', sub: '' },
 ];
 const VOLUMES = [ // Q4: chats per day? (drives the honest plan hint on Billing!)
   { v: 'few', t: 'Just a few', sub: 'Quiet and cozy — Free plan covers you for ages.', cheer: 'Cozy pace — Free will carry you far.' },
@@ -48,7 +51,8 @@ export default function Welcome() {
   const [size, setSize] = useState(''); // Q2 value ('' = skipped)
   const [channels, setChannels] = useState([]); // Q3 values (multi-pick array!)
   const [volume, setVolume] = useState(''); // Q4 value ('' = skipped)
-  const [heard, setHeard] = useState(''); // Q5 pick ('' = skipped)
+  const [heard, setHeard] = useState('');
+  const [plan, setPlan] = useState('free'); // the plan picked on step 5 (free first) // Q5 pick ('' = skipped)
   const [busy, setBusy] = useState(false); // save lock (double-tap protection!)
   const [checking, setChecking] = useState(true); // true until /api/me answers (no flashing!)
   const minDone = useMinDisplay(1000); // brand beat (fast checks still show the scatter a full second!)
@@ -63,7 +67,7 @@ export default function Welcome() {
   const finalNiche = niche === OTHER ? custom.trim() : niche; // OTHER resolves to the typed text (grid label never saved!)
 
   function toggleChannel(v) { // multi-pick toggle (max 4 — backend slices anyway, UI stays honest!)
-    setChannels((c) => (c.includes(v) ? c.filter((x) => x !== v) : [...c, v].slice(0, 4))); // includes? remove : add (slice guards the cap!)
+    setChannels((c) => (c.includes(v) ? c.filter((x) => x !== v) : [...c, v].slice(0, 5))); // includes? remove : add (slice guards the cap!)
   }
 
   async function save() { // FINAL save: one write for all five answers (step 4 → dashboard!)
@@ -87,112 +91,103 @@ export default function Welcome() {
 
   if (checking || !minDone) return <div className="page"><div className="card"><BrandGate /></div></div>; // session check + brand beat (no flashing!)
 
-  const sizeCheer = SIZES.find((o) => o.v === size)?.cheer; // encouragement for the CURRENT pick (?. guards skipped!)
-  const volCheer = VOLUMES.find((o) => o.v === volume)?.cheer;
-
+  // ── the new flow: 0 sell · 1 size · 2 channels + chats · 3 heard · 4 plan · 5 all set ──
+  const TOTAL = 6;
+  const NICHE_EMOJI = (n) => (avatarsFor(n)[0] || '✨');
+  const tops = NICHES.filter((n) => n !== OTHER);
+  async function saveThenPlan() {
+    if (!finalNiche) { setStep(0); return pop('err', 'Pick one first', 'Tell us what you sell so Velo speaks your business.'); }
+    setBusy(true);
+    const { ok, data } = await api('/api/me/setup', { method: 'POST', body: JSON.stringify({ business_niche: finalNiche, catalog_size: size, channels, daily_volume: volume, heard_from: heard || '' }) });
+    setBusy(false);
+    if (ok) setStep(4);
+    else pop('err', 'Could not save', (data && data.error) || 'Check your connection and try again.');
+  }
+  const go2 = () => {
+    if (step === 0 && !finalNiche) return pop('err', 'Pick one first', 'Tell us what you sell so Velo speaks your business.');
+    if (step === 3) return saveThenPlan();
+    if (step === 4) { if (plan === 'free') return setStep(5); return nav('/billing?pick=' + plan + '_monthly', { replace: true }); }
+    if (step === 5) return nav('/catalog', { replace: true });
+    return setStep(step + 1);
+  };
+  const label = step === 3 ? (busy ? 'Saving' : 'Continue') : step === 4 ? (plan === 'free' ? 'Start with Free' : `Continue to pay`) : step === 5 ? 'Add my first product' : 'Continue';
+  const eyebrow = ['About your shop', 'About your shop', 'Your customers', 'Almost done', 'Your plan', ''][step];
+  const first = '';
   return (
-    <div className="welcome"> {/* flat light stage (the neumorphic tint is retired) */}
-      <div className="welcome-inner">
-        <div className="welcome-top">
-          <span className="landing-brand"><Logo alt="VeloSales Ai" />VELOSALES AI</span>
-          <span className="hint">Step {step + 1} of 5</span> {/* progress counter (Onboarding-style!) */}
+    <div className="ob2">
+      <div className="ob2-in">
+        {step < 5 && (
+          <div className="ob2-top">
+            <button type="button" className="ob2-back" disabled={step === 0 || busy} onClick={back} aria-label="Back"><Ic n="back" s={20} /></button>
+            <div className="ob2-prog" aria-hidden="true">{Array.from({ length: TOTAL }, (_, i) => <i key={i} className={i <= step ? 'on' : ''} />)}</div>
+            <span className="ob2-count">{step + 1} of {TOTAL}</span>
+          </div>
+        )}
+        <div key={step} className="ob2-step">
+          {eyebrow && <div className="ob2-eye">{eyebrow}</div>}
+          {step === 0 && (<>
+            <h1>What do you sell?</h1>
+            <p className="ob2-lede">Velo learns the words your customers use.</p>
+            <div className="ob2-tiles">
+              {tops.map((n) => (
+                <button key={n} type="button" className={'ob2-tile' + (niche === n ? ' on' : '')} aria-pressed={niche === n} onClick={() => setNiche(n)}>
+                  <span className="ob2-em" aria-hidden="true">{NICHE_EMOJI(n)}</span>{n.split(/,| & | or /)[0]}
+                </button>
+              ))}
+              <button type="button" className={'ob2-tile' + (niche === OTHER ? ' on' : '')} aria-pressed={niche === OTHER} onClick={() => setNiche(OTHER)}><span className="ob2-em" aria-hidden="true">✨</span>Something else</button>
+            </div>
+            {niche === OTHER && <input className="ob2-input" value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="Tell us what you sell" autoFocus />}
+          </>)}
+          {step === 1 && (<>
+            <h1>How many products do you sell?</h1>
+            <p className="ob2-lede">No wrong answer. It shapes your starting checklist.</p>
+            <div className="ob2-list">{SIZES.map((o) => (
+              <button key={o.v} type="button" className={'ob2-choice' + (size === o.v ? ' on' : '')} aria-pressed={size === o.v} onClick={() => setSize(o.v)}>
+                <span className="ob2-choice-main"><b>{o.t}</b><small>{o.sub}</small></span><span className="ob2-radio" aria-hidden="true" />
+              </button>))}</div>
+          </>)}
+          {step === 2 && (<>
+            <h1>Where do customers message you?</h1>
+            <p className="ob2-lede">Pick all that apply. You connect them later.</p>
+            <div className="ob2-list">{CHANNELS.map((o) => (
+              <button key={o.v} type="button" className={'ob2-choice' + (channels.includes(o.v) ? ' on' : '')} aria-pressed={channels.includes(o.v)} onClick={() => toggleChannel(o.v)}>
+                {CHANNEL_COINS[o.v] ? <svg width="44" height="44" viewBox="0 0 64 64" aria-hidden="true" dangerouslySetInnerHTML={{ __html: CHANNEL_COINS[o.v].replace(/(msg-g|ig-g)/g, '$1-ob' + o.v) }} /> : <span className="ob2-em sm" aria-hidden="true">🏪</span>}
+                <span className="ob2-choice-main"><b>{o.t}</b></span><span className="ob2-check" aria-hidden="true">{channels.includes(o.v) ? <Ic n="check" s={15} /> : null}</span>
+              </button>))}</div>
+            <div className="ob2-eye" style={{ marginTop: 6 }}>About how many chats a day?</div>
+            <div className="wx-pills ob2-vol" role="group" aria-label="Chats a day">{VOLUMES.map((o) => <button key={o.v} type="button" className={'wx-pill' + (volume === o.v ? ' on' : '')} aria-pressed={volume === o.v} onClick={() => setVolume(o.v)}>{o.t}</button>)}</div>
+          </>)}
+          {step === 3 && (<>
+            <h1>How did you hear about us?</h1>
+            <p className="ob2-lede">Optional. It helps us reach sellers like you.</p>
+            <div className="ob2-pills">{HEARD_FROM.map((h) => <button key={h} type="button" className={'wx-pill' + (heard === h ? ' on' : '')} aria-pressed={heard === h} onClick={() => setHeard(heard === h ? '' : h)}>{h}</button>)}</div>
+          </>)}
+          {step === 4 && (<>
+            <h1>Start free, or get more replies</h1>
+            <div className="ob2-plans">
+              {[['free', 'Free', '₦0', '', '50 replies a day · WhatsApp and Telegram · Free forever', 'Recommended to start'], ['pro', 'Plus', '₦7,499', ' / month', '500 replies a day · Product photos · Catalog import', ''], ['plus', 'Pro', '₦14,999', ' / month', '1,500 replies a day · Voice notes · Smartest AI', 'Best value']].map(([k, n, p, per, d, tag]) => (
+                <button key={k} type="button" className={'ob2-plan' + (plan === k ? ' on' : '') + (k === 'plus' ? ' best' : '')} aria-pressed={plan === k} onClick={() => setPlan(k)}>
+                  <span className="ob2-plan-top"><b>{n}</b>{tag && <span className={'ob2-tag' + (k === 'free' ? ' good' : '')}>{tag}</span>}<span className="ob2-radio" aria-hidden="true" /></span>
+                  <span className="ob2-price">{p}<small>{per}</small></span>
+                  <small>{d}</small>
+                </button>))}
+            </div>
+            <p className="ob2-note"><Ic n="spark" s={18} /><span>Every new shop gets <b>7 days of Pro free</b>. No card needed.</span></p>
+          </>)}
+          {step === 5 && (<div className="ob2-done">
+            <div className="ob2-badge"><Logo size={60} alt="" /><span><Ic n="check" s={20} /></span></div>
+            <h1>You're all set{first}!</h1>
+            <p className="ob2-lede">Three quick steps and Velo starts selling for you.</p>
+            <div className="ob2-list">{[['/catalog', 'tag', 'Add your first product', '2 minutes'], ['/connect', 'plug', 'Connect WhatsApp', '2 minutes'], ['/playground', 'spark', 'Try it in Test Drive', '1 minute']].map(([to, ic, t, d], i) => (
+              <button key={to} type="button" className="ob2-choice" onClick={() => nav(to, { replace: true })}>
+                <span className={'ob2-num' + (i ? '' : ' hot')}><Ic n={ic} s={18} /></span><span className="ob2-choice-main"><b>{t}</b><small>{d}</small></span><Ic n="next" s={18} />
+              </button>))}</div>
+          </div>)}
         </div>
-        <div className="quiz-prog"><i style={{ width: `${((step + 1) / 5) * 100}%` }} /></div> {/* progress fill (inline width = dynamic, CSS can't compute!) */}
-
-        <div key={step} className="quiz-step"> {/* key={step} = remount per step → entrance animation replays EVERY time! */}
-          {step === 0 && ( // Q1 — the niche grid (drives catalog shelves + AI suggestions!)
-            <>
-              <h1>What will you use VeloSales Ai for?</h1>
-              <p className="lede">Pick your hustle — VeloSales Ai learns your lane, so suggestions and answers fit YOUR business (no more blue-gown examples for freelancers!).</p>
-              <div className="niche-grid"> {/* CSS grid → 2 cols desktop, 1 col phones */}
-                {NICHES.map((n, i) => (
-                  <button key={n} type="button" className={'niche quiz-pop' + (niche === n ? ' sel' : '')} style={{ animationDelay: `${Math.min(i * 35, 400)}ms` }} onClick={() => setNiche(n)}>
-                    {niche === n && <Ic n="checkCircle" s={15} />} {/* selected tick (visual proof!) */}
-                    <span>{n}</span>
-                  </button>
-                ))}
-              </div>
-              {niche === OTHER && ( // free-text lane (only when Other picked — keeps the grid clean!)
-                <div style={{ marginTop: 12 }}>
-                  <label>Describe your business</label>
-                  <input value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="e.g. Car wash in Lekki" maxLength={80} />
-                </div>
-              )}
-              {finalNiche ? <p className="quiz-cheer quiz-pop"><Ic n="checkCircle" s={15} /> Perfect — from here on, everything speaks {finalNiche}.</p> : null} {/* live encouragement (niche name mirrors back — they feel HEARD!) */}
-            </>
-          )}
-
-          {step === 1 && ( // Q2 — catalog size (drives dashboard checklist wording!)
-            <>
-              <h1>How many products do you sell?</h1>
-              <p className="lede">No wrong answer — this shapes your starting checklist (tiny shelf? 5 products and go. Huge? We will show bulk tricks).</p>
-              <div className="qa-list">
-                {SIZES.map((o, i) => (
-                  <button key={o.v} type="button" className={'qa quiz-pop' + (size === o.v ? ' sel' : '')} style={{ animationDelay: `${i * 60}ms` }} onClick={() => setSize(size === o.v ? '' : o.v)}> {/* tap again = unpick (skippable!) */}
-                    <Ic n={size === o.v ? 'checkCircle' : 'next'} s={16} />
-                    <div><b>{o.t}</b><span className="hint">{o.sub}</span></div>
-                  </button>
-                ))}
-              </div>
-              {sizeCheer ? <p className="quiz-cheer quiz-pop"><Ic n="checkCircle" s={15} /> {sizeCheer}</p> : null}
-            </>
-          )}
-
-          {step === 2 && ( // Q3 — channels, multi-pick (drives Connect highlights!)
-            <>
-              <h1>Where do customers reach you?</h1>
-              <p className="lede">Pick all that apply — we will highlight the right connections for you. Skip if it's just walk-ins for now.</p>
-              <div className="qa-list">
-                {CHANNELS.map((o, i) => (
-                  <button key={o.v} type="button" className={'qa quiz-pop' + (channels.includes(o.v) ? ' sel' : '')} style={{ animationDelay: `${i * 60}ms` }} onClick={() => toggleChannel(o.v)}>
-                    <Ic n={channels.includes(o.v) ? 'checkCircle' : 'next'} s={16} />
-                    <div><b>{o.t} {o.soon ? <span className="pill" style={{ fontSize: 10 }}>Soon</span> : null}</b><span className="hint">{o.sub}</span></div>
-                  </button>
-                ))}
-              </div>
-              {channels.length > 0 ? <p className="quiz-cheer quiz-pop"><Ic n="checkCircle" s={15} /> {channels.length === 1 ? 'One channel — we will make it shine.' : `${channels.length} channels — VeloSales Ai covers every one.`}</p> : null}
-            </>
-          )}
-
-          {step === 3 && ( // Q4 — chat volume (drives the honest plan hint!)
-            <>
-              <h1>How many customer chats a day?</h1>
-              <p className="lede">Rough guess is fine — this keeps plan advice honest (quiet shop? Free carries you. Flood? We will say so).</p>
-              <div className="qa-list">
-                {VOLUMES.map((o, i) => (
-                  <button key={o.v} type="button" className={'qa quiz-pop' + (volume === o.v ? ' sel' : '')} style={{ animationDelay: `${i * 60}ms` }} onClick={() => setVolume(volume === o.v ? '' : o.v)}> {/* tap again = unpick (skippable!) */}
-                    <Ic n={volume === o.v ? 'checkCircle' : 'next'} s={16} />
-                    <div><b>{o.t}</b><span className="hint">{o.sub}</span></div>
-                  </button>
-                ))}
-              </div>
-              {volCheer ? <p className="quiz-cheer quiz-pop"><Ic n="checkCircle" s={15} /> {volCheer}</p> : null}
-            </>
-          )}
-
-          {step === 4 && ( // Q5 — heard-from (marketing attribution, skippable!)
-            <>
-              <h1>Where did you hear about us?</h1>
-              <p className="lede">Helps us show up where sellers like you hang out. Optional — skip freely.</p>
-              <div className="qa-list">
-                {HEARD_FROM.map((h, i) => (
-                  <button key={h} type="button" className={'qa quiz-pop' + (heard === h ? ' sel' : '')} style={{ animationDelay: `${Math.min(i * 40, 320)}ms` }} onClick={() => setHeard(heard === h ? '' : h)}> {/* tap again = unpick (toggle!) */}
-                    <Ic n={heard === h ? 'checkCircle' : 'next'} s={16} />
-                    <div><b>{h}</b></div>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="foot-nav welcome-nav">
-          {step === 0
-            ? <span className="hint">You can change this later in Profile.</span>
-            : <button className="btn ghost" disabled={busy} onClick={back}>Back</button>}
-          {step === 4
-            ? <button className="btn" disabled={busy} onClick={() => save()}>{busy ? (<><Loader size={15} />Saving…</>) : 'Start selling'} <Ic n="next" s={15} /></button>
-            : <button className="btn" disabled={busy} onClick={next}>Continue <Ic n="next" s={15} /></button>}
+        <div className="ob2-foot">
+          <button type="button" className="btn lg ob2-go" disabled={busy} onClick={go2}>{busy ? (<><Loader size={17} />{label}</>) : label}</button>
+          {step === 3 && <button type="button" className="ob2-skip" disabled={busy} onClick={() => { setHeard(''); saveThenPlan(); }}>Skip</button>}
+          {step === 5 && <button type="button" className="ob2-skip" onClick={() => nav('/dashboard', { replace: true })}>Go to Home</button>}
         </div>
       </div>
     </div>

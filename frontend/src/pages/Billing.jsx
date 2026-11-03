@@ -127,6 +127,14 @@ export default function Billing() {
   const [checkout, setCheckout] = useState(null); // { plan, name, price } while the pay sheet is open
   const [method, setMethod] = useState('card');
   function openCheckout(plan, name, price) { setMethod('card'); setCheckout({ plan, name, price }); }
+  useEffect(() => { // coming from sign-up with a plan picked: open its checkout once the prices load
+    const pick = new URLSearchParams(window.location.search).get('pick');
+    if (!pick || !bill) return;
+    window.history.replaceState({}, '', window.location.pathname);
+    const tierKey = pick.split('_')[0];
+    const tierObj = bill.plans && bill.plans[tierKey];
+    if (tierObj) openCheckout(pick, tierKey === 'plus' ? 'Pro' : 'Plus', money((tierObj.monthly || {}).amount || 0, bill.currency === 'USD' ? 'USD' : 'NGN'));
+  }, [bill]);
   async function addCard() {
     setBusy('card');
     const { ok, data } = await api('/api/billing/card', { method: 'POST', body: '{}' });

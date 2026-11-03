@@ -165,7 +165,7 @@ async function checkTrialLifecycle(businessId, b) {
 // size, Q3 channels, Q4 chat volume (all optional — skippable!), Q5 heard-from.
 // Answers personalize the dashboard checklist + Connect/Billing hints.
 const QUIZ_SIZES = ['starting', 'under-20', '20-100', '100-plus']; // Q2 whitelist (unknown strings → stored as '' = skipped!)
-const QUIZ_CHANNELS = ['whatsapp', 'telegram', 'instagram', 'walkin']; // Q3 whitelist (multi-pick → comma list!)
+const QUIZ_CHANNELS = ['whatsapp', 'telegram', 'instagram', 'messenger', 'walkin']; // Q3 whitelist (multi-pick → comma list!)
 const QUIZ_VOLUMES = ['few', '10-50', '50-plus']; // Q4 whitelist
 async function saveSetup(req, res) {
   const { business_niche: nicheRaw, heard_from: heardRaw, catalog_size: sizeRaw, channels: channelsRaw, daily_volume: volumeRaw } = req.body || {};
@@ -173,8 +173,8 @@ async function saveSetup(req, res) {
   const heard = typeof heardRaw === 'string' ? heardRaw.trim().slice(0, 40) : '';
   const size = QUIZ_SIZES.includes(sizeRaw) ? sizeRaw : ''; // whitelist-or-blank (never trust the client!)
   const channels = Array.isArray(channelsRaw) // array from the app → comma list of KNOWN channels only…
-    ? channelsRaw.filter((c) => QUIZ_CHANNELS.includes(c)).slice(0, 4).join(',')
-    : (typeof channelsRaw === 'string' ? channelsRaw.split(',').map((c) => c.trim()).filter((c) => QUIZ_CHANNELS.includes(c)).slice(0, 4).join(',') : ''); // …or comma string (same rule — mobile sends either!)
+    ? channelsRaw.filter((c) => QUIZ_CHANNELS.includes(c)).slice(0, 5).join(',')
+    : (typeof channelsRaw === 'string' ? channelsRaw.split(',').map((c) => c.trim()).filter((c) => QUIZ_CHANNELS.includes(c)).slice(0, 5).join(',') : ''); // …or comma string (same rule — mobile sends either!)
   const volume = QUIZ_VOLUMES.includes(volumeRaw) ? volumeRaw : ''; // whitelist-or-blank
   if (!niche) return res.status(400).json({ error: 'Pick what your business sells first.' }); // niche is the hard requirement (everything else skippable!)
   const before = await db.query('SELECT business_niche FROM businesses WHERE id = $1', [req.session.businessId]); // quiz-complete detection needs the BEFORE value!

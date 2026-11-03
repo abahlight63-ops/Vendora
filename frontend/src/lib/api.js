@@ -72,26 +72,28 @@ export function toast(msg, type = 'ok') { // msg = text; type = 'ok' | 'err' | '
 
 // Big result popup — animated success check-draw (with confetti burst) or
 // error X-shake. Use for every completed action: pop('ok'|'err', title, msg).
-export function pop(type, title, msg) { // type: 'ok' or 'err' (anything non-'err' counts as success)
-  document.querySelector('.pop-overlay')?.remove(); // ?. = only one popup at a time: remove any existing first
-  const ok = type !== 'err'; // boolean flag reused below
-  const ov = document.createElement('div'); // fullscreen dim background…
-  ov.className = 'pop-overlay'; // …styled fixed + centered in CSS
-  ov.innerHTML = // big template string builds the whole card (static markup only — user text injected safely below)
-    '<div class="pop-card ' + (ok ? 'ok' : 'err') + '">' + // card color theme by outcome
-    (ok ? '<div class="pop-confetti"><i></i><i></i><i></i><i></i><i></i><i></i></div>' : '') + // 6 confetti dots on success only (CSS animates them)
-    '<div class="pop-ring">' + // the animated circle…
-    (ok
-      ? '<svg viewBox="0 0 52 52"><circle class="pop-circle" cx="26" cy="26" r="24"/><path class="pop-check" d="M14 27l8 8 16-16"/></svg>' // …check that draws itself (stroke-dashoffset animation)
-      : '<svg viewBox="0 0 52 52"><circle class="pop-circle" cx="26" cy="26" r="24"/><path class="pop-x" d="M18 18l16 16M34 18L18 34"/></svg>') + // …or X that draws + shakes
-    '</div>' +
-    '<h3></h3><p></p>' + // empty title/message (filled via textContent below = XSS-safe)
-    '<button class="btn sm">Continue</button></div>'; // reuses the app's .btn styles (consistent look, zero extra CSS)
-  ov.querySelector('h3').textContent = title || (ok ? 'Successful!' : 'Failed'); // || defaults when caller omits title
-  ov.querySelector('p').textContent = msg || ''; // safe text injection
-  const close = () => { ov.classList.add('out'); setTimeout(() => ov.remove(), 250); }; // fade then remove (matches CSS timing)
-  ov.querySelector('button').onclick = close; // Continue button closes…
-  ov.onclick = (e) => { if (e.target === ov) close(); }; // …clicking the dim backdrop closes too (but clicks INSIDE the card don't: e.target would be the card)
-  document.body.appendChild(ov); // mount to page (outside React, like toasts)
-  setTimeout(close, 4200); // auto-close after 4.2s even if ignored
+export function pop(type, title, msg, opts = {}) { // type: 'ok' | 'err' | 'offline'; opts.action = { label, run } adds a second button
+  document.querySelector('.pop-overlay')?.remove(); // one popup at a time
+  const kind = type === 'err' ? 'err' : type === 'offline' ? 'off' : 'ok';
+  const icon = kind === 'ok' ? '<path d="M15 26.5l7 7 15-15"/>' : kind === 'err' ? '<path d="M18 18l16 16M34 18L18 34"/>' : '<path d="M10 22a23 23 0 0 1 32 0M15 28a16 16 0 0 1 22 0M20.5 33.5a8 8 0 0 1 11 0M26 39h.01"/>';
+  const ov = document.createElement('div');
+  ov.className = 'pop-overlay';
+  ov.innerHTML = '<div class="pop-card ' + kind + '" role="alertdialog" aria-modal="true">' +
+    '<div class="pop-ic"><svg viewBox="0 0 52 52" aria-hidden="true">' + icon + '</svg></div>' +
+    '<h3></h3><p></p><div class="pop-acts"><button class="pop-main"></button></div></div>';
+  ov.querySelector('h3').textContent = title || (kind === 'ok' ? 'Done' : kind === 'err' ? "That didn't work" : "You're offline");
+  ov.querySelector('p').textContent = msg || (kind === 'off' ? "Nothing was lost. We'll try again as soon as your internet is back." : '');
+  const main = ov.querySelector('.pop-main');
+  main.textContent = kind === 'ok' ? 'Great' : kind === 'err' ? 'Try again' : 'Retry now';
+  const close = () => { ov.classList.add('out'); setTimeout(() => ov.remove(), 250); };
+  main.onclick = () => { close(); if (kind !== 'ok' && opts.retry) opts.retry(); };
+  if (kind === 'err') {
+    const help = document.createElement('a');
+    help.className = 'pop-alt'; help.href = '/help'; help.textContent = 'Get help';
+    ov.querySelector('.pop-acts').appendChild(help);
+  }
+  ov.onclick = (e) => { if (e.target === ov) close(); };
+  document.body.appendChild(ov);
+  setTimeout(() => main.focus(), 50);
+  if (kind === 'ok') setTimeout(close, 3800); // errors wait for the owner to read them
 }

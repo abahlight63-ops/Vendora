@@ -201,15 +201,13 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
         // accident one millimetre from a thumb.
         <div className="pop-overlay confirm-back" role="presentation" onClick={() => setConfirmOut(false)}>
           <div className="confirm-card" role="dialog" aria-modal="true" aria-labelledby="confirm-out-title" onClick={(e) => e.stopPropagation()}>
-            <span className="confirm-ic"><Icon k="logout" s={20} /></span>
-            <h2 id="confirm-out-title">Sign out of VeloSales Ai?</h2>
-            <p className="desc">
-              Your shop keeps working — the AI answers every customer whether this
-              tab is open or not. You will need your login to come back.
-            </p>
+            <span className="confirm-grab" aria-hidden="true" />
+            <span className="confirm-av" aria-hidden="true">{biz?.avatar_url ? <img src={biz.avatar_url} alt="" /> : biz?.avatar_emoji || initial}</span>
+            <h2 id="confirm-out-title">Sign out of {safeName}?</h2>
+            <p className="desc">Velo keeps answering your customers while you're away. Sign in any time to see the chats.</p>
             <div className="confirm-actions">
-              <button className="btn ghost" onClick={() => setConfirmOut(false)} autoFocus>Stay signed in</button>
-              <button className="btn danger" onClick={() => { setConfirmOut(false); logout(); }}>Sign out</button>
+              <button className="confirm-out" onClick={() => { setConfirmOut(false); logout(); }}><Icon k="logout" s={18} />Sign out</button>
+              <button className="confirm-stay" onClick={() => setConfirmOut(false)} autoFocus>Stay signed in</button>
             </div>
           </div>
         </div>

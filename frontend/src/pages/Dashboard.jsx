@@ -150,7 +150,7 @@ export default function Dashboard({ biz }) { // biz = business object from App (
     <div className="dg">
       <div className="dg-head">
         <div className="dg-greet">
-          <div className={'dg-status' + (live ? ' on' : '')}><i />{live ? 'Velo is answering customers' : 'Connect a channel to go live'}</div>
+          {!live && <div className="dg-status"><i />Connect a channel to go live</div>}
           <h1><span>Hi {first},</span> what do you need today?</h1>
         </div>
         <div className="dg-head-actions">

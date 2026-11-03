@@ -102,6 +102,17 @@ export default function Billing() {
       if (w) setUsage({ used: Number(w.dailyUsed) || 0, limit: w.dailyLimit ? Number(w.dailyLimit) : null, unlimited: !!w.dailyUnlimited });
     }).catch(() => {});
   }, []);
+  useEffect(() => { // Paystack RETURN: ?reference=… → server-verified (a plan activates; a card check saves the card)
+    const q = new URLSearchParams(window.location.search);
+    const ref = q.get('reference') || q.get('trxref');
+    if (!ref || q.get('transaction_id')) return;
+    window.history.replaceState({}, '', window.location.pathname);
+    api('/api/billing/verify?provider=paystack&reference=' + encodeURIComponent(ref)).then(({ ok, data }) => {
+      if (ok && data && data.card) { load(); pop('ok', 'Card saved', 'Your card is on file. The ₦50 check is being refunded to you.'); }
+      else if (ok) { load(); pop('ok', 'Payment confirmed', 'Your plan is active. Your receipt is in your email.'); }
+      else pop('err', 'Payment not confirmed yet', (data && data.error) || 'If money left your account, wait a minute and refresh.');
+    }).catch(() => pop('err', 'Could not check the payment', 'Refresh this page in a minute.'));
+  }, []);
   useEffect(() => { // Flutterwave RETURN: ?transaction_id=… in the URL → server-verified activation (idempotent — webhook usually already did it!)
     const q = new URLSearchParams(window.location.search);
     const tx = q.get('transaction_id') || q.get('tx_ref');
@@ -113,11 +124,21 @@ export default function Billing() {
     }).catch(() => pop('err', 'Could not verify payment', 'If it still shows Free below, retry in a minute.'));
   }, []);
 
-  async function pay(plan) { // CARD FLOW: secure checkout session → redirect the whole page there
+  const [checkout, setCheckout] = useState(null); // { plan, name, price } while the pay sheet is open
+  const [method, setMethod] = useState('card');
+  function openCheckout(plan, name, price) { setMethod('card'); setCheckout({ plan, name, price }); }
+  async function addCard() {
+    setBusy('card');
+    const { ok, data } = await api('/api/billing/card', { method: 'POST', body: '{}' });
+    setBusy('');
+    if (ok && data.authorization_url) { location.href = data.authorization_url; }
+    else pop('err', 'Could not open the card page', (data && data.error) || 'Please try again.');
+  }
+  async function pay(plan, channel) { // CARD FLOW: secure checkout session → redirect the whole page there
     const isUSD = (bill?.currency === 'USD'); // Dollar shops → international checkout, Naira shops → local checkout (location does the routing, silently!)
     const endpoint = isUSD ? '/api/billing/flutterwave/initialize' : '/api/billing/initialize'; // backend route differs; the SHOPPER never sees brand names
     setBusy(plan); // lock buttons (busy string = this plan's button shows 'Starting…')
-    const { ok, data } = await api(endpoint, { method: 'POST', body: JSON.stringify({ plan }) }); // send ONLY the plan key (amount enforced server-side!)
+    const { ok, data } = await api(endpoint, { method: 'POST', body: JSON.stringify({ plan, channel }) }); // send ONLY the plan key (amount enforced server-side!)
     setBusy(''); // unlock (ALWAYS — success navigates away anyway, failure must unlock!)
     if (ok && data.authorization_url) { // session created → checkout URL received…
       pop('ok', 'Opening secure checkout…', 'Complete your payment on the secure page to activate instantly.'); // success popup FIRST (user sees confirmation)…
@@ -186,7 +207,7 @@ export default function Billing() {
           <span className="plan-save">Save {money(price.save, cur)} — {price.save_pct}% off monthly</span> // server-computed save + pct (NGN 22%/33%, USD mirrors!)
         )}
         <ul className="plan-feats">{feats.map((f) => (<li key={f}><Ic n="checkCircle" s={15} /><span>{f}</span></li>))}</ul>
-        <button className={'btn' + (isHot ? '' : ' ghost')} disabled={!!busy} onClick={() => pay(planKey)}>{busy === planKey ? (<><Loader size={15} />Starting…</>) : status === 'active' ? `Extend ${tierKey === 'plus' ? 'Pro Plus' : 'Pro'} ${period}` : `${amt(price)}/${period === 'monthly' ? 'month' : 'year'} — ${tierKey === 'plus' ? 'Pro Plus' : 'Pro'}`}</button>
+        <button className={'btn' + (isHot ? '' : ' ghost')} disabled={!!busy} onClick={() => openCheckout(planKey, c.name, price)}>{busy === planKey ? (<><Loader size={15} />Starting…</>) : status === 'active' ? `Extend ${tierKey === 'plus' ? 'Pro Plus' : 'Pro'} ${period}` : `${amt(price)}/${period === 'monthly' ? 'month' : 'year'} — ${tierKey === 'plus' ? 'Pro Plus' : 'Pro'}`}</button>
       </div>
     );
   };
@@ -260,7 +281,7 @@ export default function Billing() {
           <div className="pu-push">
             <b>{bill?.tier === 'pro' ? 'Want voice notes too?' : 'Never run out at night'}</b>
             <p>{bill?.tier === 'pro' ? 'Pro adds voice notes, our smartest AI and priority support.' : 'Plus gives you 500 replies a day, product photos in replies and catalog import.'}</p>
-            <button type="button" className="pu-push-go" disabled={!!busy} onClick={() => pay(`${bill?.tier === 'pro' ? 'plus' : 'pro'}_${period}`)}>
+            <button type="button" className="pu-push-go" disabled={!!busy} onClick={() => openCheckout(`${bill?.tier === 'pro' ? 'plus' : 'pro'}_${period}`, bill?.tier === 'pro' ? 'Pro' : 'Plus', amt((bill?.tier === 'pro' ? plus : pro)[period]))}>
               {busy ? (<><Loader size={17} />Starting</>) : <>{bill?.tier === 'pro' ? 'Upgrade to Pro' : 'Upgrade to Plus'} · {amt((bill?.tier === 'pro' ? plus : pro)[period])}</>}
               <span className="pu-knob" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" d="M7 17L17 7M9 7h8v8" /></svg></span>
             </button>
@@ -295,7 +316,7 @@ export default function Billing() {
               <ul>{c.feats.map(([ok, t]) => <li key={t} className={ok ? '' : 'no'}><i aria-hidden="true">{ok ? <Ic n="check" s={12} /> : '–'}</i>{t}</li>)}</ul>
               {c.key === null ? <button type="button" className="pu-plan-btn ghosty" disabled>{mine ? 'Your plan' : 'Always free'}</button>
                 : c.key === 'business' ? <a className="pu-plan-btn" href="/contact-sales" target="_blank" rel="noreferrer">Talk to us</a>
-                  : <button type="button" className="pu-plan-btn" disabled={!!busy} onClick={() => pay(planKey)}>{busy === planKey ? (<><Loader size={15} />Starting</>) : mine ? `Extend ${c.name}` : `Choose ${c.name}`}</button>}
+                  : <button type="button" className="pu-plan-btn" disabled={!!busy} onClick={() => openCheckout(planKey, c.name, price)}>{busy === planKey ? (<><Loader size={15} />Starting</>) : mine ? `Extend ${c.name}` : `Choose ${c.name}`}</button>}
             </section>
           );
         })}
@@ -330,9 +351,40 @@ export default function Billing() {
             <div className="pay-num">{bill?.card_last4 ? `•••• •••• •••• ${bill.card_last4}` : 'No card on file yet'}</div>
             <div className="pay-foot"><span>{bizNameSafe(bill)}</span><span>{bill?.card_expiry || ''}</span></div>
           </div>
-          <p className="pu-note">You pay on a secure checkout page. We never see or store your card details.</p>
+          <div className="pu-card-acts">
+            <button type="button" className="btn" disabled={!!busy || cur === 'USD'} onClick={addCard}>{busy === 'card' ? (<><Loader size={15} />Opening</>) : bill?.card_last4 ? 'Change card' : 'Add a card'}</button>
+          </div>
+          <p className="pu-note">{cur === 'USD' ? 'Your card is saved when you pay for a plan.' : 'Paystack checks the card with ₦50 and refunds it straight away. We keep only the last 4 digits, never the full card.'}</p>
         </section>
       </div>
+
+      {checkout && (
+        <div className="ps-back" role="presentation" onClick={() => !busy && setCheckout(null)}>
+          <div className="ps pu-sheet" role="dialog" aria-modal="true" aria-labelledby="pu-sheet-title" onClick={(e) => e.stopPropagation()}>
+            <div className="ps-head"><h2 id="pu-sheet-title">Upgrade to {checkout.name}</h2><button className="ps-close" disabled={!!busy} onClick={() => setCheckout(null)} aria-label="Close"><Ic n="x" s={18} /></button></div>
+            <div className="ps-body">
+              <div className="pu-sum"><span>{checkout.name} · {period === 'monthly' ? 'Monthly' : 'Yearly'}</span><b>{checkout.price}</b></div>
+              <p className="pu-label">How would you like to pay?</p>
+              <div className="pu-methods" role="radiogroup" aria-label="Payment method">
+                {(cur === 'USD' ? [['card', 'Card', 'Visa, Mastercard and more']] : [
+                  ['card', bill?.card_last4 ? 'Card' : 'Card', bill?.card_last4 ? `Your ${String(bill.card_brand || 'card').toLowerCase()} ending ${bill.card_last4}, or a new card` : 'Visa, Mastercard or Verve'],
+                  ['bank_transfer', 'Bank transfer', 'Paystack gives you an account number to send to'],
+                  ['ussd', 'USSD', 'Dial a code from your bank on any phone'],
+                ]).map(([k, n, d]) => (
+                  <button key={k} type="button" role="radio" aria-checked={method === k} className={'pu-method' + (method === k ? ' on' : '')} onClick={() => setMethod(k)}>
+                    <i aria-hidden="true" /><span><b>{n}</b><small>{d}</small></span>
+                  </button>
+                ))}
+              </div>
+              <p className="ch-safe"><Ic n="shield" s={18} />Secured by Paystack. Your plan turns on the moment the payment lands.</p>
+            </div>
+            <div className="ps-foot">
+              <button className="btn lg ps-save" disabled={!!busy} onClick={() => pay(checkout.plan, cur === 'USD' ? undefined : method)}>{busy ? (<><Loader size={17} />Opening Paystack</>) : `Pay ${checkout.price}`}</button>
+              <p className="ps-note is-center">Cancel any time. You keep your plan until the end of what you paid for.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

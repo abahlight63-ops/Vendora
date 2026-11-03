@@ -42,6 +42,67 @@ function planFor(currency) {
     monthly: pro.monthly, yearly: pro.yearly, // legacy aliases (old mobile builds read these — never break them!)
   };
 }
+// Where the web app lives (the API and the app can sit on different hosts).
+function appUrl(req, fallback) {
+  return String(process.env.APP_URL || process.env.FRONTEND_URL || fallback || '').replace(/\/$/, '');
+}
+
+// Save the card Paystack returns, for display only: brand, last 4 and expiry.
+async function saveCard(businessId, auth) {
+  if (!businessId || !auth || auth.channel !== 'card' || !auth.last4) return;
+  const brand = String(auth.card_type || auth.brand || 'card').trim().slice(0, 20);
+  const exp = auth.exp_month && auth.exp_year ? `${String(auth.exp_month).padStart(2, '0')}/${String(auth.exp_year).slice(-2)}` : null;
+  try {
+    await db.query('UPDATE businesses SET card_last4 = $1, card_brand = $2, card_expiry = $3 WHERE id = $4', [String(auth.last4).slice(-4), brand, exp, Number(businessId)]);
+  } catch (e) { console.error('save card error:', e.message); }
+}
+
+// The ₦50 card check is refunded straight away. A second refund attempt for the
+// same reference fails harmlessly at Paystack, so webhook + return can both call it.
+async function refundCardCheck(reference) {
+  if (!reference || !process.env.PAYSTACK_SECRET_KEY) return;
+  try {
+    await fetch('https://api.paystack.co/refund', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transaction: reference }),
+    });
+  } catch (e) { console.error('card check refund error:', e.message); }
+}
+
+// POST /api/billing/card: add or change the saved card with a ₦50 check that is refunded.
+async function addCard(req, res) {
+  const secret = process.env.PAYSTACK_SECRET_KEY;
+  if (!secret || secret.includes('xxxxx')) return res.status(503).json({ error: "Card payment isn't available right now — please try again later." });
+  let email = null;
+  try {
+    const { rows } = await db.query('SELECT email FROM users WHERE business_id = $1 ORDER BY id ASC LIMIT 1', [req.session.businessId]);
+    email = rows[0]?.email || null;
+  } catch (e) { console.error('add card email lookup error:', e.message); }
+  if (!email) return res.status(400).json({ error: 'No email on this account — sign out and sign in again.' });
+  const baseUrl = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
+  try {
+    const r = await fetch('https://api.paystack.co/transaction/initialize', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        amount: 5000, // ₦50 in kobo, refunded as soon as the card is confirmed
+        currency: 'NGN',
+        channels: ['card'],
+        metadata: { business_id: req.session.businessId, kind: 'card_check' },
+        callback_url: `${appUrl(req, baseUrl)}/billing`,
+      }),
+    });
+    const data = await r.json();
+    if (!data.status) return res.status(502).json({ error: data.message || 'Paystack error' });
+    return res.json({ authorization_url: data.data.authorization_url, reference: data.data.reference });
+  } catch (err) {
+    console.error('add card error:', err);
+    return res.status(502).json({ error: 'Could not reach the payment provider — try again.' });
+  }
+}
+
 async function initialize(req, res) {
   const secret = process.env.PAYSTACK_SECRET_KEY; // server-only secret (never reaches the browser)
   if (!secret || secret.includes('xxxxx')) return res.status(503).json({ error: "Card payment isn't available right now — please try again later." }); // 503 = payments not switched on (customer-friendly, zero dev-talk)
@@ -69,6 +130,8 @@ async function initialize(req, res) {
   const currency = bRows[0]?.currency === 'USD' ? 'USD' : 'NGN'; // whitelist again (DB could hold anything)
   const amount = plan[currency]; // e.g. plan.USD for a Ghanaian shop
   const baseUrl = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`; // Paystack returns the payer here (env in prod, request host locally)
+  const PAY_CHANNELS = ['card', 'bank_transfer', 'ussd', 'bank']; // the owner's pick on the checkout sheet
+  const channel = PAY_CHANNELS.includes(String(req.body?.channel || '')) ? String(req.body.channel) : null; // unknown or missing = Paystack shows every method
 
   try {
     const r = await fetch('https://api.paystack.co/transaction/initialize', { // ask Paystack for a checkout session
@@ -82,7 +145,8 @@ async function initialize(req, res) {
         amount: amount * 100, // SMALLEST unit: kobo for NGN, cents for USD (₦7500→750000; $5→500)
         currency, // 'NGN' or 'USD' (USD must be enabled once in Paystack dashboard!)
         metadata: { business_id: req.session.businessId, kind: planKey, days: plan.days, currency }, // echoed back in the webhook — how we know WHO paid FOR WHAT
-        callback_url: `${baseUrl}/dashboard`, // landing page after payment
+        callback_url: `${appUrl(req, baseUrl)}/billing`, // back to Plan and usage, which verifies the reference
+        ...(channel ? { channels: [channel] } : {}), // open checkout on the method the owner picked
       }),
     });
     const data = await r.json(); // parse Paystack's reply
@@ -230,6 +294,8 @@ async function handlePaystackWebhook(req, res) {
     }
   } else if (event.event === 'charge.success') { // only successful charges (failed/pending ignored)
     const { business_id, kind, days: metaDays } = event.data.metadata || {}; // destructure OUR metadata back out (|| {} guards missing)
+    if (business_id) await saveCard(business_id, event.data.authorization);
+    if (kind === 'card_check') { await refundCardCheck(event.data.reference); return res.status(200).end(); } // a card check is not a plan purchase
     const days = Number(metaDays) || (PLANS[kind] ? PLANS[kind].days : Number(process.env.SUBSCRIPTION_DAYS || 30)); // metadata days → plan table → env default (triple fallback, never NaN-activate)
     if (business_id) { // ONE shared activation (tier stamp + ledger + bell inside!)
       const amt = event.data.amount || 0; // Paystack sends amount in MINOR units already (kobo/cents — store as-is!)
@@ -326,6 +392,8 @@ async function verifyReturn(req, res) {
     const meta = d.metadata || {};
     if (String(meta.business_id) !== String(req.session.businessId)) return res.status(403).json({ error: 'That payment belongs to a different shop.' });
     const kind = String(meta.kind || 'pro_monthly').toLowerCase();
+    await saveCard(meta.business_id, d.authorization);
+    if (kind === 'card_check') { await refundCardCheck(d.reference || reference); return res.json({ ok: true, card: true }); }
     const days = Number(meta.days) || (PLANS[kind] ? PLANS[kind].days : Number(process.env.SUBSCRIPTION_DAYS || 30));
     await activateSubscription(meta.business_id, kind, days, d.reference || reference, 'paystack', Number(d.amount) || 0, String(d.currency || 'NGN').toUpperCase());
     return res.json({ ok: true });
@@ -335,4 +403,4 @@ async function verifyReturn(req, res) {
   }
 }
 
-module.exports = { initialize, flutterwaveInit, reportTransfer, handlePaystackWebhook, handleFlutterwaveWebhook, verifyReturn, PLANS, planFor, SALES_EMAIL }; // routes + ownerController.getBilling import from here
+module.exports = { addCard, initialize, flutterwaveInit, reportTransfer, handlePaystackWebhook, handleFlutterwaveWebhook, verifyReturn, PLANS, planFor, SALES_EMAIL }; // routes + ownerController.getBilling import from here

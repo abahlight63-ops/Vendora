@@ -414,7 +414,7 @@ async function updateSettings(req, res) {
 async function getBilling(req, res) {
   const billingController = require('./billingController'); // reuse planFor() — ONE price table for the whole app
   const { rows } = await db.query( // subscription state + purchased tier + currency (prices depend on it!)
-    `SELECT subscription_status, subscription_expires, trial_started_at, plan_tier, currency
+    `SELECT subscription_status, subscription_expires, trial_started_at, plan_tier, currency, card_last4, card_brand, card_expiry, name
      FROM businesses WHERE id = $1`,
     [req.session.businessId]
   );
@@ -428,7 +428,17 @@ async function getBilling(req, res) {
   const trialLeft = b.subscription_status === 'trialing' ? planService.trialDaysLeft(b) : null; // days-left countdown (null when not trialing — frontend shows it only then!)
   const currency = b.currency === 'USD' ? 'USD' : 'NGN'; // whitelist (DB could hold anything)
   const plans = billingController.planFor(currency); // {pro:{monthly, yearly{+save}}, plus:{…}, sales_email, +legacy aliases}
+  let history = []; // the shop's real payments, newest first (amounts in major units for the page)
+  try {
+    const { rows: pays } = await db.query("SELECT id, plan, currency, amount, status, reference, created_at FROM payments WHERE business_id = $1 ORDER BY created_at DESC LIMIT 24", [req.session.businessId]);
+    history = pays.map((p) => ({ id: p.id, plan: (billingController.PLANS[p.plan] && billingController.PLANS[p.plan].label) || 'Subscription', currency: p.currency, amount: (Number(p.amount) || 0) / 100, status: p.status === 'active' ? 'paid' : p.status, date: p.created_at }));
+  } catch (e) { console.error('billing history error:', e.message); }
   res.json({
+    history,
+    card_last4: b.card_last4 || null, // display only
+    card_brand: b.card_brand || null,
+    card_expiry: b.card_expiry || null,
+    business_name: b.name || null,
     status: b.subscription_status, // trialing | active | pending | expired
     expires: b.subscription_expires, // paid-until (null for trial/free)
     trial_ends: trialEnd, // countdown target (null when irrelevant)

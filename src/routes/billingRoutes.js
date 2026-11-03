@@ -9,6 +9,7 @@ const { billingLimiter } = require('../middleware/security'); // checkout-sessio
 
 const router = express.Router(); // the mini-app
 
+router.post('/billing/card', requireAuth, billingLimiter, billingController.addCard); // add or change the saved card (₦50 check, refunded)
 router.post('/billing/initialize', requireAuth, billingLimiter, billingController.initialize); // start Paystack checkout (→ authorization_url)
 router.post('/billing/flutterwave/initialize', requireAuth, billingLimiter, billingController.flutterwaveInit); // start Flutterwave checkout (USD/intl → payment link)
 router.post('/billing/transfer', requireAuth, billingController.reportTransfer); // RETIRED (410 — kept so old apps get the message, not a 404!)

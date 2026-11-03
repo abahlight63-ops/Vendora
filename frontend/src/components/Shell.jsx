@@ -140,11 +140,11 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
           <nav aria-label="Main">{MAIN.map(([k, label, href]) => (<NavLink key={k} to={href} onClick={() => setMenuOpen(false)}><Icon k={k} /><span>{label}</span></NavLink>))}</nav>
           <button className="nav-more-btn" aria-expanded={showMore} onClick={() => setMoreOpen((v) => !v)}><Icon k="more" /><span>More</span><span className="chev"><Icon k="chev" /></span></button>
           {showMore && <nav aria-label="More">{MORE.map(([k, label, href]) => (<NavLink key={k} to={href} onClick={() => setMenuOpen(false)}><Icon k={k} /><span>{label}</span></NavLink>))}</nav>}
-          {biz?.tier === 'free' && (
+          {biz && biz.tier !== 'plus' && (
             <div className="nav-upsell">
-              <b>Get more replies</b>
-              <p>Go from 50 to 500 replies a day, with product photos.</p>
-              <NavLink to="/billing" onClick={() => setMenuOpen(false)}>See plans</NavLink>
+              <b>{biz.tier === 'pro' ? 'Add voice notes' : 'Get more replies'}</b>
+              <p>{biz.tier === 'pro' ? 'Pro adds voice notes and our smartest AI.' : 'Go from 50 to 500 replies a day, with product photos.'}</p>
+              <NavLink to="/billing" onClick={() => setMenuOpen(false)}>{biz.tier === 'pro' ? 'Upgrade to Pro' : 'Upgrade to Plus'}</NavLink>
             </div>
           )}
           <div className="foot">
@@ -162,7 +162,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
             </div>
             <TopSearch /> {/* page finder sits center (desktop only via CSS) */}
             <div className="top-right">
-              {biz?.tier === 'free' && <NavLink className="upgrade-pill" to="/billing">Upgrade</NavLink>}
+              {biz && biz.tier !== 'plus' && <NavLink className="upgrade-pill" to="/billing">{biz.tier === 'pro' ? 'Get Pro' : 'Upgrade'}</NavLink>} {/* always in sight until the top plan */}
               <span className="live-dot"><i />AI online</span> {/* pulsing status pill (<i> = the dot, CSS) */}
               <Notifications /> {/* bell sits before theme toggle (thumb-side on mobile) */}
               <ThemeToggle theme={theme} onToggle={onToggleTheme} /> {/* sun/moon switch */}

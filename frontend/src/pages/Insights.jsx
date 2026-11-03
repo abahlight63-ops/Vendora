@@ -85,21 +85,21 @@ export default function Insights() { // no props (self-sufficient)
   }, [tries]); // [tries] = Retry bumps → refetch
   if (failed && !d) return ( // fetch failed BEFORE first paint (failed card, never skeletons!)
     <>
-      <div className="page-head"><div><h1>Insights</h1><p>What customers ask, what the AI nails, and where you lose money.</p></div></div>
+      <div className="ins-head"><div className="dg-status on"><i />Last 14 days</div><h1>Insights</h1><p>What customers ask, what Velo handles, and who needs you.</p></div>
       <LoadFailed title="Couldn't load insights" status={failed.status} detail={failed.detail} tries={tries} onRetry={() => { setD(null); setTries((t) => t + 1); }} backTo="/dashboard" backLabel="Back to Home" />
     </>
   );
   if (!d) return ( // LOADING: skeleton chart mirroring the real layout
     <>
-      <div className="page-head"><div><h1>Insights</h1><p>What customers ask, what the AI nails, and where you lose money.</p></div></div>
+      <div className="ins-head"><div className="dg-status on"><i />Last 14 days</div><h1>Insights</h1><p>What customers ask, what Velo handles, and who needs you.</p></div>
       <div className="skel-grid cols4">{[0, 1, 2, 3].map((i) => (<div key={i} className="skel-card"><div className="skel" style={{ width: '55%', height: 26 }} /><div className="skel" style={{ width: '80%' }} /></div>))}</div>
-      <div className="card" style={{ marginTop: 16 }}><div className="skel" style={{ height: 150 }} /></div>
+      <div className="card ins-card" style={{ marginTop: 16 }}><div className="skel" style={{ height: 150 }} /></div>
     </>
   );
   if (d.total === 0) return ( // EMPTY: honest onboarding (not blank!)
     <>
-      <div className="page-head"><div><h1>Insights</h1><p>What customers ask, what the AI nails, and where you lose money.</p></div></div>
-      <div className="card"><div className="empty"><b>No chats yet</b>Charts build themselves from your first conversations — share your WhatsApp number and come back.</div></div>
+      <div className="ins-head"><div className="dg-status on"><i />Last 14 days</div><h1>Insights</h1><p>What customers ask, what Velo handles, and who needs you.</p></div>
+      <div className="card ins-card"><div className="empty"><b>No chats yet</b>Charts build themselves from your first conversations — share your WhatsApp number and come back.</div></div>
     </>
   );
   const maxReason = Math.max(...d.top.map(([, n]) => n), 1);
@@ -108,31 +108,31 @@ export default function Insights() { // no props (self-sufficient)
   const quietPct = d.total ? Math.round((d.quietTotal / d.total) * 100) : 0; // share of conversations that went quiet
   return (
     <>
-      <div className="page-head"><div><h1>Insights</h1><p>What customers ask, what the AI nails, and where you lose money.</p></div></div>
+      <div className="ins-head"><div className="dg-status on"><i />Last 14 days</div><h1>Insights</h1><p>What customers ask, what Velo handles, and who needs you.</p></div>
 
       {/* ── KPI strip: the four numbers an owner checks first ───────── */}
       <div className="ins-kpis">
-        <div className="ins-kpi"><span className="ins-kpi-lbl">Total chats</span><b className="ins-kpi-num">{d.total}</b><span className="ins-kpi-sub">{d.activeDays} active of 14 days</span></div>
-        <div className="ins-kpi"><span className="ins-kpi-lbl">Resolved by AI</span><b className="ins-kpi-num good">{d.rate}%</b><span className="ins-kpi-sub">{d.total - d.needs} chats answered alone</span></div>
-        <div className="ins-kpi"><span className="ins-kpi-lbl">Needed you</span><b className="ins-kpi-num warn">{d.needs}</b><span className="ins-kpi-sub">Flagged for a human</span></div>
-        <div className="ins-kpi"><span className="ins-kpi-lbl">Gone quiet</span><b className="ins-kpi-num">{d.quietTotal}</b><span className="ins-kpi-sub">{quietPct}% silent for 7+ days</span></div>
+        <div className="ins-kpi glass"><span className="ins-kpi-lbl">Chats</span><b className="ins-kpi-num">{d.total}</b><span className={'ch-chip ' + (up ? 'live' : 'hot')}>{up ? '+' : '−'}{Math.abs(d.delta)}% on last week</span></div>
+        <div className="ins-kpi glass"><span className="ins-kpi-lbl">Answered by Velo</span><b className="ins-kpi-num">{d.rate}%</b><span className="ch-chip live">{d.total - d.needs} of {d.total}</span></div>
+        <div className="ins-kpi glass"><span className="ins-kpi-lbl">Needed you</span><b className="ins-kpi-num">{d.needs}</b><span className="ch-chip hot">Flagged for you</span></div>
+        <div className="ins-kpi glass"><span className="ins-kpi-lbl">Busiest hour</span><b className="ins-kpi-num">{new Date(2000, 0, 1, d.peakH).toLocaleTimeString('en-GB', { hour: 'numeric', hour12: true }).toUpperCase()}</b><span className="ch-chip ready">Plan to be online</span></div>
       </div>
 
       <div className="ins-top">
-        <div className="card"> {/* 14-day volume — the forex card */}
-          <div className="fx-head">
-            <div><span className="fx-pair">CHATS · 14D</span><div className="fx-big">{d.total}<small> total</small></div></div>
-            <span className={'pill ' + (up ? 'ok' : 'flag')}>{up ? '▲' : '▼'} {Math.abs(d.delta)}% <span className="hint">vs prior wk</span></span>
+        <div className="card ins-card"> {/* 14-day volume: one bar a day, today in coral */}
+          <div className="card-head"><h2>Chats each day</h2><span className="hint">Coral is today</span></div>
+          <div className="ins-bars" role="img" aria-label={'Chats each day for 14 days: ' + d.vol.join(', ')}>
+            {d.vol.map((v, i) => <i key={i} className={i === d.vol.length - 1 ? 'today' : ''} style={{ height: `${Math.max(4, Math.round((v / Math.max(...d.vol, 1)) * 100))}%` }} title={`${d.labels[i]}: ${v} chats`} />)}
           </div>
-          <ForexChart values={d.vol} labels={d.labels} />
-          <p className="hint" style={{ marginTop: 8 }}>{d.last7} chats in the last 7 days · peak activity {String(d.peakH).padStart(2, '0')}:00.</p>
+          <div className="ins-axis"><span>{d.labels[0]}</span><span>{d.labels[7]}</span><span>Today</span></div>
+          <p className="hint" style={{ marginTop: 8 }}>{d.last7} chats in the last 7 days.</p>
         </div>
 
-        <div className="card"> {/* who actually answered — the reference's donut, with real counts */}
+        <div className="card ins-card"> {/* who actually answered — the reference's donut, with real counts */}
           <div className="card-head"><h2>Who answered</h2></div>
           <div className="ins-donut-wrap">
-            <div className="ins-donut" style={{ background: `conic-gradient(var(--green) ${d.rate * 3.6}deg, var(--purple-line) 0)` }}>
-              <div className="ins-donut-hole"><b>{d.rate}%</b><span>by AI</span></div>
+            <div className="ins-donut" style={{ background: `conic-gradient(#4f3fc7 0deg, #b44ba0 ${d.rate * 1.8}deg, #d03c16 ${d.rate * 3.6}deg, var(--ring-track) 0)` }}>
+              <div className="ins-donut-hole"><b>{d.rate}%</b><span>by Velo</span></div>
             </div>
             <div className="ins-legend">
               <div className="ins-leg"><i className="ai" /><span>Answered by Velo</span><b>{d.total - d.needs}</b></div>
@@ -144,14 +144,14 @@ export default function Insights() { // no props (self-sufficient)
       </div>
 
       <div className="grid2" style={{ marginTop: 16 }}> {/* resolution spark + peak hours (side by side, stack on phones!) */}
-        <div className="card">
+        <div className="card ins-card">
           <div className="card-head"><h2>AI resolution</h2><span className="hint">{d.rate}% handled</span></div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 10 }}>
             <Spark values={d.res} width={150} height={52} />
             <p className="desc" style={{ margin: 0 }}>Daily trend, 14 days. Dips = days the AI needed you more.</p>
           </div>
         </div>
-        <div className="card">
+        <div className="card ins-card">
           <div className="card-head"><h2>Peak hours</h2><span className="hint">{String(d.peakH).padStart(2, '0')}:00 rush</span></div>
           <div className="pbars" style={{ marginTop: 10 }}>{d.hours.map((v, i) => <i key={i} style={{ height: `${Math.max(6, Math.round((v / hmax) * 100))}%` }} title={`${String(i).padStart(2, '0')}:00 — ${v} chats`} />)}</div>
           <p className="hint" style={{ marginTop: 6 }}>00 → 23. Your customers' clock — staff the rush.</p>
@@ -159,8 +159,8 @@ export default function Insights() { // no props (self-sufficient)
       </div>
 
       {/* ── INACTIVITY RECORD: who stopped talking, and how long ago ─── */}
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="card-head"><h2>Inactivity record</h2><span className="hint">{d.quietTotal} quiet</span></div>
+      <div className="card ins-card" style={{ marginTop: 16 }}>
+        <div className="card-head"><h2>Customers going quiet</h2><span className="hint">{d.quietTotal} quiet</span></div>
         <p className="desc">Customers whose last message is 7 days old or more. A quiet customer is not a lost one — most just need a reason to come back.</p>
         <div className="ins-bands">
           <span className="ins-band"><i className="b1" /><b>{d.bands.cooling}</b><span>Cooling · 7–13 days</span></span>
@@ -199,8 +199,8 @@ export default function Insights() { // no props (self-sufficient)
         <p className="hint" style={{ marginTop: 10 }}>Counted from your {d.total} most recent conversations. Nudge opens WhatsApp with a message you can edit before sending.</p>
       </div>
 
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="card-head"><h2>Top reasons humans were needed</h2></div>
+      <div className="card ins-card" style={{ marginTop: 16 }}>
+        <div className="card-head"><h2>Why customers needed you</h2></div>
         <p className="desc">Fix these in your catalog or FAQs and the AI handles more alone.</p>
         {d.top.length === 0 ? <div className="empty"><b>No flags yet</b>When the AI is unsure, the reason shows up here.</div> : (
           <div className="hbars" style={{ marginTop: 10 }}>

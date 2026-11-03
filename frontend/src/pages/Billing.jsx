@@ -83,7 +83,8 @@ const FALLBACK_PLANS = { // display defaults while /api/me/billing loads (MUST m
 export default function Billing() {
   const [bill, setBill] = useState(null); // null = loading (statusLine shows 'Loading…')
   const [busy, setBusy] = useState(''); // '' = idle; plan key = which button spins
-  const [period, setPeriod] = useState('yearly'); // 'monthly' | 'yearly' — the billing-period toggle (yearly default: shows the savings!)
+  const [usage, setUsage] = useState(null); // { used, limit, unlimited } from the channels status (today's replies)
+  const [period, setPeriod] = useState('monthly'); // 'monthly' | 'yearly' — the billing-period toggle (yearly default: shows the savings!)
 
   const [failed, setFailed] = useState(null); // null | { detail }: the plan could not load (Retry card, never an eternal skeleton)
   async function load() { // reusable reload (mount, retry, and after a card payment)
@@ -95,6 +96,12 @@ export default function Billing() {
     } catch (e) { setFailed({ status: 0, detail: describeNetError(e) }); }
   }
   useEffect(() => { load(); }, []); // [] = mount-only
+  useEffect(() => { // today's replies live on the channels status; the plan page reads them from there
+    api('/api/me/channels', { timeout: 15000 }).then(({ ok, data }) => {
+      const w = ok && data && data.whatsapp;
+      if (w) setUsage({ used: Number(w.dailyUsed) || 0, limit: w.dailyLimit ? Number(w.dailyLimit) : null, unlimited: !!w.dailyUnlimited });
+    }).catch(() => {});
+  }, []);
   useEffect(() => { // Flutterwave RETURN: ?transaction_id=… in the URL → server-verified activation (idempotent — webhook usually already did it!)
     const q = new URLSearchParams(window.location.search);
     const tx = q.get('transaction_id') || q.get('tx_ref');
@@ -192,152 +199,141 @@ export default function Billing() {
         : <div className="skel-grid" aria-busy="true"><div className="skel-grid cols2">{[0, 1].map((i) => (<div key={i} className="skel-card"><div className="skel" style={{ width: '40%' }} /><div className="skel" style={{ width: '70%', height: 26 }} /><div className="skel" style={{ width: '90%' }} /></div>))}</div><div className="skel-card"><div className="skel" style={{ width: '30%' }} /><div className="skel" style={{ height: 120 }} /></div></div>}
     </>
   );
+  // ── the new look: usage first, then the four plans ──
+  // NAMES: the server still sells two paid tiers. Plus buys its "pro" key and Pro
+  // buys its "plus" key. Each card only promises what that key really gives today.
+  const paid = bill?.tier === 'pro' || bill?.tier === 'plus'; // the server says 'free' as a word, so check the paid keys
+  const shownName = bill?.tier === 'plus' ? 'Pro' : bill?.tier === 'pro' ? 'Plus' : 'Free';
+  const used = usage?.used ?? null;
+  const limit = usage?.unlimited ? null : (usage?.limit ?? (bill?.tier === 'plus' ? null : bill?.tier === 'pro' ? 500 : 50));
+  const pct = used != null && limit ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+  const left = used != null && limit ? Math.max(0, limit - used) : null;
+  const pace = (() => { // "at today's pace": only when there is enough of today to judge
+    if (used == null || !limit || used < 5 || used >= limit) return null;
+    const now = new Date(); const hrs = now.getHours() + now.getMinutes() / 60;
+    if (hrs < 2) return null;
+    const at = hrs + (limit - used) / (used / hrs);
+    if (at >= 24) return 'At today\'s pace you won\'t run out today.';
+    const h = Math.floor(at), m = Math.round((at - h) * 60);
+    const t = new Date(); t.setHours(h, m >= 60 ? 59 : m, 0, 0);
+    return `At today's pace you'll reach ${limit} replies at about ${t.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true })}.`;
+  })();
+  const per = period === 'monthly' ? 'month' : 'year';
+  const PLAN_CARDS = [
+    { key: null, name: 'Free', price: money(0, cur), per: 'month', feats: [[true, '50 replies a day'], [true, 'WhatsApp and Telegram'], [false, 'Voice notes'], [false, 'Product photos in replies'], [false, 'Import your WhatsApp catalog'], [true, 'Standard AI']] },
+    { key: 'pro', name: 'Plus', tier: pro, feats: [[true, '500 replies a day'], [true, 'WhatsApp and Telegram'], [false, 'Voice notes'], [true, 'Product photos in replies'], [true, 'Import your WhatsApp catalog'], [true, 'Smarter AI']] },
+    { key: 'plus', name: 'Pro', tier: plus, best: true, feats: [[true, '1,500 replies a day'], [true, 'WhatsApp and Telegram'], [true, 'Voice notes'], [true, 'Product photos in replies'], [true, 'Import your WhatsApp catalog'], [true, 'Our smartest AI and priority support']] },
+    { key: 'business', name: 'Business', price: cur === 'USD' ? 'Custom' : '₦39,999', per: 'month', feats: [[true, '5,000 replies a day'], [true, 'Several branches, one dashboard'], [true, 'Voice notes'], [true, 'Product photos in replies'], [true, 'Setup call with our team'], [true, 'Priority support']] },
+  ];
+  const onTier = (k) => (k === null ? !paid || (status !== 'active' && status !== 'trialing') : bill?.tier === k && status === 'active');
   return (
-    <>
-      <div className="page-head"><div><h1>Plan and usage</h1><p>Free forever, Pro, Pro Plus — or Enterprise. Cancel anytime, your catalog stays yours.</p></div></div>
-
-      {/* ── where you are + what it costs you, side by side ──────────── */}
-      <div className="bill-top">
-        <div className="card bill-plan">
-          <div className="bill-plan-head">
-            <div>
-              <span className="bill-lab">Current plan</span>
-              <h2 className="bill-tier">{planName}</h2>
-              <p className="desc" style={{ margin: '4px 0 0' }}>{statusLine}</p>
-            </div>
-            <span className="bill-pills">
-              <span className="pill info">{cur === 'USD' ? 'USD $' : 'NGN ₦'}</span>
-              <span className={'pill ' + pill}>{status === '…' ? 'loading' : status}</span>
-            </span>
-          </div>
-          {status === 'trialing' && trialLeft != null && trialLeft > 0 && ( // countdown strip (only while trialing — disappears after!)
-            <div className="trial-strip" style={{ marginTop: 14, marginBottom: 0 }}><Ic n="clock" s={16} /><span><b>{trialLeft} day{trialLeft === 1 ? '' : 's'} of Pro trial left.</b> Keep Pro sync, photos + premium AIs — or stay free forever with manual catalog.</span></div>
-          )}
-          <div className="bill-actions">
-            <button className="btn" disabled={!!busy} onClick={() => pay(period === 'monthly' ? 'pro_monthly' : 'pro_yearly')}>{status === 'active' ? 'Renew now' : 'Upgrade to Pro'}</button>
-            <a className="btn ghost" href="#plans">Compare plans</a>
-          </div>
+    <div className="pu">
+      <div className="pu-head">
+        <div>
+          <div className="dg-status on"><i />{status === 'trialing' && trialLeft ? `Pro trial: ${trialLeft} day${trialLeft === 1 ? '' : 's'} left` : `You're on ${shownName}`}</div>
+          <h1>Plan and usage</h1>
         </div>
-
-        <div className="card bill-usage">
-          <span className="bill-lab">This plan, in numbers</span>
-          <div className="bill-rows">
-            <div className="bill-row"><span>Bot replies</span><b>{allowance}</b></div>
-            <div className="bill-row"><span>Billing cycle</span><b>{status === 'trialing' ? 'Trial' : status === 'active' ? 'Monthly or yearly' : 'Free — no charge'}</b></div>
-            <div className="bill-row"><span>{status === 'trialing' ? 'Trial ends' : status === 'active' ? 'Renews on' : 'Next charge'}</span><b>{renewal}</b></div>
-            <div className="bill-row"><span>Paid so far</span><b>{history.length ? money(history.filter((h) => (h.status || h.state) === 'paid' || (h.status || h.state) === 'successful').reduce((n, h) => n + (Number(h.amount) || 0), 0), cur) : '—'}</b></div>
-          </div>
-          <p className="hint" style={{ marginTop: 12 }}>Your catalog, inbox and chat history are yours forever — on any plan.</p>
+        <div className="wx-pills pu-period" role="group" aria-label="Billing period">
+          <button type="button" className={'wx-pill' + (period === 'monthly' ? ' on' : '')} aria-pressed={period === 'monthly'} disabled={!!busy} onClick={() => setPeriod('monthly')}>Monthly</button>
+          <button type="button" className={'wx-pill' + (period === 'yearly' ? ' on' : '')} aria-pressed={period === 'yearly'} disabled={!!busy} onClick={() => setPeriod('yearly')}>Yearly{plus.yearly?.save_pct ? ` · save up to ${plus.yearly.save_pct}%` : ''}</button>
         </div>
       </div>
 
-      <div className="card"> {/* Free-vs-Pro explainer (kills "what do I get?" doubts) */}
-        <h2>Free vs Pro vs Pro Plus</h2>
-        <div className="grid2" style={{ marginTop: 10, fontSize: 14 }}>
-          <div className="tick"><Ic n="checkCircle" s={16} /><span><b>Free forever:</b> bot replies from products you add or teach with LEARN:</span></div>
-          <div className="tick"><Ic n="checkCircle" s={16} /><span><b>Pro:</b> auto-syncs + verifies products, sends product photos in replies</span></div>
-          <div className="tick"><Ic n="checkCircle" s={16} /><span><b>Pro Plus:</b> everything in Pro + voice-note transcription + 2 heavy work models</span></div>
-        </div>
-        <p className="hint" style={{ marginTop: 10 }}>Your 7 days are a full Pro trial — after that, manual catalog keeps working free.</p>
-      </div>
-
-      <div className="card" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }} id="plans"> {/* billing-period toggle */}
-        <b style={{ marginRight: 4 }}>Billing period:</b>
-        <button className={'btn sm' + (period === 'monthly' ? '' : ' ghost')} disabled={!!busy} onClick={() => setPeriod('monthly')}>Monthly</button>
-        <button className={'btn sm' + (period === 'yearly' ? '' : ' ghost')} disabled={!!busy} onClick={() => setPeriod('yearly')}>Yearly</button>
-        <span className="hint">Yearly saves {pro.yearly?.save_pct ?? 22}% on Pro, {plus.yearly?.save_pct ?? 33}% on Pro Plus.</span>
-      </div>
-
-      <div className="plan-grid"> {/* 3 tier cards (CSS grid → stack on mobile) */}
-        {freeCard()}
-        {tierCard('pro', pro, false, null)}
-        {tierCard('plus', plus, true, 'MOST POWER')}
-      </div>
-
-      {/* ── receipts + how you pay ───────────────────────────────────── */}
-      <div className="bill-bottom">
-        <div className="card">
-          <div className="card-head"><h2>Billing history</h2><span className="hint">{history.length} record{history.length === 1 ? '' : 's'}</span></div>
-          {history.length === 0 ? (
-            <div className="empty"><b>No payments yet</b>Every attempt lands here with its result — including failed ones, so nothing is ever a surprise.</div>
+      <section className="pu-hero glass">
+        <div className="pu-usage">
+          <div className="pu-usage-top"><span className="ch-chip ready">{shownName} plan</span><span className="pu-reset"><Ic n="clock" s={15} />Resets at midnight</span></div>
+          {limit ? (
+            <>
+              <div className="pu-big"><b>{used ?? '–'}</b><span>of {limit} replies used today</span></div>
+              <div className="pu-meter" role="progressbar" aria-valuemin={0} aria-valuemax={limit} aria-valuenow={used || 0} aria-label="Replies used today"><i style={{ width: pct + '%' }} /></div>
+              <p className="pu-note">{left != null ? `${left} left today. ` : ''}{pace || 'When they run out, customers get "We\'ll be back with you shortly" and you answer yourself.'}</p>
+            </>
           ) : (
-            <div className="table-wrap" style={{ marginTop: 10 }}>
-              <table>
-                <thead><tr><th>Date</th><th>Plan</th><th>Amount</th><th>Status</th></tr></thead>
-                <tbody>
-                  {history.map((h, i) => {
-                    const st = String(h.status || h.state || 'paid').toLowerCase();
-                    const ok = st === 'paid' || st === 'successful' || st === 'success';
-                    return (
-                      <tr key={h.id || h.reference || i}>
-                        <td>{fmtDate(h.date || h.created_at || h.paid_at)}</td>
-                        <td><b>{h.description || h.plan || 'Subscription'}</b></td>
-                        <td>{money(Number(h.amount) || 0, h.currency || cur)}</td>
-                        <td><span className={'pill ' + (ok ? 'ok' : st === 'pending' ? 'flag' : 'off')}>{ok ? 'Paid' : st === 'pending' ? 'Pending' : 'Failed'}</span></td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <>
+              <div className="pu-big"><b>{used ?? '–'}</b><span>replies today</span></div>
+              <p className="pu-note">Your plan has no daily cap. Velo keeps answering all day.</p>
+            </>
+          )}
+          {status === 'active' && <p className="pu-note">Renews on <b>{fmtDate(bill.expires)}</b>.</p>}
+        </div>
+        {bill?.tier !== 'plus' && (
+          <div className="pu-push">
+            <b>{bill?.tier === 'pro' ? 'Want voice notes too?' : 'Never run out at night'}</b>
+            <p>{bill?.tier === 'pro' ? 'Pro adds voice notes, our smartest AI and priority support.' : 'Plus gives you 500 replies a day, product photos in replies and catalog import.'}</p>
+            <button type="button" className="pu-push-go" disabled={!!busy} onClick={() => pay(`${bill?.tier === 'pro' ? 'plus' : 'pro'}_${period}`)}>
+              {busy ? (<><Loader size={17} />Starting</>) : <>{bill?.tier === 'pro' ? 'Upgrade to Pro' : 'Upgrade to Plus'} · {amt((bill?.tier === 'pro' ? plus : pro)[period])}</>}
+              <span className="pu-knob" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" d="M7 17L17 7M9 7h8v8" /></svg></span>
+            </button>
+          </div>
+        )}
+      </section>
+
+      <div className="pu-tiles">
+        {[
+          ['Voice notes', bill?.tier === 'plus' ? 'Included' : 'Not on your plan', bill?.tier === 'plus' ? 'Customers can send voice notes' : 'Comes with Pro', 'phone'],
+          ['Product photos in replies', paid ? 'Included' : 'Not on Free', paid ? 'Velo sends your product photos' : 'Comes with Plus and Pro', 'camera'],
+          status === 'trialing' && trialLeft != null
+            ? ['Pro trial', `${trialLeft} day${trialLeft === 1 ? '' : 's'} left`, `Ends ${fmtDate(bill.trial_ends)}`, 'clock']
+            : ['Your catalog and chats', 'Always yours', 'On every plan, even Free', 'checkCircle'],
+        ].map(([n, v, s, ic]) => (
+          <section key={n} className="pu-tile glass"><span className="pu-tile-ic"><Ic n={ic} s={19} /></span><b>{n}</b><strong>{v}</strong><small>{s}</small></section>
+        ))}
+      </div>
+
+      <div className="pu-plans-head" id="plans"><h2>Choose your plan</h2><span>Prices in {cur === 'USD' ? 'US dollars' : 'naira'}. Cancel any time.</span></div>
+      <div className="pu-plans">
+        {PLAN_CARDS.map((c) => {
+          const price = c.tier ? amt(c.tier[period]) : c.price;
+          const save = c.tier && period === 'yearly' && c.tier.yearly?.save ? `Save ${money(c.tier.yearly.save, cur)} a year` : null;
+          const mine = onTier(c.key);
+          const planKey = c.key && c.key !== 'business' ? `${c.key}_${period}` : null;
+          return (
+            <section key={c.name} className={'pu-plan' + (c.best ? ' best' : '') + (mine ? ' mine' : '')}>
+              <div className="pu-plan-top"><b>{c.name}</b>{mine ? <span className="ch-chip ready">Your plan</span> : c.best ? <span className="pu-best">Best value</span> : null}</div>
+              <div className="pu-price">{price}<small> / {c.tier ? per : c.per}</small></div>
+              {save && <span className="pu-save">{save}</span>}
+              <ul>{c.feats.map(([ok, t]) => <li key={t} className={ok ? '' : 'no'}><i aria-hidden="true">{ok ? <Ic n="check" s={12} /> : '–'}</i>{t}</li>)}</ul>
+              {c.key === null ? <button type="button" className="pu-plan-btn ghosty" disabled>{mine ? 'Your plan' : 'Always free'}</button>
+                : c.key === 'business' ? <a className="pu-plan-btn" href="/contact-sales" target="_blank" rel="noreferrer">Talk to us</a>
+                  : <button type="button" className="pu-plan-btn" disabled={!!busy} onClick={() => pay(planKey)}>{busy === planKey ? (<><Loader size={15} />Starting</>) : mine ? `Extend ${c.name}` : `Choose ${c.name}`}</button>}
+            </section>
+          );
+        })}
+      </div>
+
+      <div className="pu-bottom">
+        <section className="glass pu-box">
+          <div className="pu-box-head"><h2>Payments</h2><span>{history.length} record{history.length === 1 ? '' : 's'}</span></div>
+          {history.length === 0 ? (
+            <div className="pu-empty"><b>No payments yet</b><span>When you upgrade, every payment and its receipt appears here. Pay by card, bank transfer or USSD.</span></div>
+          ) : (
+            <div className="pu-rows">
+              {history.map((h, i) => {
+                const st = String(h.status || h.state || 'paid').toLowerCase();
+                const ok = st === 'paid' || st === 'successful' || st === 'success';
+                return (
+                  <div key={h.id || h.reference || i} className="pu-row">
+                    <span className="pu-tile-ic"><Ic n="checkCircle" s={18} /></span>
+                    <span className="pu-row-main"><b>{h.description || h.plan || 'Subscription'}</b><small>{fmtDate(h.date || h.created_at || h.paid_at)}</small></span>
+                    <b>{money(Number(h.amount) || 0, h.currency || cur)}</b>
+                    <span className={'ch-chip ' + (ok ? 'live' : st === 'pending' ? 'ready' : 'hot')}>{ok ? 'Paid' : st === 'pending' ? 'Pending' : 'Failed'}</span>
+                  </div>
+                );
+              })}
             </div>
           )}
-        </div>
-
-        <div className="card">
-          <div className="card-head"><h2>Payment method</h2></div>
+        </section>
+        <section className="glass pu-box">
+          <div className="pu-box-head"><h2>Payment method</h2></div>
           <div className="pay-card">
-            <div className="pay-card-head">
-              <span className="pay-chip" />
-              <span className="pay-brand">{bill?.card_brand ? String(bill.card_brand).toUpperCase() : 'CARD'}</span>
-            </div>
-            <div className="pay-num">{bill?.card_last4 ? `•••• •••• •••• ${bill.card_last4}` : 'No card on file'}</div>
-            <div className="pay-foot">
-              <span>{bizNameSafe(bill)}</span>
-              <span>{bill?.card_expiry || '—'}</span>
-            </div>
+            <div className="pay-card-head"><span className="pay-chip" /><span className="pay-brand">{bill?.card_brand ? String(bill.card_brand).toUpperCase() : 'CARD'}</span></div>
+            <div className="pay-num">{bill?.card_last4 ? `•••• •••• •••• ${bill.card_last4}` : 'No card on file yet'}</div>
+            <div className="pay-foot"><span>{bizNameSafe(bill)}</span><span>{bill?.card_expiry || ''}</span></div>
           </div>
-          <p className="hint" style={{ marginTop: 12 }}>Payments happen on a secure checkout page — we never see or store your card details. Your bank sends the receipt.</p>
-          <div className="bill-actions">
-            <button className="btn" disabled={!!busy} onClick={() => pay(`pro_${period}`)}>{busy ? (<><Loader size={15} />Starting…</>) : 'Make a payment'}</button>
-            <a className="btn ghost" href="/help">Payment help</a>
-          </div>
-        </div>
+          <p className="pu-note">You pay on a secure checkout page. We never see or store your card details.</p>
+        </section>
       </div>
-
-      <div className="card" style={{ marginTop: 14 }}> {/* Compare plans: what each tier actually gets (kills "what am I paying for?" doubts) */}
-        <h2>Compare plans</h2>
-        <p className="desc">Every tier keeps the bot replying — paid tiers add automation, volume and premium brains.</p>
-        <div className="table-wrap compare" style={{ marginTop: 10 }}>
-          <table>
-            <thead><tr><th>What you get</th><th>Free</th><th>Pro</th><th>Pro Plus</th></tr></thead>
-            <tbody>
-              {COMPARE_ROWS.map(([label, free, proV, plusV]) => (
-                <tr key={label}><td><b>{label}</b></td><td>{compareCell(free)}</td><td>{compareCell(proV)}</td><td>{compareCell(plusV)}</td></tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginTop: 14 }}> {/* Enterprise: NO self-serve checkout — a sales conversation via form (new tab!) */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <div><h2>Enterprise</h2><p className="desc" style={{ margin: 0 }}>For chains, franchises and high-volume shops. Everything in Pro Plus, plus:</p></div>
-          <span className="plan-badge" style={{ background: 'linear-gradient(135deg,#b54708,#7a2e0e)' }}>CONTACT SALES</span>
-        </div>
-        <ul className="plan-feats" style={{ marginTop: 12 }}>{[
-          'Multiple branches, one dashboard — each shop keeps its own catalog and inbox',
-          'Dedicated onboarding call — we connect your numbers and train your team',
-          'Priority support with a real human, same-day response',
-          'Custom integrations and reports built for how you work',
-          'Annual invoicing with receipts included',
-        ].map((f) => (<li key={f}><Ic n="checkCircle" s={15} /><span>{f}</span></li>))}</ul>
-        <div style={{ marginTop: 12 }}>
-          <a className="btn" href="/contact-sales" target="_blank" rel="noreferrer">Contact sales</a> {/* new tab form (no email shown — enquiry lands as a ticket we reply to!) */}
-        </div>
-      </div>
-
-      <p className="hint" style={{ marginTop: 12 }}>Secure card checkout — {cur === 'USD' ? 'international cards welcome' : 'all Nigerian cards + bank channels'}. Activation is instant.</p>
-    </>
+    </div>
   );
 }
 

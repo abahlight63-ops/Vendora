@@ -158,13 +158,13 @@ export default function Insights() {
       {d.total === 0 ? (
         <section className="glass in-card in-empty">
           <b>{chan === 'all' ? 'No chats yet' : `No ${chName} chats in the last ${span} days`}</b>
-          <span>{chan === 'messenger' || chan === 'instagram' ? `${chName} is coming soon. Its numbers will show here once it is connected.` : 'Charts build themselves from your conversations. Share your number and come back.'}</span>
+          <span>{chan === 'messenger' || chan === 'instagram' ? `Connect ${chName} on the Channels page and its numbers show here.` : 'Charts build themselves from your conversations. Share your number and come back.'}</span>
           {chan !== 'all' && <button type="button" className="btn ghost" onClick={() => setChan('all')}>Show all channels</button>}
         </section>
       ) : (
         <>
           <div className="in-kpis">
-            <section className="glass in-kpi"><span>Chats</span><b>{d.total}</b>{d.delta == null ? <em className="ch-chip ready">First {span} days</em> : <em className={'ch-chip ' + (d.delta >= 0 ? 'live' : 'hot')}>{d.delta >= 0 ? '+' : '−'}{Math.abs(d.delta)}% on the {span} days before</em>}</section>
+            <section className="glass in-kpi"><span>Chats</span><b>{d.total}</b>{d.delta == null ? <em className="ch-chip ready">New this period</em> : <em className={'in-delta ' + (d.delta >= 0 ? 'up' : 'down')}><strong>{d.delta >= 0 ? '▲' : '▼'} {Math.abs(d.delta)}%</strong><small>vs previous {span} days</small></em>}</section>
             <section className="glass in-kpi"><span>Answered by Velo</span><b>{d.rate}%</b><em className="ch-chip live">{d.total - d.needs} of {d.total}</em></section>
             <section className="glass in-kpi"><span>Needed you</span><b>{d.needs}</b><em className="ch-chip hot">{d.waiting ? `${d.waiting} waiting now` : 'None waiting'}</em></section>
             <section className="glass in-kpi"><span>Busiest hour</span><b>{hourLabel(d.peakH)}</b><em className="ch-chip ready">Plan to be online</em></section>

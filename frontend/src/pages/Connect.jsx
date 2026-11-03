@@ -501,7 +501,7 @@ export default function Connect() {
             <section className="ch-card glass" aria-labelledby="ch-meta">
               <div className="ch-card-head">
                 <span className="ch-fb">{fbIcon()}</span>
-                <div className="ch-card-title"><h2 id="ch-meta">Meta apps</h2><p>One Facebook login connects WhatsApp, and soon Messenger and Instagram. No codes or IDs to copy.</p></div>
+                <div className="ch-card-title"><h2 id="ch-meta">Meta apps</h2><p>One Facebook login connects WhatsApp, Messenger and Instagram. No codes or IDs to copy.</p></div>
                 {waLinked && <span className="ch-chip live">Facebook linked</span>}
               </div>
               <div className="ch-rows">
@@ -520,8 +520,8 @@ export default function Connect() {
                       : waHealth.reason === 'token-dead' ? 'Your Meta connection expired. Tap Reconnect with Facebook below.' : 'Not connected yet. Tap Connect to start.'}
                   </p>
                 )}
-                <div className="ch-row is-soon">{coinSvg('messenger')}<span className="ch-row-main"><b>Facebook Messenger</b><small>Answer your Page's messages</small></span><span className="ch-chip soon">Coming soon</span></div>
-                <div className="ch-row is-soon">{coinSvg('instagram')}<span className="ch-row-main"><b>Instagram</b><small>Answer your Instagram DMs</small></span><span className="ch-chip soon">Coming soon</span></div>
+                <div className="ch-row">{coinSvg('messenger')}<span className="ch-row-main"><b>Facebook Messenger</b><small>Answer your Page's messages</small></span><span className="ch-chip ready">Not connected</span></div>
+                <div className="ch-row">{coinSvg('instagram')}<span className="ch-row-main"><b>Instagram</b><small>Answer your Instagram DMs</small></span><span className="ch-chip ready">Not connected</span></div>
               </div>
               <div className="ch-card-foot">
                 {waLinked ? (

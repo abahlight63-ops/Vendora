@@ -34,6 +34,7 @@ const Help = lazy(() => import('./pages/Help.jsx'));
 const ReferEarn = lazy(() => import('./pages/ReferEarn.jsx')); // full Refer & Earn page (code + rewards + history + leaders!)
 const Notifications = lazy(() => import('./pages/Notifications.jsx')); // full inbox page (bell previews, this shows all!)
 const Admin = lazy(() => import('./pages/Admin.jsx')); // admin console (rarely opened — must NOT weigh first paint!)
+const SettingsHub = lazy(() => import('./pages/SettingsHub.jsx')); // one Settings page: shop, Velo's voice, account
 const VeloSalesAI = lazy(() => import('./pages/VeloSalesAI.jsx')); // general AI chat + model dropdown
 const Privacy = lazy(() => import('./pages/Privacy.jsx')); // public legal (no login needed)
 const Terms = lazy(() => import('./pages/Terms.jsx')); // public legal
@@ -116,9 +117,9 @@ export default function App() { // ROOT component (main.jsx renders this)
       <Route path="/insights" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Insights /></Guard>} />
       <Route path="/billing" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Billing /></Guard>} />
       <Route path="/contact-sales" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><ContactSales /></Guard>} /> {/* enterprise form (Billing opens it in a new tab!) */}
-      <Route path="/profile" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Profile biz={me} /></Guard>} />
-      <Route path="/settings" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Settings biz={me} setMe={setMe} /></Guard>} /> {/* the account hub (profile photo lives here!) */}
-      <Route path="/ai-settings" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><AiSettings biz={me} /></Guard>} /> {/* the assistant's voice + guardrails */}
+      <Route path="/profile" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Navigate to="/settings?tab=shop" replace /></Guard>} />
+      <Route path="/settings" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><SettingsHub biz={me} setMe={setMe} /></Guard>} /> {/* the account hub (profile photo lives here!) */}
+      <Route path="/ai-settings" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Navigate to="/settings?tab=voice" replace /></Guard>} /> {/* the assistant's voice + guardrails */}
       <Route path="/help" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Help /></Guard>} />
       <Route path="/notifications" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Notifications /></Guard>} /> {/* full inbox (bell previews, tap → here!) */}
       <Route path="/notifications/:id" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Notifications /></Guard>} /> {/* one notice fully (photo/video + long body!) */}

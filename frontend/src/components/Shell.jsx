@@ -12,9 +12,9 @@ import ThemeToggle from './ThemeToggle.jsx'; // sun/moon button (topbar — ligh
 import Notifications from './Notifications.jsx'; // bell (payment + update alerts)
 import Tour from './Tour.jsx'; // first-run coachmarks (mounted once here = available everywhere)
 const MAIN = [['overview', 'Home', '/dashboard'], ['chats', 'Inbox', '/chats'], ['catalog', 'Catalog', '/catalog'], ['connect', 'Channels', '/connect'], ['insights', 'Insights', '/insights']]; // the five daily jobs (same words on the phone)
-const MORE = [['billing', 'Plan and usage', '/billing'], ['playground', 'Test Drive', '/playground'], ['velosalesai', 'Chat with Velo', '/velosales-ai'], ['gift', 'Refer & Earn', '/refer-earn'], ['profile', 'Business', '/profile'], ['aisettings', 'AI settings', '/ai-settings'], ['settings', 'Settings', '/settings'], ['help', 'Help', '/help']]; // everything else, one tap behind More
+const MORE = [['billing', 'Plan and usage', '/billing'], ['playground', 'Test Drive', '/playground'], ['velosalesai', 'Chat with Velo', '/velosales-ai'], ['gift', 'Refer & Earn', '/refer-earn'], ['settings', 'Settings', '/settings'], ['help', 'Help Center', '/help']]; // everything else, one tap behind More
 const ALL = [...MAIN, ...MORE]; // all pages in one array (page search)
-const TITLES = { '/dashboard': 'Home', '/chats': 'Inbox', '/catalog': 'Catalog', '/connect': 'Channels', '/playground': 'Test Drive', '/insights': 'Insights', '/velosales-ai': 'Chat with Velo', '/refer-earn': 'Refer & Earn', '/billing': 'Plan and usage', '/profile': 'Business profile', '/ai-settings': 'AI settings', '/settings': 'Settings', '/help': 'Help', '/onboarding': 'Get started', '/login': 'Sign in' }; // object lookup: path → human title (topbar breadcrumb + document.title)
+const TITLES = { '/dashboard': 'Home', '/chats': 'Inbox', '/catalog': 'Catalog', '/connect': 'Channels', '/playground': 'Test Drive', '/insights': 'Insights', '/velosales-ai': 'Chat with Velo', '/refer-earn': 'Refer & Earn', '/billing': 'Plan and usage', '/profile': 'Business profile', '/ai-settings': 'AI settings', '/settings': 'Settings', '/help': 'Help Center', '/onboarding': 'Get started', '/login': 'Sign in' }; // object lookup: path → human title (topbar breadcrumb + document.title)
 
 function Icon({ k }) { // tiny inline SVG set (stroke = inherits text color; no icon library installed)
   const p = { viewBox: '0 0 24 24', width: 18, height: 18, fill: 'none', stroke: 'currentColor', strokeWidth: 1.75, strokeLinecap: 'round', strokeLinejoin: 'round' }; // shared props object spread into every <svg> (currentColor = matches surrounding text)
@@ -168,7 +168,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
               <ThemeToggle theme={theme} onToggle={onToggleTheme} /> {/* sun/moon switch */}
               {biz?.avatar_url
                 ? <img className="avatar avatar-img" src={biz.avatar_url} alt={safeName} title={safeName} /> // the owner's own picture (Settings → pencil); falls back to the initial below
-                : <div className="avatar" title={safeName}>{initial}</div>} {/* title = hover tooltip */}
+                : biz?.avatar_emoji ? <div className="avatar avatar-emoji" title={safeName} aria-label={safeName}>{biz.avatar_emoji}</div> : <div className="avatar" title={safeName}>{initial}</div>} {/* title = hover tooltip */}
               <button className="btn ghost sm signout-btn" onClick={() => setConfirmOut(true)}>Sign out</button> {/* ghost = outline style; sm = small; .signout-btn hides on phones (drawer carries sign-out instead) */}
             </div>
           </header>

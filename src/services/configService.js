@@ -83,6 +83,7 @@ ALTER TABLE messages ADD COLUMN IF NOT EXISTS provider_msg_id TEXT; -- Meta wami
 CREATE UNIQUE INDEX IF NOT EXISTS uq_messages_provider_msg ON messages(provider_msg_id); -- NULLs never conflict in Postgres, so only real ids dedupe
 
 -- Subscription / billing (Paystack NGN + Flutterwave USD)
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS avatar_emoji TEXT; -- an emoji avatar picked in Settings (a photo still wins)
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS card_last4 TEXT; -- saved card, for display only (never the full number)
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS card_brand TEXT;
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS card_expiry TEXT; -- MM/YY

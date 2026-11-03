@@ -1,34 +1,174 @@
 // ── frontend/src/pages/Help.jsx ──────────────────────────────────
-// WHAT: in-app help — accordion FAQ (smooth grid-rows animation) + tour replay
-// + support pointer. FAQS is a DATA array ([question, answer] pairs) mapped to
-// UI — adding a question = adding one line, zero JSX!
-// React pattern: single `open` index state (one open at a time; click toggles).
-// SHELL: same centred column as Settings (pages/Settings.jsx) — a card, then
-// tinted .set-row groups — so Help reads as part of the same family.
-import { useEffect, useState } from 'react'; // useEffect = load ticket history on mount; useState = accordion + form
-import { startTour } from '../components/Tour.jsx'; // named import { } (NOT default!) — replay button fires the tour bus
-import { api, fmtDate, pop, toast } from '../lib/api.js'; // api() tickets; fmtDate stamps; pop() filed-confirmation; toast() small errors
-import Loader from '../components/Loader.jsx'; // mini orbit in the send button
-import InstallApp from '../components/InstallApp.jsx'; // install-as-app card (top of Help — the filmable tutorial!)
+// WHAT: the Help Center. Search, six picture guides, common questions, install
+// card and support messages. A guide opens full screen and slides through real
+// screenshots of the app; on each one a ring, an arrow, a "Tap here" label and
+// a tapping hand point at the exact button (boxes measured when the screenshots
+// were taken, see lib/helpGuides.js). Phones get phone screenshots.
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { api, fmtDate, pop, toast } from '../lib/api.js';
+import Loader from '../components/Loader.jsx';
+import InstallApp from '../components/InstallApp.jsx';
+import Ic from '../components/icons.jsx';
+import { GUIDES, boxFor } from '../lib/helpGuides.js';
 
-const FAQS = [ // [question, answer] pairs — content lives HERE, markup below is generic (separation of content & presentation!)
-  ['How do I connect my WhatsApp?', 'Open the Connect page and tap "Connect WhatsApp" — a Meta popup opens, you log in with Facebook and pick your business number. We store everything against your account automatically. Then paste our webhook URL + verify code in Meta (shown on screen) and finish with TEST — the page flips to LIVE.'],
-  ['How does LEARN work?', 'From your owner number send: LEARN: Blue gown ₦45,000. The AI extracts name + price and updates the catalog. Same name overwrites.'],
-  ['What if the AI doesn\'t know?', 'It sends a polite handoff, flags the chat gold in your inbox, and (if set) alerts your personal WhatsApp instantly. It never invents prices.'], // \' escapes apostrophe in single-quoted string
-  ['Does it speak Pidgin?', 'Yes — it mirrors the customer. Pidgin in, Pidgin out. Formal English in, formal out.'],
-  ['How do I test without WhatsApp?', 'Open Test bot, type like a customer: prices, stock, hours, then something you don\'t sell.'],
-  ['How does billing work?', 'Manual catalog is free forever. The 7-day trial unlocks the full Pro plan (countdown shown, bell warns before it ends); after that, pricing follows your location automatically on a secure card checkout. Never paused — free keeps replying from your manual catalog.'],
-  ['Which AI answers my customers?', 'Whichever tier you choose in AI settings — Fast, Normal or Smart. Normal is the default, and if that tier is ever busy a backup engine answers automatically, so a customer never waits. Change it any time; nothing else needs touching.'],
-  ['What does profile sync do?', 'Pro only: paste your WhatsApp Business profile text (or send SYNC: + the text from your owner number) and the AI builds your catalog from it, then verifies customer questions against it.'],
-  ['Can I get a refund?', "First payment within 7 days if the service genuinely failed you — message us here with details. Duplicate charges are always refunded in full."], // double quotes dodge the apostrophe problem (pick quote style per string!)
-  ['How do I cancel?', "Just stop paying — you drop to free at period end, nothing deleted. To erase everything, ask us here and it's gone within 14 days."],
-  ['Can the AI make mistakes?', 'Rarely, but yes — which is why unsure chats hand off to you instead of guessing. Keep your catalog accurate and review flagged chats daily.'],
-  ['Will I see ads?', 'No — VeloSales Ai shows zero ads on every plan, free included. Pro adds profile sync, product photos and premium AI brains — see Billing.'],
-  ['How do I install the app?', 'See the Install card at the top of this page — one tap on Android/desktop Chrome (system confirm included), Share → Add to Home Screen on iPhone Safari. Icon on your home screen, full-screen, no app store.'],
-  ['How do I connect Telegram?', 'Open the Connect page and pick Telegram: message @BotFather → /newbot → name it → paste the token here. Then get your link code so owner commands work from your phone. Free, about a minute.'],
-  ['Do voice notes work?', 'Yes — on Pro. Customers send voice notes on WhatsApp or Telegram, the bot transcribes them with Whisper and answers like normal text. Free tier gets a polite handoff instead.'],
-  ['Which AI should I pick?', 'Fast answers prices, stock and hours quickest — best when customers are in a hurry. Normal is the everyday balance and what most shops keep. Smart takes longer but handles bargaining, long questions and writing jobs best. You can switch any time in AI settings; a backup engine always covers if one is busy.'],
+const FAQS = [
+  ['Will Velo ever make up a price?', 'No. Velo only quotes prices that are in your catalog. If a price is missing, it tells the customer you will reply and flags the chat for you.'],
+  ['How do I connect WhatsApp?', 'Open Channels and tap Continue with Facebook. Log in with the Facebook account that runs your business, pick your WhatsApp number, then send one test message. See the picture guide above.'],
+  ['How does LEARN work?', 'From your own number send: LEARN: Blue gown ₦45,000. Velo adds it to your catalog. Sending the same name again updates the price.'],
+  ['Does Velo speak Pidgin?', 'Yes. It answers the way the customer writes: Pidgin in, Pidgin out. English in, English out.'],
+  ['What happens when I reach my daily replies?', 'Customers get "Thanks for your message! We\'ll be back with you shortly" and the chat waits for you in the Inbox. Replies reset at midnight, or upgrade for more.'],
+  ['Can customers send voice notes?', 'Yes on Pro. Velo listens to the voice note and answers like a normal message. On other plans the chat is passed to you.'],
+  ['How do I take over a chat?', 'Open the chat in Inbox and type your reply. Velo steps back for that chat so you never talk over each other.'],
+  ['How do I test without customers?', 'Open Test Drive and chat like a customer. If an answer is wrong there, fix the product in Catalog.'],
+  ['How do payments work?', 'Pick a plan in Plan and usage, then pay by card, bank transfer or USSD through Paystack. Your plan turns on the moment the payment lands.'],
+  ['Can I get a refund?', 'Your first payment within 7 days if the service genuinely failed you. Message us below with the details. Double charges are always refunded in full.'],
+  ['How do I cancel?', 'Just stop paying. You move to the free plan at the end of what you paid for, and nothing is deleted.'],
+  ['Will I see ads?', 'No. VeloSales Ai has no ads on any plan, free included.'],
 ];
+
+function Pointer({ box, label, imgRef }) {
+  const [px, setPx] = useState(null);
+  useLayoutEffect(() => {
+    const img = imgRef.current;
+    if (!img || !box) { setPx(null); return undefined; }
+    const measure = () => { const w = img.clientWidth, h = img.clientHeight; if (w && h) setPx({ w, h }); };
+    measure();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    if (ro) ro.observe(img);
+    img.addEventListener('load', measure);
+    return () => { if (ro) ro.disconnect(); img.removeEventListener('load', measure); };
+  }, [box, imgRef]);
+  if (!box || !px) return null;
+  const x = box.x * px.w, y = box.y * px.h, w = box.w * px.w, h = box.h * px.h;
+  const cx = x + w / 2, cy = y + h / 2;
+  // the label sits on the roomier side, the arrow curves from it to the box edge
+  const right = cx < px.w * 0.55;
+  const up = cy > px.h * 0.32;
+  const lx = Math.max(8, Math.min(px.w - 150, right ? cx + Math.min(120, px.w * 0.18) : cx - Math.min(120, px.w * 0.18) - 120));
+  const ly = Math.max(8, Math.min(px.h - 44, up ? y - Math.min(110, px.h * 0.2) : y + h + Math.min(80, px.h * 0.14)));
+  const sx = lx + (right ? 10 : 110), sy = ly + (up ? 40 : 0);
+  const ex = Math.max(x + 6, Math.min(x + w - 6, cx + (right ? Math.min(w / 2 - 6, 30) : -Math.min(w / 2 - 6, 30)))), ey = up ? y - 4 : y + h + 4;
+  const qx = (sx + ex) / 2 + (right ? 30 : -30), qy = Math.min(sy, ey) - (up ? 10 : -10);
+  const ang = Math.atan2(ey - qy, ex - qx);
+  const head = (a) => `${ex},${ey} ${ex - 14 * Math.cos(ang - a)},${ey - 14 * Math.sin(ang - a)}`;
+  return (
+    <div className="hp-ptr" aria-hidden="true">
+      <span className="hp-ring" style={{ left: x - 6, top: y - 6, width: w + 12, height: h + 12 }} />
+      <svg className="hp-arrow" width={px.w} height={px.h}>
+        <path className="hp-ln" d={`M${sx},${sy} Q${qx},${qy} ${ex},${ey}`} />
+        <polyline className="hp-head" points={`${head(0.45)} ${ex},${ey} ${ex - 14 * Math.cos(ang + 0.45)},${ey - 14 * Math.sin(ang + 0.45)}`} />
+      </svg>
+      <span className="hp-label" style={{ left: lx, top: ly }}>{label}</span>
+      <span className="hp-tap" style={{ left: cx, top: cy }} />
+      <span className="hp-hand" style={{ left: cx - 10, top: cy - 6 }}>
+        <svg viewBox="0 0 24 24" width="42" height="42"><path fill="#fff" stroke="#1E1757" strokeWidth="1.6" strokeLinejoin="round" d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10V4a1.5 1.5 0 0 1 3 0v6V5.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-.5a6 6 0 0 1-5-2.7L3 14.5a1.6 1.6 0 0 1 2.6-1.8L9 15z" /></svg>
+      </span>
+    </div>
+  );
+}
+
+function Guide({ guide, onClose }) {
+  const [i, setI] = useState(0);
+  const [phone, setPhone] = useState(() => typeof window !== 'undefined' && window.innerWidth < 760);
+  const imgRef = useRef(null);
+  const step = guide.steps[i];
+  const usePhone = phone && !!boxFor(step.shot, true); // a step with no phone picture shows the desktop one
+  const last = i === guide.steps.length - 1;
+  useEffect(() => {
+    const onResize = () => setPhone(window.innerWidth < 760);
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); if (e.key === 'ArrowRight' && !last) setI(i + 1); if (e.key === 'ArrowLeft' && i > 0) setI(i - 1); };
+    window.addEventListener('resize', onResize); window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('resize', onResize); window.removeEventListener('keydown', onKey); };
+  }, [i, last, onClose]);
+  return (
+    <div className="hp-back" role="presentation" onClick={onClose}>
+      <div className="hp-guide" role="dialog" aria-modal="true" aria-labelledby="hp-step-title" onClick={(e) => e.stopPropagation()}>
+        <div className="hp-shot-wrap">
+          <div className={'hp-shot' + (usePhone ? ' is-phone' : '')} key={step.shot + (usePhone ? 'p' : 'd')}>
+            <img ref={imgRef} src={`/help/${step.shot}-${usePhone ? 'p' : 'd'}.jpg`} alt={`Screenshot: ${step.title}`} />
+            <Pointer box={boxFor(step.shot, usePhone)} label={step.label || 'Tap here'} imgRef={imgRef} />
+          </div>
+        </div>
+        <div className="hp-side">
+          <div className="hp-side-top">
+            <span className="ch-chip ready"><Ic n={guide.icon} s={14} />{guide.title}</span>
+            <button type="button" className="ps-close" onClick={onClose} aria-label="Close guide"><Ic n="x" s={18} /></button>
+          </div>
+          <div className="hp-bars" aria-hidden="true">{guide.steps.map((_, k) => <i key={k} className={k <= i ? 'on' : ''} />)}</div>
+          <div className="hp-count">Step {i + 1} of {guide.steps.length}</div>
+          <h2 id="hp-step-title">{step.title}</h2>
+          <p className="hp-text">{step.text}</p>
+          {step.tip && <p className="hp-tip"><Ic n="help" s={18} /><span>{step.tip}</span></p>}
+          <div className="hp-nav">
+            <button type="button" className="hp-prev" disabled={i === 0} onClick={() => setI(i - 1)} aria-label="Previous step"><Ic n="back" s={22} /></button>
+            <button type="button" className="btn lg hp-next" onClick={() => (last ? onClose() : setI(i + 1))}>{last ? 'Done' : 'Next step'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function Help() {
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState(0);
+  const [guide, setGuide] = useState(null);
+  const needle = q.trim().toLowerCase();
+  const guides = useMemo(() => GUIDES.filter((g) => !needle || (g.title + ' ' + g.sub + ' ' + g.steps.map((s) => s.title + ' ' + s.text).join(' ')).toLowerCase().includes(needle)), [needle]);
+  const faqs = useMemo(() => FAQS.filter(([a, b]) => !needle || (a + ' ' + b).toLowerCase().includes(needle)), [needle]);
+  return (
+    <div className="hp">
+      <section className="hp-hero">
+        <h1>How can we help?</h1>
+        <p>Picture guides for every part of VeloSales Ai.</p>
+        <form className="hp-search" role="search" onSubmit={(e) => e.preventDefault()}>
+          <Ic n="help" s={20} />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search: connect WhatsApp, add a product, refund…" aria-label="Search help" />
+          {q && <button type="button" className="hp-clear" onClick={() => setQ('')} aria-label="Clear search">×</button>}
+        </form>
+      </section>
+
+      <div className="hp-sec-head"><h2>Picture guides</h2><span>Tap a topic to slide through it</span></div>
+      {guides.length === 0 ? <p className="hp-none">No guide matches that. Try the questions below, or message us.</p> : (
+        <div className="hp-topics">
+          {guides.map((g) => (
+            <button key={g.id} type="button" className="hp-topic glass" onClick={() => setGuide(g)}>
+              <span className="hp-topic-top"><span className="hp-topic-ic" style={{ background: g.color, boxShadow: `0 12px 24px ${g.color}55` }}><Ic n={g.icon} s={24} /></span><span className="ch-chip ready">{g.steps.length} steps</span></span>
+              <b>{g.title}</b>
+              <span className="hp-topic-sub">{g.sub}</span>
+              <span className="hp-start">Start guide <Ic n="next" s={16} /></span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="hp-row">
+        <section className="glass hp-card">
+          <h2>Common questions</h2>
+          {faqs.length === 0 ? <p className="hp-none">No question matches that.</p> : (
+            <div className="hp-faqs">
+              {faqs.map(([qq, a], k) => (
+                <div key={qq} className={'hp-faq' + (open === k ? ' open' : '')}>
+                  <button type="button" aria-expanded={open === k} onClick={() => setOpen(open === k ? -1 : k)}><span>{qq}</span><b aria-hidden="true">{open === k ? '−' : '+'}</b></button>
+                  {open === k && <p>{a}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+        <section className="hp-stuck">
+          <b>Still stuck?</b>
+          <p>Message our team below. We usually reply within a few hours, here and by email.</p>
+          <a className="hp-stuck-go" href="#support">Message support</a>
+        </section>
+      </div>
+
+      <InstallApp />
+      <div id="support"><SupportBox /></div>
+      {guide && <Guide guide={guide} onClose={() => setGuide(null)} />}
+    </div>
+  );
+}
 
 // ── the row icons (drawn here, no icon package — same house style as Settings) ──
 function RowIc({ k }) {
@@ -41,37 +181,6 @@ function RowIc({ k }) {
   if (k === 'clock') return (<svg {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>); // clock (ticket still open)
   if (k === 'check') return (<svg {...p}><path d="M20 6 9 17l-5-5" /></svg>); // tick (ticket answered)
   return null; // unknown key renders nothing (never a broken glyph)
-}
-
-export default function Help() {
-  const [open, setOpen] = useState(0); // index of the OPEN question (0 = first open initially — shows the pattern immediately!; -1 = all closed)
-  return (
-    <>
-      <div className="page-head"><div className="row"><div><h1>Help</h1><p>Answers to the questions every owner asks in week one.</p></div><button className="btn sm" onClick={startTour}>Take the guided tour</button></div></div> {/* header row: title left, tour-replay button right (startTour clears flag + fires bus + goes dashboard) */}
-      <div className="set-col">
-        <InstallApp /> {/* install tutorial FIRST (users film this card + the system dialog!) */}
-
-        {/* ── group: the accordion ─────────────────────────────────────── */}
-        <div className="set-group">
-          <h2>Common questions</h2>
-          <div className="set-rows warm">
-            {FAQS.map(([q, a], i) => ( // map pairs → accordion rows (destructure [q,a]; key={i} fine — static order!)
-              <div key={i} className="set-faq"> {/* .set-faq + .set-faq draws the divider — the last row stays clean (.faq-item belongs to the landing FAQ, not this one) */}
-                <button className="set-row faq-q" onClick={() => setOpen(open === i ? -1 : i)} aria-expanded={open === i}>{/* one clickable row: icon chip + question + trailing +/− (onClick TOGGLES: open row → -1 (close), else → i (open)) */}
-                  <span className="set-ic w"><RowIc k="help" /></span>
-                  <div className="set-main"><b>{q}</b></div>
-                  <span className="set-tail">{open === i ? '−' : '+'}</span>
-                </button>
-                <div className={'faq-a' + (open === i ? ' open' : '')}><div><p className="hint">{a}</p></div></div> {/* .faq-a = grid-template-rows 0fr→1fr animation (CSS animates height smoothly — the modern <details> alternative!); inner div required (grid children need a wrapper to animate) */}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <SupportBox /> {/* complaint form + ticket history (lands in the admin console!) */}
-      </div>
-    </>
-  );
 }
 
 function SupportBox() { // support ticket form + history (Help tab's "Still stuck?" grown up: files structured tickets!)

@@ -32,7 +32,7 @@ function RowIc({ k }) {
   return null; // unknown key renders nothing (never a broken glyph)
 }
 
-export default function Profile({ biz }) { // biz prop = business from App's useMe (includes currency/timezone from getMe!)
+export default function Profile({ biz, embedded = false }) { // biz prop = business from App's useMe (includes currency/timezone from getMe!)
   const [f, setF] = useState({ name: biz?.name || '', owner: biz?.owner_number || '', hours: biz?.hours || '', tone: biz?.tone || 'friendly and helpful', currency: biz?.currency || 'NGN', timezone: biz?.timezone || 'Africa/Lagos', niche: biz?.business_niche || '', personal: ((biz?.personal_contacts || []).join('\n')), faq: (biz?.faq || []).map((x) => x.question + ' | ' + x.answer).join('\n') }); // ONE form object (biz?. guards slow load; || defaults; faq ARRAY → one-per-line "question | answer" TEXT for easy editing!; personal JSONB array → one-number-per-line text!)
   const nicheOpts = f.niche && !NICHES.includes(f.niche) ? [f.niche, ...NICHES] : NICHES; // custom lane kept as first option (never strand a saved custom value!)
   const [botOn, setBotOn] = useState(biz?.bot_enabled !== false); // kill-switch state (default ON; !== false treats missing as on — safe default!)
@@ -48,17 +48,17 @@ export default function Profile({ biz }) { // biz prop = business from App's use
   }
   return (
     <>
-      <div className="page-head"><div><h1>Business profile</h1><p>Exactly how the AI introduces you. Short, true, and fresh beats long and stale.</p></div></div>
+      {!embedded && <div className="page-head"><div><h1>Business profile</h1><p>Exactly how the AI introduces you. Short, true, and fresh beats long and stale.</p></div></div>}
       <div className="set-col">
 
         {/* ── hero: the shop the AI speaks for ─────────────────────────── */}
-        <div className="set-profile">
+        {!embedded && <div className="set-profile">
           <div className="set-av">{initial}</div>
           <div className="set-who"><b>{name}</b><span>{biz?.whatsapp_number ? 'WhatsApp ' + prettyPhone(biz.whatsapp_number) : 'Finish your setup so the AI can introduce you.'}</span></div>
-        </div>
+        </div>}
 
         {/* ── group one: the two switches + the channel door ───────────── */}
-        <div className="set-group">
+        {!embedded && <div className="set-group">
           <h2>Assistant &amp; alerts</h2>
           <div className="set-rows">
             <div className="set-row wrap">
@@ -69,10 +69,10 @@ export default function Profile({ biz }) { // biz prop = business from App's use
             <PhoneAlerts />
             <TelegramCard />
           </div>
-        </div>
+        </div>}
 
         {/* ── group two: what the AI reads about the shop ──────────────── */}
-        <div className="set-group">
+        <div className="set-group" data-guide="shop">
           <h2>Business details</h2>
           <div className="set-rows warm">
             <div className="set-row form">
@@ -123,7 +123,7 @@ export default function Profile({ biz }) { // biz prop = business from App's use
           </div>
         </div>
 
-        <div className="set-foot"><button className="btn" onClick={save}>Save profile</button></div>
+        <div className="set-foot"><button className="btn lg" onClick={save}>Save shop details</button></div>
 
       </div>
     </>

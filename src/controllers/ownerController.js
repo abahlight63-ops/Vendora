@@ -46,7 +46,7 @@ async function getMe(req, res) {
             b.bot_enabled, b.personal_contacts, b.plan_tier,
             b.business_niche, b.heard_from, b.catalog_size, b.channels, b.daily_volume,
             b.referral_code, b.bonus_pro_until,
-            b.greeting_msg, b.handoff_msg, b.avatar_url,
+            b.greeting_msg, b.handoff_msg, b.avatar_url, b.avatar_emoji,
             b.subscription_status, b.subscription_expires, b.trial_started_at,
             b.trial_warned, b.trial_expiry_notified
      FROM businesses b WHERE b.id = $1`, // b = alias; WHERE session id (never a client id!)
@@ -298,6 +298,21 @@ async function uploadProductPhoto(req, res) {
 // The picture is small when it arrives on purpose — both clients shrink it to
 // 256px before sending — so what we store is tens of KB, and we can keep the
 // URL on the business row instead of standing up a second storage service.
+// POST /api/me/avatar-emoji { emoji } — pick an emoji avatar (null clears it).
+// Picking one also clears a photo, so what the owner chose is what shows.
+async function setAvatarEmoji(req, res) {
+  const raw = req.body ? req.body.emoji : null;
+  const emoji = raw == null || raw === '' ? null : String(raw).trim();
+  if (emoji && (emoji.length > 16 || /[<>"'`\s]/.test(emoji) || /[A-Za-z0-9]/.test(emoji))) return res.status(400).json({ error: 'Pick one of the avatars shown.' });
+  try {
+    await db.query('UPDATE businesses SET avatar_emoji = $1, avatar_url = CASE WHEN $1::text IS NULL THEN avatar_url ELSE NULL END WHERE id = $2', [emoji, req.session.businessId]);
+    return res.json({ avatar_emoji: emoji, avatar_url_cleared: !!emoji });
+  } catch (e) {
+    console.error('avatar emoji error:', e.message);
+    return res.status(500).json({ error: 'Could not save your avatar — try again.' });
+  }
+}
+
 async function uploadAvatar(req, res) {
   const { dataUrl } = req.body || {};
   const businessId = req.session.businessId;
@@ -309,7 +324,7 @@ async function uploadAvatar(req, res) {
     const media = require('../services/mediaStore');
     const saved = await media.saveUpload({ dataUrl, prefix: 'avatar', businessId, allowVideo: false });
     const url = publicUploadUrl(req, saved);
-    await db.query('UPDATE businesses SET avatar_url = $1 WHERE id = $2', [url, businessId]);
+    await db.query('UPDATE businesses SET avatar_url = $1, avatar_emoji = NULL WHERE id = $2', [url, businessId]); // a photo replaces an emoji
     return res.json({ avatar_url: url });
   } catch (e) {
     if (e && e.status === 400) return res.status(400).json({ error: e.message });
@@ -1233,6 +1248,7 @@ module.exports = { // every handler the routes file wires up (miss one here = ro
   upsertProduct,
   uploadProductPhoto,
   uploadAvatar,
+  setAvatarEmoji,
   deleteProduct,
   getConversations,
   getMessages,

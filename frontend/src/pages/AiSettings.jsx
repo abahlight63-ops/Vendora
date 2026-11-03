@@ -41,7 +41,7 @@ function canonicalTone(raw) {
   return hit ? hit.value : (t || 'friendly and helpful');
 }
 
-export default function AiSettings({ biz }) {
+export default function AiSettings({ biz, embedded = false }) {
   const [f, setF] = useState({
     tone: canonicalTone(biz?.tone),
     greeting: biz?.greeting_msg || '',
@@ -109,14 +109,14 @@ export default function AiSettings({ biz }) {
   const sample = 21500; // a believable dress price, only used to SHOW the maths
   return (
     <>
-      <div className="page-head"><div className="row">
+      {!embedded && <div className="page-head"><div className="row">
         <div><h1>AI settings</h1><p>Who answers, how they sound, and what they may promise. Yours to shape.</p></div>
         <span className="pill ok"><Ic n="check" s={12} />{cur.label} live</span>
-      </div></div>
+      </div></div>}
 
       {/* ── 1. the brain ─────────────────────────────────────────────── */}
-      <div className="card">
-        <h2>Which AI answers your customers</h2>
+      <div className="card" data-guide="brain">
+        <h2>Which Velo answers your customers</h2>
         <p className="desc">Three settings, not thirty models. Pick how hard Velo should think on WhatsApp — you can change it any time.</p>
         <div className="ai-tiers">
           {BUCKETS.map((b) => {
@@ -143,7 +143,7 @@ export default function AiSettings({ biz }) {
       </div>
 
       {/* ── 2. the voice ─────────────────────────────────────────────── */}
-      <div className="card">
+      <div className="card" data-guide="personality">
         <h2>Personality</h2>
         <p className="desc">How the AI talks to customers. Warm and respectful is built in — choose the style closest to your shop.</p>
         <label>Shop personality</label>
@@ -160,7 +160,7 @@ export default function AiSettings({ biz }) {
       </div>
 
       {/* ── 3. greeting, with the customer's-eye preview ─────────────── */}
-      <div className="card">
+      <div className="card" data-guide="greeting">
         <h2>Greeting</h2>
         <p className="desc">What the AI says when a customer just says "hey" or "hello". Leave it empty for the built-in polite greeting.</p>
         <label>Custom greeting (optional)</label>
@@ -175,8 +175,8 @@ export default function AiSettings({ biz }) {
       </div>
 
       {/* ── 4. money guardrails ─────────────────────────────────────── */}
-      <div className="card">
-        <h2>Negotiation (SmartDeal)</h2>
+      <div className="card" data-guide="discount">
+        <h2>Discounts</h2>
         <p className="desc">The AI only offers a discount when a customer hesitates on price — never otherwise.</p>
         <div className="grid2">
           <div><label>Max discount % (0 = never discount)</label><input type="number" min="0" max="50" value={f.discount} onChange={set('discount')} /></div> {/* min/max are browser hints only — the server re-clamps */}
@@ -193,8 +193,8 @@ export default function AiSettings({ biz }) {
       </div>
 
       {/* ── 5. handoff ──────────────────────────────────────────────── */}
-      <div className="card">
-        <h2>Human handoff</h2>
+      <div className="card" data-guide="handoff">
+        <h2>When Velo is not sure</h2>
         <p className="desc">Sent when the AI isn't sure — instead of guessing and losing trust. Always polite, in your words.</p>
         <label>Fallback message</label>
         <textarea value={f.handoff} onChange={set('handoff')} rows="3" maxLength={500} />
@@ -211,7 +211,7 @@ export default function AiSettings({ biz }) {
           unsaved tone that scrolls out of sight is an invisible bug. */}
       <div className="ai-save">
         <span className={'ai-save-note' + (dirty ? ' dirty' : '')}>{dirty ? 'Unsaved changes' : 'Everything saved'}</span>
-        <button className="btn" onClick={save} disabled={busy || !dirty}>{busy ? 'Saving…' : 'Save settings'}</button>
+        <button className="btn lg" onClick={save} disabled={busy || !dirty}>{busy ? 'Saving' : 'Save changes'}</button>
       </div>
     </>
   );

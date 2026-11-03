@@ -20,7 +20,8 @@ import { useEffect, useRef, useState } from 'react'; // useRef = the hidden file
 import { Link } from 'react-router-dom'; // Link = client-side nav (no full page reload!)
 import { api, pop } from '../lib/api.js'; // api() calls; pop() animated outcomes
 import { prettyPhone } from '../lib/phone.js'; // WhatsApp number → "0803 123 4567"
-import Loader from '../components/Loader.jsx'; // mini orbit inside the avatar button while a photo uploads
+import Loader from '../components/Loader.jsx';
+import { avatarsFor } from '../lib/avatars.js'; // emoji avatars for this kind of business // mini orbit inside the avatar button while a photo uploads
 
 // ── the row icons (drawn here, no icon package — same house style as Shell) ──
 function Ic({ k }) {
@@ -70,7 +71,7 @@ function shrinkToSquare(file, side = 256) {
   });
 }
 
-export default function Settings({ biz, setMe }) { // biz = the business; setMe = swap in the updated business (avatar!) without a reload
+export default function Settings({ biz, setMe, embedded = false }) { // biz = the business; setMe = swap in the updated business (avatar!) without a reload
   const fileRef = useRef(null); // the hidden <input type="file">
   const [photoBusy, setPhotoBusy] = useState(false); // a photo is uploading
   const [botOn, setBotOn] = useState(biz?.bot_enabled !== false); // assistant replies (server default is true — undefined must read as ON)
@@ -110,10 +111,19 @@ export default function Settings({ biz, setMe }) { // biz = the business; setMe 
       const dataUrl = await shrinkToSquare(file);
       const { ok, data } = await api('/api/me/avatar', { method: 'POST', body: JSON.stringify({ dataUrl }) });
       if (!ok) { pop('err', 'Could not save your photo', (data && data.error) || 'Please try again.'); return; }
-      setMe({ ...biz, avatar_url: data.avatar_url }); // swap the whole object so Shell's avatar updates too
+      setMe({ ...biz, avatar_url: data.avatar_url, avatar_emoji: null }); // swap the whole object so Shell's avatar updates too
       pop('ok', 'Profile picture updated', 'Customers and your topbar see it right away.');
     } catch {
       pop('err', 'Could not read that picture', 'Try another image (JPG or PNG works best).');
+    } finally { setPhotoBusy(false); }
+  }
+
+  async function pickEmoji(emoji) {
+    setPhotoBusy(true);
+    try {
+      const { ok, data } = await api('/api/me/avatar-emoji', { method: 'POST', body: JSON.stringify({ emoji }) });
+      if (!ok) { pop('err', 'Could not save your avatar', (data && data.error) || 'Please try again.'); return; }
+      setMe({ ...biz, avatar_emoji: emoji, avatar_url: emoji ? null : biz?.avatar_url });
     } finally { setPhotoBusy(false); }
   }
 
@@ -183,12 +193,12 @@ export default function Settings({ biz, setMe }) { // biz = the business; setMe 
 
   return (
     <>
-      <div className="page-head"><div><h1>Settings</h1><p>Your account, your plan, and the switches that change how VeloSales Ai behaves.</p></div></div>
+      {!embedded && <div className="page-head"><div><h1>Settings</h1><p>Your account, your plan, and the switches that change how VeloSales Ai behaves.</p></div></div>}
       <div className="set-col">
 
         {/* ── who you are ─────────────────────────────────────────────── */}
         <div className="set-profile">
-          <div className="set-av">{biz?.avatar_url ? <img src={biz.avatar_url} alt={name} /> : initial}</div>
+          <div className="set-av">{biz?.avatar_url ? <img src={biz.avatar_url} alt={name} /> : biz?.avatar_emoji ? <span className="set-emoji" aria-hidden="true">{biz.avatar_emoji}</span> : initial}</div>
           <div className="set-who"><b>{name}</b><span>{handle}</span></div>
           <button className="set-edit" onClick={() => fileRef.current && fileRef.current.click()} disabled={photoBusy} title="Change profile picture" aria-label="Change profile picture">
             {photoBusy ? <Loader size={16} /> : <Ic k="pencil" />}
@@ -199,6 +209,16 @@ export default function Settings({ biz, setMe }) { // biz = the business; setMe 
         {biz?.avatar_url && (
           <div className="set-under"><button onClick={removePhoto} disabled={photoBusy}>Remove photo</button></div>
         )}
+        <div className="set-group" data-guide="avatars">
+          <h2>Pick an avatar</h2>
+          <p className="set-sub">Chosen for {biz?.business_niche ? 'your kind of business' : 'shops'}. Or tap the pencil above to use a photo.</p>
+          <div className="av-grid" role="radiogroup" aria-label="Avatar">
+            {avatarsFor(biz?.business_niche).map((e) => (
+              <button key={e} type="button" role="radio" aria-checked={biz?.avatar_emoji === e && !biz?.avatar_url} className={'av-pick' + (biz?.avatar_emoji === e && !biz?.avatar_url ? ' on' : '')} disabled={photoBusy} onClick={() => pickEmoji(e)} aria-label={'Use ' + e + ' as your avatar'}>{e}</button>
+            ))}
+            {biz?.avatar_emoji && <button type="button" className="av-pick clear" disabled={photoBusy} onClick={() => pickEmoji(null)}>Use my initial</button>}
+          </div>
+        </div>
 
         {/* ── group one: the switches ──────────────────────────────────── */}
         <div className="set-group">
@@ -226,19 +246,19 @@ export default function Settings({ biz, setMe }) { // biz = the business; setMe 
               <div className="set-main"><b>Plan &amp; billing</b><span>See what you are on, and what a paid plan unlocks.</span></div>
               <span className="set-tail"><span className="hint">{plan}</span><Ic k="chev" /></span>
             </Link>
-            <Link className="set-row" to="/profile">
+            {!embedded && <Link className="set-row" to="/profile">
               <span className="set-ic"><Ic k="store" /></span>
               <div className="set-main"><b>Business details</b><span>Shop name, WhatsApp number, opening hours and FAQs.</span></div>
               <span className="set-tail"><Ic k="chev" /></span>
-            </Link>
-            <Link className="set-row" to="/ai-settings">
+            </Link>}
+            {!embedded && <Link className="set-row" to="/ai-settings">
               <span className="set-ic m"><Ic k="sliders" /></span>
               <div className="set-main"><b>AI settings</b><span>How your assistant talks, and how far it may negotiate.</span></div>
               <span className="set-tail"><Ic k="chev" /></span>
-            </Link>
+            </Link>}
             <Link className="set-row" to="/help">
               <span className="set-ic w"><Ic k="help" /></span>
-              <div className="set-main"><b>Help &amp; support</b><span>Guides, answers, and how to reach a human.</span></div>
+              <div className="set-main"><b>Help Center</b><span>Picture guides, answers, and how to reach a person.</span></div>
               <span className="set-tail"><Ic k="chev" /></span>
             </Link>
           </div>

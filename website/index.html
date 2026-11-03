@@ -130,8 +130,7 @@
     <h2>Use it in your browser today. Android is in testing.</h2>
     <p class="lede">The web app installs to your home screen in one tap. Leave your email and we'll tell you when the Android app is ready.</p>
   </div>
-  <form class="notify" name="launch-notify" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="/thanks/">
-    <input type="hidden" name="form-name" value="launch-notify">
+  <form class="notify" name="launch-notify" method="POST" action="https://api.velosalesai.com.ng/api/auth/waitlist">
     <p class="hidden"><label>Leave this empty <input name="bot-field"></label></p>
     <label class="sr" for="notify-email">Email</label>
     <input id="notify-email" type="email" name="email" placeholder="you@example.com" required autocomplete="email">

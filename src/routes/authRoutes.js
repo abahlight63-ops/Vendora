@@ -25,4 +25,23 @@ router.post('/google', authLimiter, authController.google); // { credential } �
 router.post('/google-signup', authLimiter, authController.googleSignup); // { credential, name, whatsapp_number… } → full account + session (same: Google credential proves humanity!)
 router.get('/check-referral', authLimiter, authController.checkReferral); // ?code= → live reward preview on the signup form (rate-limited like auth!)
 
+// Marketing site "Notify me" form (velosalesai.com.ng). A plain HTML form post,
+// so it answers with a redirect to the site's thanks page, not JSON. Saving the
+// same email twice is fine (ON CONFLICT DO NOTHING).
+router.post('/waitlist', authLimiter, async (req, res) => {
+  const site = 'https://velosalesai.com.ng';
+  const email = String((req.body && req.body.email) || '').trim().toLowerCase().slice(0, 200);
+  const bot = String((req.body && req.body['bot-field']) || '');
+  const wantsJson = String(req.headers.accept || '').includes('application/json');
+  if (bot) return wantsJson ? res.json({ ok: true }) : res.redirect(303, site + '/thanks/');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return wantsJson ? res.status(400).json({ error: 'Enter a valid email.' }) : res.redirect(303, site + '/#getapp');
+  try {
+    await require('../db').query('INSERT INTO launch_waitlist (email) VALUES ($1) ON CONFLICT (email) DO NOTHING', [email]);
+  } catch (e) {
+    console.error('waitlist save failed:', e.message);
+    return wantsJson ? res.status(500).json({ error: 'Could not save. Try again.' }) : res.redirect(303, site + '/#getapp');
+  }
+  return wantsJson ? res.json({ ok: true }) : res.redirect(303, site + '/thanks/');
+});
+
 module.exports = router; // server.js does app.use('/api/auth', authRoutes)

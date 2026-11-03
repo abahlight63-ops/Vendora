@@ -284,6 +284,12 @@ CREATE TABLE IF NOT EXISTS complaints (
 );
 CREATE INDEX IF NOT EXISTS idx_complaints_business ON complaints(business_id);
 
+-- Phone-app launch list: emails left on the marketing site's "Notify me" form
+CREATE TABLE IF NOT EXISTS launch_waitlist (
+  email TEXT PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- In-app notifications: the topbar bell (payment events auto, app updates via broadcast)
 CREATE TABLE IF NOT EXISTS notifications (
   id SERIAL PRIMARY KEY,

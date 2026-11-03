@@ -7,7 +7,8 @@
 import { useEffect, useState } from 'react'; // useState = stats/extra/copied; useEffect = load-once
 import { Link } from 'react-router-dom'; // back-to-dashboard link
 import { api, toast } from '../lib/api.js'; // api() calls; toast() copy feedback
-import Ic from '../components/icons.jsx'; // gift/check/send icons
+import Ic from '../components/icons.jsx';
+import { CHANNEL_COINS } from '../lib/channelLogos.js'; // gift/check/send icons
 
 const naira = (kobo) => '₦' + (Number(kobo || 0) / 100).toLocaleString(); // minor → major (ledger stores kobo!)
 
@@ -74,74 +75,92 @@ export default function ReferEarn() {
     { v: Number(s.paying) || 0, l: 'Paying', sub: 'Earning you airtime' },
     { v: `${Number(s.daysEarned) || 0}d`, l: 'Pro earned', sub: 'Banked on your account', tone: 'good' },
   ];
+  const qualified = Number(s.qualified) || 0;
+  const paying = Number(s.paying) || 0;
+  const towards = paying % safeMilestone;
+  const left = Number(s.nextMilestoneIn) || (safeMilestone - towards);
+  const ring = 2 * Math.PI * 22;
+  const days = s.quizDays || 14;
+  const prize = naira(s.milestoneAmount || 50000);
+  const leaders = (x && Array.isArray(x.leaders)) ? x.leaders.slice(0, 3) : [];
+  const podium = [[leaders[1], 2], [leaders[0], 1], [leaders[2], 3]]; // the winner stands in the middle
+  const endOfMonth = (() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate() - n.getDate(); })();
   return (
-    <div className="page">
-      {head}
+    <div className="re2">
+      <section className="re2-hero">
+        <div className="re2-hero-copy">
+          <span className="re2-eyebrow"><Ic n="gift" s={15} />Refer &amp; Earn</span>
+          <h1>Give {days} Pro days.<br />Get {days} Pro days.</h1>
+          <p>When a friend joins with your code and starts using Velo, you both get {days} days of Pro. Every {safeMilestone}th friend who pays earns you {prize} airtime.</p>
+        </div>
+        <div className="re2-hero-side">
+          <div className="re2-ticket">
+            <span className="re2-perf" aria-hidden="true" />
+            <div className="re2-ticket-main"><small>YOUR CODE</small><code>{s.code}</code><span>{link.replace(/^https?:\/\//, '')}</span></div>
+            <button type="button" className="re2-ticket-copy" onClick={() => copy(s.code, 'code')} aria-label="Copy code"><Ic n={copied === 'code' ? 'check' : 'copy'} s={22} />{copied === 'code' ? 'Copied' : 'Copy'}</button>
+          </div>
+          <div className="re2-shares">
+            <a className="re2-share wa" href={'https://wa.me/?text=' + encodeURIComponent(text)} target="_blank" rel="noreferrer"><svg width="24" height="24" viewBox="0 0 64 64" aria-hidden="true" dangerouslySetInnerHTML={{ __html: CHANNEL_COINS.whatsapp }} />Share on WhatsApp</a>
+            <button type="button" className="re2-share ghost" onClick={() => copy(link, 'link')}><Ic n={copied === 'link' ? 'check' : 'copy'} s={18} />{copied === 'link' ? 'Link copied' : 'Copy link'}</button>
+          </div>
+        </div>
+      </section>
 
-      <div className="re-hero">
-        <div className="re-hero-main">
-          <span className="re-eyebrow">Your invite code</span>
-          <div className="re-code">
-            <code>{s.code}</code>
-            <button className="re-ic-btn" onClick={() => copy(s.code, 'code')} aria-label="Copy code"><Ic n={copied === 'code' ? 'check' : 'copy'} s={16} /></button>
+      <div className="re2-row">
+        <section className="glass re2-card">
+          <div className="re2-card-head"><h2>Your friends so far</h2><span>Updates live</span></div>
+          <div className="re2-steps">
+            {[[totalInvited, 'Joined with your code', 'a'], [qualified, 'Started using', 'b'], [paying, 'Paying', 'c'], [(Number(s.daysEarned) || 0) + 'd', 'Pro days earned', 'd']].map(([v, l, k]) => (
+              <div key={l} className="re2-step"><b className={'re2-n ' + k}>{v}</b><span>{l}</span></div>
+            ))}
           </div>
-          <p className="re-hero-line">A friend joins with your code and <b>starts using</b> — connects a channel or sends the first chat — and <b>you both</b> get {s.quizDays || 14} Pro days. Real Pro everywhere, costs you nothing.</p>
-          <div className="re-hero-actions">
-            <a className="btn re-share" href={'https://wa.me/?text=' + encodeURIComponent(text)} target="_blank" rel="noreferrer"><Ic n="send" s={15} />Share on WhatsApp</a>
-            <button className="btn re-ghost" onClick={() => copy(link, 'link')}><Ic n={copied === 'link' ? 'check' : 'copy'} s={15} />{copied === 'link' ? 'Link copied' : 'Copy invite link'}</button>
+        </section>
+        <section className="glass re2-card re2-next">
+          <div className="re2-ring">
+            <svg viewBox="0 0 56 56" width="120" height="120" aria-hidden="true"><defs><linearGradient id="re2-rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#4F3FC7" /><stop offset="1" stopColor="#D03C16" /></linearGradient></defs><circle cx="28" cy="28" r="22" fill="none" stroke="var(--ring-track)" strokeWidth="6" /><circle cx="28" cy="28" r="22" fill="none" stroke="url(#re2-rg)" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(towards / safeMilestone) * ring} ${ring}`} transform="rotate(-90 28 28)" /></svg>
+            <b>{towards}/{safeMilestone}</b>
           </div>
-        </div>
-        <div className="re-hero-side">
-          <span className="re-earn-lbl">Airtime earned</span>
-          <div className="re-earn">{naira(s.airtimeDue)}{s.airtimeDue > 0 ? <span className="re-earn-flag">on the way</span> : null}</div>
-          <div className="re-bar"><i style={{ width: `${pct}%` }} /></div>
-          <p className="re-earn-sub">{Number(s.nextMilestoneIn) || 0} more paying {Number(s.nextMilestoneIn) === 1 ? 'friend' : 'friends'} to {naira(s.milestoneAmount)} airtime</p>
-        </div>
+          <div><span className="re2-lbl">{Number(s.airtimeDue) > 0 ? 'Airtime on the way' : 'Next airtime'}</span><strong>{Number(s.airtimeDue) > 0 ? naira(s.airtimeDue) : prize}</strong><p>{left} more paying {left === 1 ? 'friend' : 'friends'} to go.</p></div>
+        </section>
       </div>
 
-      <div className="re-stats">
-        {stats.map((t) => (
-          <div className="re-stat" key={t.l}><span className="re-stat-lbl">{t.l}</span><b className={'re-stat-num ' + (t.tone || '')}>{t.v}</b><span className="re-stat-sub">{t.sub}</span></div>
+      <div className="re2-rewards">
+        {[['gift', `${days} Pro days, both of you`, 'When a friend you invite starts using Velo.', 'indigo'], ['cash', `${prize} airtime`, `For every ${safeMilestone}th friend who pays for a plan.`, 'coral'], ['chart', 'Monthly champion', 'Top referrer each month wins a free Plus month.', 'plum']].map(([ic, t, d, c]) => (
+          <section key={t} className="glass re2-card re2-reward"><span className={'re2-reward-ic ' + c}><Ic n={ic} s={24} /></span><b>{t}</b><p>{d}</p></section>
         ))}
       </div>
 
-      <div className="grid3">
-        <div className="re-reward"><span className="re-reward-ic"><Ic n="gift" s={18} /></span><h3>{(s.quizDays || 14)} Pro days × 2</h3><p>Both shops get real Pro the moment your friend starts using the app.</p>{s.degraded ? <p className="hint">Stats refreshing — code works, counts syncing.</p> : null}</div>
-        <div className="re-reward"><span className="re-reward-ic gold"><Ic n="cash" s={18} /></span><h3>₦500 airtime</h3><p>Every {safeMilestone}th paying friend = ₦500 airtime. We track it, you get a bell, the card follows.</p></div>
-        <div className="re-reward"><span className="re-reward-ic"><Ic n="chart" s={18} /></span><h3>Monthly champion</h3><p>Top referrer each month wins a free Plus month and a shout-out.</p></div>
-      </div>
-
-      <div className="grid2" style={{ marginTop: 16, alignItems: 'start' }}>
-        <div className="card">
-          <div className="card-head"><h2>My rewards</h2><span className="hint">{s.daysEarned || 0} Pro days earned</span></div>
-          {!x || !Array.isArray(x.history) ? <div className="skel" style={{ height: 90 }} /> : x.history.length === 0 ? <div className="empty"><b>Nothing yet</b>Share your code above — every reward lands here the moment it is credited.</div> : (
-            <div className="re-rows">
+      <div className="re2-row even">
+        <section className="glass re2-card">
+          <div className="re2-card-head"><h2>This month&apos;s leaders</h2><span className="ch-chip hot">{endOfMonth} {endOfMonth === 1 ? 'day' : 'days'} left</span></div>
+          {!x ? <div className="skel" style={{ height: 160, marginTop: 16 }} /> : leaders.length === 0 ? <div className="pu-empty" style={{ marginTop: 16 }}><b>No paying referrals yet</b><span>Be the first name on this board.</span></div> : (
+            <div className="re2-podium">
+              {podium.map(([l, r]) => l ? (
+                <div key={r} className="re2-pod">
+                  <span className="re2-face">{String(l.name || '?')[0]}</span>
+                  <b>{l.name} · {l.paying}</b>
+                  <div className={'re2-blk p' + r}>{r}</div>
+                </div>
+              ) : <div key={r} />)}
+            </div>
+          )}
+        </section>
+        <section className="glass re2-card">
+          <div className="re2-card-head"><h2>My rewards</h2><span>{s.daysEarned || 0} Pro days earned</span></div>
+          {!x ? <div className="skel" style={{ height: 120, marginTop: 14 }} /> : x.history.length === 0 ? <div className="pu-empty" style={{ marginTop: 14 }}><b>Nothing yet</b><span>Share your code above. Every reward lands here the moment it is added.</span></div> : (
+            <div className="re2-list">
               {x.history.map((h, i) => (
-                <div key={i} className="re-row">
-                  <span className={'re-row-ic ' + (h.status === 'pending' ? 'gold' : '')}><Ic n={h.kind === 'airtime' ? 'cash' : h.kind === 'plus_month' ? 'chart' : 'gift'} s={16} /></span>
-                  <span className="re-row-main"><b>{kindName(h.kind)}{h.days ? ` +${h.days} days` : ''}{h.amount ? ` ${naira(h.amount)}` : ''}</b>{h.note ? <span>{h.note}</span> : null}</span>
-                  <span className={'pill ' + (h.status === 'pending' ? 'flag' : 'ok')}>{h.status || 'credited'}</span>
+                <div key={i} className="re2-item">
+                  <span className="pu-tile-ic"><Ic n={h.kind === 'airtime' ? 'cash' : h.kind === 'plus_month' ? 'chart' : 'gift'} s={18} /></span>
+                  <span className="re2-item-main"><b>{kindName(h.kind)}{h.days ? ` +${h.days} days` : ''}{h.amount ? ` ${naira(h.amount)}` : ''}</b>{h.note ? <small>{h.note}</small> : null}</span>
+                  <span className={'ch-chip ' + (h.status === 'pending' ? 'ready' : 'live')}>{h.status === 'pending' ? 'Waiting' : 'Added'}</span>
                 </div>
               ))}
             </div>
           )}
-        </div>
-        <div className="card">
-          <div className="card-head"><h2>This month's leaders</h2></div>
-          {!x || !Array.isArray(x.leaders) ? <div className="skel" style={{ height: 90 }} /> : x.leaders.length === 0 ? <div className="empty"><b>No paying referrals yet</b>Be the first name on this board.</div> : (
-            <div className="re-rows">
-              {x.leaders.map((l, i) => (
-                <div className={'re-row' + (i === 0 ? ' lead' : '')} key={i}>
-                  <span className={'re-medal' + (i < 3 ? ' m' + (i + 1) : '')}>{i + 1}</span>
-                  <span className="re-row-main"><b>{l.name}</b><span>{l.paying} paying referral{l.paying === 1 ? '' : 's'}</span></span>
-                  {i === 0 ? <span className="pill flag">Champion</span> : null}
-                </div>
-              ))}
-            </div>
-          )}
-          <p className="hint" style={{ marginTop: 12 }}>Anti-cheat on: self-referrals blocked, rewards gated behind a real setup, airtime only on paying shops.</p>
-        </div>
+        </section>
       </div>
+      <p className="re2-fine">Self-referrals are blocked, rewards need a real setup, and airtime is only for paying shops.</p>
     </div>
   );
 }

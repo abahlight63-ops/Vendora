@@ -155,7 +155,7 @@ export default function Dashboard({ biz }) { // biz = business object from App (
         </div>
         <div className="dg-head-actions">
           <Link className="btn ghost lg" to="/catalog"><Ic n="plus" s={18} />Add product</Link>
-          <Link className="btn lg btn-go" to="/playground">Test your bot<span className="btn-go-ic"><Arrow /></span></Link>
+          <Link className="btn lg btn-go" to="/playground">Test Drive<span className="btn-go-ic"><Arrow /></span></Link>
         </div>
       </div>
 

@@ -303,21 +303,22 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
         </header>
         <div className="auth-pane" key={mode}> {/* RIGHT: the form. key={mode} = React REMOUNTS on mode switch (fresh animations + no stale input focus — key change = new element!) */}
           {mode === 'otp' ? (<> {/* OTP screen: verify path signs in · reset path sets a NEW password (purpose flag switches it!) */}
-            <h1>{otpPurpose === 'reset' ? 'Set a new password' : 'Check your email'}</h1>
-            <p className="switch-note">We sent a 6-digit code to <b>{otpEmail}</b>. It expires in 10 minutes.{otpPurpose === 'reset' ? ' Enter it with your new password below.' : ''}</p>
-            <div className="otp-help">
-              <b>📧 Code not in your inbox?</b>
-              <span>Our sending domain is new, so the mail can land in <b>Spam</b> or <b>Promotions</b> — please check there first, then wait ~2 minutes.</span>
+            <span className="au-badge mail" aria-hidden="true"><svg width="38" height="38" viewBox="0 0 24 24"><path fill="none" stroke="#fff" strokeWidth="2" strokeLinejoin="round" d="M3 5h18v14H3zM4 7l8 6 8-6" /></svg></span>
+            <h1 className="au-center">{otpPurpose === 'reset' ? 'Set a new password' : 'Check your email'}</h1>
+            <p className="switch-note au-center">We sent a 6-digit code to<br /><b>{otpEmail}</b>{otpPurpose === 'reset' ? '. Enter it with your new password below.' : ''}</p>
+            <label className="au-sr" htmlFor="otp-in">6-digit code</label>
+            <div className="otp-boxes" aria-hidden="true" onClick={() => document.getElementById('otp-in')?.focus()}>
+              {[0, 1, 2, 3, 4, 5].map((k) => <span key={k} className={(otp.length === k ? 'cur' : '') + (otp[k] ? ' full' : '')}>{otp[k] || ''}</span>)}
             </div>
-            <label>6-digit code</label>
-            <input className="otp-input" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="••••••" inputMode="numeric" autoComplete="one-time-code" maxLength={6} onKeyDown={(e) => { if (e.key === 'Enter') verifyOtp(); }} /> {/* replace(/\D/g) strips non-digits AS YOU TYPE (paste-friendly!); autoComplete="one-time-code" = phones offer SMS-style autofill! */}
+            <input id="otp-in" className="otp-input otp-hidden" autoFocus value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="••••••" inputMode="numeric" autoComplete="one-time-code" maxLength={6} onKeyDown={(e) => { if (e.key === 'Enter') verifyOtp(); }} /> {/* replace(/\D/g) strips non-digits AS YOU TYPE (paste-friendly!); autoComplete="one-time-code" = phones offer SMS-style autofill! */}
             {otpPurpose === 'reset' && (<> {/* reset path: new password lives WITH the code (one submit, no token juggling!) */}
               <label>New password</label>
               <input type="password" value={rpw} onChange={(e) => setRpw(e.target.value)} placeholder="8+ characters" autoComplete="new-password" onKeyDown={(e) => { if (e.key === 'Enter') verifyOtp(); }} />
               <label>Repeat new password</label>
               <input type="password" value={rpw2} onChange={(e) => setRpw2(e.target.value)} placeholder="Same password again" autoComplete="new-password" onKeyDown={(e) => { if (e.key === 'Enter') verifyOtp(); }} />
             </>)}
-            <button className="btn lg login-cta" disabled={busy} onClick={verifyOtp}>{busy ? (<><Loader size={15} />Checking…</>) : otpPurpose === 'reset' ? 'Set password' : 'Verify'}</button>
+            <p className="otp-tip"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="#FCD34D" strokeWidth="2" strokeLinejoin="round" d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /></svg><span>Check Spam or Promotions too. The code works for 10 minutes.</span></p>
+            <button className="btn lg login-cta" disabled={busy} onClick={verifyOtp}>{busy ? (<><Loader size={15} />Checking</>) : otpPurpose === 'reset' ? 'Set password' : 'Verify'}</button>
             <div className="otp-fallback">
               <button type="button" className="btn ghost" disabled={busy || cool > 0} onClick={resendCode}>{cool > 0 ? `Resend code in ${cool}s` : 'Resend code'}</button>
               <button type="button" className="btn ghost" disabled={busy} onClick={sendLink}>Send a verification link instead</button>
@@ -325,8 +326,9 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
             <p className="hint" style={{ textAlign: 'center', marginTop: 8 }}>The link does the same job as the code — pick whichever arrives first. Both expire; the newest one wins.</p>
             <p className="auth-toggle"><a onClick={() => switchMode('login')}>Back to sign in</a></p>
           </>) : mode === 'forgot' ? (<> {/* FORGOT screen: email → reset link (always "sent" — enumeration-safe!) */}
-            <h1>Reset password</h1>
-            <p className="switch-note">Enter your account email — if it exists, a 1-hour reset link is on its way.</p>
+            <span className="au-badge key" aria-hidden="true"><svg width="38" height="38" viewBox="0 0 24 24"><path fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" d="M8 15a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM11 12h9M17 12v3M20 12v2" /></svg></span>
+            <h1 className="au-center">Forgot your password?</h1>
+            <p className="switch-note au-center">No wahala. Enter your email and we'll send a code or a link to set a new one.</p>
             <label>Email</label>
             <input value={f.email} onChange={set('email')} type="email" placeholder="you@business.com" autoComplete="email" onKeyDown={(e) => { if (e.key === 'Enter') forgotSend(); }} />
             <button className="btn lg login-cta" disabled={busy} onClick={forgotSend}>{busy ? (<><Loader size={15} />Sending…</>) : 'Send reset link'}</button>

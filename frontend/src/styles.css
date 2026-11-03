@@ -3542,3 +3542,19 @@ body { min-height: 100vh; min-height: 100dvh; } /* the colour field must reach t
 @media (prefers-reduced-motion: reduce) { .ob2-step { animation: none; } .ob2-tile, .ob2-choice, .ob2-plan { transition: none; } }
 .ob2-foot { margin: 0 -16px; padding: 22px 16px 0; background: linear-gradient(180deg, rgba(255, 239, 234, 0), var(--page-base) 40%); }
 [data-theme="dark"] .ob2-foot { background: linear-gradient(180deg, rgba(42, 33, 112, 0), var(--page-base) 40%); }
+
+/* ── email code and forgot password ── */
+.au-badge { display: flex; align-items: center; justify-content: center; width: 84px; height: 84px; margin: 4px auto 18px; border-radius: 28px; }
+.au-badge.mail { background: linear-gradient(145deg, #ff7650, #d03c16); box-shadow: 0 20px 40px rgba(208, 60, 22, 0.45); }
+.au-badge.key { background: linear-gradient(145deg, #9c8ffa, #4f3fc7); box-shadow: 0 20px 40px rgba(79, 63, 199, 0.45); }
+.au .auth-pane h1.au-center, .au .auth-pane .au-center { text-align: center; }
+.au-sr { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.otp-boxes { display: flex; justify-content: center; gap: 10px; margin: 6px 0 4px; cursor: text; }
+.otp-boxes span { display: flex; align-items: center; justify-content: center; width: 50px; height: 62px; border-radius: 16px; background: #fff; color: #1e1757; font-size: 26px; font-weight: 700; border: 1.5px solid rgba(255, 255, 255, 0.3); }
+.otp-boxes span.cur { border-color: #d03c16; box-shadow: 0 0 0 4px rgba(208, 60, 22, 0.25); }
+.otp-boxes span.cur::after { content: ''; width: 2px; height: 28px; background: #d03c16; animation: otpBlink 1s step-end infinite; }
+@keyframes otpBlink { 50% { opacity: 0; } }
+.au .otp-input.otp-hidden { position: absolute; opacity: 0; width: 1px; height: 1px; min-height: 0; padding: 0; border: 0; }
+.otp-tip { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 12px 14px; border-radius: 18px; background: rgba(255, 255, 255, 0.1); color: #fff; font-size: 13.5px; }
+@media (max-width: 380px) { .otp-boxes { gap: 6px; } .otp-boxes span { width: 44px; height: 56px; } }
+@media (prefers-reduced-motion: reduce) { .otp-boxes span.cur::after { animation: none; } }

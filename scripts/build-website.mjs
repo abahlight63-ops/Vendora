@@ -21,7 +21,7 @@ const SIGNUP = APP + '/login?mode=signup';
 const SIGNIN = APP + '/login';
 const EMAIL = 'velosales63@gmail.com';
 const VERIFY = 'BFuzp4Yg1ikNpWscJ6hz8A04ymD2OiGZCsjeoDPr4P8';
-const UPDATED = '2026-11-03b';
+const UPDATED = '2026-11-03c';
 const SOON = '<span class="soon">Coming soon</span>';
 
 // ── facts (keep in step with Billing and the app's FAQ) ──
@@ -98,7 +98,11 @@ const NAME = { whatsapp: 'WhatsApp', telegram: 'Telegram', messenger: 'Messenger
 const coin = (k, s = 40) => `<svg width="${s}" height="${s}" viewBox="0 0 64 64" role="img" aria-label="${NAME[k]}"><circle cx="32" cy="32" r="32" fill="${COLOR[k]}"/>${GLYPH[k]}</svg>`;
 const CH = ['whatsapp', 'telegram', 'messenger', 'instagram'];
 const blob = (k, cls) => `<span class="blob3 b-${k} ${cls}" aria-hidden="true"><svg viewBox="0 0 64 64">${GLYPH[k]}</svg></span>`;
-const shot = (name, alt, w = 1280, h = 800, eager = false) => `<img src="/assets/app/${name}.jpg" width="${w}" height="${h}" alt="${esc(alt)}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">`;
+// Desktop screenshots (-d) swap to the phone screenshot (-p) on phones, so a phone visitor sees the phone app.
+const shot = (name, alt, w = 1280, h = 800, eager = false) => {
+  const img = `<img src="/assets/app/${name}.jpg" width="${w}" height="${h}" alt="${esc(alt)}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">`;
+  return name.endsWith('-d') ? `<picture><source media="(max-width: 640px)" srcset="/assets/app/${name.slice(0, -2)}-p.jpg" width="390" height="760">${img}</picture>` : img;
+};
 const phone = (name, alt) => `<div class="phone">${shot(name, alt, 390, 760)}</div>`;
 
 // ── structured data ──
@@ -123,7 +127,7 @@ function frame({ path, title, desc, body, ld = [], noindex = false, ogTitle }) {
 <link rel="canonical" href="${url}">
 <meta name="robots" content="${noindex ? 'noindex,follow' : 'index,follow,max-image-preview:large,max-snippet:-1'}">
 <meta name="theme-color" content="#07041F">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="dark light">
 <meta name="google-site-verification" content="${VERIFY}">
 <meta property="og:site_name" content="VeloSales Ai">
 <meta property="og:locale" content="en_NG">
@@ -147,7 +151,7 @@ function frame({ path, title, desc, body, ld = [], noindex = false, ogTitle }) {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="/styles.css?v=${UPDATED}">
-<script>document.documentElement.className='js'</script>
+<script>(function(d){d.className='js';try{var t=localStorage.getItem('vs-theme');if(t==='light'||t==='dark')d.setAttribute('data-theme',t)}catch(e){}})(document.documentElement)</script>
 <script type="application/ld+json">${JSON.stringify(graph)}</script>
 </head>
 <body>
@@ -159,6 +163,7 @@ function frame({ path, title, desc, body, ld = [], noindex = false, ogTitle }) {
     ${NAV.map(([h, t]) => `<a href="${h}"${h === path ? ' aria-current="page"' : ''}>${t}</a>`).join('\n    ')}
     <a class="pill line nav-in" href="${SIGNIN}">Sign in</a>
   </nav>
+  <button class="theme" type="button" aria-label="Switch to light mode" title="Light or dark"><svg class="ic sun" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg><svg class="ic moon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button>
   <a class="pill coral nav-go" href="${SIGNUP}">Start free</a>
   <button class="nav-menu" type="button" aria-controls="nav-links" aria-expanded="false" aria-label="Open menu">${ic('menu', 22)}</button>
 </header>
@@ -455,7 +460,7 @@ for (const [p, html] of Object.entries(pages)) {
 }
 writeFileSync(join(OUT, '404.html'), notFound, 'utf8');
 mkdirSync(join(OUT, 'assets', 'app'), { recursive: true });
-for (const n of ['chats-1-d', 'chats-2-d', 'connect-2-d', 'products-2-d', 'products-3-d', 'test-2-d', 'voice-1-d', 'plans-2-d', 'chats-1-p', 'chats-2-p', 'test-2-p']) {
+for (const n of ['chats-1', 'chats-2', 'connect-2', 'products-2', 'products-3', 'test-2', 'voice-1', 'plans-2'].flatMap((x) => [x + '-d', x + '-p'])) {
   const src = join(ROOT, 'frontend', 'public', 'help', n + '.jpg');
   if (existsSync(src)) copyFileSync(src, join(OUT, 'assets', 'app', n + '.jpg'));
 }

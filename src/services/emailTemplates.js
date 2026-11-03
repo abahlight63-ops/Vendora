@@ -100,9 +100,9 @@ function layout(o) {
     : '';
   const code = o.code
     ? `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:22px 0;border-collapse:separate;">
-        <tr><td align="center" style="background:#EFEBFE;border:1px solid #CFC6F8;border-radius:16px;padding:22px 12px 18px;">
-          <div style="font-size:10px;font-weight:800;color:#5B4BD6;letter-spacing:3px;margin-bottom:10px;">${esc(o.codeLabel || 'YOUR CODE')}</div>
-          <div style="font-size:40px;line-height:1.1;font-weight:800;letter-spacing:12px;color:#3B2E9E;-webkit-user-select:all;user-select:all;">${esc(o.code)}</div>
+        <tr><td align="center" style="background:#FFF1EC;border:2px dashed #FF8A6B;border-radius:20px;padding:22px 12px 18px;">
+          <div style="font-size:11px;font-weight:800;color:#B83412;letter-spacing:2px;margin-bottom:10px;">${esc(o.codeLabel || 'YOUR CODE')}</div>
+          <div style="font-size:40px;line-height:1.1;font-weight:800;letter-spacing:12px;color:#D03C16;-webkit-user-select:all;user-select:all;">${esc(o.code)}</div>
           <div style="font-size:12px;color:#6B6885;margin-top:10px;">${esc(o.codeHint || 'Tap and hold the code to copy it')}</div>
         </td></tr>
       </table>`
@@ -133,38 +133,28 @@ function layout(o) {
     }
   </style>
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">${esc(o.preheader || o.intro || '')}</div>
-  <table role="presentation" class="vs-outer" width="100%" cellpadding="0" cellspacing="0" style="background:#F2F1F8;border-collapse:collapse;">
+  <table role="presentation" class="vs-outer" width="100%" cellpadding="0" cellspacing="0" style="background:#F3EEFB;border-collapse:collapse;">
     <tr><td align="center" style="padding:30px 12px;">
-      <table role="presentation" class="vs-card" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;border:1px solid #E7E5F0;border-radius:20px;border-collapse:separate;overflow:hidden;font-family:'Manrope',-apple-system,'Segoe UI',Roboto,Arial,sans-serif;">
+      <table role="presentation" class="vs-card" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;border:0;border-radius:28px;box-shadow:0 20px 50px rgba(30,23,87,.12);border-collapse:separate;overflow:hidden;font-family:'Manrope',-apple-system,'Segoe UI',Roboto,Arial,sans-serif;">
 
-        <!-- ── brand row: circular mark + name + Official + real From address ── -->
-        <tr><td style="background:#221A56;padding:26px 26px 24px;">
-          <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-            <tr>
-              <td width="54" valign="middle">
-                <img src="${base}/email-logo.png" alt="VeloSales Ai" width="52" height="52" style="display:block;width:52px;height:52px;border-radius:50%;border:0;" />
-              </td>
-              <td valign="middle" style="padding-left:14px;">
-                <div style="color:#F4F2FE;font-size:17px;font-weight:800;letter-spacing:-.2px;line-height:1.3;">
-                  VeloSales Ai&nbsp;<span style="display:inline-block;background:#5B4BD6;color:#ffffff;font-size:9px;font-weight:800;letter-spacing:1.4px;padding:3px 7px;border-radius:999px;vertical-align:2px;">✓ OFFICIAL</span>
-                </div>
-                <div style="color:#C6C0EA;font-size:12px;line-height:1.5;margin-top:2px;">&lt;${esc(fromEmail)}&gt;</div>
-              </td>
-            </tr>
-          </table>
+        <!-- ── brand header: violet gradient, centred logo and name, the real sender underneath ── -->
+        <tr><td align="center" style="background-color:#3A2A9A;background-image:linear-gradient(150deg,#4F3FC7,#2A1C7A);padding:30px 24px 26px;">
+          <img src="${base}/email-logo.png" alt="VeloSales Ai" width="56" height="56" style="display:block;margin:0 auto;width:56px;height:56px;border-radius:50%;border:0;" />
+          <div style="color:#ffffff;font-size:18px;font-weight:800;letter-spacing:-.2px;margin-top:12px;">VeloSales Ai</div>
+          <div style="color:#D4CEF7;font-size:12px;margin-top:4px;">${esc(fromEmail)}</div>
         </td></tr>
 
         <!-- ── message ── -->
-        <tr><td style="padding:30px 28px 6px;">
-          <h1 class="vs-title" style="margin:0 0 12px;color:#171532;font-size:24px;line-height:1.25;font-weight:800;letter-spacing:-.4px;">${o.title}</h1>
-          <p class="vs-copy" style="margin:0 0 16px;color:#4A4763;font-size:15px;line-height:1.7;">${o.intro}</p>
+        <tr><td style="padding:32px 32px 6px;">
+          <h1 class="vs-title" style="margin:0 0 12px;color:#1E1757;font-size:26px;line-height:1.2;font-weight:800;letter-spacing:-.5px;text-align:center;">${o.title}</h1>
+          <p class="vs-copy" style="margin:0 0 16px;color:#3F3A63;font-size:15.5px;line-height:1.7;text-align:center;">${o.intro}</p>
           ${code}
           ${rows}
           ${o.body || ''}
-          ${o.ctaLabel && o.ctaLink ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px auto 10px;border-collapse:separate;"><tr><td align="center" style="background:#4F3FC7;border-radius:999px;">
-            <a href="${o.ctaLink}" style="display:inline-block;padding:15px 34px;color:#ffffff;text-decoration:none;font-weight:800;font-size:15px;letter-spacing:.1px;">${esc(o.ctaLabel)}</a>
+          ${o.ctaLabel && o.ctaLink ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px auto 10px;border-collapse:separate;"><tr><td align="center" style="background:#D03C16;border-radius:999px;box-shadow:0 10px 22px rgba(208,60,22,.3);">
+            <a href="${o.ctaLink}" style="display:inline-block;padding:16px 36px;color:#ffffff;text-decoration:none;font-weight:800;font-size:15px;letter-spacing:.1px;">${esc(o.ctaLabel)}</a>
           </td></tr></table>` : ''}
-          ${o.foot ? `<p class="vs-copy" style="margin:16px 0 0;color:#6B6885;font-size:12.5px;line-height:1.7;">${o.foot}</p>` : ''}
+          ${o.foot ? `<p class="vs-copy" style="margin:18px 0 0;color:#5F5A7D;font-size:13px;line-height:1.7;text-align:center;">${o.foot}</p>` : ''}
         </td></tr>
 
         <!-- ── living footer: the same "working" language as the app loader ── -->
@@ -183,7 +173,7 @@ function layout(o) {
               </table>
               <table role="presentation" width="150" cellpadding="0" cellspacing="0" align="center" style="width:150px;margin-top:12px;border-collapse:separate;">
                 <tr><td class="vs-track" style="background:#EFEBFE;border-radius:999px;height:5px;overflow:hidden;">
-                  <table role="presentation" width="38%" cellpadding="0" cellspacing="0" style="width:38%;border-collapse:collapse;"><tr><td class="vs-bar" style="background:#5B4BD6;height:5px;border-radius:999px;font-size:0;line-height:0;">&nbsp;</td></tr></table>
+                  <table role="presentation" width="38%" cellpadding="0" cellspacing="0" style="width:38%;border-collapse:collapse;"><tr><td class="vs-bar" style="background:#D03C16;height:5px;border-radius:999px;font-size:0;line-height:0;">&nbsp;</td></tr></table>
                 </td></tr>
               </table>
               <div style="color:#6B6885;font-size:11px;margin-top:10px;">Always answering — even while you read this.</div>

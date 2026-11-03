@@ -1,215 +1,266 @@
 // ── frontend/src/pages/Insights.jsx ──────────────────────────────
-// WHAT: analytics with forex-style charts — KPI strip, 14-day chat volume
-// (line chart), AI-vs-you donut, resolution sparkline, 24h peak-hours bars,
-// the INACTIVITY RECORD (customers who have gone quiet, banded by how long,
-// with a one-tap WhatsApp nudge) and flag reasons as horizontal bars (the
-// money chart: fix these catalog gaps → AI handles more → fewer lost sales).
-// DATA: crunches /api/me/conversations client-side (100 latest — buckets by
-// updated_at day/hour, so every pixel is REAL shop history). Nothing invented.
-import { useEffect, useState } from 'react'; // useState = stats object; useEffect = fetch+crunch on mount
-import { Link } from 'react-router-dom'; // deep-links (flag card → inbox!)
+// WHAT: the shop's numbers, laid out like the approved design: a 7 or 14 day
+// switch, a channel filter (All, WhatsApp, Telegram, Messenger, Instagram), four
+// headline numbers, chats each day (today in coral), who answered, busiest hours
+// (peak in coral), why customers needed you, customers going quiet, and a
+// by-channel split.
+// DATA: crunches /api/me/conversations client-side, so every number is real shop
+// history. A chat with no channel saved is a WhatsApp chat (the first channel).
+// Nothing is invented: a channel with no chats says so.
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { api } from '../lib/api.js';
+import { describeLoadFailure, describeNetError } from '../lib/netDetail.js';
+import LoadFailed from '../components/LoadFailed.jsx';
+import { CHANNEL_COINS } from '../lib/channelLogos.js';
 
-import { api } from '../lib/api.js'; // conversations fetch
-
-import { describeLoadFailure, describeNetError } from '../lib/netDetail.js'; // one voice for load failures
-import LoadFailed from '../components/LoadFailed.jsx'; // branded failed card + Retry (never eternal dashes!)
-import { ForexChart, Spark } from '../components/Chart.jsx'; // forex line + sparkline (zero deps!)
-
-function dayKey(t) { // local YYYY-MM-DD (toISOString is UTC — would bucket wrong near midnight!)
+const DAY = 86400000;
+const CHANS = [
+  ['all', 'All channels'],
+  ['whatsapp', 'WhatsApp'],
+  ['telegram', 'Telegram'],
+  ['messenger', 'Messenger'],
+  ['instagram', 'Instagram'],
+];
+const chanOf = (x) => x.channel || 'whatsapp';
+function dayKey(t) {
   return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
 }
+const hourLabel = (h) => new Date(2000, 0, 1, h).toLocaleTimeString('en-GB', { hour: 'numeric', hour12: true }).toUpperCase();
+let coinN = 0;
+function Coin({ id, s = 22 }) {
+  coinN += 1;
+  const n = coinN;
+  return <svg width={s} height={s} viewBox="0 0 64 64" aria-hidden="true" dangerouslySetInnerHTML={{ __html: CHANNEL_COINS[id].replace(/(msg-g|ig-g)/g, '$1-i' + n) }} />;
+}
 
-const DAY = 86400000; // one day in ms (used for the quiet-customer bands)
+function crunch(all, span) {
+  const now = Date.now();
+  const days = [...Array(span)].map((_, i) => { const t = new Date(); t.setHours(12, 0, 0, 0); t.setDate(t.getDate() - (span - 1 - i)); return t; });
+  const start = new Date(days[0]); start.setHours(0, 0, 0, 0);
+  const when = (x) => new Date(x.updated_at || x.created_at || 0);
+  const c = all.filter((x) => { const t = when(x); return !Number.isNaN(t.getTime()) && t >= start; });
+  const needs = c.filter((x) => x.needs_human);
+  const reasons = {};
+  needs.forEach((x) => { const r = (x.flag_reason || 'Other').slice(0, 60); reasons[r] = (reasons[r] || 0) + 1; });
+  const top = Object.entries(reasons).sort((a, b) => b[1] - a[1]).slice(0, 4);
+  const vol = days.map(() => 0);
+  const hours = new Array(24).fill(0);
+  c.forEach((x) => {
+    const t = when(x);
+    hours[t.getHours()] += 1;
+    const i = days.findIndex((dd) => dayKey(dd) === dayKey(t));
+    if (i >= 0) vol[i] += 1;
+  });
+  // this period against the one before it, from the same list
+  const prevStart = new Date(start.getTime() - span * DAY);
+  const prev = all.filter((x) => { const t = when(x); return t >= prevStart && t < start; }).length;
+  const delta = prev > 0 ? Math.round(((c.length - prev) / prev) * 100) : null;
+  const peakH = hours.indexOf(Math.max(...hours));
+  const quiet = all
+    .map((x) => ({ ...x, days: Math.floor((now - when(x).getTime()) / DAY) }))
+    .filter((x) => x.days >= 7)
+    .sort((a, b) => b.days - a.days);
+  const waiting = all.filter((x) => x.needs_human && !x.owner_replied_at).length;
+  return {
+    total: c.length,
+    needs: needs.length,
+    waiting,
+    rate: c.length ? Math.round(((c.length - needs.length) / c.length) * 100) : 0,
+    top, vol, hours, delta, peakH,
+    labels: days.map((t) => t.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })),
+    quiet,
+    bands: {
+      cooling: quiet.filter((x) => x.days < 14).length,
+      cold: quiet.filter((x) => x.days >= 14 && x.days < 30).length,
+      lost: quiet.filter((x) => x.days >= 30).length,
+    },
+  };
+}
 
-export default function Insights() { // no props (self-sufficient)
-  const [d, setD] = useState(null); // null = loading (skeletons); object = crunched stats
-  const [failed, setFailed] = useState(null); // null | { status, detail } — fetch failure (Retry card, never eternal dashes!)
-  const [tries, setTries] = useState(0); // retry counter (forces reload — no page refresh!)
+export default function Insights() {
+  const [raw, setRaw] = useState(null);
+  const [failed, setFailed] = useState(null);
+  const [tries, setTries] = useState(0);
+  const [span, setSpan] = useState(14);
+  const [chan, setChan] = useState('all');
+  const [showQuiet, setShowQuiet] = useState(false);
+
   useEffect(() => {
-    let dead = false; // unmount guard (slow networks + fast navigation!)
+    let dead = false;
     setFailed(null);
-    (async () => { // async IIFE (effects can't be async)
+    (async () => {
       try {
-        const { ok, status, data: convos } = await api('/api/me/conversations', { timeout: 15000 }); // raw chat list (same endpoint as inbox!)
+        const { ok, status, data } = await api('/api/me/conversations', { timeout: 15000 });
         if (dead) return;
-        if (!ok) { setFailed({ status, detail: describeLoadFailure({ status, error: convos }) }); return; } // 401/session/server → failed card (empty state is for genuinely-empty shops!)
-        const c = convos || []; // || [] guards null (failed fetch → empty stats, not crash!)
-        const needs = c.filter((x) => x.needs_human); // flagged subset (the interesting ones!)
-        const reasons = {}; // plain OBJECT as frequency map: {reasonText: count}
-        needs.forEach((x) => { const r = (x.flag_reason || 'Other').slice(0, 60); reasons[r] = (reasons[r] || 0) + 1; });
-        const top = Object.entries(reasons).sort((a, b) => b[1] - a[1]).slice(0, 5); // leaderboard (sort DESC, top 5!)
-        const days = [...Array(14)].map((_, i) => { const t = new Date(); t.setHours(12, 0, 0, 0); t.setDate(t.getDate() - (13 - i)); return t; }); // noon-anchored (DST-safe!)
-        const perDay = days.map(() => ({ total: 0, needs: 0 }));
-        const hours = new Array(24).fill(0); // peak-hours histogram (0–23!)
-        c.forEach((x) => {
-          const t = new Date(x.updated_at || x.created_at || Date.now());
-          if (Number.isNaN(t.getTime())) return;
-          const h = t.getHours();
-          if (h >= 0 && h < 24) hours[h] += 1;
-          const k = dayKey(t);
-          const i = days.findIndex((dd) => dayKey(dd) === k); // 14-long scan per chat (100 max — trivial!)
-          if (i >= 0) { perDay[i].total += 1; if (x.needs_human) perDay[i].needs += 1; }
-        });
-        const vol = perDay.map((p) => p.total); // chats/day series (forex line!)
-        let carry = 100; // resolution trend (carry-forward over quiet days — no fake 100% spikes!)
-        const res = perDay.map((p) => { if (p.total > 0) carry = Math.round(((p.total - p.needs) / p.total) * 100); return carry; });
-        const labels = days.map((t) => t.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }));
-        const last7 = vol.slice(7).reduce((a, b) => a + b, 0), prev7 = vol.slice(0, 7).reduce((a, b) => a + b, 0);
-        const delta = prev7 > 0 ? Math.round(((last7 - prev7) / prev7) * 100) : (last7 > 0 ? 100 : 0); // week-over-week % (prev 0 + new chats = +100%!)
-        const peakH = hours.indexOf(Math.max(...hours));
-        const activeDays = perDay.filter((p) => p.total > 0).length; // how many of the 14 days actually had a conversation
-        // ── the inactivity record ─────────────────────────────────────
-        // "Quiet for N days" is measured from the customer's last message, not
-        // from when we fetched. 7 days is the first honest warning: that buyer
-        // has stopped asking, and they were not told no — they just drifted.
-        const now = Date.now();
-        const quiet = c
-          .map((x) => {
-            const t = new Date(x.updated_at || x.created_at || 0);
-            if (Number.isNaN(t.getTime())) return null;
-            return { ...x, days: Math.max(0, Math.floor((now - t.getTime()) / DAY)) };
-          })
-          .filter((x) => x && x.days >= 7)
-          .sort((a, b) => b.days - a.days);
-        const bands = {
-          cooling: quiet.filter((x) => x.days < 14).length, // 7–13 days: still warm
-          cold: quiet.filter((x) => x.days >= 14 && x.days < 30).length, // 14–29: needs a reason to return
-          lost: quiet.filter((x) => x.days >= 30).length, // 30+: win-back, not support
-        };
-        setD({ total: c.length, needs: needs.length, rate: c.length ? Math.round(((c.length - needs.length) / c.length) * 100) : 100, top, vol, res, labels, hours, delta, last7, peakH, activeDays, quiet: quiet.slice(0, 6), quietTotal: quiet.length, bands });
-      } catch { if (!dead) setFailed({ status: 0, detail: describeNetError() }); } // network down → failed card (empty state is for genuinely-empty shops!)
-    })(); // invoke immediately
-    const onOnline = () => { if (!dead) setTries((t) => t + 1); }; // internet's back? reload without a tap! (failed-only would also do — tries refetch is idempotent anyway)
+        if (!ok) { setFailed({ status, detail: describeLoadFailure({ status, error: data }) }); return; }
+        setRaw(Array.isArray(data) ? data : []);
+      } catch { if (!dead) setFailed({ status: 0, detail: describeNetError() }); }
+    })();
+    const onOnline = () => { if (!dead) setTries((t) => t + 1); };
     window.addEventListener('online', onOnline);
     return () => { dead = true; window.removeEventListener('online', onOnline); };
-  }, [tries]); // [tries] = Retry bumps → refetch
-  if (failed && !d) return ( // fetch failed BEFORE first paint (failed card, never skeletons!)
-    <>
-      <div className="ins-head"><div className="dg-status on"><i />Last 14 days</div><h1>Insights</h1><p>What customers ask, what Velo handles, and who needs you.</p></div>
-      <LoadFailed title="Couldn't load insights" status={failed.status} detail={failed.detail} tries={tries} onRetry={() => { setD(null); setTries((t) => t + 1); }} backTo="/dashboard" backLabel="Back to Home" />
-    </>
+  }, [tries]);
+
+  const picked = useMemo(() => (raw || []).filter((x) => chan === 'all' || chanOf(x) === chan), [raw, chan]);
+  const d = useMemo(() => (raw ? crunch(picked, span) : null), [raw, picked, span]);
+  const byChan = useMemo(() => {
+    const out = { whatsapp: 0, telegram: 0, messenger: 0, instagram: 0 };
+    if (raw && d) {
+      const start = Date.now() - span * DAY;
+      raw.forEach((x) => { const t = new Date(x.updated_at || x.created_at || 0).getTime(); if (t >= start && out[chanOf(x)] != null) out[chanOf(x)] += 1; });
+    }
+    return out;
+  }, [raw, d, span]);
+
+  const head = (
+    <div className="in-head">
+      <div>
+        <div className="dg-status on"><i />Last {span} days{chan !== 'all' ? ` · ${CHANS.find((c) => c[0] === chan)[1]}` : ''}</div>
+        <h1>Insights</h1>
+        <p>What customers ask, what Velo handles, and who needs you.</p>
+      </div>
+      <div className="wx-pills" role="group" aria-label="Time range">
+        {[7, 14].map((n) => <button key={n} type="button" className={'wx-pill' + (span === n ? ' on' : '')} aria-pressed={span === n} onClick={() => setSpan(n)}>{n} days</button>)}
+      </div>
+    </div>
   );
-  if (!d) return ( // LOADING: skeleton chart mirroring the real layout
+  const filter = (
+    <div className="wx-pills in-chans" role="group" aria-label="Channel">
+      {CHANS.map(([k, label]) => (
+        <button key={k} type="button" className={'wx-pill' + (chan === k ? ' on' : '')} aria-pressed={chan === k} onClick={() => setChan(k)}>
+          {k !== 'all' && <Coin id={k} />}{label}{k !== 'all' && raw ? <span className="in-count">{byChan[k]}</span> : null}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (failed && !raw) return (<>{head}<LoadFailed title="Couldn't load insights" status={failed.status} detail={failed.detail} tries={tries} onRetry={() => { setRaw(null); setTries((t) => t + 1); }} backTo="/dashboard" backLabel="Back to Home" /></>);
+  if (!d) return (
     <>
-      <div className="ins-head"><div className="dg-status on"><i />Last 14 days</div><h1>Insights</h1><p>What customers ask, what Velo handles, and who needs you.</p></div>
+      {head}
       <div className="skel-grid cols4">{[0, 1, 2, 3].map((i) => (<div key={i} className="skel-card"><div className="skel" style={{ width: '55%', height: 26 }} /><div className="skel" style={{ width: '80%' }} /></div>))}</div>
-      <div className="card ins-card" style={{ marginTop: 16 }}><div className="skel" style={{ height: 150 }} /></div>
+      <div className="card" style={{ marginTop: 16 }}><div className="skel" style={{ height: 150 }} /></div>
     </>
   );
-  if (d.total === 0) return ( // EMPTY: honest onboarding (not blank!)
-    <>
-      <div className="ins-head"><div className="dg-status on"><i />Last 14 days</div><h1>Insights</h1><p>What customers ask, what Velo handles, and who needs you.</p></div>
-      <div className="card ins-card"><div className="empty"><b>No chats yet</b>Charts build themselves from your first conversations — share your WhatsApp number and come back.</div></div>
-    </>
-  );
-  const maxReason = Math.max(...d.top.map(([, n]) => n), 1);
+
+  const vmax = Math.max(...d.vol, 1);
   const hmax = Math.max(...d.hours, 1);
-  const up = d.delta >= 0;
-  const quietPct = d.total ? Math.round((d.quietTotal / d.total) * 100) : 0; // share of conversations that went quiet
+  const rmax = Math.max(...d.top.map(([, n]) => n), 1);
+  const chName = CHANS.find((c) => c[0] === chan)[1];
+  const totalBy = Object.values(byChan).reduce((a, b) => a + b, 0) || 1;
+  const ring = 2 * Math.PI * 22;
+
   return (
-    <>
-      <div className="ins-head"><div className="dg-status on"><i />Last 14 days</div><h1>Insights</h1><p>What customers ask, what Velo handles, and who needs you.</p></div>
-
-      {/* ── KPI strip: the four numbers an owner checks first ───────── */}
-      <div className="ins-kpis">
-        <div className="ins-kpi glass"><span className="ins-kpi-lbl">Chats</span><b className="ins-kpi-num">{d.total}</b><span className={'ch-chip ' + (up ? 'live' : 'hot')}>{up ? '+' : '−'}{Math.abs(d.delta)}% on last week</span></div>
-        <div className="ins-kpi glass"><span className="ins-kpi-lbl">Answered by Velo</span><b className="ins-kpi-num">{d.rate}%</b><span className="ch-chip live">{d.total - d.needs} of {d.total}</span></div>
-        <div className="ins-kpi glass"><span className="ins-kpi-lbl">Needed you</span><b className="ins-kpi-num">{d.needs}</b><span className="ch-chip hot">Flagged for you</span></div>
-        <div className="ins-kpi glass"><span className="ins-kpi-lbl">Busiest hour</span><b className="ins-kpi-num">{new Date(2000, 0, 1, d.peakH).toLocaleTimeString('en-GB', { hour: 'numeric', hour12: true }).toUpperCase()}</b><span className="ch-chip ready">Plan to be online</span></div>
-      </div>
-
-      <div className="ins-top">
-        <div className="card ins-card"> {/* 14-day volume: one bar a day, today in coral */}
-          <div className="card-head"><h2>Chats each day</h2><span className="hint">Coral is today</span></div>
-          <div className="ins-bars" role="img" aria-label={'Chats each day for 14 days: ' + d.vol.join(', ')}>
-            {d.vol.map((v, i) => <i key={i} className={i === d.vol.length - 1 ? 'today' : ''} style={{ height: `${Math.max(4, Math.round((v / Math.max(...d.vol, 1)) * 100))}%` }} title={`${d.labels[i]}: ${v} chats`} />)}
+    <div className="in">
+      {head}
+      {filter}
+      {d.total === 0 ? (
+        <section className="glass in-card in-empty">
+          <b>{chan === 'all' ? 'No chats yet' : `No ${chName} chats in the last ${span} days`}</b>
+          <span>{chan === 'messenger' || chan === 'instagram' ? `${chName} is coming soon. Its numbers will show here once it is connected.` : 'Charts build themselves from your conversations. Share your number and come back.'}</span>
+          {chan !== 'all' && <button type="button" className="btn ghost" onClick={() => setChan('all')}>Show all channels</button>}
+        </section>
+      ) : (
+        <>
+          <div className="in-kpis">
+            <section className="glass in-kpi"><span>Chats</span><b>{d.total}</b>{d.delta == null ? <em className="ch-chip ready">First {span} days</em> : <em className={'ch-chip ' + (d.delta >= 0 ? 'live' : 'hot')}>{d.delta >= 0 ? '+' : '−'}{Math.abs(d.delta)}% on the {span} days before</em>}</section>
+            <section className="glass in-kpi"><span>Answered by Velo</span><b>{d.rate}%</b><em className="ch-chip live">{d.total - d.needs} of {d.total}</em></section>
+            <section className="glass in-kpi"><span>Needed you</span><b>{d.needs}</b><em className="ch-chip hot">{d.waiting ? `${d.waiting} waiting now` : 'None waiting'}</em></section>
+            <section className="glass in-kpi"><span>Busiest hour</span><b>{hourLabel(d.peakH)}</b><em className="ch-chip ready">Plan to be online</em></section>
           </div>
-          <div className="ins-axis"><span>{d.labels[0]}</span><span>{d.labels[7]}</span><span>Today</span></div>
-          <p className="hint" style={{ marginTop: 8 }}>{d.last7} chats in the last 7 days.</p>
-        </div>
 
-        <div className="card ins-card"> {/* who actually answered — the reference's donut, with real counts */}
-          <div className="card-head"><h2>Who answered</h2></div>
-          <div className="ins-donut-wrap">
-            <div className="ins-donut" style={{ background: `conic-gradient(#4f3fc7 0deg, #b44ba0 ${d.rate * 1.8}deg, #d03c16 ${d.rate * 3.6}deg, var(--ring-track) 0)` }}>
-              <div className="ins-donut-hole"><b>{d.rate}%</b><span>by Velo</span></div>
-            </div>
-            <div className="ins-legend">
-              <div className="ins-leg"><i className="ai" /><span>Answered by Velo</span><b>{d.total - d.needs}</b></div>
-              <div className="ins-leg"><i className="you" /><span>Passed to you</span><b>{d.needs}</b></div>
-            </div>
+          <div className="in-row2">
+            <section className="glass in-card">
+              <div className="in-card-head"><h2>Chats each day</h2><span>Coral is today</span></div>
+              <div className="in-bars tall" role="img" aria-label={`Chats each day: ${d.vol.join(', ')}`}>
+                {d.vol.map((v, i) => <i key={i} className={i === d.vol.length - 1 ? 'hot' : ''} style={{ height: `${Math.max(3, Math.round((v / vmax) * 100))}%` }} title={`${d.labels[i]}: ${v}`} />)}
+              </div>
+              <div className="in-axis"><span>{d.labels[0]}</span><span>{d.labels[Math.floor(span / 2)]}</span><span>Today</span></div>
+            </section>
+            <section className="glass in-card">
+              <div className="in-card-head"><h2>Who answered</h2></div>
+              <div className="in-who">
+                <div className="in-ring">
+                  <svg viewBox="0 0 56 56" width="170" height="170" aria-hidden="true">
+                    <defs><linearGradient id="in-rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#4F3FC7" /><stop offset="1" stopColor="#D03C16" /></linearGradient></defs>
+                    <circle cx="28" cy="28" r="22" fill="none" stroke="var(--ring-track)" strokeWidth="7" />
+                    <circle cx="28" cy="28" r="22" fill="none" stroke="url(#in-rg)" strokeWidth="7" strokeLinecap="round" strokeDasharray={`${(d.rate / 100) * ring} ${ring}`} transform="rotate(-90 28 28)" />
+                  </svg>
+                  <b>{d.rate}%</b>
+                </div>
+                <div className="in-legend">
+                  <span><i className="v" /><b>{d.total - d.needs}</b> by Velo</span>
+                  <span><i className="y" /><b>{d.needs}</b> by you</span>
+                </div>
+              </div>
+            </section>
           </div>
-          <p className="hint" style={{ marginTop: 10 }}>Every flagged chat is in your inbox — answering it teaches the AI.</p>
-        </div>
-      </div>
 
-      <div className="grid2" style={{ marginTop: 16 }}> {/* resolution spark + peak hours (side by side, stack on phones!) */}
-        <div className="card ins-card">
-          <div className="card-head"><h2>AI resolution</h2><span className="hint">{d.rate}% handled</span></div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 10 }}>
-            <Spark values={d.res} width={150} height={52} />
-            <p className="desc" style={{ margin: 0 }}>Daily trend, 14 days. Dips = days the AI needed you more.</p>
+          <div className="in-row3">
+            <section className="glass in-card">
+              <div className="in-card-head"><h2>Busiest hours</h2></div>
+              <div className="in-bars thin" role="img" aria-label={`Busiest at ${hourLabel(d.peakH)}`}>
+                {d.hours.map((v, i) => <i key={i} className={i === d.peakH && v > 0 ? 'hot' : ''} style={{ height: `${Math.max(3, Math.round((v / hmax) * 100))}%` }} title={`${hourLabel(i)}: ${v}`} />)}
+              </div>
+              <div className="in-axis"><span>Midnight</span><span>Noon</span><span>11 PM</span></div>
+            </section>
+            <section className="glass in-card">
+              <div className="in-card-head"><h2>Why customers needed you</h2></div>
+              {d.top.length === 0 ? <p className="in-muted">Nothing yet. When Velo is unsure, the reason shows here.</p> : (
+                <div className="in-reasons">
+                  {d.top.map(([r, n]) => (
+                    <div key={r}><div><span>{r}</span><b>{n}</b></div><div className="pu-meter in-thin"><i style={{ width: `${Math.max(6, Math.round((n / rmax) * 100))}%` }} /></div></div>
+                  ))}
+                </div>
+              )}
+            </section>
+            <section className="glass in-card">
+              <div className="in-card-head"><h2>Customers going quiet</h2></div>
+              <div className="in-quiet">
+                <div><b>{d.bands.cooling}</b><span className="ch-chip ready">Cooling</span></div>
+                <div><b>{d.bands.cold}</b><span className="ch-chip hot">Cold</span></div>
+                <div><b>{d.bands.lost}</b><span className="ch-chip hot">Lost</span></div>
+              </div>
+              <button type="button" className="btn ghost in-msg" disabled={!d.quiet.length} aria-expanded={showQuiet} onClick={() => setShowQuiet(!showQuiet)}>{d.quiet.length ? (showQuiet ? 'Hide the list' : 'Message them') : 'Nobody has gone quiet'}</button>
+            </section>
           </div>
-        </div>
-        <div className="card ins-card">
-          <div className="card-head"><h2>Peak hours</h2><span className="hint">{String(d.peakH).padStart(2, '0')}:00 rush</span></div>
-          <div className="pbars" style={{ marginTop: 10 }}>{d.hours.map((v, i) => <i key={i} style={{ height: `${Math.max(6, Math.round((v / hmax) * 100))}%` }} title={`${String(i).padStart(2, '0')}:00 — ${v} chats`} />)}</div>
-          <p className="hint" style={{ marginTop: 6 }}>00 → 23. Your customers' clock — staff the rush.</p>
-        </div>
-      </div>
 
-      {/* ── INACTIVITY RECORD: who stopped talking, and how long ago ─── */}
-      <div className="card ins-card" style={{ marginTop: 16 }}>
-        <div className="card-head"><h2>Customers going quiet</h2><span className="hint">{d.quietTotal} quiet</span></div>
-        <p className="desc">Customers whose last message is 7 days old or more. A quiet customer is not a lost one — most just need a reason to come back.</p>
-        <div className="ins-bands">
-          <span className="ins-band"><i className="b1" /><b>{d.bands.cooling}</b><span>Cooling · 7–13 days</span></span>
-          <span className="ins-band"><i className="b2" /><b>{d.bands.cold}</b><span>Cold · 14–29 days</span></span>
-          <span className="ins-band"><i className="b3" /><b>{d.bands.lost}</b><span>Lost · 30+ days</span></span>
-        </div>
-        {d.quiet.length === 0 ? (
-          <div className="empty"><b>Nobody has gone quiet</b>Every conversation here is under a week old. That is a healthy shop.</div>
-        ) : (
-          <div className="table-wrap" style={{ marginTop: 12 }}>
-            <table>
-              <thead><tr><th>Customer</th><th>Quiet for</th><th>Their last message</th><th></th></tr></thead>
-              <tbody>
-                {d.quiet.map((x) => {
-                  const digits = String(x.customer_number || '').replace(/[^0-9]/g, ''); // wa.me wants digits only
-                  const first = String(x.customer_name || '').split(' ')[0] || 'there'; // first name only — it is a shop, not a bank
-                  const asked = (x.last_message || '').slice(0, 60); // quote them back: that is what makes a nudge feel personal
-                  const msg = `Hello ${first}! Just checking in${asked ? ` — you asked about “${asked}”` : ''}. Want me to send the latest price and photos?`;
+          {showQuiet && d.quiet.length > 0 && (
+            <section className="glass in-card">
+              <div className="in-card-head"><h2>Quiet for a week or more</h2><span>Nudge opens WhatsApp with a message you can edit</span></div>
+              <div className="in-qlist">
+                {d.quiet.slice(0, 8).map((x) => {
+                  const digits = String(x.customer_number || '').replace(/[^0-9]/g, '');
+                  const first = String(x.customer_name || '').split(' ')[0] || 'there';
+                  const asked = (x.last_message || '').slice(0, 60);
+                  const msg = `Hello ${first}! Just checking in${asked ? `, you asked about "${asked}"` : ''}. Want me to send the latest price and photos?`;
                   return (
-                    <tr key={x.id}>
-                      <td><b>{x.customer_name || x.customer_number || 'Customer'}</b></td>
-                      <td><span className={'pill ' + (x.days >= 30 ? 'off' : x.days >= 14 ? 'flag' : 'info')}>{x.days} days</span></td>
-                      <td><span className="ins-quote">{(x.last_message || '—').slice(0, 70)}{(x.last_message || '').length > 70 ? '…' : ''}</span></td>
-                      <td className="ins-act">
-                        {digits.length >= 8
-                          ? <a className="mini-link" href={`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noreferrer">Nudge</a>
-                          : <Link className="mini-link" to="/chats">Open inbox</Link>}
-                      </td>
-                    </tr>
+                    <div key={x.id} className="in-qrow">
+                      <span className="in-qmain"><b>{x.customer_name || x.customer_number || 'Customer'}</b><small>{(x.last_message || '').slice(0, 70)}</small></span>
+                      <span className={'ch-chip ' + (x.days >= 14 ? 'hot' : 'ready')}>{x.days} days</span>
+                      {digits.length >= 8 && chanOf(x) === 'whatsapp'
+                        ? <a className="btn sm" href={`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noreferrer">Nudge</a>
+                        : <Link className="btn ghost sm" to="/chats">Open chat</Link>}
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <p className="hint" style={{ marginTop: 10 }}>Counted from your {d.total} most recent conversations. Nudge opens WhatsApp with a message you can edit before sending.</p>
-      </div>
+              </div>
+            </section>
+          )}
+        </>
+      )}
 
-      <div className="card ins-card" style={{ marginTop: 16 }}>
-        <div className="card-head"><h2>Why customers needed you</h2></div>
-        <p className="desc">Fix these in your catalog or FAQs and the AI handles more alone.</p>
-        {d.top.length === 0 ? <div className="empty"><b>No flags yet</b>When the AI is unsure, the reason shows up here.</div> : (
-          <div className="hbars" style={{ marginTop: 10 }}>
-            {d.top.map(([r, n]) => (
-              <div key={r} className="hbar"><span>{r}</span><div className="hbar-track"><i style={{ width: `${Math.max(4, Math.round((n / maxReason) * 100))}%` }} /></div><b>{n}</b></div>
-            ))}
-          </div>
-        )}
-      </div>
-    </>
+      <section className="glass in-card in-by">
+        <div className="in-by-coins">{['whatsapp', 'telegram', 'messenger', 'instagram'].map((k) => <Coin key={k} id={k} s={40} />)}</div>
+        <div className="in-by-main">
+          <b>By channel</b>
+          <span>{['whatsapp', 'telegram', 'messenger', 'instagram'].map((k) => `${CHANS.find((c) => c[0] === k)[1]} ${byChan[k]}`).join(' · ')}</span>
+        </div>
+        <div className="in-by-bar" role="img" aria-label="Chats by channel">
+          {['whatsapp', 'telegram', 'messenger', 'instagram'].map((k) => byChan[k] > 0 && <i key={k} className={k} style={{ width: `${(byChan[k] / totalBy) * 100}%` }} />)}
+        </div>
+      </section>
+    </div>
   );
 }

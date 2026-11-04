@@ -16,15 +16,15 @@ const GROQ_RPM = Number(process.env.GROQ_RPM || 30);
 // whole chain with GEMINI_MODELS="a,b,c", or just the lite default with
 // GEMINI_LITE_MODEL="gemini-3.5-flash-lite" once Google ships that name —
 // unknown names 404 and fall through to the next working model, no deploy.
-const GEMINI_LITE = process.env.GEMINI_LITE_MODEL || 'gemini-2.5-flash-lite';
+const GEMINI_LITE = process.env.GEMINI_MODEL_1 || process.env.GEMINI_LITE_MODEL || 'gemini-3.5-flash-lite';
 const GEMINI_CHAIN = (
-  process.env.GEMINI_MODELS || `${GEMINI_LITE},gemini-2.5-flash,gemini-flash-latest`
+  process.env.GEMINI_MODELS || `${GEMINI_LITE},${process.env.GEMINI_MODEL_2 || 'gemini-3.5-flash'}`
 )
   .split(',')
   .map((m) => m.trim())
   .filter(Boolean);
 
-const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-3-5-haiku-20241022';
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-haiku-5-5';
 
 // Model affinity: remembers the last working CHAIN model so repeat calls skip
 // the 404-probing chain. Only used in chain mode — pinned calls (dropdown
@@ -246,7 +246,7 @@ async function callGroq(system, user, modelOverride, opts) {
   if (!key) throw new Error('GROQ_API_KEY is not set');
   if (!(await groqSlot())) throw new Error('Groq shared quota busy — falling back');
   const model =
-    modelOverride || process.env.GROQ_MODEL || 'openai/gpt-oss-120b'; // Llama 3.3 70B left Groq's public list in 2026
+    modelOverride || process.env.GROQ_MODEL_1 || process.env.GROQ_MODEL || 'openai/gpt-oss-120b'; // Llama 3.3 70B left Groq's public list in 2026
   return callOpenAICompat(
     'Groq',
     'https://api.groq.com/openai/v1/chat/completions',
@@ -262,7 +262,7 @@ async function callGroq(system, user, modelOverride, opts) {
 async function callOpenAI(system, user, modelOverride, opts) {
   const key = cleanKey(process.env.OPENAI_API_KEY);
   if (!key) throw new Error('OPENAI_API_KEY is not set');
-  const model = modelOverride || process.env.OPENAI_MODEL || 'gpt-4o-mini';
+  const model = modelOverride || process.env.OPENAI_MODEL || 'gpt-5-mini';
   return callOpenAICompat(
     'OpenAI',
     'https://api.openai.com/v1/chat/completions',
@@ -299,7 +299,7 @@ async function callTokenRouter(system, user, modelOverride, opts) {
 async function callOpenRouter(system, user, modelOverride, opts) {
   const key = cleanKey(process.env.OPENROUTER_API_KEY);
   if (!key) throw new Error('OPENROUTER_API_KEY is not set');
-  const model = modelOverride || process.env.OPENROUTER_MODEL || 'qwen/qwen3.7-flash';
+  const model = modelOverride || process.env.OPENROUTER_MODEL_2 || process.env.OPENROUTER_MODEL || 'qwen/qwen3.7-flash';
   return callOpenAICompat(
     'OpenRouter',
     'https://openrouter.ai/api/v1/chat/completions',
@@ -316,7 +316,7 @@ async function callSambaNova(system, user, modelOverride, opts) {
   const key = cleanKey(process.env.SAMBANOVA_API_KEY);
   if (!key) throw new Error('SAMBANOVA_API_KEY is not set');
   const model =
-    modelOverride || process.env.SAMBANOVA_MODEL || 'Meta-Llama-3.3-70B-Instruct';
+    modelOverride || process.env.SAMBANOVA_MODEL_1 || process.env.SAMBANOVA_MODEL || 'gpt-oss-120b';
   return callOpenAICompat(
     'SambaNova',
     'https://api.sambanova.ai/v1/chat/completions',
@@ -404,7 +404,8 @@ async function callModel(entry, system, user, image, opts) {
 async function callAI(system, user, image) {
   const provider = (process.env.AI_PROVIDER || 'gemini').toLowerCase();
   const has = configuredProviders();
-  const order = [provider, 'groq', 'gemini', 'openrouter', 'tokenrouter', 'sambanova', 'claude', 'openai', 'pollinations'].filter(
+  const premium = String(process.env.PREMIUM_AI || 'off').toLowerCase() === 'on';
+  const order = [provider, 'gemini', 'groq', 'sambanova', 'openrouter', ...(premium ? ['claude', 'openai'] : [])].filter(
     (p, i, a) => a.indexOf(p) === i
   );
   const runners = {
@@ -449,7 +450,7 @@ async function pingAll() {
   if (has.gemini) jobs.push(['Gemini', () => callGemini('Health check.', 'Reply with the word OK.', null, { ...tiny, model: (process.env.GEMINI_LITE_MODEL || 'gemini-2.5-flash-lite').trim() })]);
   if (has.groq) jobs.push(['Groq (GPT-OSS)', () => callGroq('Health check.', 'Reply with the word OK.', process.env.GROQ_OSS_MODEL || 'openai/gpt-oss-20b', tiny)]);
   if (has.tokenrouter) jobs.push(['TokenRouter', () => callTokenRouter('Health check.', 'Reply with the word OK.', (process.env.TOKENROUTER_MODEL || 'deepseek-v4-flash').trim(), tiny)]);
-  if (has.sambanova) jobs.push(['SambaNova', () => callSambaNova('Health check.', 'Reply with the word OK.', (process.env.SAMBANOVA_MODEL || 'Meta-Llama-3.3-70B-Instruct').trim(), tiny)]);
+  if (has.sambanova) jobs.push(['SambaNova', () => callSambaNova('Health check.', 'Reply with the word OK.', (process.env.SAMBANOVA_MODEL_1 || process.env.SAMBANOVA_MODEL || 'gpt-oss-120b').trim(), tiny)]);
   if (has.claude) jobs.push(['Claude', () => callClaude('Health check.', 'Reply with the word OK.', null, process.env.CLAUDE_MODEL || undefined, tiny)]);
   if (has.openai) jobs.push(['OpenAI', () => callOpenAI('Health check.', 'Reply with the word OK.', process.env.OPENAI_MODEL || undefined, tiny)]);
   jobs.push(['Backup AI', () => callPollinations('Health check.', 'Reply with the word OK.', null, tiny)]); // keyless — always tested

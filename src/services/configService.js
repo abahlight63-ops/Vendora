@@ -348,7 +348,7 @@ ALTER TABLE businesses ADD COLUMN IF NOT EXISTS handoff_msg TEXT NOT NULL DEFAUL
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS whatsapp_model TEXT NOT NULL DEFAULT 'gemini-flash-full';
 -- Nov 2026: the model list became velo-* (see aiModels.js ALIASES); move saved picks once.
 ALTER TABLE businesses ALTER COLUMN whatsapp_model SET DEFAULT 'velo-normal';
-UPDATE businesses SET whatsapp_model = CASE WHEN whatsapp_model IN ('kimi-k2','claude-haiku','claude-haiku-2','gpt-mini','gpt-mini-2') THEN 'velo-smart' WHEN whatsapp_model IN ('gemini-flash','gpt-oss-20b','tokenrouter-free') THEN 'velo-fast' WHEN whatsapp_model IN ('llama-70b','sambanova-70b','sambanova-120b') THEN 'velo-steady' ELSE 'velo-normal' END WHERE whatsapp_model NOT LIKE 'velo-%';
+UPDATE businesses SET whatsapp_model = CASE WHEN whatsapp_model IN ('kimi-k2','claude-haiku','claude-haiku-2','gpt-mini','gpt-mini-2') THEN 'velo-pro' WHEN whatsapp_model IN ('gemini-flash','gpt-oss-20b','tokenrouter-free') THEN 'velo-fast' WHEN whatsapp_model IN ('llama-70b','sambanova-70b','sambanova-120b') THEN 'velo-steady' ELSE 'velo-normal' END WHERE whatsapp_model NOT LIKE 'velo-%';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS wa_channel TEXT NOT NULL DEFAULT 'meta';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS twilio_account_sid TEXT NOT NULL DEFAULT '';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS twilio_auth_token TEXT NOT NULL DEFAULT '';

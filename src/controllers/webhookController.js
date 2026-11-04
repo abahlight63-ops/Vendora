@@ -325,7 +325,7 @@ async function handleInbound(req, res) {
     const PAID_WA_PER_DAY = Number(process.env.PAID_AI_PER_DAY || 50); // shared paid-model budget (one number for page + WhatsApp!)
     try {
       const aiModels = require('../services/aiModels');
-      const pick = aiModels.resolveChoice(business.whatsapp_model || 'gemini-flash-full', planService.effectiveTier(business));
+      const pick = aiModels.resolveChoice(business.whatsapp_model || 'velo-normal', planService.effectiveTier(business));
       if (!pick.error && pick.entry.tier === 'paid') {
         const { rows: cap } = await db.query(
           `INSERT INTO ai_usage (business_id, day) VALUES ($1, ${TODAY_DATE})
@@ -334,7 +334,7 @@ async function handleInbound(req, res) {
           [business.id]
         );
         if (cap[0] && cap[0].paid_count >= PAID_WA_PER_DAY) {
-          business = { ...business, whatsapp_model: 'gemini-flash-full' }; // downgrade THIS reply only (spread = no DB write, no mutation of the cached row!)
+          business = { ...business, whatsapp_model: 'velo-normal' }; // downgrade THIS reply only (spread = no DB write, no mutation of the cached row!)
           console.log(`WhatsApp paid cap hit for biz ${business.id} — free default answers this one`);
         }
       }

@@ -12,11 +12,14 @@ import { api, fmtTime, toast } from '../lib/api.js'; // api() fetches; fmtTime s
 import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures (offline? waking? stale?)
 import LoadFailed from '../components/LoadFailed.jsx'; // branded failed card + Retry (never eternal skeletons!)
 import Ic from '../components/icons.jsx'; // icons
-import Loader from '../components/Loader.jsx'; // mini orbit in the Send button
+import Loader from '../components/Loader.jsx';
+import ReceiptSheet from '../components/ReceiptSheet.jsx'; // Make receipt for this chat
+import { receiptNo } from '../lib/orders.js'; // mini orbit in the Send button
 
 export default function Chats() {
   const [convos, setConvos] = useState(null); // null = loading (skeleton rows); [] = loaded, empty inbox
   const [filter, setFilter] = useState('all'); // 'all' | 'needs' | 'handled' (tab state)
+  const [receiptFor, setReceiptFor] = useState(null); // conversation the Make receipt sheet is open for
   const [thread, setThread] = useState(null); // null = no thread selected; conversation object = thread open
   const [msgs, setMsgs] = useState(null); // thread messages (null = loading thread → bubble skeletons)
   const [draft, setDraft] = useState(''); // reply draft (controlled input!)
@@ -143,6 +146,7 @@ export default function Chats() {
                   <b>{thread.customer_name || thread.customer_number}</b>
                   <span>{channelName(thread)}{thread.customer_name && thread.customer_number ? ', ' + thread.customer_number : ''}</span>
                 </div>
+                <button type="button" className="wx-rcp" onClick={() => setReceiptFor(thread)} aria-label="Make receipt"><Ic n="receipt" s={18} /><span>Make receipt</span></button>
                 {/* One switch, both states visible. Same control as the phone. */}
                 <div className="wx-mode" role="group" aria-label="Who answers this chat">
                   <button className={'wx-seg' + (!thread.bot_paused ? ' on' : '')} aria-pressed={!thread.bot_paused} onClick={() => takeover(false)}>Velo answers</button>
@@ -165,6 +169,7 @@ export default function Chats() {
             </>
           )}
       </section>
+      {receiptFor && <ReceiptSheet conversation={receiptFor} onClose={() => setReceiptFor(null)} onSaved={(order, r) => { setReceiptFor(null); toast(r.sent ? 'Receipt ' + receiptNo(order) + ' sent' : 'Order ' + receiptNo(order) + ' saved. Find it in Orders.'); if (r.sent && thread && thread.id === order.conversation_id) open(thread); }} />}
     </div>
   );
 }

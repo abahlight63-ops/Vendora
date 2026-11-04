@@ -21,17 +21,20 @@ From the audit and review of 3 November 2026.
 - [x] Remove the 4 unused old server files: `src/auth.js`, `src/authRoutes.js`, `src/billingRoutes.js`, `src/adminRoutes.js`
 
 ## 2. AI models (cheaper, five in a backup chain)
-- [ ] Test candidates on 30 real Pidgin and English customer questions; keep the 5 best value
-- [ ] Use free allowances first (Gemini Flash-Lite, Groq GPT-OSS and Qwen), then very cheap paid models, DeepSeek Flash as the backup
-- [ ] Drop SambaNova, TokenRouter, Pollinations and the old Llama options
-- [ ] Send Velo only the products a question is about, not the whole catalog (about a third of the cost)
+- [x] Test candidates on 30 real Pidgin and English customer questions; keep the 5 best value
+- [x] Use free allowances first (Gemini Flash-Lite, Groq GPT-OSS and Qwen), then very cheap paid models, DeepSeek Flash as the backup
+  - Done 4 Nov 2026: Gemini 3.5 Flash-Lite 30/30 (everyday), GPT-OSS 120B 26/30, GPT-OSS 20B 26/30, Qwen 3.8 (often busy on the free tier), OpenRouter Qwen Flash as the paid backup; Gemini 3.5 Flash for Pro. Needs OPENROUTER_API_KEY on Render
+- [x] Drop SambaNova, TokenRouter, Pollinations and the old Llama options
+- [x] Send Velo only the products a question is about, not the whole catalog (about a third of the cost)
 - [ ] Update the Privacy Policy wording if free allowances that may train on chats are used
 
 ## 3. Orders and receipts (the base for sales, follow-ups and insights)
-- [ ] New Orders record: items, quantity, price from the catalog, delivery, total, customer, status (pending, paid, delivered)
+- [x] New Orders record: items, quantity, price from the catalog, delivery, total, customer, status (pending, paid, delivered)
 - [ ] Create orders three ways: "Make receipt" in a chat, "make a receipt for Tunde" in Chat with Velo, and Velo drafting one when a customer orders
+  - Done: Make receipt in a chat, Chat with Velo, New order on the Orders page. Left: Velo drafting one by itself
 - [ ] Receipt with logo, items, delivery, total and number; send it in the chat or share as a picture or PDF
-- [ ] Remove the "Coming soon" tag on receipts (website and app)
+  - Done: numbered receipt with items, delivery and total, sent in the chat or copied. Left: picture or PDF with the logo
+- [x] Remove the "Coming soon" tag on receipts (website and app)
 
 ## 4. Voice notes and photos on WhatsApp
 - [ ] Download WhatsApp voice notes, turn them into text, and answer
@@ -42,7 +45,7 @@ From the audit and review of 3 November 2026.
 ## 5. Real insights
 - [ ] Work out insights on the server: chats per day and per app, Velo vs. needed you, reply speed, most-asked products, unanswered questions, orders and revenue, busiest hours
 - [x] Give Chat with Velo real numbers so it can answer "how did my shop do this week?" (chats, customers, apps, busy times, most-asked products, logged stock; exact sales once orders exist)
-- [ ] Remove the "Coming soon" tag on the weekly breakdown
+- [x] Remove the "Coming soon" tag on the weekly breakdown
 
 ## 6. Follow-ups for customers who didn't buy
 - [ ] Setting: "Follow up after ___ hours" (default 4), and an optional second follow-up after ___ days
@@ -74,3 +77,7 @@ From the audit and review of 3 November 2026.
 - [ ] Error alerts, so problems are seen before customers report them
 - [ ] Data export for shops
 - [ ] Rewrite the out-of-date `design-check.mjs`
+
+## 11. After the first launch
+- [ ] Website chat: a chat bubble shops can add to their own website, answered by Velo
+- [ ] Email chat: Velo answers customer emails from the same inbox

@@ -35,7 +35,15 @@ router.get('/me/ai-models', ownerController.aiModels); // dropdown list with loc
 router.get('/me/ai-status', ownerController.aiStatus); // one-tap health ping per provider (owner diagnosis)
 router.post('/me/bot', ownerController.botToggle);
 router.post('/me/conversations/:id/takeover', ownerController.chatTakeover);
-router.post('/me/conversations/:id/reply', ownerController.chatReply); // in-app owner reply (sends via the chat's own channel!)
+router.post('/me/conversations/:id/reply', ownerController.chatReply);
+// Orders and receipts (controllers/orderController.js)
+const orderController = require('../controllers/orderController');
+router.get('/me/orders', orderController.list);
+router.get('/me/orders/summary', orderController.summary); // before /:id so 'summary' is not read as an id
+router.post('/me/orders', orderController.create);
+router.get('/me/orders/:id', orderController.get);
+router.post('/me/orders/:id/status', orderController.status);
+router.post('/me/orders/:id/send', orderController.send); // in-app owner reply (sends via the chat's own channel!)
 router.get('/me/telegram', ownerController.telegramStatus);
 router.get('/me/telegram/health', ownerController.telegramHealthCheck); // Connect "Verify" button (webhook really registered? Telegram's last error?)
 router.post('/me/telegram/health', ownerController.telegramHealthCheck); // same check + { repair: true } → re-register a stale hook in place (no token needed!)

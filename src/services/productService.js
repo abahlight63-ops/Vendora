@@ -131,6 +131,34 @@ function formatCatalog(products) {
 }
 
 /**
+ * Pick the part of a big catalog a message is about, so Velo reads (and the shop
+ * pays for) only that. Small catalogs (<= limit) go through whole. Otherwise:
+ * products whose name/category/description share words with the message or the
+ * recent chat come first (name matches weigh most), topped up with in-stock items
+ * from the same categories, then any in-stock items, up to `limit`. Out-of-stock
+ * matches are kept, because "that one finished, try this" needs them.
+ */
+function relevantProducts(products, text, limit = 15) {
+  const list = Array.isArray(products) ? products : [];
+  if (list.length <= limit) return list;
+  const STOP = new Set(['the', 'and', 'for', 'you', 'your', 'how', 'much', 'what', 'have', 'this', 'that', 'with', 'una', 'dey', 'get', 'abeg', 'price', 'want', 'need', 'one', 'any', 'all', 'please', 'pls', 'can', 'are', 'is', 'do', 'be', 'na', 'wetin', 'make', 'send', 'me', 'my', 'it', 'of', 'in', 'to', 'a', 'i']);
+  const words = [...new Set(String(text || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length >= 2 && !STOP.has(w)))];
+  const score = (p) => {
+    const name = String(p.name || '').toLowerCase();
+    const rest = `${p.category || ''} ${p.description || ''}`.toLowerCase();
+    return words.reduce((s, w) => s + (name.includes(w) ? 3 : 0) + (rest.includes(w) ? 1 : 0), 0);
+  };
+  const scored = list.map((p, i) => ({ p, i, s: score(p) }));
+  const hits = scored.filter((x) => x.s > 0).sort((a, b) => b.s - a.s || a.i - b.i).map((x) => x.p);
+  const picked = hits.slice(0, limit);
+  const cats = new Set(picked.map((p) => p.category).filter(Boolean));
+  const fill = (pred) => { for (const x of scored) { if (picked.length >= limit) break; if (!picked.includes(x.p) && pred(x.p)) picked.push(x.p); } };
+  fill((p) => p.available !== false && cats.has(p.category));
+  fill((p) => p.available !== false);
+  return picked;
+}
+
+/**
  * Sync with a REPORT (never silent!): snapshots existing names, upserts, then
  * diffs. Returns { saved, added, updated, unmentioned } — name lists the
  * owner can ACT on. Unmentioned items are NEVER auto-deleted or auto-flagged
@@ -151,4 +179,4 @@ async function syncWithReport(businessId, products) {
   return { saved, added, updated, unmentioned };
 }
 
-module.exports = { getProducts, upsertProducts, syncWithReport, formatCatalog, cleanImageUrl, cleanQuantity, cleanCategory, cleanText }; // the catalog API (+ validators for controllers)
+module.exports = { relevantProducts, getProducts, upsertProducts, syncWithReport, formatCatalog, cleanImageUrl, cleanQuantity, cleanCategory, cleanText }; // the catalog API (+ validators for controllers)

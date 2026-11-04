@@ -60,7 +60,7 @@ async function callChoice(entry, model, system, user, image, opts) {
   // 1. The chosen model — exact catalog entry, exact model id (Gemini pinned,
   //    no chain, no affinity — the dropdown pick always takes effect).
   // Text-only providers (no vision): skip when a photo is attached — Gemini/Claude handle images.
-  const NO_VISION = (p) => p === 'groq' || p === 'tokenrouter' || p === 'sambanova' || p === 'pollinations';
+  const NO_VISION = (p) => p === 'groq' || p === 'tokenrouter' || p === 'sambanova' || p === 'pollinations' || p === 'openrouter';
   if (has[entry.provider]) {
     if (!(image && NO_VISION(entry.provider))) {
       const started = Date.now();
@@ -159,7 +159,7 @@ async function askGeneral(message, history, choiceId, tier, bizName, niche, shop
     // SHOP NUMBERS (services/shopStats.js): real chats, customers, apps, busy times
     // and logged stock. Exact sales are NOT recorded yet, so Velo must say so.
     if (shopCtx.stats) {
-      shopLine += `\n\nSHOP NUMBERS (real, from this shop's chats and stock log, Lagos time):\n${shopCtx.stats}\n\nNUMBERS RULES: for any question about how the shop is doing (chats, customers, busy times, best sellers, today, this week, the last 7 or 30 days) answer ONLY from SHOP NUMBERS, quote the exact figures, compare with the period before when it is given, and end with one practical suggestion. NEVER invent, estimate or round up a number that is not listed. SALES AND REVENUE: the app does not record orders yet, so exact sales and money made are NOT known. If asked "how much did we sell" or similar, say plainly that exact sales are not tracked yet, then give the closest real figures (stock logged as taken out and its catalog value, most-asked products, chats), and say that order tracking is coming to VeloSales Ai so this will become exact. Periods that are not listed (for example last year) are not available: say so instead of guessing.`;
+      shopLine += `\n\nSHOP NUMBERS (real, from this shop's chats and stock log, Lagos time):\n${shopCtx.stats}${shopCtx.sales ? `\n\nRECORDED ORDERS (real):\n${shopCtx.sales}` : ''}\n\nNUMBERS RULES: for any question about how the shop is doing (chats, customers, busy times, best sellers, today, this week, the last 7 or 30 days) answer ONLY from SHOP NUMBERS, quote the exact figures, compare with the period before when it is given, and end with one practical suggestion. NEVER invent, estimate or round up a number that is not listed. SALES AND REVENUE: answer ONLY from RECORDED ORDERS below, and say these are the orders recorded in VeloSales. If no orders are recorded, say plainly that exact sales are not known yet, give the closest real figures (stock logged as taken out and its catalog value, most-asked products, chats), and suggest recording each sale as an order (Inbox, Make receipt) so the numbers become exact. Periods that are not listed (for example last year) are not available: say so instead of guessing.`;
     }
   }
   const system = `You are VeloSales Ai, a smart, warm general-purpose assistant inside the VeloSales Ai app.${nicheLine}${todayLine}${shopLine}
@@ -259,7 +259,13 @@ async function generateReply(customerMessage, business, image, history) {
   const planService = require('./planService');
   const pro = planService.isPro(business);
   const products = await productService.getProducts(business.id);
-  const catalog = productService.formatCatalog(products);
+  // Big catalogs: send only what this chat is about (cost + focus). The model is
+  // told the list is partial, so a missing item means "check with the owner", not "we don't sell it".
+  const CATALOG_LIMIT = Number(process.env.CATALOG_PROMPT_LIMIT || 15);
+  const chatText = [customerMessage, ...(history || []).slice(-4).map((m) => m.body)].join(' ');
+  const shown = productService.relevantProducts(products, chatText, CATALOG_LIMIT);
+  const partial = shown.length < (products || []).length;
+  const catalog = productService.formatCatalog(shown) + (partial ? `\n(Showing the ${shown.length} products most related to this chat, out of ${products.length}. If the customer asks about an item that is not in this list, do not say the shop does not sell it: say you will check, and respond NEED_HUMAN: asked about an item not shown.)` : '');
   const tz = business.timezone || 'Africa/Lagos';
   let now;
   try {
@@ -316,6 +322,42 @@ HOW TO SELL LIKE A HUMAN SALESMATE (follow every time — the customer must NEVE
 ${maxDisc > 0 ? `13. SMARTDEAL NEGOTIATION: The owner allows up to ${maxDisc}% off${minOrder ? ` on orders worth at least ₦${minOrder.toLocaleString()}` : ''} ONLY when the customer hesitates, complains about price, or says it's too expensive AND clearly wants to buy. Offer once, as a one-time favour — never volunteer it to happy customers, never exceed ${maxDisc}%.` : '13. Do NOT offer discounts — the owner has not enabled negotiation.'}
 ${image ? '14. The customer also sent a PHOTO. Look at it, describe briefly what you see, match it to the closest catalog product(s), then suggest 2-4 similar in-stock alternatives the same way. If nothing matches, use NEED_HUMAN.' : ''}`;
 
+  // COMPACT prompt: the same rules in about a third of the tokens (every reply pays
+  // for the prompt, so this is the biggest cost lever). REPLY_PROMPT=full keeps the long one.
+  const lane = business.business_niche || 'what the catalog shows';
+  const compactPrompt = `You are the shop assistant for ${business.name} on WhatsApp: a warm, sharp human salesperson, never a robot. Answer ONLY from the business info, FAQ and catalog below.
+Now: ${now} (${tz}).
+
+LANGUAGE FIRST: reply in the customer's language. If they write Nigerian Pidgin (abeg, wetin, dey, una, how far, na, make I, wan, oya), write your WHOLE reply in natural Pidgin, greeting included. Example: customer "How much be the bone straight?" → "Na ₦95,000, e dey available. You wan make I keep one for you?". English in, clear English out. Never correct their language.
+
+RULES
+1. Always polite and patient. No sarcasm, no profanity, even if the customer is rude: stay kind and hand off ("I'm sorry about that. A teammate will sort this out for you shortly.").
+2. ${transcript ? 'This chat is CONTINUING: never greet again, never repeat the shop name, go straight to the answer.' : `FIRST message: greet once by shop name${customGreeting ? ` using the owner's greeting: "${customGreeting}"` : ` ("Hello! Welcome to ${business.name}.")`}, then answer.`} A greeting is never a reason to hand off.
+3. Answer the exact question first, in 1-3 short lines. Prices with ₦ and commas (₦85,000). Say "available" rather than stock counts unless asked or stock is low.
+4. Accept misspellings silently and match the closest item.
+5. NEVER invent products, prices, availability, discounts, delivery times, fees or addresses. Only the catalog and FAQ are true. The shop sells: ${lane}. For things outside that, say so in one warm line and offer what you do have. Never hedge ("we usually have", "might").
+6. Out of stock or not found: apologise warmly in one line ("Sorry, that one just finished"), then offer up to 3 alternatives from the same category, one per line as "• Name — ₦Price". Never blunt phrases like "not in catalog" or "not listed".
+7. Suggestions: at most one line of up to 3 different items, only from the SAME category as the question. Never repeat the item you just answered. For "what do you sell?": up to 5 in-stock items, then one question.
+8. End with at most one short, natural question about the item you just answered (never about a suggestion). Vary your words. Never use "Let me know if you need anything else" or "How can I help you further?".
+9. Delivery, location, how to buy: only from the product lines and FAQ. If not given, say what is known and that the owner will confirm the details.
+10. If the shop is closed now (compare with the hours), say so kindly with the next opening time, and still answer catalog questions.
+11. Small talk (thanks, jokes): reply warmly in one or two lines and invite them to ask about products.
+12. Hand off when the facts do not cover it: custom orders, complaints, payment details or confirmations, unknown items. Reply with exactly: NEED_HUMAN: <brief reason>
+13. Plain text only: no *, #, _, backticks, emojis or links. Product answers under about 60 words. Never say you are an AI or a bot.
+14. ${maxDisc > 0 ? `Discounts: up to ${maxDisc}% off${minOrder ? ` on orders of at least ₦${minOrder.toLocaleString()}` : ''}, offered once, only when a customer who clearly wants to buy says the price is too high. Never volunteer it.` : 'Do NOT offer discounts.'}${image ? '\n15. The customer sent a PHOTO: describe it briefly, match it to the closest catalog product(s), suggest 2-4 similar in-stock items. No match: NEED_HUMAN.' : ''}
+
+BUSINESS
+Name: ${business.name}
+Hours: ${business.hours || 'not provided'}
+Tone: ${business.tone || 'friendly and helpful'}
+
+FAQ
+${(business.faq || []).map((f) => `Q: ${f.question}\nA: ${f.answer}`).join('\n') || '(none)'}
+
+CATALOG
+${catalog}${isEmptyCatalog ? '\nThe catalog is EMPTY: for any product question, apologise warmly, ask what they need, and respond NEED_HUMAN.' : ''}${pro && business.profile_snapshot ? `\n\nVERIFIED BUSINESS PROFILE (confirmed by the owner):\n${business.profile_snapshot}` : ''}${transcript ? `\n\nCONVERSATION SO FAR (oldest first)\n${transcript}` : ''}`;
+  const finalPrompt = (process.env.REPLY_PROMPT || 'compact') === 'full' ? systemPrompt : compactPrompt;
+
   const userPrompt = `Customer message: "${customerMessage}"${image ? '\n(A photo is attached — analyze it.)' : ''}\n\nRespond per your rules.`;
 
   // Per-shop brain pick (Connect page → whatsapp_model): the SAME catalog the
@@ -331,11 +373,11 @@ ${image ? '14. The customer also sent a PHOTO. Look at it, describe briefly what
     && !/^(hi+|hey+|hello+|sup|good\s?(morning|afternoon|evening|day)|how far|yo|hiya|he+y+|how are you|who are you|what can you do|thanks|thank you|ok|okay|lol)\b/i.test(t.trim());
 
   try {
-    let answered = await callChoice(entry, null, systemPrompt, userPrompt, image, waOpts);
+    let answered = await callChoice(entry, null, finalPrompt, userPrompt, image, waOpts);
     if (answered.text && answered.text.trim().length < 60 && isSubstantive(customerMessage)) { // stub answer (a real question in ~1 line = a miss!)…
       console.log(`WhatsApp answer too short (${answered.text.trim().length} chars) — expanding once`);
       try { // …ONE expansion retry, same model (accuracy without extra cost surface!)
-        const expanded = await callChoice(entry, null, systemPrompt,
+        const expanded = await callChoice(entry, null, finalPrompt,
           `${userPrompt}\n\n(Follow-up: that answer was too brief. Answer again helpfully in 2-4 short chat lines like a human shop assistant on WhatsApp — direct answer first, no greeting, no lecture, one natural question at most.)`,
           image, waOpts);
         if (expanded.text && expanded.text.trim().length > answered.text.trim().length) answered = expanded;
@@ -422,7 +464,44 @@ If the text contains no products, return [].`;
   }
 }
 
+/**
+ * RECEIPT request parser (Chat with Velo): "make a receipt for Tunde, 2 bone
+ * straight 20 inch, delivery 3000, paid" → { action:'create', customer, items,
+ * deliveryFee, deliveryNote, status } | { action:'clarify', question } | { action:'none' }.
+ * Prices are NOT taken from the model for catalog items: orderService prices them.
+ */
+const RECEIPT_HINT = /\b(receipt|reciept|invoice)\b/i;
+async function parseReceiptRequest(message, products) {
+  if (!RECEIPT_HINT.test(message || '')) return { action: 'none' };
+  const names = (products || []).map((p) => `${p.name} (${p.price || 'no price'})`).join('; ') || '(empty catalog)';
+  const system = `You turn a shop owner's request into an order for a receipt. Catalog: ${names}.
+Return ONLY one JSON object, no markdown:
+{"action":"create"|"clarify"|"none","customer":string|null,"items":[{"name":string,"qty":number,"price":number|null}],"delivery_fee":number|null,"delivery_note":string|null,"status":"paid"|"pending","question":string|null}
+Rules: use "create" only when the owner asks to MAKE or CREATE a receipt or invoice for a sale. Each item name must be the EXACT catalog name when it matches (fuzzy ok: "bone straight 20" = "Bone straight wig 20\\""); then price is null. An item not in the catalog keeps the owner's words and needs a price from the message, otherwise use "clarify". qty is the number in the message (default 1 only when clearly one). status is "paid" only if the owner says it was paid. delivery_fee only if a delivery amount is given. Questions ABOUT receipts ("how do receipts work?") are "none". When the item or quantity is unclear, use "clarify" with one short question.`;
+  try {
+    const text = await client.callAI(system, message, null);
+    const m = text.match(/\{[\s\S]*\}/);
+    if (!m) return { action: 'none' };
+    const p = JSON.parse(m[0]);
+    if (p.action === 'clarify') return { action: 'clarify', question: (typeof p.question === 'string' && p.question.trim()) || 'Which items, and how many of each?' };
+    if (p.action !== 'create' || !Array.isArray(p.items) || !p.items.length) return { action: 'none' };
+    return {
+      action: 'create',
+      customer: typeof p.customer === 'string' ? p.customer.trim().slice(0, 120) : null,
+      items: p.items.slice(0, 40).map((i) => ({ name: String(i.name || '').trim(), qty: Number(i.qty) || 1, price: i.price == null ? null : Number(i.price) })),
+      deliveryFee: Number(p.delivery_fee) > 0 ? Number(p.delivery_fee) : 0,
+      deliveryNote: typeof p.delivery_note === 'string' ? p.delivery_note.trim().slice(0, 120) : null,
+      status: p.status === 'paid' ? 'paid' : 'pending',
+    };
+  } catch (err) {
+    console.error('parseReceiptRequest error:', err.message);
+    return { action: 'none' };
+  }
+}
+
 module.exports = {
+  parseReceiptRequest,
+  RECEIPT_HINT,
   generateReply,
   extractProducts,
   askGeneral,

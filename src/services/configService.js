@@ -260,6 +260,34 @@ CREATE TABLE IF NOT EXISTS complaints (
 );
 CREATE INDEX IF NOT EXISTS idx_complaints_business ON complaints(business_id);
 
+-- Orders and receipts: what each customer bought (prices copied from the catalog
+-- at the time), delivery, total and status. receipt_no counts per shop (#0001…).
+CREATE TABLE IF NOT EXISTS orders (
+  id SERIAL PRIMARY KEY,
+  business_id INTEGER NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  conversation_id INTEGER REFERENCES conversations(id) ON DELETE SET NULL,
+  receipt_no INTEGER NOT NULL,
+  customer_name TEXT,
+  customer_number TEXT,
+  channel TEXT,
+  items JSONB NOT NULL DEFAULT '[]', -- [{ productId, name, qty, unitPrice, lineTotal }]
+  delivery_fee NUMERIC(14,2) NOT NULL DEFAULT 0,
+  delivery_note TEXT,
+  subtotal NUMERIC(14,2) NOT NULL DEFAULT 0,
+  total NUMERIC(14,2) NOT NULL DEFAULT 0,
+  currency TEXT NOT NULL DEFAULT 'NGN',
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'delivered', 'cancelled')),
+  source TEXT NOT NULL DEFAULT 'owner', -- owner (Inbox/Orders) | velo_chat (Chat with Velo) | auto_draft (Velo spotted an order)
+  note TEXT,
+  paid_at TIMESTAMPTZ,
+  receipt_sent_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (business_id, receipt_no)
+);
+CREATE INDEX IF NOT EXISTS idx_orders_business ON orders(business_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_conversation ON orders(conversation_id);
+
 -- Phone-app launch list: emails left on the marketing site's "Notify me" form
 CREATE TABLE IF NOT EXISTS launch_waitlist (
   email TEXT PRIMARY KEY,
@@ -318,6 +346,9 @@ ALTER TABLE businesses ADD COLUMN IF NOT EXISTS handoff_msg TEXT NOT NULL DEFAUL
 -- NOTE: twilio_* columns are RETIRED (kept so old databases still boot; the
 -- app never reads or writes them — do not reintroduce Twilio anywhere).
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS whatsapp_model TEXT NOT NULL DEFAULT 'gemini-flash-full';
+-- Nov 2026: the model list became velo-* (see aiModels.js ALIASES); move saved picks once.
+ALTER TABLE businesses ALTER COLUMN whatsapp_model SET DEFAULT 'velo-normal';
+UPDATE businesses SET whatsapp_model = CASE WHEN whatsapp_model IN ('kimi-k2','claude-haiku','claude-haiku-2','gpt-mini','gpt-mini-2') THEN 'velo-smart' WHEN whatsapp_model IN ('gemini-flash','gpt-oss-20b','tokenrouter-free') THEN 'velo-fast' WHEN whatsapp_model IN ('llama-70b','sambanova-70b','sambanova-120b') THEN 'velo-steady' ELSE 'velo-normal' END WHERE whatsapp_model NOT LIKE 'velo-%';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS wa_channel TEXT NOT NULL DEFAULT 'meta';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS twilio_account_sid TEXT NOT NULL DEFAULT '';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS twilio_auth_token TEXT NOT NULL DEFAULT '';

@@ -65,7 +65,7 @@ const FAQ = [
     ['What happens when Velo is not sure?', 'It tells the customer you will reply shortly, flags the chat as "Needs you" in your inbox and alerts you, so you can step in.'],
     ['Does it speak Pidgin?', 'Yes. Velo answers the way each customer writes: Pidgin in, Pidgin out; formal English in, formal English out.'],
     ['Can I take over a chat myself?', 'Yes. Open the chat in your inbox and reply. Velo steps back for that chat until you hand it back.'],
-    ['What is Chat with Velo?', 'Your own assistant inside the app. Ask it about your products and prices, or ask it to write a caption or a reply. Sales breakdowns and receipts are coming soon.'],
+    ['What is Chat with Velo?', 'Your own assistant inside the app. Ask it about your products and prices, or ask it to write a caption or a reply. It can also break down your week (chats, recorded sales, busiest days) and make a receipt when you tell it what was sold.'],
   ]],
   ['Channels and data', [
     ['Which apps does Velo work on?', 'WhatsApp and Telegram today. Facebook Messenger and Instagram are coming soon. One inbox shows them all.'],
@@ -220,18 +220,18 @@ const veloChat = () => `
   <div class="vchat-top">${MARK(22)}<b>Chat with Velo</b><span class="dot"></span><small>Your shop's own assistant</small></div>
   <div class="vchat-body">
     <p class="vm me">How did my shop do this week?</p>
-    <div class="vm velo"><b>Here's your week</b> ${SOON}
+    <div class="vm velo"><b>Here's your week</b>
       <div class="stats"><span><b>42</b>chats</span><span><b>34</b>answered by Velo</span><span><b>2</b>need you</span></div>
       <div class="bars" aria-hidden="true">${[30, 46, 38, 64, 52, 80, 70].map((h) => `<i style="height:${h}%"></i>`).join('')}</div>
       <small>Most asked: Bone straight wig 20". Busiest day: Saturday.</small>
     </div>
     <p class="vm me">Make a receipt for Tunde's bone straight order</p>
-    <div class="vm velo receipt"><b>Receipt ready</b> ${SOON}
+    <div class="vm velo receipt"><b>Receipt ready</b>
       <div class="rc"><div class="rc-h">${MARK(18)}<b>Amaka Beauty Studio</b><small>Receipt #0042</small></div>
         <div class="rc-l"><span>Bone straight wig 20" × 1</span><b>₦95,000</b></div>
         <div class="rc-l"><span>Delivery, Ikeja</span><b>₦3,000</b></div>
         <div class="rc-t"><span>Total</span><b>₦98,000</b></div>
-        <span class="rc-btn">${coin('whatsapp', 18)}Send to Tunde on WhatsApp</span></div>
+        <span class="rc-btn">${coin('whatsapp', 18)}Saved to Orders, ready to send</span></div>
     </div>
     <p class="vm me">Write a caption for my new wigs</p>
     <p class="vm velo">New wigs just landed! Soft, full and ready to slay. Send "WIG" to see prices and sizes. Delivery across Lagos. ✨</p>
@@ -293,8 +293,8 @@ ${marquee()}
       <ul class="vlist">
         <li><span class="fic v">${ic('tag', 22)}</span><div><b>Knows your products and prices</b><span>Ask what is in stock, what costs what, or what to restock.</span></div></li>
         <li><span class="fic c">${ic('pen', 22)}</span><div><b>Writes for you</b><span>Captions, status updates and replies, in English or Pidgin.</span></div></li>
-        <li><span class="fic v">${ic('chart', 22)}</span><div><b>Breaks down your week ${SOON}</b><span>Chats, sales, busiest days and what customers ask most.</span></div></li>
-        <li><span class="fic c">${ic('receipt', 22)}</span><div><b>Makes receipts ${SOON}</b><span>Turn a sale into a neat receipt and send it to the customer.</span></div></li>
+        <li><span class="fic v">${ic('chart', 22)}</span><div><b>Breaks down your week</b><span>Chats, sales, busiest days and what customers ask most.</span></div></li>
+        <li><span class="fic c">${ic('receipt', 22)}</span><div><b>Makes receipts</b><span>Turn a sale into a neat receipt and send it to the customer.</span></div></li>
       </ul>
     </div>
     ${veloChat()}

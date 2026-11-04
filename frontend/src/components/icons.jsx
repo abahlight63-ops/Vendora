@@ -9,6 +9,10 @@
 export default function Ic({ n, s = 16 }) { // export default + destructured props with default size
   const p = { viewBox: '0 0 24 24', width: s, height: s, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }; // shared props spread into every case below ({...p} would also work)
   switch (n) {
+    case 'receipt': return (<svg {...p}><path d="M6 2h12v20l-3-2-3 2-3-2-3 2zM9 7h6M9 11h6M9 15h4" /></svg>);
+    case 'minus': return (<svg {...p}><path d="M5 12h14" /></svg>);
+    case 'truck': return (<svg {...p}><path d="M1 6h13v10H1zM14 10h5l3 3v3h-8zM5 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" /></svg>);
+    case 'search': return (<svg {...p}><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-4.3-4.3" /></svg>);
     case 'bolt': return (<svg {...p}><path d="M13 2L4 14h6l-1 8 9-12h-6z" /></svg>);
     case 'spark': return (<svg {...p}><path d="M12 3v4M9 13h.01M15 13h.01M9.5 16.5h5" /><rect x="5" y="7" width="14" height="12" rx="3" /></svg>);
     case 'hand': return (<svg {...p}><path d="M18 9a6 6 0 1 0-12 0c0 6-2.5 7-2.5 7h17S18 15 18 9M10 20a2.2 2.2 0 0 0 4 0" /></svg>);

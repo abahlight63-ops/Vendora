@@ -84,6 +84,7 @@ function configuredProviders() {
     sambanova: !!cleanKey(process.env.SAMBANOVA_API_KEY),
     pollinations: true, // keyless emergency fallback — always "configured"
     openai: !!cleanKey(process.env.OPENAI_API_KEY),
+    openrouter: !!cleanKey(process.env.OPENROUTER_API_KEY),
   };
 }
 
@@ -245,7 +246,7 @@ async function callGroq(system, user, modelOverride, opts) {
   if (!key) throw new Error('GROQ_API_KEY is not set');
   if (!(await groqSlot())) throw new Error('Groq shared quota busy — falling back');
   const model =
-    modelOverride || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+    modelOverride || process.env.GROQ_MODEL || 'openai/gpt-oss-120b'; // Llama 3.3 70B left Groq's public list in 2026
   return callOpenAICompat(
     'Groq',
     'https://api.groq.com/openai/v1/chat/completions',
@@ -289,6 +290,24 @@ async function callTokenRouter(system, user, modelOverride, opts) {
     system,
     user,
     null,
+    opts
+  );
+}
+
+// OpenRouter: one key, many low-cost models (Qwen, DeepSeek, GLM, Mistral…),
+// OpenAI-compatible. Model ids look like "qwen/qwen3.7-flash".
+async function callOpenRouter(system, user, modelOverride, opts) {
+  const key = cleanKey(process.env.OPENROUTER_API_KEY);
+  if (!key) throw new Error('OPENROUTER_API_KEY is not set');
+  const model = modelOverride || process.env.OPENROUTER_MODEL || 'qwen/qwen3.7-flash';
+  return callOpenAICompat(
+    'OpenRouter',
+    'https://openrouter.ai/api/v1/chat/completions',
+    key,
+    model,
+    system,
+    user,
+    { 'HTTP-Referer': 'https://velosalesai.com.ng', 'X-Title': 'VeloSales Ai' },
     opts
   );
 }
@@ -373,6 +392,9 @@ async function callModel(entry, system, user, image, opts) {
   if (entry.provider === 'openai') {
     return callOpenAI(system, user, modelId, opts);
   }
+  if (entry.provider === 'openrouter') {
+    return callOpenRouter(system, user, modelId, opts);
+  }
   throw new Error(`Unknown provider ${entry.provider}`);
 }
 
@@ -382,7 +404,7 @@ async function callModel(entry, system, user, image, opts) {
 async function callAI(system, user, image) {
   const provider = (process.env.AI_PROVIDER || 'gemini').toLowerCase();
   const has = configuredProviders();
-  const order = [provider, 'groq', 'tokenrouter', 'sambanova', 'gemini', 'claude', 'openai', 'pollinations'].filter(
+  const order = [provider, 'groq', 'gemini', 'openrouter', 'tokenrouter', 'sambanova', 'claude', 'openai', 'pollinations'].filter(
     (p, i, a) => a.indexOf(p) === i
   );
   const runners = {
@@ -392,12 +414,13 @@ async function callAI(system, user, image) {
     tokenrouter: () => callTokenRouter(system, user),
     sambanova: () => callSambaNova(system, user),
     openai: () => callOpenAI(system, user),
+    openrouter: () => callOpenRouter(system, user),
     pollinations: () => callPollinations(system, user),
   };
   let lastErr = null;
   for (const name of order) {
     if (!has[name]) continue;
-    if (image && (name === 'groq' || name === 'tokenrouter' || name === 'sambanova' || name === 'pollinations')) continue;
+    if (image && (name === 'groq' || name === 'tokenrouter' || name === 'sambanova' || name === 'pollinations' || name === 'openrouter')) continue;
     const started = Date.now();
     try {
       const text = await runners[name]();
@@ -457,6 +480,7 @@ module.exports = {
   callTokenRouter,
   callSambaNova,
   callPollinations,
+  callOpenRouter,
   callModel,
   callAI,
   pingAll,

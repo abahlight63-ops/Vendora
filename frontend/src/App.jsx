@@ -23,6 +23,7 @@ const Profile = lazy(() => import('./pages/Profile.jsx')); // business name/numb
 const Catalog = lazy(() => import('./pages/Catalog.jsx')); // products + Pro profile-sync
 const Connect = lazy(() => import('./pages/Connect.jsx')); // channel switchboard (WhatsApp Embedded Signup + Telegram + brain pick)
 const Chats = lazy(() => import('./pages/Chats.jsx')); // inbox + threads
+const Orders = lazy(() => import('./pages/Orders.jsx')); // orders + receipts
 const Billing = lazy(() => import('./pages/Billing.jsx')); // plans + status + trial countdown
 const ContactSales = lazy(() => import('./pages/ContactSales.jsx')); // enterprise enquiry form (new-tab from Billing!)
 const Playground = lazy(() => import('./pages/Playground.jsx')); // test-bot (no WhatsApp needed)
@@ -110,6 +111,7 @@ export default function App() { // ROOT component (main.jsx renders this)
       <Route path="/welcome" element={loading ? <div className="page"><div className="card"><BrandGate /></div></div> : me ? <Welcome /> : <Navigate to="/login" replace />} /> {/* niche + heard-from (new signups land here after the tour; guests → login) */}
       <Route path="/dashboard" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Dashboard biz={me} /></Guard>} /> {/* Guard pattern: <Guard …><Page/></Guard> = page becomes `children` */}
       <Route path="/chats" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Chats /></Guard>} />
+      <Route path="/orders" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Orders /></Guard>} />
       <Route path="/catalog" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Catalog /></Guard>} />
       <Route path="/connect" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Connect /></Guard>} />
       <Route path="/playground" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><Playground /></Guard>} />

@@ -43,7 +43,7 @@ const SECTIONS = [
   S('share', 'Who we share it with', <>
     <p>We share data only with service providers that help us run VeloSales Ai, under contracts that require them to protect it:</p>
     <ul>
-      <li><b>AI providers</b> (such as Google Gemini and DeepSeek, and others for paid plans) to write replies.</li>
+      <li><b>AI providers</b> (Google Gemini, Groq and OpenRouter) to write replies.</li>
       <li><b>Meta</b> (WhatsApp, Messenger, Instagram) and <b>Telegram</b> to receive and send messages on the channels you connect.</li>
       <li><b>Paystack</b> and <b>Flutterwave</b> to process payments.</li>
       <li><b>Email providers</b> to send account emails.</li>

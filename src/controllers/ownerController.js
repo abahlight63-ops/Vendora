@@ -904,7 +904,7 @@ async function channelsStatus(req, res) {
     whatsapp: {
       number: b.whatsapp_number, // shop's number (locked identity!)
       channel: 'meta', // Meta Cloud API only (Embedded Signup road!)
-      model: b.whatsapp_model || 'gemini-flash-full', // per-shop brain pick!
+      model: b.whatsapp_model || 'velo-normal', // per-shop brain pick!
       live: !!b.whatsapp_last_inbound_at, // inbound EVER seen (TEST-verify flips this!)
       lastInbound: b.whatsapp_last_inbound_at, // timestamp for "last seen" text
       metaConnected: !!b.meta_on, // WABA credentials stored!
@@ -1138,6 +1138,8 @@ async function ask(req, res) {
     try {
       const shopStats = require('../services/shopStats');
       if (shopCtx) shopCtx.stats = shopStats.formatStats(await shopStats.getShopStats(req.session.businessId));
+      const orderService = require('../services/orderService');
+      if (shopCtx) shopCtx.sales = orderService.formatSales(await orderService.salesStats(req.session.businessId));
     } catch (e) { console.error('ask stats error:', e.message); }
     const resolved = aiModels.resolveChoice(model, tier); // validate dropdown id: exists? below-floor? → {entry, model} or {error}
     if (resolved.error) return res.status(402).json({ error: resolved.error }); // 402 = paywall (locked premium model)
@@ -1164,6 +1166,32 @@ async function ask(req, res) {
     );
     if (mrows[0].count >= MODEL_DAILY_CAP) { // this business maxed THIS model today (quota justice: others' share untouched!)…
       return res.status(429).json({ error: `You've used ${resolved.entry.label} 50 times today — try another AI below, fresh quota!` }); // …redirect, don't dead-end (dropdown has 7 more!)
+    }
+    // RECEIPTS: "make a receipt for Tunde, 2 bone straight wigs, delivery 3000" → a real
+    // order (prices from the catalog), answered with the receipt itself.
+    if (text && replyEngine.RECEIPT_HINT.test(text)) {
+      try {
+        const orderService = require('../services/orderService');
+        const products = await require('../services/productService').getProducts(req.session.businessId);
+        const ask = await replyEngine.parseReceiptRequest(text, products);
+        if (ask.action === 'clarify') return res.json({ reply: ask.question, via: 'VeloSales Ai', model: resolved.entry.id, fallback: false, requested: null });
+        if (ask.action === 'create') {
+          let conversationId = null;
+          if (ask.customer) { // link the newest chat with that customer, so the receipt can be sent there
+            const { rows: cv } = await db.query('SELECT id FROM conversations WHERE business_id = $1 AND customer_name ILIKE $2 ORDER BY updated_at DESC LIMIT 1', [req.session.businessId, ask.customer.replace(/[%_]/g, '') + '%']);
+            if (cv.length) conversationId = cv[0].id;
+          }
+          try {
+            const order = await orderService.createOrder(req.session.businessId, { items: ask.items, customerName: ask.customer, conversationId, deliveryFee: ask.deliveryFee, deliveryNote: ask.deliveryNote, status: ask.status, source: 'velo_chat' });
+            const receipt = orderService.receiptText(order, bizName);
+            const next = conversationId ? 'It is linked to their chat: open Orders to send it to them.' : 'Copy it to send, or link it to a chat from Orders.';
+            return res.json({ reply: `Done. I saved this as order #${String(order.receipt_no).padStart(4, '0')}.\n\n${receipt}\n\n${next}`, via: 'VeloSales Ai', model: resolved.entry.id, fallback: false, requested: null, order: { id: order.id, receiptNo: order.receipt_no } });
+          } catch (e) {
+            if (e && e.status) return res.json({ reply: `I could not make that receipt yet: ${e.message}`, via: 'VeloSales Ai', model: resolved.entry.id, fallback: false, requested: null });
+            throw e;
+          }
+        }
+      } catch (e) { console.error('receipt from chat failed:', e.message); } // falls through to a normal answer
     }
     const question = text || 'What do you make of this photo? Tell me how I can use it for my business.'; // photo-only send still needs a prompt for the model
     const result = await replyEngine.askGeneral(question, Array.isArray(history) ? history.slice(-12) : [], resolved.entry.id, tier, bizName, bizNiche, shopCtx, pic); // Array.isArray guards tampered history; slice(-12) caps context cost; niche tailors examples + follow-ups; shopCtx grounds shop questions in REAL data; pic = optional photo!

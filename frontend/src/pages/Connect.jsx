@@ -113,7 +113,7 @@ export default function Connect() {
     const { data } = await api('/api/me/channels');
     if (data) {
       setSt(data);
-      if (data.whatsapp && !brain) setBrain(data.whatsapp.model || 'gemini-flash-full'); // adopt server truth once (user edits after!)
+      if (data.whatsapp && !brain) setBrain(data.whatsapp.model || 'velo-normal'); // adopt server truth once (user edits after!)
     }
   }
   useEffect(() => { // mount: status + models in parallel (no await between = both fly!)

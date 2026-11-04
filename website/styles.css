@@ -397,3 +397,6 @@ main { display: block; }
 
 .mq-soon { padding: 2px 8px; border-radius: 999px; background: rgba(255, 138, 107, 0.16); color: #ffb199; font-size: 12px; font-weight: 800; }
 :root[data-theme='light'] .mq-soon { background: rgba(208, 60, 22, 0.1); color: #b8320f; }
+
+/* receipt demo: the shop's own initial, never the VeloSales mark */
+.rc-shop { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 7px; background: linear-gradient(145deg, #ff7650, #d03c16); color: #fff; font-size: 12px; font-weight: 800; flex: 0 0 auto; }

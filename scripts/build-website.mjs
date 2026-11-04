@@ -227,7 +227,7 @@ const veloChat = () => `
     </div>
     <p class="vm me">Make a receipt for Tunde's bone straight order</p>
     <div class="vm velo receipt"><b>Receipt ready</b>
-      <div class="rc"><div class="rc-h">${MARK(18)}<b>Amaka Beauty Studio</b><small>Receipt #0042</small></div>
+      <div class="rc"><div class="rc-h"><span class="rc-shop" aria-hidden="true">A</span><b>Amaka Beauty Studio</b><small>Receipt #0042</small></div>
         <div class="rc-l"><span>Bone straight wig 20" × 1</span><b>₦95,000</b></div>
         <div class="rc-l"><span>Delivery, Ikeja</span><b>₦3,000</b></div>
         <div class="rc-t"><span>Total</span><b>₦98,000</b></div>

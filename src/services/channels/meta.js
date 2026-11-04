@@ -79,16 +79,51 @@ function parseInbound(payload) {
     const change = entry && entry.changes && entry.changes[0];
     const value = change && change.value;
     const msg = value && value.messages && value.messages[0];
-    if (!msg || msg.type !== 'text' || !msg.text || !msg.text.body) return null; // text only for now (images/voice on Meta = future upgrade!)
+    if (!msg || !msg.from) return null; // status pings (sent/read receipts) carry no message
     const contact = value.contacts && value.contacts[0];
-    return {
+    const base = {
       id: String(msg.id || ''), // Meta message id (wamid…) — used for retry dedupe (never logged, never sent!)
       from: String(msg.from || ''), // customer digits (no whatsapp: prefix on Meta!)
-      body: String(msg.text.body || ''),
       name: (contact && contact.profile && contact.profile.name) || '',
+      kind: 'text', mediaId: null, mime: null,
     };
+    if (msg.type === 'reaction' || msg.type === 'system') return null; // a thumbs-up on a message is not a question
+    if (msg.type === 'text') return msg.text && msg.text.body ? { ...base, body: String(msg.text.body) } : null;
+    // Photos and voice notes arrive as media ids: the route downloads them.
+    if (msg.type === 'image' && msg.image) return { ...base, kind: 'image', mediaId: msg.image.id, mime: msg.image.mime_type || 'image/jpeg', body: String(msg.image.caption || '') };
+    if (msg.type === 'audio' && msg.audio) return { ...base, kind: 'audio', mediaId: msg.audio.id, mime: msg.audio.mime_type || 'audio/ogg', body: '' };
+    // Everything else still reaches the Inbox as a short note, so nothing is lost.
+    const NOTE = { video: 'a video', document: 'a document', sticker: 'a sticker', location: 'a location', contacts: 'a contact card' };
+    if (msg.type === 'button' && msg.button) return { ...base, body: String(msg.button.text || '') || '[the customer tapped a button]' };
+    if (msg.type === 'interactive' && msg.interactive) { const r = msg.interactive.button_reply || msg.interactive.list_reply; return { ...base, body: (r && r.title) || '[the customer tapped a button]' }; }
+    const cap = msg[msg.type] && msg[msg.type].caption ? ' ' + String(msg[msg.type].caption) : '';
+    return { ...base, kind: 'other', body: `[the customer sent ${NOTE[msg.type] || 'a message Velo cannot read yet'}]${cap}` };
   } catch {
     return null; // malformed → ignore (never crash a webhook!)
+  }
+}
+
+// Download a WhatsApp media file (photo or voice note) by its id.
+// Two steps: ask Graph for a short-lived URL, then fetch the bytes with the
+// same token. Returns { mime, base64 } or null (too big, expired, no token).
+async function downloadMedia(tokenRaw, mediaId) {
+  const token = String(tokenRaw || '').trim();
+  if (!token || !mediaId) return null;
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 20000);
+    const meta = await fetch(`${GRAPH}/${encodeURIComponent(mediaId)}`, { headers: { Authorization: 'Bearer ' + token }, signal: ctrl.signal });
+    if (!meta.ok) { clearTimeout(t); console.error('meta media lookup', meta.status); return null; }
+    const info = await meta.json();
+    if (!info || !info.url || Number(info.file_size) > 10 * 1024 * 1024) { clearTimeout(t); return null; } // 10 MB cap
+    const file = await fetch(info.url, { headers: { Authorization: 'Bearer ' + token }, signal: ctrl.signal }).finally(() => clearTimeout(t));
+    if (!file.ok) { console.error('meta media download', file.status); return null; }
+    const buf = Buffer.from(await file.arrayBuffer());
+    if (!buf.length || buf.length > 10 * 1024 * 1024) return null;
+    return { mime: info.mime_type || file.headers.get('content-type') || 'application/octet-stream', base64: buf.toString('base64') };
+  } catch (e) {
+    console.error('meta media error:', e.message);
+    return null;
   }
 }
 
@@ -158,4 +193,4 @@ async function listWabaNumbers(wabaIdRaw, tokenRaw) {
   return { numbers };
 }
 
-module.exports = { checkCredentials, sendText, parseInbound, fetchBusinessProfile, shapeOk, exchangeCode, listWabaNumbers, GRAPH };
+module.exports = { downloadMedia, checkCredentials, sendText, parseInbound, fetchBusinessProfile, shapeOk, exchangeCode, listWabaNumbers, GRAPH };

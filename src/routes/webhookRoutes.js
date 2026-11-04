@@ -60,7 +60,19 @@ async function metaInbound(req, res) {
         const v = sig.verdict(business, req.rawBody, req.get('x-hub-signature-256'));
         if (v === 'bad') { console.warn('meta webhook: bad signature for shop', business.id, '- message dropped'); continue; }
         if (v === 'unchecked') sig.warnUnchecked(business.id);
-        const sub = { body: { From: 'whatsapp:+' + parsed.from.replace(/\D/g, ''), To: business.whatsapp_number, Body: parsed.body, ProfileName: parsed.name || null }, meta: { business, chatId: parsed.from.replace(/\D/g, '') }, providerMsgId: parsed.id || null }; // controller shape + Meta ctx (sender picks Meta outbound!) + provider id for retry dedupe
+        // Photos and voice notes: fetch the bytes now (the brain takes them ready-made).
+        let body = parsed.body || '';
+        let media = null;
+        if ((parsed.kind === 'image' || parsed.kind === 'audio') && parsed.mediaId) {
+          const dl = await meta.downloadMedia(business.meta_token, parsed.mediaId);
+          if (parsed.kind === 'image') {
+            if (dl) media = { kind: 'image', mime: dl.mime, base64: dl.base64 };
+            else body = (body ? body + ' ' : '') + '[the customer sent a photo that could not be opened]';
+          } else {
+            body = await require('../services/voiceNote').toText(business, dl, body);
+          }
+        }
+        const sub = { body: { From: 'whatsapp:+' + parsed.from.replace(/\D/g, ''), To: business.whatsapp_number, Body: body, ProfileName: parsed.name || null }, meta: { business, chatId: parsed.from.replace(/\D/g, ''), media }, providerMsgId: parsed.id || null }; // controller shape + Meta ctx (sender picks Meta outbound!) + provider id for retry dedupe
         await webhookController.handleInbound(sub, { status: () => ({ send: () => {}, json: () => {} }), send: () => {} }); // sub-response swallows (one outer 200 below covers the batch!)
       }
     }

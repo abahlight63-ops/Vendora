@@ -233,9 +233,11 @@ async function handleInbound(req, res) {
     let body = Body; // let: photo case appends "[the customer sent a photo]"
     let image = null; // {mime, base64} for AI vision (null = text only)
     let mediaDataUrl = null; // data: URL for the dashboard <img> (Telegram files expire)
-    if (tgCtx && tgCtx.media && tgCtx.media.kind === 'image') { // Telegram door: photo pre-downloaded by the route (auth + bytes already handled!)…
-      image = { mime: tgCtx.media.mime, base64: tgCtx.media.base64 }; // …straight into vision input!
+    const inMedia = (tgCtx && tgCtx.media) || (metaCtx && metaCtx.media) || null; // photo pre-downloaded by the Telegram or WhatsApp route
+    if (inMedia && inMedia.kind === 'image') {
+      image = { mime: inMedia.mime, base64: inMedia.base64 }; // vision input
       body = (Body ? Body + ' ' : '') + '[the customer sent a photo]'; // caption (if any) + photo note
+      if (inMedia.base64.length <= 700000) mediaDataUrl = `data:${inMedia.mime};base64,${inMedia.base64}`; // small photos also show in the Inbox
     }
     // NOTE: Meta image/voice payloads arrive as media IDs (not text) and are
     // skipped by parseInbound for now — text road only. Voice notes on

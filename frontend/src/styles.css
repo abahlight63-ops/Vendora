@@ -3853,3 +3853,12 @@ body { min-height: 100vh; min-height: 100dvh; } /* the colour field must reach t
 .btn.od-send::after { display: none; }
 .od-search input, .od-search input:focus { min-height: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
 .rc-fld:focus { padding: 0 14px; border-width: 1.5px; box-shadow: none; }
+
+/* Receipt: the shop's own logo or initial; Save as PDF prints only the receipt */
+.od-rh-ic { font-weight: 800; font-size: 17px; background: linear-gradient(145deg, #ff7650, #d03c16); }
+.od-rh-logo { width: 38px; height: 38px; border-radius: 12px; object-fit: cover; flex: 0 0 auto; }
+@media print {
+  body.od-printing * { visibility: hidden !important; }
+  body.od-printing .od-rcp, body.od-printing .od-rcp * { visibility: visible !important; }
+  body.od-printing .od-rcp { position: fixed; left: 0; top: 0; width: 100%; box-shadow: none; background: #fff; color: #1e1757; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

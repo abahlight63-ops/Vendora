@@ -13,6 +13,7 @@ import ReceiptSheet from '../components/ReceiptSheet.jsx';
 import Loader from '../components/Loader.jsx';
 import Ic from '../components/icons.jsx';
 import { CHANNEL_COINS } from '../lib/channelLogos.js';
+import { receiptPng, shareOrDownload } from '../lib/receiptImage.js';
 import { STATUS_LABEL, STATUS_SHORT, money, short, receiptNo, channelLabel, itemsLine, when } from '../lib/orders.js';
 
 let coinN = 0;
@@ -29,12 +30,12 @@ const change = (a, b, unit) => {
 };
 const FILTERS = [['all', 'All'], ['pending', 'Waiting'], ['paid', 'Paid'], ['delivered', 'Delivered'], ['cancelled', 'Cancelled']];
 
-function Receipt({ order, shop }) {
+function Receipt({ order, shop, logo }) {
   const cur = order.currency;
   return (
     <div className="od-rcp">
       <div className="od-rh">
-        <span className="od-rh-ic" aria-hidden="true"><Ic n="receipt" s={20} /></span>
+        {logo ? <img className="od-rh-logo" src={logo} alt="" /> : <span className="od-rh-ic" aria-hidden="true">{((shop || 'R').trim()[0] || 'R').toUpperCase()}</span>}
         <div><b>{shop || 'Your shop'}</b><small>Receipt {receiptNo(order)} · {new Date(order.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</small></div>
         <span className={'od-st ' + order.status}>{STATUS_SHORT[order.status]}</span>
       </div>
@@ -57,6 +58,7 @@ export default function Orders() {
   const [phoneOpen, setPhoneOpen] = useState(false);
   const [receipt, setReceipt] = useState('');
   const [shop, setShop] = useState('');
+  const [logo, setLogo] = useState(null); // the shop's own logo (its profile photo)
   const [busy, setBusy] = useState('');
   const [creating, setCreating] = useState(false);
 
@@ -70,6 +72,11 @@ export default function Orders() {
       setSelId((id) => id || (o.data.orders[0] && o.data.orders[0].id) || null);
     } catch (e) { setFailed({ status: 0, detail: describeNetError(e) }); setOrders((x) => x || []); }
   }
+  useEffect(() => {
+    api('/api/me').then(({ ok, data }) => {
+      if (ok && data && data.business) { setShop(data.business.name || ''); setLogo(data.business.avatar_url || null); }
+    });
+  }, []);
   useEffect(() => { load(); }, [tries]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sel = (orders || []).find((o) => o.id === selId) || null;
@@ -80,7 +87,6 @@ export default function Orders() {
     api('/api/me/orders/' + sel.id).then(({ ok, data }) => {
       if (dead || !ok) return;
       setReceipt(data.receipt || '');
-      setShop(String(data.receipt || '').split('\n')[0] || '');
     });
     return () => { dead = true; };
   }, [selId, sel && sel.status]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -103,6 +109,22 @@ export default function Orders() {
     if (!ok) return pop('err', 'Receipt not sent', (data && data.error) || 'Check your connection and try again.');
     setOrders((xs) => xs.map((o) => (o.id === sel.id ? { ...o, receipt_sent_at: new Date().toISOString() } : o)));
     toast('Receipt sent to ' + (sel.customer_name || 'the customer'));
+  }
+  async function picture() {
+    if (!sel || busy) return;
+    setBusy('pic');
+    try {
+      const blob = await receiptPng(sel, { name: shop, logo });
+      const how = await shareOrDownload(blob, 'receipt-' + receiptNo(sel).slice(1) + '.png');
+      if (how === 'downloaded') toast('Receipt picture saved');
+    } catch { pop('err', 'Could not make the picture', 'Try again, or use Copy receipt.'); }
+    setBusy('');
+  }
+  function pdf() { // the browser's print window has "Save as PDF"; only the receipt prints
+    document.body.classList.add('od-printing');
+    const done = () => { document.body.classList.remove('od-printing'); window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done);
+    window.print();
   }
   async function copy() {
     try { await navigator.clipboard.writeText(receipt); toast('Receipt copied'); } catch { pop('err', 'Could not copy', 'Select the receipt text and copy it by hand.'); }
@@ -166,7 +188,7 @@ export default function Orders() {
         <aside className="od-side" aria-label="Receipt">
           <button type="button" className="nt-back od-back" onClick={() => setPhoneOpen(false)}><Ic n="back" s={18} />All orders</button>
           {!sel ? <div className="od-rcp nt-empty"><b>Pick an order</b><span>Its receipt shows here.</span></div> : (<>
-            <Receipt order={sel} shop={shop} />
+            <Receipt order={sel} shop={shop} logo={logo} />
             {sel.conversation_id && sel.status !== 'cancelled' && (
               <button type="button" className="btn lg od-send" onClick={send} disabled={!!busy}>
                 {busy === 'send' ? <Loader size={17} /> : <Coin ch={sel.channel} s={22} />}{sel.receipt_sent_at ? 'Send receipt again' : 'Send receipt on ' + channelLabel(sel.channel)}
@@ -176,6 +198,8 @@ export default function Orders() {
               {sel.status === 'pending' && <button type="button" className="btn ghost" onClick={() => setStatus('paid')} disabled={!!busy}>{busy === 'paid' ? <Loader size={16} /> : <Ic n="cash" s={18} />}Mark paid</button>}
               {sel.status === 'paid' && <button type="button" className="btn ghost" onClick={() => setStatus('delivered')} disabled={!!busy}>{busy === 'delivered' ? <Loader size={16} /> : <Ic n="truck" s={18} />}Mark delivered</button>}
               {sel.status === 'cancelled' && <button type="button" className="btn ghost" onClick={() => setStatus('pending')} disabled={!!busy}><Ic n="refresh" s={18} />Restore order</button>}
+              <button type="button" className="btn ghost" onClick={picture} disabled={!!busy}>{busy === 'pic' ? <Loader size={16} /> : <Ic n="camera" s={18} />}Save picture</button>
+              <button type="button" className="btn ghost" onClick={pdf}><Ic n="download" s={18} />Save as PDF</button>
               <button type="button" className="btn ghost" onClick={copy} disabled={!receipt}><Ic n="copy" s={18} />Copy receipt</button>
             </div>
             {sel.status !== 'cancelled' && <button type="button" className="od-cancel" onClick={() => setStatus('cancelled')} disabled={!!busy}>Cancel this order</button>}

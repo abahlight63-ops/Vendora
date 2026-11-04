@@ -42,16 +42,9 @@ async function handleParsed(business, botToken, parsed, req, res) {
   }
   // Voice → transcript HERE (Plus-gated: business known at route level!)…
   let body = parsed.text || ''; // typed text and/or caption (may be empty for pure voice/photo!)
-  if (parsed.kind === 'voice' && media) {
-    if (!planService.isProPlus(business)) { // non-Plus: note it (brain hands off gracefully — premium selling point, not silence!)
-      body = (body ? body + '\n' : '') + '[a voice note was sent — voice notes are a Pro Plus feature]';
-    } else { // Plus: Whisper Large v3 (sub-second, free tier!)…
-      const said = await whatsappService.transcribeAudio({ mime: parsed.mime, base64: media.base64 }); // same transcriber as WhatsApp path (one voice engine!)
-      body = said // transcript wins, caption preserved below (both signals!)…
-        ? `Voice note: "${said}"${body ? `\n${body}` : ''}`
-        : (body ? body + '\n' : '') + '[a voice note was sent that could not be transcribed]'; // …null → handoff cue (never silence, never invention!)
-      media = null; // consumed into text (don't ALSO run vision on audio bytes!)
-    }
+  if (parsed.kind === 'voice') { // same rule as WhatsApp: paid plans and the trial get voice notes answered
+    body = await require('../services/voiceNote').toText(business, media, body);
+    media = null; // consumed into text (never run vision on audio bytes)
   }
   req.body = { // controller shape (the brain's From/To/Body/ProfileName contract — adapter pattern!)…
     From: fromTag, // telegram:chatId (routing + identity in one string!)

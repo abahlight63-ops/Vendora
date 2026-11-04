@@ -32,15 +32,16 @@ From the audit and review of 3 November 2026.
 - [x] New Orders record: items, quantity, price from the catalog, delivery, total, customer, status (pending, paid, delivered)
 - [ ] Create orders three ways: "Make receipt" in a chat, "make a receipt for Tunde" in Chat with Velo, and Velo drafting one when a customer orders
   - Done: Make receipt in a chat, Chat with Velo, New order on the Orders page. Left: Velo drafting one by itself
-- [ ] Receipt with logo, items, delivery, total and number; send it in the chat or share as a picture or PDF
-  - Done: numbered receipt with items, delivery and total, sent in the chat or copied. Left: picture or PDF with the logo
+- [x] Receipt with logo, items, delivery, total and number; send it in the chat or share as a picture or PDF
+  - Done: sent in the chat, copied, saved as a picture (shared on phones) or as a PDF; branded with the shop's own logo or initial, never VeloSales
 - [x] Remove the "Coming soon" tag on receipts (website and app)
 
 ## 4. Voice notes and photos on WhatsApp
-- [ ] Download WhatsApp voice notes, turn them into text, and answer
-- [ ] Read customer photos on WhatsApp and match them to the catalog
-- [ ] Show the voice note's words under it in the Inbox
-- [ ] Fix the gap where non-text WhatsApp messages never reach the Inbox at all
+- [x] Download WhatsApp voice notes, turn them into text, and answer
+- [x] Read customer photos on WhatsApp and match them to the catalog
+- [x] Show the voice note's words under it in the Inbox
+- [x] Fix the gap where non-text WhatsApp messages never reach the Inbox at all
+  - Voice notes are answered on paid plans and the Pro trial (WhatsApp and Telegram alike); Free gets a hand-off note. Videos, documents and stickers show as a note; emoji reactions are ignored
 
 ## 5. Real insights
 - [ ] Work out insights on the server: chats per day and per app, Velo vs. needed you, reply speed, most-asked products, unanswered questions, orders and revenue, busiest hours

@@ -39,16 +39,18 @@ const CATALOG_ALL = [
     model: () => (process.env.SAMBANOVA_MODEL_1 || 'gpt-oss-120b').trim() },
   { id: 'velo-samba-2', label: 'Velo Extra 2', provider: 'sambanova', tier: 'free', badge: 'Fast', desc: 'Extra free backup',
     model: () => (process.env.SAMBANOVA_MODEL_2 || 'DeepSeek-V3.1').trim() },
-  // ── Pro plan: OpenRouter (key 4), cheap paid models ──
-  { id: 'velo-pro', label: 'Velo Pro', provider: 'openrouter', tier: 'paid', minTier: 'plus', badge: 'Premium', desc: 'Strong answers · Pro plan',
+  // ── Plus plan and up (stored key pro): OpenRouter (key 4), cheap paid models ──
+  { id: 'velo-pro', label: 'Velo Pro', provider: 'openrouter', tier: 'paid', minTier: 'pro', badge: 'Premium', desc: 'Strong answers · Plus plan and up',
     model: () => (process.env.OPENROUTER_MODEL_1 || 'deepseek/deepseek-v4.1-flash').trim() },
-  { id: 'velo-pro-2', label: 'Velo Pro Quick', provider: 'openrouter', tier: 'paid', minTier: 'plus', badge: 'Premium', desc: 'Fast strong answers · Pro plan',
+  { id: 'velo-pro-2', label: 'Velo Pro Quick', provider: 'openrouter', tier: 'paid', minTier: 'pro', badge: 'Premium', desc: 'Fast strong answers · Plus plan and up',
     model: () => (process.env.OPENROUTER_MODEL_2 || 'qwen/qwen3.7-flash').trim() },
-  // ── Later (PREMIUM_AI=on, around 1,000 users and 50 paying): ChatGPT and Claude ──
+  // ── Pro and Business (stored key plus and up), later: ChatGPT, Claude, Kimi. Hidden until PREMIUM_AI=on ──
   { id: 'velo-premium-claude', label: 'Velo Premium (Claude)', provider: 'claude', tier: 'paid', minTier: 'plus', badge: 'Premium', premium: true, desc: 'Top quality · Pro plan',
     model: () => (process.env.CLAUDE_MODEL || 'claude-haiku-5-5').trim() },
   { id: 'velo-premium-gpt', label: 'Velo Premium (ChatGPT)', provider: 'openai', tier: 'paid', minTier: 'plus', badge: 'Premium', premium: true, desc: 'Top quality · Pro plan',
     model: () => (process.env.OPENAI_MODEL || 'gpt-5-mini').trim() },
+  { id: 'velo-premium-kimi', label: 'Velo Premium (Kimi)', provider: 'openrouter', tier: 'paid', minTier: 'plus', badge: 'Premium', premium: true, desc: 'Top quality · Pro plan',
+    model: () => (process.env.KIMI_MODEL || 'moonshotai/kimi-k2').trim() },
 ];
 // The premium pair is invisible (and cannot be picked) until PREMIUM_AI=on.
 const CATALOG = new Proxy(CATALOG_ALL, { get: (t, k) => { const live = t.filter((m) => !m.premium || PREMIUM_ON()); const v = live[k]; return typeof v === 'function' ? v.bind(live) : v; } });
@@ -67,7 +69,7 @@ function get(id) {
 
 // Capability levels: free < pro < plus. A model opens when the caller's level
 // meets its floor (free entries have no floor — open to everyone).
-const LEVELS = { free: 0, pro: 1, plus: 2 };
+const LEVELS = { free: 0, pro: 1, plus: 2, business: 3 }; // stored keys: pro = shown Plus, plus = shown Pro
 function levelOf(tier) {
   return LEVELS[String(tier || 'free').toLowerCase()] ?? 0; // ?? 0: unknown strings (legacy callers) = free
 }

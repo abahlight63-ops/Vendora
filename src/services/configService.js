@@ -348,6 +348,26 @@ ALTER TABLE businesses ADD COLUMN IF NOT EXISTS handoff_msg TEXT NOT NULL DEFAUL
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS whatsapp_model TEXT NOT NULL DEFAULT 'gemini-flash-full';
 -- Nov 2026: the model list became velo-* (see aiModels.js ALIASES); move saved picks once.
 ALTER TABLE businesses ALTER COLUMN whatsapp_model SET DEFAULT 'velo-normal';
+-- Broadcasts: one message to many past customers (see broadcastService.js).
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS promo_opt_out BOOLEAN NOT NULL DEFAULT false;
+CREATE TABLE IF NOT EXISTS broadcasts (
+  id SERIAL PRIMARY KEY,
+  business_id INTEGER NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  message TEXT NOT NULL,
+  audience TEXT NOT NULL DEFAULT 'all',
+  channel TEXT NOT NULL DEFAULT 'all',
+  wa_template TEXT,
+  wa_lang TEXT,
+  recipients INTEGER NOT NULL DEFAULT 0,
+  sent INTEGER NOT NULL DEFAULT 0,
+  failed INTEGER NOT NULL DEFAULT 0,
+  skipped INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'sending',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  finished_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS broadcasts_business_idx ON broadcasts (business_id, created_at DESC);
+UPDATE broadcasts SET status = 'stopped', finished_at = now() WHERE status = 'sending' AND created_at < now() - interval '2 hours';
 UPDATE businesses SET whatsapp_model = CASE WHEN whatsapp_model IN ('kimi-k2','claude-haiku','claude-haiku-2','gpt-mini','gpt-mini-2') THEN 'velo-pro' WHEN whatsapp_model IN ('gemini-flash','gpt-oss-20b','tokenrouter-free') THEN 'velo-fast' WHEN whatsapp_model IN ('llama-70b','sambanova-70b','sambanova-120b') THEN 'velo-steady' ELSE 'velo-normal' END WHERE whatsapp_model NOT LIKE 'velo-%';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS wa_channel TEXT NOT NULL DEFAULT 'meta';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS twilio_account_sid TEXT NOT NULL DEFAULT '';

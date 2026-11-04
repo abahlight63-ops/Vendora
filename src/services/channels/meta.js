@@ -103,6 +103,22 @@ function parseInbound(payload) {
   }
 }
 
+// Send an approved WhatsApp template (needed for anyone who has not written in
+// 24 hours). The template must have one {{1}} in its body for the message.
+// Meta bills template messages to the shop's own WhatsApp account.
+async function sendTemplate(token, phoneId, to, name, lang, text) {
+  if (!token || !phoneId || !to || !name) return false;
+  try {
+    const res = await fetch(`${GRAPH}/${phoneId}/messages`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'template', template: { name, language: { code: lang || 'en' }, components: [{ type: 'body', parameters: [{ type: 'text', text: String(text).slice(0, 1000) }] }] } }),
+    });
+    if (!res.ok) { console.error('Meta template send failed:', res.status, (await res.text()).slice(0, 200)); return false; }
+    return true;
+  } catch (e) { console.error('Meta template error:', e.message); return false; }
+}
+
 // Download a WhatsApp media file (photo or voice note) by its id.
 // Two steps: ask Graph for a short-lived URL, then fetch the bytes with the
 // same token. Returns { mime, base64 } or null (too big, expired, no token).
@@ -193,4 +209,4 @@ async function listWabaNumbers(wabaIdRaw, tokenRaw) {
   return { numbers };
 }
 
-module.exports = { downloadMedia, checkCredentials, sendText, parseInbound, fetchBusinessProfile, shapeOk, exchangeCode, listWabaNumbers, GRAPH };
+module.exports = { sendTemplate, downloadMedia, checkCredentials, sendText, parseInbound, fetchBusinessProfile, shapeOk, exchangeCode, listWabaNumbers, GRAPH };

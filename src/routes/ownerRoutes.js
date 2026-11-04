@@ -38,6 +38,9 @@ router.post('/me/conversations/:id/takeover', ownerController.chatTakeover);
 router.post('/me/conversations/:id/reply', ownerController.chatReply);
 // Orders and receipts (controllers/orderController.js)
 const orderController = require('../controllers/orderController');
+router.get('/me/broadcasts/preview', require('../controllers/broadcastController').preview); // who would get it + plan limit
+router.get('/me/broadcasts', require('../controllers/broadcastController').list);
+router.post('/me/broadcasts', require('../controllers/broadcastController').create);
 router.get('/me/orders', orderController.list);
 router.get('/me/orders/summary', orderController.summary); // before /:id so 'summary' is not read as an id
 router.post('/me/orders', orderController.create);

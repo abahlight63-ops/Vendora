@@ -249,6 +249,15 @@ async function handleInbound(req, res) {
     // no second AI call, no second reply. (NULL id = Telegram/legacy → always new.)
     const seenInbound = await conversationService.logInboundOnce(customerId, body, mediaDataUrl, req.providerMsgId || null); // store inbound (ALWAYS logged — even when silent below!)
     if (!seenInbound) return res.status(200).send(''); // duplicate delivery (retry) → silent 200, Meta stops retrying
+    // ---- STOP: the customer opts out of broadcasts (works even when Velo is paused) ----
+    const broadcasts = require('../services/broadcastService');
+    if (broadcasts.STOP_RE.test(Body || '')) {
+      await broadcasts.optOut(customerId);
+      const bye = "Done. You won't get promo messages from us again. You can still message us anytime.";
+      await reply(From, bye);
+      await conversationService.logMessage(customerId, 'out', bye, null, 'system');
+      return res.status(200).send('');
+    }
     // ---- Takeover silence: global off OR this chat taken over → log only ----
     // Covers: dashboard toggle, inbox Take-over button, PAUSE commands above.
     // WHY log-then-return (not ignore): the owner still SEES what customers

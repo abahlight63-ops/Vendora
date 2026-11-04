@@ -361,32 +361,6 @@ async function complaintResolve(req, res) {
   res.json({ ok: true });
 }
 
-// Ad earnings overview: per-click totals from our own tracking.
-// Per-VIEW earnings live in the network dashboard (Monetag etc.).
-async function adStats(req, res) {
-  const rate = Number(process.env.SPONSOR_RATE_PER_CLICK || 50); // ₦ per sponsor click (your deal rate, env-tunable)
-  const { rows } = await db.query( // three counts in ONE query via FILTER (conditional aggregation)…
-    `SELECT COUNT(*)::int AS total, -- ::int casts bigint to int (clean JSON numbers)
-            COUNT(*) FILTER (WHERE created_at >= date_trunc('month', now()))::int AS month, -- date_trunc('month') = midnight of the 1st (this month's clicks)
-            COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE)::int AS today -- CURRENT_DATE = midnight today
-     FROM ad_clicks`
-  );
-  const s = rows[0]; // single summary row
-  const rateView = Number(process.env.SPONSOR_RATE_PER_VIEW || 5); // ₦ per COMPLETED sponsor view (video invoice unit — completions, not starts!)
-  const { rows: v } = await db.query( // video funnel per source: starts vs completes vs clicks (completion RATE = attention quality!)
-    `SELECT source,
-       COUNT(*) FILTER (WHERE event = 'start')::int AS starts,
-       COUNT(*) FILTER (WHERE event = 'complete')::int AS completes,
-       COUNT(*) FILTER (WHERE event = 'click')::int AS clicks,
-       COUNT(*) FILTER (WHERE event = 'report')::int AS reports,
-       COUNT(*) FILTER (WHERE event = 'complete' AND created_at >= date_trunc('month', now()))::int AS month_completes
-     FROM video_views GROUP BY source ORDER BY completes DESC`
-  );
-  const sponsorMonth = (v.find((r) => r.source === 'sponsor') || {}).month_completes || 0; // own-mp4 completions this month (the sponsor invoice!)
-  res.json({ ...s, rate_naira: rate, estimate_month_naira: s.month * rate, estimate_total_naira: s.total * rate, // spread counts + computed Naira estimates (bill sponsors from these!)
-    video: v, rate_view_naira: rateView, estimate_video_month_naira: sponsorMonth * rateView }); // per-source funnel + video invoice estimate (completions × rate!)
-}
-
 // ---- Broadcast an app update to EVERY owner's bell (new features, fixes).
 // Long bodies welcome (up to 4000 chars) + optional photo/video. {name} in
 // title/body becomes each shop's first name at send time. ----
@@ -620,7 +594,6 @@ module.exports = {
   updateBusiness,
   listBusinessProducts,
   deleteBusiness,
-  adStats, // historical earnings only (ads removed — no new rows!)
   aiStatus,
   adminLogin,
   adminLogout,

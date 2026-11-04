@@ -4,7 +4,8 @@
 // see — owners can never touch another shop's data (no client-sent ids).
 // MODULES: ../db (pool), local services (required lazily INSIDE functions to
 // dodge circular-import issues), ../utils/phone (normalizePhone).
-const db = require('../db'); // shared pool
+const db = require('../db');
+const { TODAY_START, TODAY_DATE } = require('../utils/lagosDay'); // "today" = Lagos midnight to midnight // shared pool
 const productService = require('../services/productService'); // catalog reads/writes (top-level: no cycle here)
 const { normalizePhone } = require('../utils/phone'); // destructure one helper out of the module
 
@@ -564,7 +565,7 @@ async function chatReply(req, res) {
       if (!sent) return res.status(502).json({ error: 'Meta refused the send (expired token?) — reconnect on the Connect page.' });
     }
     const conversationService = require('../services/conversationService');
-    await conversationService.logMessage(Number(req.params.id), 'out', text); // logged like a bot reply (history stays complete!)
+    await conversationService.logMessage(Number(req.params.id), 'out', text, null, 'owner'); // the owner's own reply: kept in the thread, never counted toward the daily limit
     await db.query( // answered + you-talk-now: flag cleared, bot paused (hand back explicitly when done — no double answers!)
       'UPDATE conversations SET last_reply = $1, needs_human = false, flag_reason = NULL, bot_paused = true, updated_at = now() WHERE id = $2',
       [text.slice(0, 500), req.params.id]
@@ -891,7 +892,7 @@ async function channelsStatus(req, res) {
   try {
     const { rows: u } = await db.query(
       `SELECT COUNT(*)::int AS c FROM messages m JOIN conversations c2 ON c2.id = m.conversation_id
-       WHERE c2.business_id = $1 AND m.direction = 'out' AND m.created_at >= CURRENT_DATE`,
+       WHERE c2.business_id = $1 AND m.direction = 'out' AND m.sender = 'bot' AND m.created_at >= ${TODAY_START}`,
       [req.session.businessId]
     );
     waUsed = (u[0] && u[0].c) || 0;
@@ -948,16 +949,18 @@ async function whatsappModel(req, res) {
 async function metaConnect(req, res) {
   try {
     const meta = require('../services/channels/meta');
-    const { phone_number_id, token, waba_id } = req.body || {};
+    const { phone_number_id, token, waba_id, app_secret } = req.body || {};
+    const via = req._metaVia === 'app' ? 'app' : 'manual'; // set server-side by metaEmbedded (the one-tap road), never by the browser
     const checked = await meta.checkCredentials(phone_number_id, token); // asks Meta whose number this is (invalid → friendly error!)
     if (checked.error) return res.status(400).json({ error: checked.error });
     const crypto = require('crypto');
     const verify = 'VND' + crypto.randomBytes(8).toString('hex').toUpperCase(); // per-shop verify token (Meta echoes it on subscribe — proves ownership!)
     await db.query(
       `UPDATE businesses SET meta_token = $1, meta_phone_number_id = $2, meta_waba_id = $3,
-        meta_verify_token = COALESCE(NULLIF(meta_verify_token, ''), $4), wa_channel = 'meta'
-       WHERE id = $5`, // keep an existing verify token (Meta already subscribed? don't break it!)
-      [String(token).trim(), String(phone_number_id).trim(), String(waba_id || '').trim(), verify, req.session.businessId]
+        meta_verify_token = COALESCE(NULLIF(meta_verify_token, ''), $4), wa_channel = 'meta',
+        meta_connect_via = $6, meta_app_secret = CASE WHEN $7 <> '' THEN $7 ELSE meta_app_secret END
+       WHERE id = $5`, // keep an existing verify token (Meta already subscribed? don't break it!) and an existing app secret unless a new one is pasted
+      [String(token).trim(), String(phone_number_id).trim(), String(waba_id || '').trim(), verify, req.session.businessId, via, via === 'manual' ? String(app_secret || '').trim().slice(0, 200) : '']
     );
     const { rows } = await db.query('SELECT meta_verify_token FROM businesses WHERE id = $1', [req.session.businessId]);
     if (!rows.length) return res.status(404).json({ error: 'Shop not found — sign out and sign in again, then retry.' }); // stale session (missing row read as property-of-undefined used to CRASH here!)
@@ -995,6 +998,7 @@ async function metaEmbedded(req, res) {
     }
     if (!phone_number_id || !token) return res.status(400).json({ error: 'Signup did not return a number — try again or paste your details manually.' });
     req.body = { phone_number_id, token, waba_id }; // reuse the validated manual path (one storage road!)
+    req._metaVia = 'app'; // one-tap road: webhooks are signed by OUR app (META_APP_SECRET)
     return metaConnect(req, res);
   } catch (e) {
     console.error('meta embedded failed:', (e && e.code) || '-', e.message); // JSON 500, never a process crash!
@@ -1140,7 +1144,7 @@ async function ask(req, res) {
     const paid = resolved.entry.tier === 'paid'; // which counter to check/increment?
     // Daily caps — one row per business per day.
     const { rows: urows } = await db.query( // INSERT today's row if missing, else touch it — RETURNING gives current counts either way…
-      `INSERT INTO ai_usage (business_id, day) VALUES ($1, CURRENT_DATE)
+      `INSERT INTO ai_usage (business_id, day) VALUES ($1, ${TODAY_DATE})
        ON CONFLICT (business_id, day) DO UPDATE SET business_id = EXCLUDED.business_id -- fake update (changes nothing) just to allow RETURNING
        RETURNING free_count, paid_count`, // …so one query handles "first chat today" AND "50th chat today" (this // is JS: outside the string)
       [req.session.businessId]
@@ -1153,7 +1157,7 @@ async function ask(req, res) {
       return res.status(429).json({ error: `Premium AI limit reached for today (${PAID_AI_PER_DAY}). Free AIs still work.` }); // free models still open (only paid capped)
     }
     const { rows: mrows } = await db.query( // per-MODEL counter (upsert-then-read, same pattern as ai_usage)…
-      `INSERT INTO model_usage (business_id, day, model_id) VALUES ($1, CURRENT_DATE, $2)
+      `INSERT INTO model_usage (business_id, day, model_id) VALUES ($1, ${TODAY_DATE}, $2)
        ON CONFLICT (business_id, day, model_id) DO UPDATE SET model_id = EXCLUDED.model_id
        RETURNING count`,
       [req.session.businessId, resolved.entry.id]
@@ -1166,10 +1170,10 @@ async function ask(req, res) {
     if (result.reply) { // SUCCESS → count it (only successful chats consume quota — failures are free retries!)
       await db.query( // dynamic column via ${} — SAFE here: `paid` is a boolean WE computed, not user input (never interpolate raw user text into SQL!)
         `UPDATE ai_usage SET ${paid ? 'paid_count = paid_count + 1' : 'free_count = free_count + 1'}
-         WHERE business_id = $1 AND day = CURRENT_DATE`,
+         WHERE business_id = $1 AND day = ${TODAY_DATE}`,
         [req.session.businessId]
       );
-      await db.query('UPDATE model_usage SET count = count + 1 WHERE business_id = $1 AND day = CURRENT_DATE AND model_id = $2', [req.session.businessId, resolved.entry.id]); // model counter (plain values — no dynamic SQL needed here!)
+      await db.query(`UPDATE model_usage SET count = count + 1 WHERE business_id = $1 AND day = ${TODAY_DATE} AND model_id = $2`, [req.session.businessId, resolved.entry.id]); // model counter (plain values — no dynamic SQL needed here!)
       return res.json({ reply: result.reply, via: result.via, model: resolved.entry.id, fallback: !!result.fallback, requested: result.requested || null }); // via = ACTUAL answerer; model = chosen id; fallback tells UI "your pick was down, X answered instead"
     }
     return res.status(502).json({ error: result.reason || 'VeloSales Ai is resting — try again in a moment.' }); // 502 = our upstream failed — reason names the cause (key missing? quota? all down?) so the owner can act instead of guessing

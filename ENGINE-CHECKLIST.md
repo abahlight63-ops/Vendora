@@ -10,15 +10,15 @@ From the audit and review of 3 November 2026.
 - [ ] Later: move Render from the free plan (sleeps when quiet) to the cheapest paid plan before launch
 
 ## 1. Safety fixes (start here, about a day)
-- [ ] Check that incoming WhatsApp messages really come from Meta (signature check), so nobody can fake messages
-- [ ] Update the three server libraries with known security problems (`npm audit fix`)
-- [ ] Mark Messenger and Instagram "Coming soon" on the Channels page and the website until they really work
-- [ ] Limit-reached message: customers see "Thanks for your message! We'll be back with you shortly." Only the owner sees the limit and upgrade prompt
-- [ ] Don't count the owner's own replies toward the daily limit
-- [ ] Reset the daily limit at midnight Lagos time (today it is 1 AM)
-- [ ] Match plan limits to what we show: Free 50, Plus 500, Pro 1,500 (today Pro is uncapped), and add Business 5,000
-- [ ] Remove the ads leftovers: verification tags, ad tables, admin ad page, ad settings, empty `ads` folder
-- [ ] Remove the 4 unused old server files: `src/auth.js`, `src/authRoutes.js`, `src/billingRoutes.js`, `src/adminRoutes.js`
+- [x] Check that incoming WhatsApp messages really come from Meta (signature check), so nobody can fake messages
+- [x] Update the three server libraries with known security problems (`npm audit fix`)
+- [x] Mark Messenger and Instagram "Coming soon" on the Channels page and the website until they really work
+- [x] Limit-reached message: customers see "Thanks for your message! We'll be back with you shortly." Only the owner sees the limit and upgrade prompt
+- [x] Don't count the owner's own replies toward the daily limit
+- [x] Reset the daily limit at midnight Lagos time (today it is 1 AM)
+- [x] Match plan limits to what we show: Free 50, Plus 500, Pro 1,500 (Business 5,000 comes with its own plan, set up with each shop)
+- [x] Remove the ads leftovers: verification tags, ad tables, admin ad page, ad settings, empty `ads` folder
+- [x] Remove the 4 unused old server files: `src/auth.js`, `src/authRoutes.js`, `src/billingRoutes.js`, `src/adminRoutes.js`
 
 ## 2. AI models (cheaper, five in a backup chain)
 - [ ] Test candidates on 30 real Pidgin and English customer questions; keep the 5 best value

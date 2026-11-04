@@ -42,11 +42,13 @@ async function logInboundOnce(conversationId, body, mediaUrl, providerMsgId) {
   return r.rowCount > 0; // 1 = inserted (new), 0 = conflict (Meta retry — drop it!)
 }
 
-// Append ONE message to the thread ('in' = customer wrote it, 'out' = bot sent it).
-async function logMessage(conversationId, direction, body, mediaUrl) {
+// Append ONE message to the thread ('in' = customer wrote it, 'out' = we sent it).
+// sender (for 'out'): 'bot' = Velo replied (counts toward the daily limit),
+// 'owner' = the owner typed it in the Inbox, 'system' = a limit notice.
+async function logMessage(conversationId, direction, body, mediaUrl, sender = 'bot') {
   await db.query( // plain INSERT, no return needed (fire-and-remember)
-    'INSERT INTO messages (conversation_id, direction, body, media_url) VALUES ($1, $2, $3, $4)',
-    [conversationId, direction, body, mediaUrl || null] // || null: undefined → SQL NULL
+    'INSERT INTO messages (conversation_id, direction, body, media_url, sender) VALUES ($1, $2, $3, $4, $5)',
+    [conversationId, direction, body, mediaUrl || null, direction === 'in' ? 'customer' : sender] // || null: undefined → SQL NULL
   );
 }
 

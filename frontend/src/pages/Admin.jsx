@@ -492,7 +492,6 @@ function Revenue({ d }) { // REVENUE: collected totals + where transfer money si
         <div className="stat good"><div className="num">${(Number(d.usd_cents || 0) / 100).toLocaleString()}</div><div className="lbl">USD collected</div></div>
         <div className="stat"><div className="num">₦{(Number(d.month_all || 0) / 100).toLocaleString()}</div><div className="lbl">This month (all)</div></div>
       </div>
-      <p className="hint" style={{ marginTop: 16 }}>Historical ad earnings (ads retired — no new entries): call <b>GET /api/ads/stats</b> with your admin key.</p>
     </div>
   );
 }

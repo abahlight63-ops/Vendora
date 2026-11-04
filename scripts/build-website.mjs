@@ -27,7 +27,7 @@ const SOON = '<span class="soon">Coming soon</span>';
 // ── facts (keep in step with Billing and the app's FAQ) ──
 const PLANS = [
   { key: 'free', name: 'Free', price: 0, per: '', yearly: 'Free forever', desc: 'For trying Velo on your shop', cta: 'Start free', href: SIGNUP, feats: ['50 replies a day', 'WhatsApp and Telegram', 'Inbox and catalog', 'English and Pidgin'] },
-  { key: 'plus', name: 'Plus', price: 7499, per: '/month', yearly: 'or ₦69,999 a year, save 22%', desc: 'For a growing shop', cta: 'Choose Plus', href: SIGNUP, feats: ['500 replies a day', 'All four apps', 'Product photos in replies', 'Catalog import'] },
+  { key: 'plus', name: 'Plus', price: 7499, per: '/month', yearly: 'or ₦69,999 a year, save 22%', desc: 'For a growing shop', cta: 'Choose Plus', href: SIGNUP, feats: ['500 replies a day', 'Messenger and Instagram (soon)', 'Product photos in replies', 'Catalog import'] },
   { key: 'pro', name: 'Pro', price: 14999, per: '/month', yearly: 'or ₦119,999 a year, save 33%', desc: 'For a busy shop that sells all day', cta: 'Choose Pro', href: SIGNUP, best: true, feats: ['1,500 replies a day', 'Voice notes', 'Smartest AI', 'Everything in Plus'] },
   { key: 'business', name: 'Business', price: 39999, from: true, per: '/month', yearly: 'Set up with our team', desc: 'Many branches, one inbox', cta: 'Talk to us', href: '/contact/', feats: ['5,000 replies a day', 'Many branches', 'Priority help', 'We set it up with you'] },
 ];
@@ -35,7 +35,7 @@ const naira = (n) => '₦' + n.toLocaleString('en-NG');
 const COMPARE = [
   ['Replies a day', '50', '500', '1,500', '5,000'],
   ['WhatsApp and Telegram', 1, 1, 1, 1],
-  ['Facebook Messenger and Instagram', 0, 1, 1, 1],
+  ['Facebook Messenger and Instagram (coming soon)', 0, 1, 1, 1],
   ['One inbox for every chat', 1, 1, 1, 1],
   ['English and Pidgin replies', 1, 1, 1, 1],
   ['Hands chats to you when unsure', 1, 1, 1, 1],
@@ -68,7 +68,7 @@ const FAQ = [
     ['What is Chat with Velo?', 'Your own assistant inside the app. Ask it about your products and prices, or ask it to write a caption or a reply. Sales breakdowns and receipts are coming soon.'],
   ]],
   ['Channels and data', [
-    ['Which apps does Velo work on?', 'WhatsApp, Telegram, Facebook Messenger and Instagram. One inbox shows them all.'],
+    ['Which apps does Velo work on?', 'WhatsApp and Telegram today. Facebook Messenger and Instagram are coming soon. One inbox shows them all.'],
     ['Is my data private?', 'Yes. Your catalog and chats are used only to answer your customers. We never sell data, show ads, or train public AI models on your content.'],
     ['How do I reach support?', 'Use the Help Center inside the app, or email ' + EMAIL + '.'],
   ]],
@@ -106,9 +106,9 @@ const shot = (name, alt, w = 1280, h = 800, eager = false) => {
 const phone = (name, alt) => `<div class="phone">${shot(name, alt, 390, 760)}</div>`;
 
 // ── structured data ──
-const ORG = { '@type': 'Organization', '@id': SITE + '/#org', name: 'VeloSales Ai', url: SITE + '/', logo: { '@type': 'ImageObject', url: SITE + '/assets/icon-512.png', width: 512, height: 512 }, email: EMAIL, areaServed: 'NG', description: 'AI sales assistant that answers shop customers on WhatsApp, Telegram, Facebook Messenger and Instagram, in English or Pidgin, from the shop’s own catalog.', contactPoint: { '@type': 'ContactPoint', contactType: 'customer support', email: EMAIL, availableLanguage: ['en', 'pcm'] } };
+const ORG = { '@type': 'Organization', '@id': SITE + '/#org', name: 'VeloSales Ai', url: SITE + '/', logo: { '@type': 'ImageObject', url: SITE + '/assets/icon-512.png', width: 512, height: 512 }, email: EMAIL, areaServed: 'NG', description: 'AI sales assistant that answers shop customers on WhatsApp and Telegram, in English or Pidgin, from the shop’s own catalog.', contactPoint: { '@type': 'ContactPoint', contactType: 'customer support', email: EMAIL, availableLanguage: ['en', 'pcm'] } };
 const WEBSITE = { '@type': 'WebSite', '@id': SITE + '/#website', name: 'VeloSales Ai', alternateName: 'VeloSales', url: SITE + '/', publisher: { '@id': SITE + '/#org' }, inLanguage: 'en-NG' };
-const APPLD = { '@type': 'SoftwareApplication', '@id': SITE + '/#app', name: 'VeloSales Ai', applicationCategory: 'BusinessApplication', operatingSystem: 'Web, Android', url: APP + '/', publisher: { '@id': SITE + '/#org' }, screenshot: SITE + '/assets/app/chats-1-d.jpg', description: 'An AI sales assistant for small shops. It answers customers on WhatsApp, Telegram, Facebook Messenger and Instagram in seconds, in English or Pidgin, using only your own prices, and hands the chat to you when it is not sure.', offers: PLANS.filter((p) => p.key !== 'business').map((p) => ({ '@type': 'Offer', name: p.name, price: String(p.price), priceCurrency: 'NGN', url: SITE + '/pricing/' })) };
+const APPLD = { '@type': 'SoftwareApplication', '@id': SITE + '/#app', name: 'VeloSales Ai', applicationCategory: 'BusinessApplication', operatingSystem: 'Web, Android', url: APP + '/', publisher: { '@id': SITE + '/#org' }, screenshot: SITE + '/assets/app/chats-1-d.jpg', description: 'An AI sales assistant for small shops. It answers customers on WhatsApp and Telegram in seconds, in English or Pidgin, using only your own prices, and hands the chat to you when it is not sure.', offers: PLANS.filter((p) => p.key !== 'business').map((p) => ({ '@type': 'Offer', name: p.name, price: String(p.price), priceCurrency: 'NGN', url: SITE + '/pricing/' })) };
 const faqLd = (rows) => ({ '@type': 'FAQPage', mainEntity: rows.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) });
 const crumbs = (name, path) => ({ '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Home', item: SITE + '/' }, { '@type': 'ListItem', position: 2, name, item: SITE + path }] });
 
@@ -135,14 +135,14 @@ function frame({ path, title, desc, body, ld = [], noindex = false, ogTitle }) {
 <meta property="og:url" content="${url}">
 <meta property="og:title" content="${esc(ogTitle || title)}">
 <meta property="og:description" content="${esc(desc)}">
-<meta property="og:image" content="${SITE}/assets/og-v2.png">
+<meta property="og:image" content="${SITE}/assets/og-v3.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="VeloSales Ai: your shop's AI, open 24/7">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${esc(ogTitle || title)}">
 <meta name="twitter:description" content="${esc(desc)}">
-<meta name="twitter:image" content="${SITE}/assets/og-v2.png">
+<meta name="twitter:image" content="${SITE}/assets/og-v3.png">
 <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
 <link rel="icon" href="/favicon.ico" sizes="48x48 32x32 16x16">
 <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
@@ -212,7 +212,7 @@ const phero = (kick, h1, lede, extra = '') => `
   ${extra}
 </section>`;
 const ticks = (items) => `<ul class="ticks">${items.map((t) => `<li>${ic('check', 16)}${t}</li>`).join('')}</ul>`;
-const marquee = () => { const row = CH.map((k) => `<span>${coin(k, 30)}${NAME[k]}</span>`).join('') + '<span>' + ic('spark', 22) + 'English and Pidgin</span><span>' + ic('moon', 22) + 'Open 24/7</span><span>' + ic('shield', 22) + 'Your prices only</span>'; return `<div class="marquee" aria-label="Works on WhatsApp, Telegram, Messenger and Instagram"><div class="mq-track">${row}${row}</div></div>`; };
+const marquee = () => { const row = CH.map((k) => `<span>${coin(k, 30)}${NAME[k]}${k === 'messenger' || k === 'instagram' ? ' <small class="mq-soon">soon</small>' : ''}</span>`).join('') + '<span>' + ic('spark', 22) + 'English and Pidgin</span><span>' + ic('moon', 22) + 'Open 24/7</span><span>' + ic('shield', 22) + 'Your prices only</span>'; return `<div class="marquee" aria-label="Works on WhatsApp and Telegram, with Messenger and Instagram coming soon"><div class="mq-track">${row}${row}</div></div>`; };
 
 // ── Chat with Velo demo (an illustration, not a screenshot) ──
 const veloChat = () => `
@@ -244,15 +244,15 @@ const pages = {};
 
 pages[''] = frame({
   path: '/',
-  title: 'VeloSales Ai: AI sales assistant for WhatsApp, Telegram and Instagram',
+  title: 'VeloSales Ai: AI sales assistant for WhatsApp and Telegram shops',
   ogTitle: "VeloSales Ai: your shop's AI, open 24/7",
-  desc: 'Velo answers your customers on WhatsApp, Telegram, Messenger and Instagram in seconds, in English or Pidgin, from your own prices. Free: 50 replies a day.',
+  desc: 'Velo answers your customers on WhatsApp and Telegram in seconds, in English or Pidgin, from your own prices. Free: 50 replies a day.',
   ld: [APPLD, faqLd(HOME_FAQ)],
   body: `
 <section class="hero">
-  <p class="tag rv"><b>New</b>Now on Messenger and Instagram</p>
+  <p class="tag rv"><b>Soon</b>Messenger and Instagram are on the way</p>
   <h1 class="rv">Every customer answered.<br><span class="shine">Even at 2 AM.</span></h1>
-  <p class="lede rv">Velo is your shop's AI assistant. It replies on WhatsApp, Telegram, Messenger and Instagram in seconds, in English or Pidgin, using only your prices.</p>
+  <p class="lede rv">Velo is your shop's AI assistant. It replies on WhatsApp and Telegram in seconds, in English or Pidgin, using only your prices. Messenger and Instagram are coming soon.</p>
   <div class="cta-row rv">${go()}<a class="pill line big" href="#tour">${ic('play', 18)}See the app</a></div>
   <p class="hero-note rv">Free plan · 50 replies a day · No card needed</p>
   ${blob('whatsapp', 'f1')}${blob('instagram', 'f2')}${blob('telegram', 'f3')}${blob('messenger', 'f4')}
@@ -274,7 +274,7 @@ ${marquee()}
   ${head('Inside the app', 'Everything your shop needs.<br>Nothing it doesn\'t.')}
   ${[
     ['01', 'c', 'Know who needs you, at a glance', 'Home puts the chats waiting for you first, then your replies left today and what Velo handled.', ['Chats that need you, first', 'Replies left today', 'What Velo answered for you'], 'chats-1-d', 'The home screen', 'l', '2 chats need you', false],
-    ['02', 'v', 'Every chat, from every app, in one inbox', 'WhatsApp, Telegram, Messenger and Instagram land in one list. Step into any chat with one tap.', ['Filter by app or by "Needs you"', 'Take over any chat', 'Hand it back to Velo'], 'chats-2-d', 'The inbox with chats from every app', 'r', 'Needs you · 2', true],
+    ['02', 'v', 'Every chat, from every app, in one inbox', 'WhatsApp and Telegram land in one list today, and Messenger and Instagram will too. Step into any chat with one tap.', ['Filter by app or by "Needs you"', 'Take over any chat', 'Hand it back to Velo'], 'chats-2-d', 'The inbox with chats from every app', 'r', 'Needs you · 2', true],
     ['03', 'c', 'Your catalog, your prices', 'Velo only quotes what is in your catalog, so it never invents a price. Mark items out of stock in one tap.', ['Photos, prices and stock', 'Spots items missing a price', 'Teach it from your phone with LEARN:'], 'products-2-d', 'The catalog with prices and stock', 'l', 'LEARN: Blue gown ₦45,000', false],
     ['04', 'v', 'Velo sounds like your shop', 'Pick how Velo greets customers, how it hands chats to you and what discounts it can offer.', ['Greeting and personality', 'Discounts and minimum orders', 'Fast, Normal or Smart AI'], 'voice-1-d', "Settings for Velo's voice", 'r', 'Speaks Pidgin too', true],
   ].map(([n, c, t, d, items, img, alt, tilt, mini, flip]) => `
@@ -340,12 +340,12 @@ ${band()}`,
 pages['how-it-works/'] = frame({
   path: '/how-it-works/',
   title: 'How VeloSales Ai works: set up your AI shop assistant in 3 steps',
-  desc: 'Add your products, connect WhatsApp, Telegram, Messenger or Instagram, test Velo, then go live. See every screen and what happens when a customer writes.',
+  desc: 'Add your products, connect WhatsApp or Telegram, test Velo, then go live. See every screen and what happens when a customer writes.',
   ld: [crumbs('How it works', '/how-it-works/')],
   body: phero('How it works', 'From first message to <span class="shine">sale</span>, in seconds.', 'Velo reads your catalog, answers each customer the way they write, and calls you in when a person is needed.', `<div class="cta-row rv">${go()}</div>`) + `
 ${[
     ['1', 'c', 'Add your products', 'Type them in Catalog with a photo, price and stock, import a list, or send "LEARN: Blue gown ₦45,000" from your own number.', 'products-3-d', 'Adding a product', 'l', false],
-    ['2', 'v', 'Connect your apps', 'WhatsApp, Messenger and Instagram connect through one Facebook window. Telegram connects with a bot code in two minutes.', 'connect-2-d', 'Connecting apps on the Channels page', 'r', true],
+    ['2', 'v', 'Connect your apps', 'WhatsApp connects through one Facebook window, and Messenger and Instagram will too when they launch. Telegram connects with a bot code in two minutes.', 'connect-2-d', 'Connecting apps on the Channels page', 'r', true],
     ['3', 'c', 'Test, then switch on', 'Ask Velo questions like a customer in Test Drive and see exactly what it would reply, and why.', 'test-2-d', 'Testing Velo in Test Drive', 'l', false],
     ['4', 'v', 'Watch the inbox', 'Every chat lands in one inbox. Chats Velo was unsure about are marked "Needs you" so you can step in.', 'chats-2-d', 'The inbox', 'r', true],
   ].map(([n, c, t, d, img, alt, tilt, flip]) => `
@@ -356,7 +356,7 @@ ${[
 <section class="sec">
   ${head('Every message', 'What happens when a customer writes')}
   <div class="flow">
-    ${[['inbox', 'The message arrives', 'From WhatsApp, Telegram, Messenger or Instagram, into one inbox.'], ['tag', 'Velo checks your catalog', 'Your products, prices, opening hours and the last messages in the chat.'], ['spark', 'Velo replies', 'In seconds, in English or Pidgin, using only your facts.'], ['help', 'Or hands it to you', 'Not sure? The customer hears you will reply shortly, and you get an alert.']].map(([k, t, d], i) => `<article class="card rv"><span class="fic ${i % 2 ? 'v' : 'c'}">${ic(k, 24)}</span><h3>${i + 1}. ${t}</h3><p>${d}</p></article>`).join('')}
+    ${[['inbox', 'The message arrives', 'From WhatsApp or Telegram (Messenger and Instagram soon), into one inbox.'], ['tag', 'Velo checks your catalog', 'Your products, prices, opening hours and the last messages in the chat.'], ['spark', 'Velo replies', 'In seconds, in English or Pidgin, using only your facts.'], ['help', 'Or hands it to you', 'Not sure? The customer hears you will reply shortly, and you get an alert.']].map(([k, t, d], i) => `<article class="card rv"><span class="fic ${i % 2 ? 'v' : 'c'}">${ic(k, 24)}</span><h3>${i + 1}. ${t}</h3><p>${d}</p></article>`).join('')}
   </div>
 </section>
 ${band('Try it on your own shop', 'Free plan, 50 replies a day. 7 days of Pro free when you sign up.')}`,
@@ -404,11 +404,11 @@ ${band('Open your shop around the clock', 'Free forever. 7 days of Pro included 
 pages['pro-trial/'] = frame({
   path: '/pro-trial/',
   title: 'Try VeloSales Ai Pro free for 7 days: no card needed',
-  desc: 'Every new shop gets 7 days of Pro free: more replies, all four apps, voice notes and the smartest AI. No card needed. Then keep Free or choose a plan.',
+  desc: 'Every new shop gets 7 days of Pro free: more replies, voice notes and the smartest AI. No card needed. Then keep Free or choose a plan.',
   ld: [crumbs('7-day Pro trial', '/pro-trial/')],
   body: phero('7-day Pro trial', 'Try Pro free <span class="shine">for 7 days.</span>', 'Every new shop starts on Pro. No card, nothing to cancel.', `<div class="cta-row rv">${go('Start my free week')}</div>`) + `
 <section class="sec frow">
-  <div class="ftext rv"><h2>What Pro adds</h2>${ticks(['1,500 replies a day', 'WhatsApp, Telegram, Messenger and Instagram', 'Voice notes', 'Product photos in replies', 'Catalog import', 'The smartest AI'])}</div>
+  <div class="ftext rv"><h2>What Pro adds</h2>${ticks(['1,500 replies a day', 'WhatsApp and Telegram, plus Messenger and Instagram when they launch', 'Voice notes', 'Product photos in replies', 'Catalog import', 'The smartest AI'])}</div>
   <div class="fshot rv">${frameShot('voice-1-d', "Choosing Velo's AI: Fast, Normal or Smart", 'r')}</div>
 </section>
 <section class="sec tight"><div class="card wide rv"><h2>After 7 days</h2><p>You move to Free automatically and keep everything you set up. If you want more, choose Plus or Pro in the app and pay by card, transfer or USSD.</p><a class="more" href="/pricing/">See prices ${ic('next', 18)}</a></div></section>
@@ -419,7 +419,7 @@ const allFaq = FAQ.flatMap(([, rows]) => rows);
 pages['faq/'] = frame({
   path: '/faq/',
   title: 'VeloSales Ai FAQ: free plan, prices, WhatsApp setup and Pidgin',
-  desc: 'Answers about VeloSales Ai: the free plan, prices in naira, connecting WhatsApp, Telegram, Messenger and Instagram, Pidgin replies, refunds and your data.',
+  desc: 'Answers about VeloSales Ai: the free plan, prices in naira, connecting WhatsApp and Telegram, Pidgin replies, refunds and your data.',
   ld: [crumbs('FAQ', '/faq/'), faqLd(allFaq)],
   body: phero('FAQ', 'Questions, <span class="shine">answered.</span>', 'Everything shop owners ask in their first week.') + FAQ.map(([t, rows]) => `
 <section class="sec tight faq-sec"><h2 class="rv">${t}</h2>${faqList(rows)}</section>`).join('') + band('Still have a question?', 'Email ' + EMAIL + ' or start free and ask from the Help Center.'),

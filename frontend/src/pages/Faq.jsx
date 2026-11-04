@@ -30,7 +30,7 @@ export const FAQ_TOPICS = [
     ['Can AI make mistakes?', 'Sometimes, which is why Velo hands over when it is unsure and why an accurate catalog matters. Check flagged chats every day.'],
   ]],
   ['channels', 'Channels', [
-    ['Which apps does Velo work on?', 'WhatsApp, Telegram, Facebook Messenger and Instagram. One inbox shows them all.'],
+    ['Which apps does Velo work on?', 'WhatsApp and Telegram today. Facebook Messenger and Instagram are coming soon. One inbox shows them all.'],
     ['Do I need WhatsApp Business?', 'You need a number connected through Meta. The Connect window walks you through it, step by step.'],
     ['Can customers send photos or voice notes?', 'Photos: Velo matches them to your catalog on Plus and above. Voice notes: on Pro and above, on the channels that support them.'],
   ]],

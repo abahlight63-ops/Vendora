@@ -54,6 +54,12 @@ async function metaInbound(req, res) {
         const { rows } = await db.query('SELECT * FROM businesses WHERE meta_phone_number_id = $1 LIMIT 1', [String(phoneId)]); // phone id → shop (unmapped number = not ours!)
         const business = rows[0];
         if (!business) continue; // someone else's number hitting our URL (200, no log spam!)
+        // SIGNATURE: Meta signs the raw body (X-Hub-Signature-256). A known secret
+        // that does not match = forged or broken → skip it (still 200: no retries).
+        const sig = require('../services/channels/metaSignature');
+        const v = sig.verdict(business, req.rawBody, req.get('x-hub-signature-256'));
+        if (v === 'bad') { console.warn('meta webhook: bad signature for shop', business.id, '- message dropped'); continue; }
+        if (v === 'unchecked') sig.warnUnchecked(business.id);
         const sub = { body: { From: 'whatsapp:+' + parsed.from.replace(/\D/g, ''), To: business.whatsapp_number, Body: parsed.body, ProfileName: parsed.name || null }, meta: { business, chatId: parsed.from.replace(/\D/g, '') }, providerMsgId: parsed.id || null }; // controller shape + Meta ctx (sender picks Meta outbound!) + provider id for retry dedupe
         await webhookController.handleInbound(sub, { status: () => ({ send: () => {}, json: () => {} }), send: () => {} }); // sub-response swallows (one outer 200 below covers the batch!)
       }

@@ -89,6 +89,7 @@ export default function Connect() {
   // Meta drafts (retired manual inputs — endpoint stays live server-side!)
   const [phoneId, setPhoneId] = useState('');
   const [metaToken, setMetaToken] = useState('');
+  const [metaSecret, setMetaSecret] = useState(''); // own Meta app's App secret (optional): lets the server check messages really come from Meta
   const [metaProof, setMetaProof] = useState(null); // {phone, verifyToken} after connect
   const [showManual, setShowManual] = useState(false); // retired (one-tap only!) — state kept so old handlers stay valid, nothing renders it
   // Telegram drafts
@@ -316,7 +317,7 @@ export default function Connect() {
     if (!phoneId.trim() || !metaToken.trim()) return toast('Paste both values first', 'err');
     setBusy(true);
     try {
-      const { ok, status, data } = await api('/api/me/channels/meta', { method: 'POST', body: JSON.stringify({ phone_number_id: phoneId.trim(), token: metaToken.trim() }) });
+      const { ok, status, data } = await api('/api/me/channels/meta', { method: 'POST', body: JSON.stringify({ phone_number_id: phoneId.trim(), token: metaToken.trim(), app_secret: metaSecret.trim() }) });
       const msg = (data && data.error) || '';
       if (ok) { setMetaProof(data); setMetaToken(''); setStep(2); load(); } // token cleared from the form (stored server-side only!)
       else if (status === 401) pop('err', 'Signed out', 'Your session expired — sign in again, then retry.');
@@ -501,7 +502,7 @@ export default function Connect() {
             <section className="ch-card glass" aria-labelledby="ch-meta">
               <div className="ch-card-head">
                 <span className="ch-fb">{fbIcon()}</span>
-                <div className="ch-card-title"><h2 id="ch-meta">Meta apps</h2><p>One Facebook login connects WhatsApp, Messenger and Instagram. No codes or IDs to copy.</p></div>
+                <div className="ch-card-title"><h2 id="ch-meta">Meta apps</h2><p>One Facebook login connects WhatsApp. Messenger and Instagram are coming soon. No codes or IDs to copy.</p></div>
                 {waLinked && <span className="ch-chip live">Facebook linked</span>}
               </div>
               <div className="ch-rows">
@@ -520,8 +521,9 @@ export default function Connect() {
                       : waHealth.reason === 'token-dead' ? 'Your Meta connection expired. Tap Reconnect with Facebook below.' : 'Not connected yet. Tap Connect to start.'}
                   </p>
                 )}
-                <div className="ch-row">{coinSvg('messenger')}<span className="ch-row-main"><b>Facebook Messenger</b><small>Answer your Page's messages</small></span><span className="ch-chip ready">Not connected</span></div>
-                <div className="ch-row">{coinSvg('instagram')}<span className="ch-row-main"><b>Instagram</b><small>Answer your Instagram DMs</small></span><span className="ch-chip ready">Not connected</span></div>
+                {/* Messenger + Instagram: the server does not read these messages yet (see ENGINE-CHECKLIST step 9) */}
+                <div className="ch-row">{coinSvg('messenger')}<span className="ch-row-main"><b>Facebook Messenger</b><small>Answer your Page's messages</small></span><span className="ch-chip soon">Coming soon</span></div>
+                <div className="ch-row">{coinSvg('instagram')}<span className="ch-row-main"><b>Instagram</b><small>Answer your Instagram DMs</small></span><span className="ch-chip soon">Coming soon</span></div>
               </div>
               <div className="ch-card-foot">
                 {waLinked ? (
@@ -632,6 +634,9 @@ export default function Connect() {
               <input value={phoneId} onChange={(e) => setPhoneId(e.target.value)} placeholder="e.g. 123456789012345" inputMode="numeric" spellCheck="false" />
               <label>Access token (long string)</label>
               <input value={metaToken} onChange={(e) => setMetaToken(e.target.value)} placeholder="Paste the token from API testing" spellCheck="false" autoComplete="off" />
+              <label>App secret <span className="hint">· recommended</span></label>
+              <input value={metaSecret} onChange={(e) => setMetaSecret(e.target.value)} placeholder="Meta app → App settings → Basic → App secret" spellCheck="false" autoComplete="off" type="password" />
+              <p className="hint" style={{ marginTop: 6 }}>Lets VeloSales check that every message really comes from WhatsApp, so nobody can send fake ones.</p>
               <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
                 <button className="btn sm" disabled={busy} onClick={metaConnect}>{busy ? (<><Loader size={15} />Checking…</>) : 'Check + continue'}</button>
               </div>

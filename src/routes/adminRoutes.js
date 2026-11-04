@@ -13,7 +13,6 @@ router.post('/businesses', adminController.createBusiness); // create manually (
 router.put('/businesses/:id', adminController.updateBusiness); // edit any business
 router.get('/businesses/:id/products', adminController.listBusinessProducts); // inspect a catalog
 router.delete('/businesses/:id', adminController.deleteBusiness); // remove a business
-router.get('/ads/stats', adminController.adStats); // HISTORICAL ad earnings totals (ads removed — read-only past data!)
 router.get('/ai-status', adminController.requireAdmin, adminController.aiStatus); // AI health ping per provider (admin diagnosis!)
 // Admin console (session-password OR x-admin-key — requireAdmin decides per route)
 router.get('/stats', adminController.requireAdmin, adminController.adminStats); // overview cards (users, tiers, money, chats, complaints)

@@ -80,7 +80,8 @@ CREATE TABLE IF NOT EXISTS messages ( -- every single message, both directions
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at); -- INDEX = fast thread loading (without it, full table scan)
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS media_url TEXT; -- migration for older DBs
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS provider_msg_id TEXT; -- Meta wamid… for retry dedupe (NULL = pre-migration rows + non-Meta doors)
-CREATE UNIQUE INDEX IF NOT EXISTS uq_messages_provider_msg ON messages(provider_msg_id); -- NULLs never conflict in Postgres, so only real ids dedupe
+CREATE UNIQUE INDEX IF NOT EXISTS uq_messages_provider_msg ON messages(provider_msg_id);
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS sender TEXT NOT NULL DEFAULT 'bot'; -- who sent an 'out' message: bot (Velo) | owner | system (limit notices). Only bot replies count toward the daily limit -- NULLs never conflict in Postgres, so only real ids dedupe
 
 -- Subscription / billing (Paystack NGN + Flutterwave USD)
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS avatar_emoji TEXT; -- an emoji avatar picked in Settings (a photo still wins)
@@ -137,31 +138,6 @@ CREATE TABLE IF NOT EXISTS model_usage (
   PRIMARY KEY (business_id, day, model_id)
 );
 
--- Ad monetization: per-click tracking (per-view earnings come from the
--- network dashboard, e.g. Monetag; clicks are tracked here for sponsor billing)
-CREATE TABLE IF NOT EXISTS ad_clicks ( -- every "Visit sponsor" tap
-  id SERIAL PRIMARY KEY,
-  business_id INTEGER REFERENCES businesses(id) ON DELETE SET NULL, -- SET NULL (not CASCADE): keep stats even if shop deleted
-  slot TEXT NOT NULL DEFAULT 'sponsor', -- which placement was clicked (future: more slots)
-  target_url TEXT NOT NULL DEFAULT '', -- where they went (sponsor invoice proof)
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_ad_clicks_created ON ad_clicks(created_at); -- fast date-range stats
-
--- Gated video ads: every start/quartile/complete/click/skip, per source.
--- Sources: sponsor (own mp4, billed per COMPLETE) > hilltopads (VAST) >
--- monetag (rewarded zone, VAST doc or .js). Completions are
--- the invoice unit for direct sponsors (5-20x banner CPMs!).
-CREATE TABLE IF NOT EXISTS video_views ( -- one row per event (not per view — completion RATE needs the funnel!)
-  id SERIAL PRIMARY KEY,
-  business_id INTEGER REFERENCES businesses(id) ON DELETE SET NULL, -- SET NULL: stats survive shop deletion (money memory!)
-  slot TEXT NOT NULL DEFAULT 'connect', -- where it played (connect-wa, connect-tg, preview…)
-  source TEXT NOT NULL DEFAULT 'sponsor', -- sponsor | hilltopads | monetag
-  event TEXT NOT NULL DEFAULT 'start', -- start | q25 | q50 | q75 | complete | click | skip
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_video_views_created ON video_views(created_at); -- fast date-range stats
-CREATE INDEX IF NOT EXISTS idx_video_views_source ON video_views(source, event); -- per-source funnels without full scans
 
 -- Global: per-business currency (NGN default) + timezone for business-hours logic
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS currency TEXT NOT NULL DEFAULT 'NGN'; -- NGN (+234) or USD (world)
@@ -349,6 +325,8 @@ ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_token TEXT NOT NULL DEFAULT
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_phone_number_id TEXT NOT NULL DEFAULT '';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_verify_token TEXT NOT NULL DEFAULT '';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_waba_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_app_secret TEXT NOT NULL DEFAULT ''; -- own-Meta-app shops: their app secret, to check webhook signatures (never sent to the browser)
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_connect_via TEXT NOT NULL DEFAULT ''; -- 'app' (one-tap, signed by META_APP_SECRET) | 'manual' (own app) | '' (connected before this was tracked)
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS whatsapp_last_inbound_at TIMESTAMPTZ;
 -- The owner's profile picture (Settings → avatar). Stored as a hosted URL, the
 -- same way product photos are, so it survives redeploys when Cloudinary is set

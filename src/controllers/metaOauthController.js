@@ -75,7 +75,7 @@ async function callback(req, res) {
       || ('VND' + crypto.randomBytes(8).toString('hex').toUpperCase()); // keep an existing token: Meta may already be subscribed to it!
     await db.query(
       `UPDATE businesses SET meta_token = $1, meta_phone_number_id = $2, meta_waba_id = $3,
-         meta_verify_token = $4, wa_channel = 'meta'
+         meta_verify_token = $4, wa_channel = 'meta', meta_connect_via = 'app'
        WHERE id = $5`,
       [ex.token, phone.id, waba.wabaId, verify, redeemed.businessId]
     );

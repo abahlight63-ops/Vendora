@@ -394,3 +394,6 @@ main { display: block; }
   .nav { gap: 8px; }
 }
 @media (max-width: 360px) { .nav .brand span { display: none; } }
+
+.mq-soon { padding: 2px 8px; border-radius: 999px; background: rgba(255, 138, 107, 0.16); color: #ffb199; font-size: 12px; font-weight: 800; }
+:root[data-theme='light'] .mq-soon { background: rgba(208, 60, 22, 0.1); color: #b8320f; }

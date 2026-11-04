@@ -158,7 +158,7 @@ export default function Insights() {
       {d.total === 0 ? (
         <section className="glass in-card in-empty">
           <b>{chan === 'all' ? 'No chats yet' : `No ${chName} chats in the last ${span} days`}</b>
-          <span>{chan === 'messenger' || chan === 'instagram' ? `Connect ${chName} on the Channels page and its numbers show here.` : 'Charts build themselves from your conversations. Share your number and come back.'}</span>
+          <span>{chan === 'messenger' || chan === 'instagram' ? `${chName} is coming soon. Its numbers will show here once it launches.` : 'Charts build themselves from your conversations. Share your number and come back.'}</span>
           {chan !== 'all' && <button type="button" className="btn ghost" onClick={() => setChan('all')}>Show all channels</button>}
         </section>
       ) : (

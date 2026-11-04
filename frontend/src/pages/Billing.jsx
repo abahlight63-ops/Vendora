@@ -21,7 +21,7 @@ import Ic from '../components/icons.jsx'; // check icons
 import Loader from '../components/Loader.jsx'; // mini orbit in the pay button
 
 const PRO_FEATS = [ // Pro tier: the full salesperson (same for monthly + yearly — ONE tier, two prices!)
-  'Unlimited AI replies, Pidgin + English',
+  '1,500 AI replies a day, Pidgin + English',
   'Suggestive selling — up to 5 options per answer',
   'Product photos inside WhatsApp + Telegram replies',
   'Instant owner alerts for hot orders',
@@ -54,7 +54,7 @@ const COMPARE_ROWS = [
   ['Teach with LEARN: messages', true, true, true],
   ['Full inbox + chat history', true, true, true],
   ['Hot-order owner alerts', true, true, true],
-  ['Bot replies per day', '50', '500', 'Unlimited'],
+  ['Bot replies per day', '50', '500', '1,500'],
   ['Profile sync + verified products', false, true, true],
   ['Product photos inside replies', false, true, true],
   ['Suggestive selling (up to 5 options)', false, true, true],
@@ -167,7 +167,7 @@ export default function Billing() {
 
   const planName = bill?.tier === 'plus' ? 'Pro Plus' : bill?.tier === 'pro' ? 'Pro' : 'Free'; // the tier this shop is on
   const renewal = status === 'active' ? fmtDate(bill?.expires) : status === 'trialing' ? fmtDate(bill?.trial_ends) : '—'; // what the date actually means depends on where you are
-  const allowance = bill?.tier === 'plus' ? 'Unlimited' : bill?.tier === 'pro' ? '500 per day' : '50 per day'; // the real per-tier reply cap (matches the server)
+  const allowance = bill?.tier === 'plus' ? '1,500 per day' : bill?.tier === 'pro' ? '500 per day' : '50 per day'; // the real per-tier reply cap (matches the server)
   const history = Array.isArray(bill?.history) ? bill.history : Array.isArray(bill?.invoices) ? bill.invoices : []; // only rows the server truly sent
 
   const freeCard = () => { // FREE tier card (₦0/$0 — no checkout exists; cancelling = just stop paying!)
@@ -234,7 +234,7 @@ export default function Billing() {
   const paid = bill?.tier === 'pro' || bill?.tier === 'plus'; // the server says 'free' as a word, so check the paid keys
   const shownName = bill?.tier === 'plus' ? 'Pro' : bill?.tier === 'pro' ? 'Plus' : 'Free';
   const used = usage?.used ?? null;
-  const limit = usage?.unlimited ? null : (usage?.limit ?? (bill?.tier === 'plus' ? null : bill?.tier === 'pro' ? 500 : 50));
+  const limit = usage?.unlimited ? null : (usage?.limit ?? (bill?.tier === 'plus' ? 1500 : bill?.tier === 'pro' ? 500 : 50));
   const pct = used != null && limit ? Math.min(100, Math.round((used / limit) * 100)) : 0;
   const left = used != null && limit ? Math.max(0, limit - used) : null;
   const pace = (() => { // "at today's pace": only when there is enough of today to judge

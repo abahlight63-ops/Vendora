@@ -63,14 +63,13 @@ function effectiveTier(business) {
   return tier(business); // 'pro' (paid or trial) | 'free'
 }
 
-// WhatsApp bot replies allowed per shop per day (outbound 'out' messages).
-// Free 50 and Pro 500 match API cost reality; Pro Plus is uncapped.
-// Returns Infinity for Plus — callers must handle it (skip the cap check,
-// display "Unlimited"). Infinity never survives JSON, so API responses map
-// it to { dailyLimit: null, dailyUnlimited: true }.
+// Replies Velo may send per shop per day (Lagos day; owner replies don't count).
+// Shown names: Free 50, Plus 500, Pro 1,500. Stored keys: 'free', 'pro' (= Plus),
+// 'plus' (= Pro). Env-overridable. Callers still handle Infinity (an env value
+// of 0 or less means no cap), which API responses map to dailyUnlimited: true.
 function whatsappDailyLimit(business) {
   const t = effectiveTier(business); // 'plus' | 'pro' | 'free'
-  if (t === 'plus') return Infinity;
+  if (t === 'plus') { const n = Number(process.env.WHATSAPP_TOP_LIMIT || 1500); return n > 0 ? n : Infinity; }
   if (t === 'pro') return Number(process.env.WHATSAPP_PRO_LIMIT || 500);
   return Number(process.env.WHATSAPP_FREE_LIMIT || 50);
 }

@@ -11,6 +11,7 @@ const replyEngine = require('../services/replyEngine'); // AI: extractProducts +
 const conversationService = require('../services/conversationService'); // save/log/history helpers
 const planService = require('../services/planService'); // isPro() — the paywall check
 const db = require('../db'); // shared pool (flag updates)
+const { TODAY_START, TODAY_DATE } = require('../utils/lagosDay'); // "today" = Lagos midnight to midnight
 
 const LEARN_PREFIX = 'LEARN:'; // free teaching command (everyone, forever)
 const SYNC_PREFIX = 'SYNC:'; // Pro sync command (profile → catalog scaffold)
@@ -259,21 +260,22 @@ async function handleInbound(req, res) {
     // Bot rests, message still logged (records never stop — replies do, briefly!).
     const CUSTOMER_DAILY_CAP = Number(process.env.CUSTOMER_DAILY_CAP || 30); // env-tunable (30 strangers'-worth of patience!)
     const { rows: usage } = await db.query(
-      `SELECT COUNT(*)::int AS c FROM messages WHERE conversation_id = $1 AND direction = 'in' AND created_at >= CURRENT_DATE`, // direction='in' only (our own replies don't count against THEM!)
+      `SELECT COUNT(*)::int AS c FROM messages WHERE conversation_id = $1 AND direction = 'in' AND created_at >= ${TODAY_START}`, // direction='in' only (our own replies don't count against THEM!)
       [customerId]
     );
     if (usage[0].c > CUSTOMER_DAILY_CAP) return res.status(200).send(''); // silent rest (no reply-bomb, no error — owner sees it all in the inbox!)
-    // ---- Per-shop tier limit: Free 50 / Pro 500 / Plus unlimited ----
-    // Counts TODAY's outbound bot messages for THIS shop (all chats). Over the
-    // line? One polite limit notice per chat per day, then silent (records keep
-    // flowing — replies pause till midnight). Customers never see a paywall.
-    // Plus returns Infinity (uncapped) → skip the check entirely.
+    // ---- Per-shop daily limit: Free 50 / Plus 500 / Pro 1,500 ----
+    // Counts TODAY's (Lagos) replies written by Velo for THIS shop, across all
+    // chats. The owner's own replies and limit notices never count. Over the line?
+    // One calm "we'll be back shortly" per chat per day, the chat is marked Needs
+    // you, and only the OWNER hears about the limit and the upgrade (a bell).
+    // A shop with no finite limit (Infinity) skips the check.
     const WA_LIMIT = planService.whatsappDailyLimit(business); // tier-gated (env-overridable!)
     if (Number.isFinite(WA_LIMIT)) {
     try {
       const { rows: shopUsage } = await db.query(
         `SELECT COUNT(*)::int AS c FROM messages m JOIN conversations c2 ON c2.id = m.conversation_id
-         WHERE c2.business_id = $1 AND m.direction = 'out' AND m.created_at >= CURRENT_DATE`,
+         WHERE c2.business_id = $1 AND m.direction = 'out' AND m.sender = 'bot' AND m.created_at >= ${TODAY_START}`,
         [business.id]
       );
       if (shopUsage[0] && shopUsage[0].c >= WA_LIMIT) {
@@ -283,27 +285,26 @@ async function handleInbound(req, res) {
         );
         const { rows: already } = await db.query(
           `SELECT 1 FROM messages WHERE conversation_id = $1 AND direction = 'out'
-           AND created_at >= CURRENT_DATE AND body LIKE '%reply limit%' LIMIT 1`,
+           AND sender = 'system' AND created_at >= ${TODAY_START} LIMIT 1`,
           [customerId]
         );
         const tierName = planService.effectiveTier(business); // hoisted: the owner bell below needs it too (const is block-scoped!)
         if (!already.length) { // one kind notice per chat per day (never a reply-bomb!)
-          const limitMsg = tierName === 'free'
-            ? `Sorry! ${business.name} has hit today's free reply limit (${WA_LIMIT}/day). A teammate will follow up with you shortly — or tap to upgrade for more replies!`
-            : `Sorry! We've hit today's reply limit (${WA_LIMIT}/day). A teammate will follow up with you shortly.`;
+          const limitMsg = "Thanks for your message! We'll be back with you shortly."; // customers never hear about limits or plans
           await reply(From, limitMsg);
-          await conversationService.logMessage(customerId, 'out', limitMsg);
+          await conversationService.logMessage(customerId, 'out', limitMsg, null, 'system');
         }
-        if (tierName === 'free') { // owner upgrade moment: ONE bell per shop per day (never spam the owner!)
+        { // owner-only limit moment: ONE bell per shop per day (never spam the owner!)
           try {
             const { rows: nb } = await db.query(
-              `SELECT 1 FROM notifications WHERE business_id = $1 AND title = 'Free reply limit reached' AND created_at >= CURRENT_DATE LIMIT 1`,
+              `SELECT 1 FROM notifications WHERE business_id = $1 AND title = 'Daily reply limit reached' AND created_at >= ${TODAY_START} LIMIT 1`,
               [business.id]
             );
             if (!nb.length) {
+              const more = tierName === 'free' ? ' Plus gives you 500 replies a day.' : tierName === 'pro' ? ' Pro gives you 1,500 replies a day.' : '';
               require('../services/notifyService').notify(business.id, {
-                title: 'Free reply limit reached',
-                body: `Your shop hit today's ${WA_LIMIT} free replies — customers now see a limit note. Pro raises it to 500/day and removes the ceiling talk.`,
+                title: 'Daily reply limit reached',
+                body: `Velo used all ${WA_LIMIT} replies for today. New customers are told you'll be back shortly, and their chats are marked Needs you. Replies start again at midnight.${more}`,
                 link: '/billing',
               });
             }
@@ -327,7 +328,7 @@ async function handleInbound(req, res) {
       const pick = aiModels.resolveChoice(business.whatsapp_model || 'gemini-flash-full', planService.effectiveTier(business));
       if (!pick.error && pick.entry.tier === 'paid') {
         const { rows: cap } = await db.query(
-          `INSERT INTO ai_usage (business_id, day) VALUES ($1, CURRENT_DATE)
+          `INSERT INTO ai_usage (business_id, day) VALUES ($1, ${TODAY_DATE})
            ON CONFLICT (business_id, day) DO UPDATE SET business_id = EXCLUDED.business_id
            RETURNING paid_count`,
           [business.id]
@@ -366,7 +367,7 @@ async function handleInbound(req, res) {
       if (result.paidModel) { // paid brain answered → count it (same daily budget as the VeloSalesAI page!)
         try {
           await db.query(
-            `INSERT INTO ai_usage (business_id, day, paid_count) VALUES ($1, CURRENT_DATE, 1)
+            `INSERT INTO ai_usage (business_id, day, paid_count) VALUES ($1, ${TODAY_DATE}, 1)
              ON CONFLICT (business_id, day) DO UPDATE SET paid_count = ai_usage.paid_count + 1`,
             [business.id]
           );

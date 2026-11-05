@@ -40,6 +40,7 @@ function cleanReply(text) {
   t = t.replace(/[ \t]+$/gm, ''); // trailing spaces per line
   t = t.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{1F1E6}-\u{1F1FF}]/gu, ''); // emoji → gone (prompts say "no emojis" but models still sneak them in — enforcement beats prompting; U+2022 • bullets are NOT in these ranges, so our option lists survive!)
   t = t.replace(/[ \t]{2,}/g, ' '); // collapse gaps the emoji strip leaves behind
+  t = t.replace(/[ \t]+$/gm, ''); // …and the trailing space an end-of-line emoji leaves
   t = t.replace(/\n{3,}/g, '\n\n'); // max one blank line between blocks
   return t.trim();
 }

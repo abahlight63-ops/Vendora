@@ -1,0 +1,25 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Every server file loads
+        run: for f in $(git ls-files 'src/*.js' 'src/**/*.js'); do node --check "$f" || exit 1; done
+      - name: Unit tests
+        run: npm test
+        env:
+          NODE_ENV: test
+      - name: Frontend builds
+        run: npx vite build

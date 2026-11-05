@@ -8,6 +8,7 @@
 const express = require('express'); // the Express framework itself
 const path = require('path'); // Node BUILT-IN: joins file paths safely across OSes
 require('dotenv').config(); // MODULE `dotenv` (npm i dotenv): reads .env into process.env
+require('./services/alertService').installProcessHandlers(); // crash + stray promise errors → log + alert (ALERT_EMAIL)
 
 // Local modules we built (require order matters only for readability here):
 const PgSessionStore = require('./db/sessionStore'); // our Postgres session store class
@@ -129,6 +130,7 @@ app.use('/api', (err, req, res, next) => { // 4 args = Express treats this as er
   console.error('API error:', err && err.stack ? err.stack : err); // full stack in SERVER logs (debugging gold, never sent out!)
   if (res.headersSent) return next(err); // response already started → delegate (never double-send!)
   const status = (err && err.status) || 500;
+  if (status >= 500) require('./services/alertService').report('api-500', err, { route: `${req.method} ${req.baseUrl || ''}${req.path}` });
   const safe = status < 500 && err && err.message ? err.message : 'Something went wrong — try again.'; // 4xx = our words (safe); 5xx = generic (leak-proof!)
   res.status(status).json({ error: safe });
 });
@@ -378,5 +380,5 @@ require('./services/configService').ensureSchema()
   }))
   .catch((e) => { // DB unreachable or migration broken → refuse to boot half-ready (hosts show this log!)
     console.error('FATAL: schema migration failed:', e.message);
-    process.exit(1);
+    Promise.resolve(require('./services/alertService').report('boot-failed', e)).finally(() => process.exit(1));
   });

@@ -453,6 +453,7 @@ async function handleInbound(req, res) {
     res.status(200).send(''); // Meta happy (empty 200 = "received, don't retry")
   } catch (err) {
     console.error('Webhook error:', err); // log the crash…
+    require('../services/alertService').report('webhook', err, { channel: req.telegram ? 'telegram' : 'whatsapp' });
     res.status(200).send(''); // …but STILL 200 (a 500 would make Meta retry + double-reply the customer!)
   }
 }

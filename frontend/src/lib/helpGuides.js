@@ -9,7 +9,7 @@ import SHOTS from './helpShots.json';
 
 export const GUIDES = [
   {
-    id: 'connect', icon: 'plug', color: '#6d4aff', title: 'Connect your channels', sub: 'WhatsApp, Telegram, Messenger, Instagram',
+    id: 'connect', icon: 'plug', color: '#4F3FC7', title: 'Connect your channels', sub: 'WhatsApp, Telegram, Messenger, Instagram',
     steps: [
       { shot: 'connect-1', page: '/dashboard', target: { d: 'nav a[href="/connect"]', p: '.mobile-bar a[href="/connect"]' }, title: 'Open Channels', text: 'Tap Channels in the menu. On a phone it is in the bar at the bottom of the screen.', label: 'Tap Channels' },
       { shot: 'connect-2', page: '/connect', target: '.ch-fb-go', title: 'Tap Continue with Facebook', text: 'In the Meta apps card, tap the big blue button. One Facebook login connects WhatsApp, Messenger and Instagram.', tip: 'Use the Facebook account that runs your business Page.', label: 'Tap here' },
@@ -19,7 +19,7 @@ export const GUIDES = [
     ],
   },
   {
-    id: 'products', icon: 'box', color: '#6d4aff', title: 'Add your products', sub: 'Catalog, prices and photos',
+    id: 'products', icon: 'box', color: '#D03C16', title: 'Add your products', sub: 'Catalog, prices and photos',
     steps: [
       { shot: 'products-1', page: '/dashboard', target: { d: 'nav a[href="/catalog"]', p: '.mobile-bar a[href="/catalog"]' }, title: 'Open Catalog', text: 'Everything Velo is allowed to sell lives here. If it is not in your catalog, Velo will not quote it.', label: 'Tap Catalog' },
       { shot: 'products-2', page: '/catalog', target: '.btn-go', title: 'Tap Add product', text: 'The coral button at the top opens the product form.', label: 'Tap here' },
@@ -46,7 +46,7 @@ export const GUIDES = [
     ],
   },
   {
-    id: 'plans', icon: 'card', color: '#15131f', title: 'Plans and payments', sub: 'Upgrade by card, bank or USSD',
+    id: 'plans', icon: 'card', color: '#1E1757', title: 'Plans and payments', sub: 'Upgrade by card, bank or USSD',
     steps: [
       { shot: 'plans-1', page: '/billing', target: '.pu-usage', title: "See today's replies", text: 'Plan and usage shows how many replies Velo has used today, and when it resets.', label: 'Your usage' },
       { shot: 'plans-2', page: '/billing', target: '.pu-plan.best .pu-plan-btn', title: 'Choose a plan', text: 'Compare Free, Plus, Pro and Business, then tap Choose on the one you want.', label: 'Tap Choose' },
@@ -55,7 +55,7 @@ export const GUIDES = [
     ],
   },
   {
-    id: 'test', icon: 'play', color: '#9277ff', title: 'Test before going live', sub: 'Test Drive like a customer',
+    id: 'test', icon: 'play', color: '#FF7650', title: 'Test before going live', sub: 'Test Drive like a customer',
     steps: [
       { shot: 'test-1', page: '/playground', target: '.td-tries', title: 'Tap a real situation', text: 'Open Test Drive and tap a question, or type like a customer in the phone.', label: 'Tap one' },
       { shot: 'test-2', page: '/playground', click: '.td-tries button', target: '.td-why', title: 'Read how Velo answered', text: 'See which product it used, whether it matched their Pidgin, and whether it would pass the chat to you.', label: 'Why it answered' },

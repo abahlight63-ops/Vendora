@@ -61,7 +61,7 @@ function Pointer({ box, label, imgRef }) {
       <span className="hp-label" style={{ left: lx, top: ly }}>{label}</span>
       <span className="hp-tap" style={{ left: cx, top: cy }} />
       <span className="hp-hand" style={{ left: cx - 10, top: cy - 6 }}>
-        <svg viewBox="0 0 24 24" width="42" height="42"><path fill="#fff" stroke="#15131f" strokeWidth="1.6" strokeLinejoin="round" d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10V4a1.5 1.5 0 0 1 3 0v6V5.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-.5a6 6 0 0 1-5-2.7L3 14.5a1.6 1.6 0 0 1 2.6-1.8L9 15z" /></svg>
+        <svg viewBox="0 0 24 24" width="42" height="42"><path fill="#fff" stroke="#1E1757" strokeWidth="1.6" strokeLinejoin="round" d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10V4a1.5 1.5 0 0 1 3 0v6V5.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-.5a6 6 0 0 1-5-2.7L3 14.5a1.6 1.6 0 0 1 2.6-1.8L9 15z" /></svg>
       </span>
     </div>
   );

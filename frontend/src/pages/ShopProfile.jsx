@@ -17,7 +17,7 @@ function Ring({ pct }) {
   const r = 38, c = 2 * Math.PI * r;
   return (
     <svg width="92" height="92" viewBox="0 0 92 92" aria-hidden="true" className="sp-ring">
-      <defs><linearGradient id="sp-rg" x1="0" x2="1"><stop offset="0" stopColor="#9277ff" /><stop offset="1" stopColor="#6d4aff" /></linearGradient></defs>
+      <defs><linearGradient id="sp-rg" x1="0" x2="1"><stop offset="0" stopColor="#ff7650" /><stop offset="1" stopColor="#4f3fc7" /></linearGradient></defs>
       <circle cx="46" cy="46" r={r} fill="none" stroke="var(--purple-soft)" strokeWidth="10" />
       <circle cx="46" cy="46" r={r} fill="none" stroke="url(#sp-rg)" strokeWidth="10" strokeLinecap="round" strokeDasharray={`${(c * pct) / 100} ${c}`} transform="rotate(-90 46 46)" style={{ transition: 'stroke-dasharray .6s ease' }} />
       <text x="46" y="52" textAnchor="middle" fontSize="20" fontWeight="800" fill="currentColor">{pct}%</text>

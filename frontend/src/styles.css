@@ -4127,3 +4127,65 @@ body { min-height: 100vh; min-height: 100dvh; } /* the colour field must reach t
 .au-consent input { width: 20px; height: 20px; min-height: 0; margin: 1px 0 0; flex: 0 0 20px; accent-color: #ff8a6b; }
 .au-consent a { color: inherit; text-decoration: underline; font-weight: 700; }
 .del-acct input { margin-top: 8px; }
+
+/* ══ Motion system (Nov 2026) ═════════════════════════════════════════
+   Every page glides in, the sidebar answers the pointer, cards and rows
+   arrive one after another, and cards further down rise as you scroll.
+   People who ask for less motion still get soft fades: nothing slides,
+   bounces or spins for them. */
+:root { --ease-out: cubic-bezier(.2, .8, .2, 1); --ease-spring: cubic-bezier(.2, 1.3, .4, 1); }
+@keyframes mvRise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes mvFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mvPop { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes mvPill { from { transform: scaleX(.85); opacity: .4; } to { transform: none; opacity: 1; } }
+
+/* 1. Switching pages: the new page glides up into place. */
+.route-in { animation: mvRise .42s var(--ease-out) both; }
+
+/* 2. Sidebar and bottom bar: hover slide, press, and the active pill grows in. */
+.sidebar nav a { transition: background .25s var(--ease-out), color .2s, transform .25s var(--ease-out), box-shadow .25s; }
+.sidebar nav a:hover { transform: translateX(4px); }
+.sidebar nav a:active { transform: translateX(2px) scale(.98); }
+.sidebar nav a svg { transition: transform .3s var(--ease-spring); }
+.sidebar nav a:hover svg { transform: scale(1.12) rotate(-6deg); }
+.sidebar nav a.active { animation: mvPill .35s var(--ease-out) both; transform-origin: left center; }
+.mobile-bar a { transition: transform .25s var(--ease-spring), color .2s; }
+.mobile-bar a:active { transform: scale(.9); }
+.mobile-bar a.active svg { animation: mvPop .35s var(--ease-spring) both; }
+
+/* 3. Things arrive one after another (cards, numbers, rows). */
+:is(.od-kpis, .ad-kpis, .dg-stats, .kpis, .ad-three, .ad-two, .od-acts, .sp-miss) > * { animation: mvRise .5s var(--ease-out) both; }
+:is(.wx-list, .od-listcard, .ad-table, .nt-card, .bc-hist, .rc-items, .sp-col, .ad-page, .od, .bc) > * { animation: mvRise .5s var(--ease-out) both; }
+:is(.od-kpis, .ad-kpis, .dg-stats, .kpis, .ad-three, .ad-two, .od-acts, .wx-list, .od-listcard, .ad-table, .nt-card, .bc-hist, .rc-items, .sp-col, .ad-page, .od, .bc, .sp-miss) > :nth-child(2) { animation-delay: .05s; }
+:is(.od-kpis, .ad-kpis, .dg-stats, .kpis, .ad-three, .ad-two, .od-acts, .wx-list, .od-listcard, .ad-table, .nt-card, .bc-hist, .rc-items, .sp-col, .ad-page, .od, .bc, .sp-miss) > :nth-child(3) { animation-delay: .1s; }
+:is(.od-kpis, .ad-kpis, .dg-stats, .kpis, .ad-three, .ad-two, .od-acts, .wx-list, .od-listcard, .ad-table, .nt-card, .bc-hist, .rc-items, .sp-col, .ad-page, .od, .bc, .sp-miss) > :nth-child(4) { animation-delay: .15s; }
+:is(.od-kpis, .ad-kpis, .dg-stats, .kpis, .ad-three, .ad-two, .od-acts, .wx-list, .od-listcard, .ad-table, .nt-card, .bc-hist, .rc-items, .sp-col, .ad-page, .od, .bc, .sp-miss) > :nth-child(5) { animation-delay: .2s; }
+:is(.od-kpis, .ad-kpis, .dg-stats, .kpis, .ad-three, .ad-two, .od-acts, .wx-list, .od-listcard, .ad-table, .nt-card, .bc-hist, .rc-items, .sp-col, .ad-page, .od, .bc, .sp-miss) > :nth-child(6) { animation-delay: .25s; }
+:is(.od-kpis, .ad-kpis, .dg-stats, .kpis, .ad-three, .ad-two, .od-acts, .wx-list, .od-listcard, .ad-table, .nt-card, .bc-hist, .rc-items, .sp-col, .ad-page, .od, .bc, .sp-miss) > :nth-child(n+7) { animation-delay: .3s; }
+
+/* 4. Buttons and cards answer the pointer. */
+.btn, .ad-act, .ad-mini, .wx-pill, .rc-add, .ad-link { transition: transform .2s var(--ease-out), box-shadow .25s, background .25s, border-color .2s, color .2s; }
+.btn:hover:not(:disabled) { transform: translateY(-2px); }
+.btn:active:not(:disabled), .ad-act:active, .wx-pill:active { transform: scale(.97); }
+:is(.od-row, .ad-tr:not(.ad-th), .wx-row, .nt-row, .ad-todo, .bc-row, .ad-link) { transition: transform .22s var(--ease-out), box-shadow .25s, background .25s; }
+:is(.od-row, .ad-tr:not(.ad-th), .wx-row, .nt-row, .ad-todo, .bc-row):hover { transform: translateY(-2px); }
+.od-kpi, .ad-kpi, .sp-card, .bc-card { transition: transform .3s var(--ease-out), box-shadow .3s; }
+.od-kpi:hover, .ad-kpi:hover { transform: translateY(-3px); }
+.pop-overlay > * { animation: mvPop .3s var(--ease-spring) both; }
+
+/* 5. Scrolling: cards further down rise into view (Chrome and Edge; others just show them). */
+@supports (animation-timeline: view()) {
+  :is(.sp-card, .bc-card, .ad-card, .od-listcard, .glass, .card) {
+    animation: mvRise linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 28%;
+  }
+}
+
+/* Less motion asked for: soft fades only, nothing moves. */
+@media (prefers-reduced-motion: reduce) {
+  .route-in, .sidebar nav a.active, .mobile-bar a.active svg, .pop-overlay > *,
+  :is(.od-kpis, .ad-kpis, .dg-stats, .kpis, .ad-three, .ad-two, .od-acts, .wx-list, .od-listcard, .ad-table, .nt-card, .bc-hist, .rc-items, .sp-col, .ad-page, .od, .bc, .sp-miss) > * { animation: mvFade .3s ease both !important; }
+  .sidebar nav a:hover, .sidebar nav a:active, .btn:hover:not(:disabled), :is(.od-row, .ad-tr, .wx-row, .nt-row, .ad-todo, .bc-row):hover, .od-kpi:hover, .ad-kpi:hover, .sidebar nav a:hover svg { transform: none; }
+  @supports (animation-timeline: view()) { :is(.sp-card, .bc-card, .ad-card, .od-listcard, .glass, .card) { animation: mvFade linear both; animation-timeline: view(); animation-range: entry 0% entry 25%; } }
+}

@@ -190,7 +190,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
                 <button className="btn ghost sm" onClick={() => setUpdateBanner(null)} aria-label="Dismiss">Dismiss</button>
               </div>
             )}
-            {children}</main> {/* children = THE PAGE (Dashboard/Catalog/…) rendered inside the frame */}        </div>
+            <div key={pathname} className="route-in">{children}</div></main> {/* children = THE PAGE (Dashboard/Catalog/…) rendered inside the frame */}        </div>
       </div>
       <nav className="mobile-bar"> {/* bottom tab bar: mobile only (CSS), 5 key sections */}
         {mobile.map(([k, label, href]) => (<NavLink key={k} to={href}><Icon k={k} /><span>{label}</span></NavLink>))}

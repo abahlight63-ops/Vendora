@@ -370,8 +370,9 @@ main { display: block; }
   .foot { padding-top: 60px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
-  .js .rv, .js .vm { opacity: 1 !important; transform: none !important; }
+  /* Less motion: no sliding, floating or looping, but sections still fade in softly. */
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+  .js .rv, .js .vm { transform: none !important; transition: opacity .5s ease !important; }
 }
 
 :root[data-theme='light'] .screen-in { border-color: rgba(30, 23, 87, 0.1); box-shadow: 0 40px 90px rgba(60, 30, 110, 0.25); }

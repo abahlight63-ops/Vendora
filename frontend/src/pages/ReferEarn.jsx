@@ -63,25 +63,21 @@ export default function ReferEarn() {
       <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}><button className="btn sm" onClick={() => { setS(null); setX(null); setTries((t) => t + 1); }}>Retry{tries > 0 ? ` (${tries})` : ''}</button><Link className="btn sm ghost" to="/dashboard">Back to Dashboard</Link></div></div>
     </div>
   );
-  const safeMilestone = Number(s.milestoneEvery) > 0 ? Number(s.milestoneEvery) : 5;
   const link = window.location.origin + '/login?ref=' + encodeURIComponent(s.code || ''); // share link (Login prefills + validates!)
   const text = `I use VeloSales Ai — my WhatsApp shop answers customers 24/7, even at 2am. Start free with my code ${s.code} (we BOTH get ${s.quizDays || 14} Pro days free): ${link}`;
-  const pct = Math.min(100, Math.round(((Number(s.paying) || 0) % safeMilestone) / safeMilestone * 100)); // milestone fill (resets each 5-pack!)
-  const kindName = (k) => k === 'pro_days' ? 'Pro days' : k === 'airtime' ? 'Airtime' : k === 'plus_month' ? 'Plus month' : k; // payout kind → human words
+  const kindName = (k) => k === 'pro_days' ? 'Pro days' : k === 'airtime' ? 'Airtime' : k === 'plus_month' ? 'Plus month' : k === 'plan_credit' ? 'Plan credit' : k === 'credit_spent' ? 'Credit used' : k; // payout kind → human words
+  const cash = (minor) => (s.currency === 'USD' ? '$' : '₦') + ((Number(minor) || 0) / 100).toLocaleString('en-NG', { maximumFractionDigits: 2 }); // credit is in minor units of the shop's currency
+  const perFriend = cash(s.creditPerFriend || 150000);
   const totalInvited = Number(s.invited) || 0; // counters are read 2–3 times each below — normalise once
   const stats = [
     { v: totalInvited, l: 'Invited', sub: 'Friends with your code' },
     { v: Number(s.qualified) || 0, l: 'Finished setup', sub: 'Connected or first chat' },
-    { v: Number(s.paying) || 0, l: 'Paying', sub: 'Earning you airtime' },
+    { v: Number(s.paying) || 0, l: 'Paying', sub: 'Earning you plan credit' },
     { v: `${Number(s.daysEarned) || 0}d`, l: 'Pro earned', sub: 'Banked on your account', tone: 'good' },
   ];
   const qualified = Number(s.qualified) || 0;
   const paying = Number(s.paying) || 0;
-  const towards = paying % safeMilestone;
-  const left = Number(s.nextMilestoneIn) || (safeMilestone - towards);
-  const ring = 2 * Math.PI * 22;
   const days = s.quizDays || 14;
-  const prize = naira(s.milestoneAmount || 50000);
   const leaders = (x && Array.isArray(x.leaders)) ? x.leaders.slice(0, 3) : [];
   const podium = [[leaders[1], 2], [leaders[0], 1], [leaders[2], 3]]; // the winner stands in the middle
   const endOfMonth = (() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate() - n.getDate(); })();
@@ -91,7 +87,7 @@ export default function ReferEarn() {
         <div className="re2-hero-copy">
           <span className="re2-eyebrow"><Ic n="gift" s={15} />Refer &amp; Earn</span>
           <h1>Give {days} Pro days.<br />Get {days} Pro days.</h1>
-          <p>When a friend joins with your code and starts using Velo, you both get {days} days of Pro. Every {safeMilestone}th friend who pays earns you {prize} airtime.</p>
+          <p>When a friend joins with your code and starts using Velo, you both get {days} days of Pro. Every friend who pays for a plan earns you {perFriend} off your own plan.</p>
         </div>
         <div className="re2-hero-side">
           <div className="re2-ticket">
@@ -116,16 +112,18 @@ export default function ReferEarn() {
           </div>
         </section>
         <section className="glass re2-card re2-next">
-          <div className="re2-ring">
-            <svg viewBox="0 0 56 56" width="120" height="120" aria-hidden="true"><defs><linearGradient id="re2-rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#4F3FC7" /><stop offset="1" stopColor="#D03C16" /></linearGradient></defs><circle cx="28" cy="28" r="22" fill="none" stroke="var(--ring-track)" strokeWidth="6" /><circle cx="28" cy="28" r="22" fill="none" stroke="url(#re2-rg)" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(towards / safeMilestone) * ring} ${ring}`} transform="rotate(-90 28 28)" /></svg>
-            <b>{towards}/{safeMilestone}</b>
+          <span className="re2-reward-ic coral re2-credit-ic" aria-hidden="true"><Ic n="cash" s={30} /></span>
+          <div>
+            <span className="re2-lbl">Your plan credit</span>
+            <strong>{cash(s.credit)}</strong>
+            <p>{Number(s.credit) > 0 ? 'It comes off your next plan payment by itself.' : `${perFriend} for every friend who pays for a plan.`}{Number(s.creditEarned) > 0 ? ` ${cash(s.creditEarned)} earned so far.` : ''}</p>
+            {Number(s.credit) > 0 && <Link className="btn sm" to="/billing" style={{ marginTop: 8 }}>Use it on my plan</Link>}
           </div>
-          <div><span className="re2-lbl">{Number(s.airtimeDue) > 0 ? 'Airtime on the way' : 'Next airtime'}</span><strong>{Number(s.airtimeDue) > 0 ? naira(s.airtimeDue) : prize}</strong><p>{left} more paying {left === 1 ? 'friend' : 'friends'} to go.</p></div>
         </section>
       </div>
 
       <div className="re2-rewards">
-        {[['gift', `${days} Pro days, both of you`, 'When a friend you invite starts using Velo.', 'indigo'], ['cash', `${prize} airtime`, `For every ${safeMilestone}th friend who pays for a plan.`, 'coral'], ['chart', 'Monthly champion', 'Top referrer each month wins a free Plus month.', 'plum']].map(([ic, t, d, c]) => (
+        {[['gift', `${days} Pro days, both of you`, 'When a friend you invite starts using Velo.', 'indigo'], ['cash', `${perFriend} plan credit`, 'For every friend who pays for a plan. It comes off your next payment.', 'coral'], ['chart', 'Monthly champion', 'Top referrer each month wins a free Plus month.', 'plum']].map(([ic, t, d, c]) => (
           <section key={t} className="glass re2-card re2-reward"><span className={'re2-reward-ic ' + c}><Ic n={ic} s={24} /></span><b>{t}</b><p>{d}</p></section>
         ))}
       </div>
@@ -151,16 +149,16 @@ export default function ReferEarn() {
             <div className="re2-list">
               {x.history.map((h, i) => (
                 <div key={i} className="re2-item">
-                  <span className="pu-tile-ic"><Ic n={h.kind === 'airtime' ? 'cash' : h.kind === 'plus_month' ? 'chart' : 'gift'} s={18} /></span>
-                  <span className="re2-item-main"><b>{kindName(h.kind)}{h.days ? ` +${h.days} days` : ''}{h.amount ? ` ${naira(h.amount)}` : ''}</b>{h.note ? <small>{h.note}</small> : null}</span>
-                  <span className={'ch-chip ' + (h.status === 'pending' ? 'ready' : 'live')}>{h.status === 'pending' ? 'Waiting' : 'Added'}</span>
+                  <span className="pu-tile-ic"><Ic n={h.kind === 'airtime' || h.kind === 'plan_credit' || h.kind === 'credit_spent' ? 'cash' : h.kind === 'plus_month' ? 'chart' : 'gift'} s={18} /></span>
+                  <span className="re2-item-main"><b>{kindName(h.kind)}{h.days ? ` +${h.days} days` : ''}{h.amount ? ` ${h.kind === 'credit_spent' ? '−' : ''}${h.kind === 'airtime' ? naira(h.amount) : cash(h.amount)}` : ''}</b>{h.note ? <small>{h.note}</small> : null}</span>
+                  <span className={'ch-chip ' + (h.status === 'pending' ? 'ready' : 'live')}>{h.status === 'pending' ? 'Waiting' : h.kind === 'credit_spent' ? 'Used' : 'Added'}</span>
                 </div>
               ))}
             </div>
           )}
         </section>
       </div>
-      <p className="re2-fine">Self-referrals are blocked, rewards need a real setup, and airtime is only for paying shops.</p>
+      <p className="re2-fine">Self-referrals are blocked, rewards need a real setup, and plan credit only comes from friends who really pay.</p>
     </div>
   );
 }

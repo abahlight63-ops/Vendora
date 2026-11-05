@@ -4364,3 +4364,8 @@ svg[fill="none"][stroke="currentColor"]:not(.no-duo) { fill: currentColor; fill-
 }
 .od-note.od-draft { display: flex; gap: 8px; align-items: flex-start; text-align: left; padding: 10px 12px; border-radius: 14px; background: var(--line-soft, rgba(245,158,11,0.12)); color: var(--ink); }
 .od-note.od-draft svg { flex: 0 0 auto; margin-top: 1px; }
+/* Refer & Earn credit on Plan and usage */
+.pu-sum.pu-credit span { display: inline-flex; gap: 6px; align-items: center; }
+.pu-sum.pu-credit b { color: var(--good, #16a34a); }
+.pu-credit-note { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.re2-credit-ic { width: 64px; height: 64px; flex: 0 0 auto; }

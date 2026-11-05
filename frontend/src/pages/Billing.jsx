@@ -148,7 +148,10 @@ export default function Billing() {
     setBusy(plan); // lock buttons (busy string = this plan's button shows 'Starting…')
     const { ok, data } = await api(endpoint, { method: 'POST', body: JSON.stringify({ plan, channel }) }); // send ONLY the plan key (amount enforced server-side!)
     setBusy(''); // unlock (ALWAYS — success navigates away anyway, failure must unlock!)
-    if (ok && data.authorization_url) { // session created → checkout URL received…
+    if (ok && data.activated) { // Refer & Earn credit paid for the whole plan: active now, no checkout page
+      setCheckout(null); load();
+      pop('ok', 'Paid with your credit', 'Your plan is active. Your Refer & Earn credit covered it.');
+    } else if (ok && data.authorization_url) { // session created → checkout URL received…
       pop('ok', 'Opening secure checkout…', 'Complete your payment on the secure page to activate instantly.'); // success popup FIRST (user sees confirmation)…
       setTimeout(() => { location.href = data.authorization_url; }, 1200); // …then leave after 1.2s (location.href = full-page navigation, exits the SPA!)
     } else { // backend refused (no keys, unknown plan, no email…)…
@@ -254,6 +257,15 @@ export default function Billing() {
     { key: 'plus', name: 'Pro', tier: plus, best: true, feats: [[true, '1,500 replies a day'], [true, 'WhatsApp and Telegram'], [true, 'Voice notes'], [true, 'Product photos in replies'], [true, 'Import your WhatsApp catalog'], [true, 'Our smartest AI and priority support']] },
     { key: 'business', name: 'Business', price: cur === 'USD' ? 'Custom' : '₦39,999', per: 'month', feats: [[true, '5,000 replies a day'], [true, 'Several branches, one dashboard'], [true, 'Voice notes'], [true, 'Product photos in replies'], [true, 'Setup call with our team'], [true, 'Priority support']] },
   ];
+  // Checkout sheet money: Refer & Earn credit comes off the plan price (the server makes the same sum).
+  const sheetPrice = (() => { if (!checkout || !checkout.plan) return 0; const [t, p] = String(checkout.plan).split('_'); const o = plans[t] && plans[t][p]; return Number(o && o.amount) || 0; })();
+  const sheetCredit = (() => {
+    const c = Math.min(Number(bill?.credit) || 0, sheetPrice);
+    const min = cur === 'USD' ? 1 : 100; // providers cannot charge less than this, so a tiny remainder keeps a little credit back
+    const rest = sheetPrice - c;
+    return rest > 0 && rest < min ? Math.max(0, sheetPrice - min) : c;
+  })();
+  const sheetToPay = Math.max(0, Math.round((sheetPrice - sheetCredit) * 100) / 100);
   const onTier = (k) => (k === null ? !paid || (status !== 'active' && status !== 'trialing') : bill?.tier === k && status === 'active');
   return (
     <div className="pu">
@@ -284,6 +296,7 @@ export default function Billing() {
             </>
           )}
           {status === 'active' && <p className="pu-note">Renews on <b>{fmtDate(bill.expires)}</b>.</p>}
+          {Number(bill?.credit) > 0 && <p className="pu-note pu-credit-note"><Ic n="gift" s={16} />You have <b>{money(bill.credit, cur)}</b> Refer &amp; Earn credit. It comes off your next payment by itself.</p>}
         </div>
         {bill?.tier !== 'plus' && (
           <div className="pu-push">
@@ -372,8 +385,12 @@ export default function Billing() {
             <div className="ps-head"><h2 id="pu-sheet-title">Upgrade to {checkout.name}</h2><button className="ps-close" disabled={!!busy} onClick={() => setCheckout(null)} aria-label="Close"><Ic n="x" s={18} /></button></div>
             <div className="ps-body">
               <div className="pu-sum"><span>{checkout.name} · {period === 'monthly' ? 'Monthly' : 'Yearly'}</span><b>{checkout.price}</b></div>
-              <p className="pu-label">How would you like to pay?</p>
-              <div className="pu-methods" role="radiogroup" aria-label="Payment method">
+              {sheetCredit > 0 && (<>
+                <div className="pu-sum pu-credit"><span><Ic n="gift" s={16} />Refer &amp; Earn credit</span><b>−{money(sheetCredit, cur)}</b></div>
+                <div className="pu-sum"><span>To pay now</span><b>{money(sheetToPay, cur)}</b></div>
+              </>)}
+              {sheetToPay > 0 && <p className="pu-label">How would you like to pay?</p>}
+              {sheetToPay > 0 && <div className="pu-methods" role="radiogroup" aria-label="Payment method">
                 {(cur === 'USD' ? [['card', 'Card', 'Visa, Mastercard and more']] : [
                   ['card', bill?.card_last4 ? 'Card' : 'Card', bill?.card_last4 ? `Your ${String(bill.card_brand || 'card').toLowerCase()} ending ${bill.card_last4}, or a new card` : 'Visa, Mastercard or Verve'],
                   ['bank_transfer', 'Bank transfer', 'Paystack gives you an account number to send to'],
@@ -383,11 +400,11 @@ export default function Billing() {
                     <i aria-hidden="true" /><span><b>{n}</b><small>{d}</small></span>
                   </button>
                 ))}
-              </div>
-              <p className="ch-safe"><Ic n="shield" s={18} />Secured by Paystack. Your plan turns on the moment the payment lands.</p>
+              </div>}
+              <p className="ch-safe"><Ic n="shield" s={18} />{sheetToPay === 0 ? 'Your credit covers this plan. It turns on straight away.' : 'Secured by Paystack.'} {sheetToPay === 0 ? '' : ' Your plan turns on the moment the payment lands.'}</p>
             </div>
             <div className="ps-foot">
-              <button className="btn lg ps-save" disabled={!!busy} onClick={() => pay(checkout.plan, cur === 'USD' ? undefined : method)}>{busy ? (<><Loader size={17} />Opening Paystack</>) : `Pay ${checkout.price}`}</button>
+              <button className="btn lg ps-save" disabled={!!busy} onClick={() => pay(checkout.plan, cur === 'USD' ? undefined : method)}>{busy ? (<><Loader size={17} />{sheetToPay === 0 ? 'Activating' : 'Opening Paystack'}</>) : sheetToPay === 0 ? 'Use my credit' : `Pay ${money(sheetToPay, cur)}`}</button>
               <p className="ps-note is-center">Cancel any time. You keep your plan until the end of what you paid for.</p>
             </div>
           </div>

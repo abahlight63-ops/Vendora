@@ -47,6 +47,27 @@ function appUrl(req, fallback) {
   return String(process.env.APP_URL || process.env.FRONTEND_URL || fallback || '').replace(/\/$/, '');
 }
 
+// Refer & Earn credit at checkout. Returns { creditMinor, payMinor }: the
+// credit to use and what is left to charge. A tiny leftover the payment
+// provider cannot charge (under ₦100 / $1) is covered by using less credit.
+async function creditSplit(businessId, priceMajor, currency) {
+  const priceMinor = Math.round(Number(priceMajor) * 100);
+  let balance = 0;
+  try { balance = (await require('../services/referralService').creditBalance(businessId)).balance; } catch (e) { console.error('credit lookup error:', e.message); }
+  let creditMinor = Math.min(balance, priceMinor);
+  const minCharge = currency === 'USD' ? 100 : 10000; // $1.00 or ₦100.00 in minor units
+  const rest = priceMinor - creditMinor;
+  if (rest > 0 && rest < minCharge) creditMinor = Math.max(0, priceMinor - minCharge);
+  return { creditMinor, payMinor: priceMinor - creditMinor };
+}
+
+// Credit covers the whole plan: activate now, no checkout page at all.
+async function activateWithCredit(req, res, planKey, plan, currency, creditMinor) {
+  const reference = `credit-${req.session.businessId}-${planKey}-${Date.now()}`;
+  await activateSubscription(req.session.businessId, planKey, plan.days, reference, 'credit', 0, currency, creditMinor);
+  return res.json({ activated: true, paidWithCredit: creditMinor / 100, currency });
+}
+
 // Save the card Paystack returns, for display only: brand, last 4 and expiry.
 async function saveCard(businessId, auth) {
   if (!businessId || !auth || auth.channel !== 'card' || !auth.last4) return;
@@ -129,6 +150,11 @@ async function initialize(req, res) {
   const { rows: bRows } = await db.query('SELECT currency FROM businesses WHERE id = $1', [req.session.businessId]); // price must match the SHOP's currency
   const currency = bRows[0]?.currency === 'USD' ? 'USD' : 'NGN'; // whitelist again (DB could hold anything)
   const amount = plan[currency]; // e.g. plan.USD for a Ghanaian shop
+  const { creditMinor, payMinor } = await creditSplit(req.session.businessId, amount, currency); // Refer & Earn credit comes off first
+  if (payMinor === 0 && creditMinor > 0) {
+    try { return await activateWithCredit(req, res, planKey, plan, currency, creditMinor); }
+    catch (e) { console.error('credit activation error:', e.message); return res.status(500).json({ error: 'Could not use your credit right now — try again.' }); }
+  }
   const baseUrl = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`; // Paystack returns the payer here (env in prod, request host locally)
   const PAY_CHANNELS = ['card', 'bank_transfer', 'ussd', 'bank']; // the owner's pick on the checkout sheet
   const channel = PAY_CHANNELS.includes(String(req.body?.channel || '')) ? String(req.body.channel) : null; // unknown or missing = Paystack shows every method
@@ -142,16 +168,16 @@ async function initialize(req, res) {
       },
       body: JSON.stringify({
         email, // shorthand: { email: email } — Paystack receipts go here
-        amount: amount * 100, // SMALLEST unit: kobo for NGN, cents for USD (₦7500→750000; $5→500)
+        amount: payMinor, // SMALLEST unit: kobo for NGN, cents for USD, after any Refer & Earn credit
         currency, // 'NGN' or 'USD' (USD must be enabled once in Paystack dashboard!)
-        metadata: { business_id: req.session.businessId, kind: planKey, days: plan.days, currency }, // echoed back in the webhook — how we know WHO paid FOR WHAT
+        metadata: { business_id: req.session.businessId, kind: planKey, days: plan.days, currency, credit_used: creditMinor }, // echoed back in the webhook — WHO paid FOR WHAT, and the credit to take
         callback_url: `${appUrl(req, baseUrl)}/billing`, // back to Plan and usage, which verifies the reference
         ...(channel ? { channels: [channel] } : {}), // open checkout on the method the owner picked
       }),
     });
     const data = await r.json(); // parse Paystack's reply
     if (!data.status) return res.status(502).json({ error: data.message || 'Paystack error' }); // 502 = Paystack (upstream) said no
-    res.json({ authorization_url: data.data.authorization_url, reference: data.data.reference }); // frontend: location.href = authorization_url
+    res.json({ authorization_url: data.data.authorization_url, reference: data.data.reference, creditUsed: creditMinor / 100, toPay: payMinor / 100, currency }); // frontend: location.href = authorization_url
   } catch (err) {
     console.error('billing initialize error:', err); // network/DNS failure…
     res.status(502).json({ error: 'Could not reach Paystack' });
@@ -196,7 +222,12 @@ async function flutterwaveInit(req, res) {
   const { rows: bRows } = await db.query('SELECT currency FROM businesses WHERE id = $1', [req.session.businessId]);
   const currency = bRows[0]?.currency === 'USD' ? 'USD' : 'NGN';
   if (currency !== 'USD') return res.status(400).json({ error: 'This checkout is for US Dollar shops — Naira shops pay with Paystack just above.' }); // wrong door → point at the right one
-  const amount = plan.USD; // major units ($5, $47, $10, $80 — Flutterwave takes majors, NOT cents!)
+  const { creditMinor, payMinor } = await creditSplit(req.session.businessId, plan.USD, 'USD'); // Refer & Earn credit comes off first
+  if (payMinor === 0 && creditMinor > 0) {
+    try { return await activateWithCredit(req, res, planKey, plan, 'USD', creditMinor); }
+    catch (e) { console.error('credit activation error:', e.message); return res.status(500).json({ error: 'Could not use your credit right now — try again.' }); }
+  }
+  const amount = payMinor / 100; // major units ($5, $47, $10, $80 — Flutterwave takes majors, NOT cents!), after credit
   const baseUrl = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
   const txRef = `vendora-${req.session.businessId}-${planKey}-${Date.now()}`; // unique ref (echoed in webhook + ledger!)
 
@@ -210,13 +241,13 @@ async function flutterwaveInit(req, res) {
         currency: 'USD',
         redirect_url: `${baseUrl}/billing`, // landing page after payment
         customer: { email }, // shorthand receipt address
-        meta: { business_id: req.session.businessId, kind: planKey, days: plan.days, currency: 'USD' }, // webhook reads these back (WHO paid FOR WHAT!)
+        meta: { business_id: req.session.businessId, kind: planKey, days: plan.days, currency: 'USD', credit_used: creditMinor }, // webhook reads these back (WHO paid FOR WHAT, and the credit to take)
         customizations: { title: 'VeloSales Ai Pro', description: plan.label },
       }),
     });
     const data = await r.json();
     if (data.status !== 'success') return res.status(502).json({ error: data.message || 'Flutterwave error' }); // 502 = upstream said no
-    res.json({ authorization_url: data.data.link, reference: txRef }); // SAME shape as Paystack init (frontend reuses one redirect flow!)
+    res.json({ authorization_url: data.data.link, reference: txRef, creditUsed: creditMinor / 100, toPay: amount, currency: 'USD' }); // SAME shape as Paystack init (frontend reuses one redirect flow!)
   } catch (err) {
     console.error('flutterwave initialize error:', err.message);
     res.status(502).json({ error: 'Could not reach Flutterwave' });
@@ -226,7 +257,7 @@ async function flutterwaveInit(req, res) {
 // Shared activation (BOTH webhooks land here after THEIR OWN verification).
 // Extends expiry from the later of (existing expiry, now) — early renewals
 // never lose days. Resets trial flags (a buyer is no longer "trialing"!).
-async function activateSubscription(businessId, kind, days, reference, method, amountMinor, currency) {
+async function activateSubscription(businessId, kind, days, reference, method, amountMinor, currency, creditMinor) {
   if (reference) { // IDEMPOTENCY: webhooks retry + return-verify can double-fire (same reference = same money — never extend twice, never double-email!)
     try {
       const { rows: dup } = await db.query("SELECT 1 FROM payments WHERE reference = $1 AND status = 'active' LIMIT 1", [String(reference)]);
@@ -250,13 +281,20 @@ async function activateSubscription(businessId, kind, days, reference, method, a
       [Number(businessId), PLANS[kind] ? kind : 'pro_monthly', currency, Number(amountMinor) || 0, method, 'active', reference]
     );
   } catch (e) { console.error('payment ledger error:', e.message); }
-  console.log(`Subscription activated for business ${businessId} via ${method} (+${days} days)`);
+  let creditTaken = 0;
+  if (Number(creditMinor) > 0) { // Refer & Earn credit used on this payment (after the dedupe above: taken once per reference)
+    try { creditTaken = await require('../services/referralService').spendCredit(businessId, creditMinor, reference); }
+    catch (e) { console.error('credit spend error:', e.message); }
+  }
+  console.log(`Subscription activated for business ${businessId} via ${method} (+${days} days)` + (creditTaken ? `, credit used ${creditTaken}` : ''));
+  const sym = currency === 'USD' ? '$' : '₦';
+  const creditLine = creditTaken ? ` ${sym}${(creditTaken / 100).toLocaleString('en-NG')} of Refer & Earn credit was used.` : '';
   require('../services/notifyService').notify(Number(businessId), { // bell (fire-and-forget)
-    title: 'Payment confirmed — Pro is active!',
-    body: `Your card payment went through. Enjoy ${days} days of Pro.`,
+    title: method === 'credit' ? 'Paid with your credit — plan is active!' : 'Payment confirmed — plan is active!',
+    body: method === 'credit' ? `Your Refer & Earn credit paid for ${days} days.${creditLine}` : `Your payment went through. Enjoy ${days} days.${creditLine}`,
     link: '/billing',
   });
-  { // receipt email (best-effort: activation already done — mail failing must never break it!)
+  if (method !== 'credit') { // receipt email (best-effort: activation already done — mail failing must never break it!)
     const mail = require('../services/emailTemplates');
     mail.ownerContact(businessId).then((c) => {
       if (!c) return null;
@@ -264,7 +302,7 @@ async function activateSubscription(businessId, kind, days, reference, method, a
       return mail.sendPaymentSuccess(c.email, c.name, { plan: label, amountMajor: (Number(amountMinor) || 0) / 100, currency, reference, days });
     }).catch((e) => console.error('payment receipt email error:', e.message));
   }
-  require('../services/referralService').onPaidActivation(Number(businessId)) // milestone check (every 5th paying referral = ₦500 airtime row!)
+  if (method !== 'credit') require('../services/referralService').onPaidActivation(Number(businessId)) // referrer earns plan credit on this shop's first real payment
     .catch((e) => console.error('referral milestone error:', e.message)); // rewards never break payments!
 }
 
@@ -293,14 +331,14 @@ async function handlePaystackWebhook(req, res) {
       }).catch((e) => console.error('payment-failed email error:', e.message));
     }
   } else if (event.event === 'charge.success') { // only successful charges (failed/pending ignored)
-    const { business_id, kind, days: metaDays } = event.data.metadata || {}; // destructure OUR metadata back out (|| {} guards missing)
+    const { business_id, kind, days: metaDays, credit_used: creditUsed } = event.data.metadata || {}; // destructure OUR metadata back out (|| {} guards missing)
     if (business_id) await saveCard(business_id, event.data.authorization);
     if (kind === 'card_check') { await refundCardCheck(event.data.reference); return res.status(200).end(); } // a card check is not a plan purchase
     const days = Number(metaDays) || (PLANS[kind] ? PLANS[kind].days : Number(process.env.SUBSCRIPTION_DAYS || 30)); // metadata days → plan table → env default (triple fallback, never NaN-activate)
     if (business_id) { // ONE shared activation (tier stamp + ledger + bell inside!)
       const amt = event.data.amount || 0; // Paystack sends amount in MINOR units already (kobo/cents — store as-is!)
       const cur = (event.data.currency || 'NGN').toUpperCase(); // 'NGN' | 'USD' (upstream value, uppercased defensively)
-      await activateSubscription(business_id, kind, days, event.data.customer?.customer_code || event.data.reference || null, 'paystack', amt, cur); // ?. guards missing customer object
+      await activateSubscription(business_id, kind, days, event.data.reference || event.data.customer?.customer_code || null, 'paystack', amt, cur, Number(creditUsed) || 0); // reference first: unique per payment, so the dedupe and the credit spend run once
     }
   }
   res.status(200).end(); // always 200 on verified events (Paystack retries anything else)
@@ -332,7 +370,8 @@ async function handleFlutterwaveWebhook(req, res) {
     const meta = d.meta || {};
     const kind = String(meta.kind || 'pro_monthly').toLowerCase();
     const days = Number(meta.days) || (PLANS[kind] ? PLANS[kind].days : 30); // metadata days → plan table → 30 (triple fallback!)
-    const expected = (PLANS[kind] && PLANS[kind].USD) || 0; // USD majors ($5, $47…) — Flutterwave verify returns majors too!
+    const creditUsed = Math.max(0, Number(meta.credit_used) || 0); // minor units of Refer & Earn credit agreed at checkout
+    const expected = Math.max(0, ((PLANS[kind] && PLANS[kind].USD) || 0) - creditUsed / 100); // USD majors ($5, $47…) after credit — Flutterwave verify returns majors too!
     if (Number(d.amount) < expected || String(d.currency).toUpperCase() !== 'USD') { // underpaid or wrong currency → NO activation (log + ack!)
       console.error(`Flutterwave amount mismatch: got ${d.amount} ${d.currency}, want ${expected} USD for ${kind}`);
       if (meta.business_id) { // verified buyer known → tell them (best-effort, never blocks the ack!)
@@ -345,7 +384,7 @@ async function handleFlutterwaveWebhook(req, res) {
       return res.status(200).end();
     }
     if (meta.business_id) { // WHO paid FOR WHAT (from OUR init meta — echoed back!)
-      await activateSubscription(meta.business_id, kind, days, d.tx_ref || String(txId), 'flutterwave', Math.round(Number(d.amount) * 100), 'USD'); // ×100 → cents (ledger stays minor-units!)
+      await activateSubscription(meta.business_id, kind, days, d.tx_ref || String(txId), 'flutterwave', Math.round(Number(d.amount) * 100), 'USD', creditUsed); // ×100 → cents (ledger stays minor-units!)
     }
   } catch (e) {
     console.error('flutterwave webhook error:', e.message); // network/JSON failure → log (Flutterwave retries un-acked… we acked 200 below ONLY on handled paths; here fall through to 200 to avoid poison retries? NO — 500 retries genuinely-lost money events!)
@@ -377,7 +416,10 @@ async function verifyReturn(req, res) {
       if (String(meta.business_id) !== String(req.session.businessId)) return res.status(403).json({ error: 'That payment belongs to a different shop.' });
       const kind = String(meta.kind || 'pro_monthly').toLowerCase();
       const days = Number(meta.days) || (PLANS[kind] ? PLANS[kind].days : 30);
-      await activateSubscription(meta.business_id, kind, days, d.tx_ref || String(txId), 'flutterwave', Math.round(Number(d.amount) * 100), 'USD');
+      const creditUsed = Math.max(0, Number(meta.credit_used) || 0);
+      const expected = Math.max(0, ((PLANS[kind] && PLANS[kind].USD) || 0) - creditUsed / 100);
+      if (Number(d.amount) < expected || String(d.currency).toUpperCase() !== 'USD') return res.status(402).json({ error: 'The amount paid does not match the plan price. Contact support from Help.' });
+      await activateSubscription(meta.business_id, kind, days, d.tx_ref || String(txId), 'flutterwave', Math.round(Number(d.amount) * 100), 'USD', creditUsed);
       return res.json({ ok: true });
     }
     const reference = String(req.query.reference || req.query.trxref || '');
@@ -395,7 +437,7 @@ async function verifyReturn(req, res) {
     await saveCard(meta.business_id, d.authorization);
     if (kind === 'card_check') { await refundCardCheck(d.reference || reference); return res.json({ ok: true, card: true }); }
     const days = Number(meta.days) || (PLANS[kind] ? PLANS[kind].days : Number(process.env.SUBSCRIPTION_DAYS || 30));
-    await activateSubscription(meta.business_id, kind, days, d.reference || reference, 'paystack', Number(d.amount) || 0, String(d.currency || 'NGN').toUpperCase());
+    await activateSubscription(meta.business_id, kind, days, d.reference || reference, 'paystack', Number(d.amount) || 0, String(d.currency || 'NGN').toUpperCase(), Number(meta.credit_used) || 0);
     return res.json({ ok: true });
   } catch (e) {
     console.error('verify return error:', e.message);
@@ -403,4 +445,4 @@ async function verifyReturn(req, res) {
   }
 }
 
-module.exports = { addCard, initialize, flutterwaveInit, reportTransfer, handlePaystackWebhook, handleFlutterwaveWebhook, verifyReturn, PLANS, planFor, SALES_EMAIL }; // routes + ownerController.getBilling import from here
+module.exports = { _creditSplit: creditSplit, addCard, initialize, flutterwaveInit, reportTransfer, handlePaystackWebhook, handleFlutterwaveWebhook, verifyReturn, PLANS, planFor, SALES_EMAIL }; // routes + ownerController.getBilling import from here

@@ -182,6 +182,7 @@ ALTER TABLE businesses ADD COLUMN IF NOT EXISTS daily_volume TEXT; -- few | 10-5
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS referral_code TEXT;
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS referred_by INTEGER REFERENCES businesses(id) ON DELETE SET NULL;
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS bonus_pro_until TIMESTAMPTZ;
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS referral_credit INTEGER NOT NULL DEFAULT 0; -- Refer & Earn plan credit, minor units of the shop's currency (comes off the next payment)
 DO $$ BEGIN -- UNIQUE, but only when no duplicate legacy rows exist (safe on fresh + old DBs!)
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'businesses_referral_code_unique') THEN
     ALTER TABLE businesses ADD CONSTRAINT businesses_referral_code_unique UNIQUE (referral_code);

@@ -3,9 +3,11 @@
 //   1. DOUBLE-SIDED PRO DAYS (the main drag): friend finishes the quiz →
 //      BOTH shops get 14 Pro days (bonus_pro_until — real Pro everywhere,
 //      costs us ~nothing, unfarmable for cash).
-//   2. MILESTONE AIRTIME (champion trophy): every 5th PAYING referral → a
-//      ₦500 airtime row goes pending; YOU send the card manually, then tap
-//      "sent" in Admin → Referrals (10x fewer payouts, 10x more excitement).
+//   2. PLAN CREDIT: every friend who pays for a plan (their first payment)
+//      earns the referrer ₦1,500 / $1 credit (env REFERRAL_CREDIT_NGN/_USD).
+//      Credit comes off the referrer's next plan payment automatically; enough
+//      credit pays for a whole month by itself. Nothing to send by hand.
+//      (The old ₦500 airtime rows still show in Admin until marked sent.)
 //   3. MONTHLY CHAMPION: top referrer each month → free Plus month (Admin taps
 //      "Grant" on the leaderboard — personal + public shout-out).
 // ANTI-FRAUD: self-referral blocked (same number/email/business), quiz-gated
@@ -17,7 +19,39 @@ const db = require('../db'); // shared pool
 
 const QUIZ_DAYS = 14; // double-sided Pro days per finished quiz (both shops!)
 const MILESTONE_EVERY = 5; // every 5th paying referral = airtime row
-const MILESTONE_AMOUNT = 50000; // ₦500 in minor units (matches payments ledger!)
+const MILESTONE_AMOUNT = 50000; // ₦500 in minor units (old airtime rows only)
+
+// Plan credit per paying friend, in MINOR units of the referrer's currency.
+function creditPerFriend(currency) {
+  return currency === 'USD'
+    ? Math.round(Number(process.env.REFERRAL_CREDIT_USD || 1) * 100)
+    : Math.round(Number(process.env.REFERRAL_CREDIT_NGN || 1500) * 100);
+}
+function fmtMinor(minor, currency) {
+  const v = (Number(minor) || 0) / 100;
+  return (currency === 'USD' ? '$' : '₦') + v.toLocaleString('en-NG', { maximumFractionDigits: 2 });
+}
+
+/** Credit balance (minor units) + the shop's currency. */
+async function creditBalance(businessId) {
+  const { rows } = await db.query('SELECT referral_credit, currency FROM businesses WHERE id = $1', [Number(businessId)]);
+  return { balance: Number(rows[0] && rows[0].referral_credit) || 0, currency: (rows[0] && rows[0].currency) === 'USD' ? 'USD' : 'NGN' };
+}
+
+/** Take up to `minor` credit off a shop (never below zero). Returns what was taken. */
+async function spendCredit(businessId, minor, reference) {
+  const want = Math.max(0, Math.round(Number(minor) || 0));
+  if (!want) return 0;
+  const { rows } = await db.query(
+    `UPDATE businesses b SET referral_credit = b.referral_credit - LEAST(b.referral_credit, $2)
+     FROM (SELECT id, referral_credit AS before FROM businesses WHERE id = $1 FOR UPDATE) old
+     WHERE b.id = old.id RETURNING old.before - b.referral_credit AS taken`,
+    [Number(businessId), want]
+  );
+  const taken = Number(rows[0] && rows[0].taken) || 0;
+  if (taken) await logPayout(businessId, null, 'credit_spent', { amount: taken, note: `Used on a plan payment${reference ? ' (' + String(reference).slice(0, 60) + ')' : ''}` });
+  return taken;
+}
 
 // Code shape: NAME-XXXX (e.g. AMAKA-4F2K). Name part from the shop name,
 // random part from crypto (shareable on WhatsApp status without shame!).
@@ -167,32 +201,29 @@ async function payingCount(referrerId) {
 }
 
 /**
- * Called after EVERY subscription activation. Every 5th paying referral →
- * pending ₦500 airtime row + bells (referrer celebrates, YOU get a todo!).
- * Milestone math: floor(paying/5) rows must exist; if fewer, create the gap.
+ * Called after EVERY subscription activation. A referred shop's FIRST paid
+ * activation earns its referrer plan credit (once per friend — renewals and
+ * repeat webhooks never pay twice: one 'plan_credit' row per referred shop).
  */
 async function onPaidActivation(businessId) {
-  const { rows } = await db.query('SELECT referred_by FROM businesses WHERE id = $1', [Number(businessId)]);
+  const { rows } = await db.query('SELECT name, referred_by FROM businesses WHERE id = $1', [Number(businessId)]);
   const ref = rows[0] && rows[0].referred_by;
   if (!ref || Number(ref) === Number(businessId)) return null;
-  const paid = await payingCount(ref);
-  const earned = Math.floor(paid / MILESTONE_EVERY); // milestones EARNED so far…
-  const logged = await db.query(
-    `SELECT COUNT(*)::int AS n FROM referral_payouts WHERE referrer_business_id = $1 AND kind = 'airtime'`,
-    [Number(ref)]
-  );
-  const have = (logged.rows[0] && logged.rows[0].n) || 0;
-  if (earned <= have) return null; // nothing new (each 5-pack pays exactly once!)
-  await logPayout(ref, businessId, 'airtime', { amount: MILESTONE_AMOUNT, status: 'pending', note: `${paid} paying referrals (milestone ${earned})` });
-  const notify = require('./notifyService');
-  const shop = await db.query('SELECT name FROM businesses WHERE id = $1', [Number(ref)]);
-  const first = (shop.rows[0] && String(shop.rows[0].name).split(' ')[0]) || 'there';
-  notify.notify(Number(ref), {
-    title: `Milestone: ${paid} friends Pro — ₦500 airtime earned!`,
-    body: `Champion move, ${first}! Your ₦500 airtime is being prepared — watch your phone. Keep sharing your code!`,
-    link: '/dashboard',
+  const dup = await db.query(`SELECT 1 FROM referral_payouts WHERE referred_business_id = $1 AND kind = 'plan_credit' LIMIT 1`, [Number(businessId)]);
+  if (dup.rows.length) return null;
+  const { rows: r } = await db.query('SELECT id, name, currency FROM businesses WHERE id = $1', [Number(ref)]);
+  if (!r[0]) return null;
+  const currency = r[0].currency === 'USD' ? 'USD' : 'NGN';
+  const amount = creditPerFriend(currency);
+  await logPayout(ref, businessId, 'plan_credit', { amount, note: `${String(rows[0].name || 'A friend').slice(0, 60)} paid for a plan` });
+  const { rows: bal } = await db.query('UPDATE businesses SET referral_credit = referral_credit + $1 WHERE id = $2 RETURNING referral_credit', [amount, Number(ref)]);
+  const friend = String(rows[0].name || '').split(' ')[0] || 'A friend';
+  require('./notifyService').notify(Number(ref), {
+    title: `+${fmtMinor(amount, currency)} plan credit`,
+    body: `${friend} just paid for a plan with your code. You now have ${fmtMinor(bal[0] && bal[0].referral_credit, currency)} credit, and it comes off your next payment by itself.`,
+    link: '/billing',
   }).catch(() => {});
-  return { referrerId: Number(ref), paid, amount: MILESTONE_AMOUNT };
+  return { referrerId: Number(ref), amount, currency };
 }
 
 /** Owner dashboard card data: my code, funnel counts, earnings, next milestone. */
@@ -217,8 +248,14 @@ async function myStats(businessId) {
             COALESCE(SUM(amount) FILTER (WHERE kind = 'airtime' AND status = 'pending'), 0)::int AS airtime_due
      FROM referral_payouts WHERE referrer_business_id = $1`, [id]);
     const nextIn = MILESTONE_EVERY - (paid % MILESTONE_EVERY); // friends-to-go till the next ₦500 (5→5, 7→3!)
+    const { balance, currency } = await creditBalance(id);
+    const { rows: ce } = await db.query(`SELECT COALESCE(SUM(amount), 0)::int AS earned FROM referral_payouts WHERE referrer_business_id = $1 AND kind = 'plan_credit'`, [id]);
     return {
       code,
+      credit: balance, // minor units, the shop's currency
+      creditEarned: (ce[0] && ce[0].earned) || 0,
+      creditPerFriend: creditPerFriend(currency),
+      currency,
       invited: (rows[0] && rows[0].invited) || 0,
       qualified: (q.rows[0] && q.rows[0].n) || 0, // finished the quiz (earned days!)
       paying: paid, // activated Pro/Plus (earn airtime!)
@@ -245,7 +282,7 @@ async function myStats(businessId) {
     let code = 'VELOSALES AI';
     try { code = await ensureCode(id); } catch {}
     return {
-      code, invited: 0, qualified: 0, paying: 0, daysEarned: 0,
+      code, invited: 0, qualified: 0, paying: 0, daysEarned: 0, credit: 0, creditEarned: 0, creditPerFriend: creditPerFriend('NGN'), currency: 'NGN',
       airtimeDue: 0, airtimeSent: 0, nextMilestoneIn: MILESTONE_EVERY,
       milestoneEvery: MILESTONE_EVERY, milestoneAmount: MILESTONE_AMOUNT,
       quizDays: QUIZ_DAYS, degraded: true,
@@ -399,6 +436,7 @@ async function pendingAirtime() {
 
 module.exports = {
   QUIZ_DAYS, MILESTONE_EVERY, MILESTONE_AMOUNT,
+  creditPerFriend, creditBalance, spendCredit,
   codeFor, ensureCode, resolveCode, grantProDays,
   onFirstActive, onPaidActivation, payingCount, isActiveShop,
   myStats, myHistory, publicLeaders, leaderboard, adminOverview, pendingAirtime,

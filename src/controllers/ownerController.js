@@ -448,7 +448,7 @@ async function updateSettings(req, res) {
 async function getBilling(req, res) {
   const billingController = require('./billingController'); // reuse planFor() — ONE price table for the whole app
   const { rows } = await db.query( // subscription state + purchased tier + currency (prices depend on it!)
-    `SELECT subscription_status, subscription_expires, trial_started_at, plan_tier, currency, card_last4, card_brand, card_expiry, name
+    `SELECT subscription_status, subscription_expires, trial_started_at, plan_tier, currency, card_last4, card_brand, card_expiry, name, referral_credit
      FROM businesses WHERE id = $1`,
     [req.session.businessId]
   );
@@ -469,6 +469,7 @@ async function getBilling(req, res) {
   } catch (e) { console.error('billing history error:', e.message); }
   res.json({
     history,
+    credit: (Number(b.referral_credit) || 0) / 100, // Refer & Earn plan credit, major units (comes off the next payment)
     card_last4: b.card_last4 || null, // display only
     card_brand: b.card_brand || null,
     card_expiry: b.card_expiry || null,

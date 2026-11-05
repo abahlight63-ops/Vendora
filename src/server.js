@@ -159,19 +159,7 @@ app.get('*', (req, res, next) => {
 // ~60s — "instant answers" arriving in a minute lose sales!). A 9-minute
 // self-ping keeps the dyno warm. Fire-and-log — never throws, never blocks.
 function startKeepAlive() {
-  // One pass at boot: encrypt Meta access keys that were saved in plain text.
-async function sealOldKeys() {
-  const secret = require('./utils/secret');
-  if (!process.env.TOKEN_ENCRYPTION_KEY) return;
-  const db = require('./db');
-  const { rows } = await db.query(`SELECT id, meta_token FROM businesses WHERE meta_token <> '' AND meta_token NOT LIKE 'enc:%'`);
-  for (const r of rows) {
-    const sealed = secret.seal(r.meta_token);
-    if (sealed.startsWith(secret.PREFIX)) await db.query('UPDATE businesses SET meta_token = $1 WHERE id = $2 AND meta_token = $3', [sealed, r.id, r.meta_token]);
-  }
-  if (rows.length) console.log('encrypted', rows.length, 'stored access keys');
-}
-const port = process.env.PORT || 3000;
+  const port = process.env.PORT || 3000;
   const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '') || `http://localhost:${port}`;
   const ping = () => {
     fetch(`${base}/health`).catch(() => {}); // outcome irrelevant (the request IS the warmth!)
@@ -245,6 +233,18 @@ function startChannelWatchdog() {
     } catch (e) { console.error('channel watchdog error:', e.message); }
   };
   setInterval(check, 24 * 60 * 60 * 1000); // daily rounds (first round 24h after boot — fresh deploys never spam!)
+}
+// One pass at boot: encrypt Meta access keys that were saved in plain text.
+async function sealOldKeys() {
+  const secret = require('./utils/secret');
+  if (!process.env.TOKEN_ENCRYPTION_KEY) return;
+  const db = require('./db');
+  const { rows } = await db.query(`SELECT id, meta_token FROM businesses WHERE meta_token <> '' AND meta_token NOT LIKE 'enc:%'`);
+  for (const r of rows) {
+    const sealed = secret.seal(r.meta_token);
+    if (sealed.startsWith(secret.PREFIX)) await db.query('UPDATE businesses SET meta_token = $1 WHERE id = $2 AND meta_token = $3', [sealed, r.id, r.meta_token]);
+  }
+  if (rows.length) console.log('encrypted', rows.length, 'stored access keys');
 }
 const port = process.env.PORT || 3000; // hosts (Render) inject PORT; locally default 3000
 // Release broadcast: when APP_VERSION changes, push WHATS_NEW into every

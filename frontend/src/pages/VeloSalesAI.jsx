@@ -98,10 +98,24 @@ export default function VeloSalesAI({ biz }) {
     const el = e.currentTarget; // …so re-reading an old answer never yanks them away
     stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 90;
   }
-  useEffect(() => { // anchored follow: instant jump, zero page motion
-    if (!stick.current) return;
+  const anchored = useRef(-1); // index of the answer we already scrolled to
+  useEffect(() => { // your message: show it at the bottom. A new answer: show its FIRST line at the top, then let it write downward (like ChatGPT)
     const el = threadRef.current;
     if (!el) return;
+    const last = msgs[msgs.length - 1];
+    if (last && last.from === 'ai' && last.live) {
+      if (anchored.current === msgs.length - 1) return; // already placed: never chase the text as it grows
+      anchored.current = msgs.length - 1;
+      stick.current = false; // reading from the top now: never jump to the bottom when it finishes
+      requestAnimationFrame(() => {
+        const nodes = el.querySelectorAll('.vai-you, .vai-ai');
+        const you = nodes[nodes.length - 2]; // your question stays visible just above the answer
+        const target = you || nodes[nodes.length - 1];
+        if (target) el.scrollTo({ top: Math.max(0, el.scrollTop + target.getBoundingClientRect().top - el.getBoundingClientRect().top - 12), behavior: 'smooth' });
+      });
+      return;
+    }
+    if (!stick.current) return;
     requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
   }, [msgs, busy]);
 
@@ -170,7 +184,8 @@ export default function VeloSalesAI({ biz }) {
     clearInterval(revealTimer.current); // a new question kills any in-progress typing
     if (clean.length > 2000) return toast('Keep it under 2000 characters', 'err');
     stick.current = true; // sending = re-pin to the bottom (you want to see the answer)
-    const pickedKey = brain;
+    const best = models.some((m) => !m.locked && bucketOf(m.badge) === 'smart') ? 'smart' : 'normal'; // best unlocked, chosen for the owner
+    const pickedKey = best;
     const pickedId = idFor(pickedKey, models);
     const log = base ?? msgs; // base override lets regenerate() resend without duplicating bubbles
     const next = [...log, { from: 'you', text: clean, image: photo ? photo.dataUrl : null }];
@@ -186,14 +201,7 @@ export default function VeloSalesAI({ biz }) {
       if (ok && data.reply) {
         // Only one caption ever appears: when the server had to swap the brain
         // out. Otherwise the answer speaks for itself (no "answered by X" noise).
-        let note = null;
-        if (data.fallback) {
-          const answered = models.find((m) => m.label === data.via);
-          const viaKey = answered ? bucketOf(answered.badge) : null;
-          note = viaKey && viaKey !== pickedKey
-            ? `${labelFor(pickedKey)} was busy — ${labelFor(viaKey)} answered instead.`
-            : 'Your pick was busy — a backup brain answered.';
-        }
+        const note = null; // backups answer quietly: the owner never needs to know which model replied
         const idx = next.length; // the AI block's index (next = base + your turn)
         setMsgs((m) => [...m, { from: 'ai', text: '', note, live: true }]);
         reveal(idx, data.reply, () => setBusy(false)); // write it out; busy clears when the last word lands
@@ -245,10 +253,8 @@ export default function VeloSalesAI({ biz }) {
       onDrop={onDrop}
     >
       <header className="vai-top">
-        <BrainPicker models={models} value={brain} onPick={pickBrain} onLocked={() => setUpsell(true)} />
-        {/* The blurb only — never the engine's name. The whole point of the
-            switch is that "Gemini Flash" is not a decision a shop owner wants. */}
-        <span className="vai-top-hint">{BUCKETS.find((b) => b.key === brain)?.blurb}</span>
+        {/* No model switch: Velo uses the best model the shop's plan allows. */}
+        <span className="vai-top-hint">Ask about your shop, your customers or your sales</span>
         {msgs.length > 0 && (
           <button className="vai-new" onClick={newChat}><Ic n="plus" s={15} /> <span className="vai-new-label">New chat</span></button>
         )}
@@ -342,7 +348,7 @@ export default function VeloSalesAI({ biz }) {
               <Ic n="send" s={17} />
             </button>
           </div>
-          <p className="vai-note">VeloSales Ai can make mistakes — double-check important facts. Chats aren&rsquo;t saved.</p>
+          <p className="vai-note">Velo can make mistakes — double-check important facts. Chats aren&rsquo;t saved.</p>
         </div>
       </div>
 

@@ -25,7 +25,16 @@ router.post('/me/product-photo', ownerController.uploadProductPhoto); // Upload 
 router.post('/me/avatar-emoji', ownerController.setAvatarEmoji); // Pick an emoji avatar (Settings); body { emoji } — null clears it
 router.post('/me/avatar', ownerController.uploadAvatar); // Upload my profile picture (Settings); body { dataUrl } — null clears it
 router.delete('/me/products/:id', ownerController.deleteProduct); // :id = URL param (req.params.id)
-router.get('/me/conversations', ownerController.getConversations); // inbox list (latest 100)
+router.get('/me/conversations', ownerController.getConversations);
+router.get('/me/insights-chats', async (req, res) => { // Insights: EVERY chat active in the last 31 days (the inbox list stops at 100); friends left out
+  try {
+    const { rows } = await require('../db').query(
+      `SELECT id, customer_number, customer_name, last_message, last_reply, needs_human, flag_reason, bot_paused, updated_at, created_at, channel
+         FROM conversations WHERE business_id = $1 AND updated_at >= now() - interval '31 days' AND COALESCE(contact_type, '') <> 'personal'
+        ORDER BY updated_at DESC LIMIT 5000`, [req.session.businessId]);
+    res.json(rows);
+  } catch (e) { console.error('insights chats failed:', e.message); res.status(500).json({ error: 'Something went wrong. Please try again.' }); }
+}); // inbox list (latest 100)
 router.get('/me/conversations/:id/messages', ownerController.getMessages); // full thread (ownership-checked!)
 router.get('/me/billing', ownerController.getBilling); // status + per-currency plans + transfer details
 router.post('/me/playground', require('../middleware/security').aiLimiter, ownerController.playground); // test-bot endpoint (no WhatsApp needed)

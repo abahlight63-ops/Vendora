@@ -91,7 +91,7 @@ export default function Insights() {
     setFailed(null);
     (async () => {
       try {
-        const { ok, status, data } = await api('/api/me/conversations', { timeout: 15000 });
+        const { ok, status, data } = await api('/api/me/insights-chats', { timeout: 20000 });
         if (dead) return;
         if (!ok) { setFailed({ status, detail: describeLoadFailure({ status, error: data }) }); return; }
         setRaw(Array.isArray(data) ? data : []);
@@ -121,7 +121,7 @@ export default function Insights() {
         <p>What customers ask, what Velo handles, and who needs you.</p>
       </div>
       <div className="wx-pills" role="group" aria-label="Time range">
-        {[7, 14].map((n) => <button key={n} type="button" className={'wx-pill' + (span === n ? ' on' : '')} aria-pressed={span === n} onClick={() => setSpan(n)}>{n} days</button>)}
+        {[7, 14, 30].map((n) => <button key={n} type="button" className={'wx-pill' + (span === n ? ' on' : '')} aria-pressed={span === n} onClick={() => setSpan(n)}>{n} days</button>)}
       </div>
     </div>
   );

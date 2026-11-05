@@ -102,6 +102,8 @@ app.use('/api/admin', require('./controllers/adminController').requireAdmin, req
 // router.use(requireAuth), so anything mounted under /api after it would 401
 // first. Order is the whole security model here.
 app.get('/api/meta/oauth/callback', require('./controllers/metaOauthController').callback);
+app.use(require('./middleware/security').sameSiteGuard); // refuse changes posted from other websites
+app.use('/api/me', require('./middleware/security').apiLimiter); // owner API rate limit
 app.use('/api', ownerRoutes); // /api/me, /api/me/business, etc.
 app.use('/api', billingRoutes.router); // POST /api/billing/initialize
 app.post('/webhook/paystack', require('./middleware/security').webhookLimiter, billingController.handlePaystackWebhook); // ← Paystack events (NGN cards)
@@ -110,7 +112,7 @@ app.post('/webhook/flutterwave', require('./middleware/security').webhookLimiter
 // Admin API — second layer of auth: either the ADMIN_API_KEY header…
 app.use('/api', (req, res, next) => {
   const expected = process.env.ADMIN_API_KEY; // the secret from .env
-  if (expected && req.get('x-admin-key') === expected) return next(); // key matches → in
+  if (expected && require('./middleware/security').safeEqual(req.get('x-admin-key'), expected)) return next(); // key matches → in (constant-time compare)
   if (req.session && req.session.isAdmin) return next(); // …or the admin password session (full /api/admin/* + legacy businesses access)…
   if (req.session && req.session.businessId) { // …or a logged-in owner…
     if (req.path.startsWith('/me')) return next(); // …but only for their OWN /me routes

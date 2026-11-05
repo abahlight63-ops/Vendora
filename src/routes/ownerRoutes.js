@@ -25,12 +25,12 @@ router.delete('/me/products/:id', ownerController.deleteProduct); // :id = URL p
 router.get('/me/conversations', ownerController.getConversations); // inbox list (latest 100)
 router.get('/me/conversations/:id/messages', ownerController.getMessages); // full thread (ownership-checked!)
 router.get('/me/billing', ownerController.getBilling); // status + per-currency plans + transfer details
-router.post('/me/playground', ownerController.playground); // test-bot endpoint (no WhatsApp needed)
+router.post('/me/playground', require('../middleware/security').aiLimiter, ownerController.playground); // test-bot endpoint (no WhatsApp needed)
 router.post('/me/art', rateLimit({ windowMs: 60_000, max: 10, message: 'Art requests are rate-limited — wait a minute.' }), ownerController.art); // Pollinations image gen (login-guarded, per-IP capped @10/min)
 router.put('/me/settings', ownerController.updateSettings); // SmartDeal discount guardrails
 router.get('/me/profile-sync', ownerController.getProfileSync); // has the owner synced? when?
 router.post('/me/profile-sync', ownerController.profileSync); // Pro: scaffold catalog from profile text
-router.post('/me/ask', ownerController.ask); // VeloSales Ai chat (tier + caps enforced)
+router.post('/me/ask', require('../middleware/security').aiLimiter, ownerController.ask); // VeloSales Ai chat (tier + caps enforced)
 router.get('/me/ai-models', ownerController.aiModels); // dropdown list with locked flags
 router.get('/me/ai-status', ownerController.aiStatus); // one-tap health ping per provider (owner diagnosis)
 router.post('/me/bot', ownerController.botToggle);

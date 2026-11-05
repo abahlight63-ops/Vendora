@@ -349,6 +349,25 @@ ALTER TABLE businesses ADD COLUMN IF NOT EXISTS whatsapp_model TEXT NOT NULL DEF
 -- Nov 2026: the model list became velo-* (see aiModels.js ALIASES); move saved picks once.
 ALTER TABLE businesses ALTER COLUMN whatsapp_model SET DEFAULT 'velo-normal';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_pin TEXT NOT NULL DEFAULT ''; -- WhatsApp two-step PIN, encrypted
+-- Indexes for the busiest lookups (every incoming message, inbox, daily counts).
+CREATE INDEX IF NOT EXISTS idx_conversations_business_number ON conversations (business_id, customer_number);
+CREATE INDEX IF NOT EXISTS idx_conversations_business_updated ON conversations (business_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_created ON messages (created_at);
+CREATE INDEX IF NOT EXISTS idx_products_business ON products (business_id);
+CREATE INDEX IF NOT EXISTS idx_users_business ON users (business_id);
+CREATE INDEX IF NOT EXISTS idx_businesses_meta_phone ON businesses (meta_phone_number_id);
+-- Row-level security on every table: if the database host exposes a public data
+-- API (Supabase does), nobody can read or write rows through it. The app's own
+-- connection owns the tables, so it is not affected. Only tables this role owns
+-- (or when it may bypass RLS) are switched on, so the app can never lock itself out.
+DO $ DECLARE r record; BEGIN
+  FOR r IN SELECT tablename FROM pg_tables
+            WHERE schemaname = 'public'
+              AND (tableowner = current_user OR (SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user))
+  LOOP
+    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', r.tablename);
+  END LOOP;
+END $;
 -- Admin activity log: every admin change, who-what-when (see adminConsole.auditLog).
 CREATE TABLE IF NOT EXISTS admin_audit (
   id SERIAL PRIMARY KEY,

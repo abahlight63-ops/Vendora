@@ -121,7 +121,7 @@ function requireAdmin(req, res, next) {
     return next();
   }
   const expected = process.env.ADMIN_API_KEY; // …or API path (scripts/integrations)…
-  if (expected && req.get('x-admin-key') === expected) return next();
+  if (expected && require('../middleware/security').safeEqual(req.get('x-admin-key'), expected)) return next();
   return res.status(401).json({ error: 'Admin only.' }); // everyone else (including logged-in OWNERS) → 401
 }
 

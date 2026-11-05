@@ -23,6 +23,7 @@ const pool = new Pool({
   max: 5, // never hold more than 5 connections (respects free-tier limits)
   idleTimeoutMillis: 10000,        // kill idle connections before Supabase drops them
   connectionTimeoutMillis: 15000, // fail after 15s instead of hanging forever
+  statement_timeout: Number(process.env.DB_STATEMENT_TIMEOUT_MS || 20000), // a runaway query is cancelled after 20s instead of blocking everyone
 });
 
 // Network errors that are safe to retry once (blips, not bugs).

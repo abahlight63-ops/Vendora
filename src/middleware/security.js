@@ -55,9 +55,45 @@ const billingLimiter = rateLimit({ // checkout starts: stops payment-session spa
   message: 'Too many payment attempts — wait a few minutes and try again.',
 });
 
+const apiLimiter = rateLimit({ // the owner app's API: generous for people, a wall for scripts hammering it
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.API_RATE_MAX || 1500),
+  message: 'Too many requests. Wait a few minutes and try again.',
+});
+const aiLimiter = rateLimit({ // AI answers cost money per call: Chat with Velo and Test Drive
+  windowMs: 60 * 1000,
+  max: Number(process.env.AI_RATE_MAX || 30),
+  message: 'You are sending messages very fast. Wait a minute and try again.',
+});
+
+// Same-site guard (stops forged form posts): a browser always sends Origin on a
+// cross-site POST. Changes that come from a website that is not ours are refused.
+// Requests with no Origin (the phone app, servers, Meta, Paystack) are unaffected.
+function allowedOrigins() {
+  const list = ['https://velosalesai.com.ng', 'https://www.velosalesai.com.ng', 'https://app.velosalesai.com.ng', 'http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'];
+  for (const v of [process.env.FRONTEND_URL, process.env.PUBLIC_BASE_URL, process.env.EXTRA_ALLOWED_ORIGINS]) {
+    for (const one of String(v || '').split(',')) { try { if (one.trim()) list.push(new URL(one.trim()).origin); } catch { /* ignore */ } }
+  }
+  return new Set(list);
+}
+function sameSiteGuard(req, res, next) {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) || !req.path.startsWith('/api/')) return next();
+  const origin = req.get('origin');
+  if (!origin) return next();
+  if (allowedOrigins().has(origin)) return next();
+  console.warn('blocked cross-site', req.method, req.path, 'from', origin);
+  return res.status(403).json({ error: 'This request came from another website and was blocked.' });
+}
+
+// Constant-time compare for secrets (no timing hints).
+function safeEqual(a, b) {
+  const x = Buffer.from(String(a || '')); const y = Buffer.from(String(b || ''));
+  return x.length > 0 && x.length === y.length && require('crypto').timingSafeEqual(x, y);
+}
+
 const webhookLimiter = rateLimit({ // provider webhooks: very generous (Meta/Telegram burst legitimately; forgery is stopped by verify tokens + secrets, not counts!)
   windowMs: 60 * 1000,
   max: 600,
 });
 
-module.exports = { secureHeaders, rateLimit, authLimiter, billingLimiter, webhookLimiter }; // server.js + route files import from here
+module.exports = { apiLimiter, aiLimiter, sameSiteGuard, safeEqual, secureHeaders, rateLimit, authLimiter, billingLimiter, webhookLimiter }; // server.js + route files import from here

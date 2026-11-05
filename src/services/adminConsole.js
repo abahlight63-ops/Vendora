@@ -177,7 +177,7 @@ async function activity() {
 
 // Middleware: write every admin change (POST/PUT/DELETE) to admin_audit. Secrets never logged.
 function auditLog(req, res, next) {
-  const isAdmin = (req.session && req.session.isAdmin) || (process.env.ADMIN_API_KEY && req.get('x-admin-key') === process.env.ADMIN_API_KEY);
+  const isAdmin = (req.session && req.session.isAdmin) || (process.env.ADMIN_API_KEY && require('../middleware/security').safeEqual(req.get('x-admin-key'), process.env.ADMIN_API_KEY));
   if (req.method === 'GET' || !isAdmin) return next();
   res.on('finish', () => {
     if (res.statusCode >= 400) return;

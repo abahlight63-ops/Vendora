@@ -3,8 +3,9 @@
 // top (from /api/me/orders/summary), the order list with filters and search,
 // and the selected order's receipt with Send / Mark paid / Mark delivered /
 // Copy. On phones the receipt replaces the list (Back returns).
-// Orders come from three places: Make receipt in a chat, Chat with Velo
-// ("make a receipt for Tunde…") and New order here.
+// Orders come from four places: Make receipt in a chat, Chat with Velo
+// ("make a receipt for Tunde…"), New order here, and Velo itself when a
+// customer says they want to buy (source auto_draft, always pending).
 import { useEffect, useState } from 'react';
 import { api, pop, toast } from '../lib/api.js';
 import { describeNetError } from '../lib/netDetail.js';
@@ -179,7 +180,7 @@ export default function Orders() {
             ) : list.map((o) => (
               <button key={o.id} type="button" className={'od-row' + (o.id === selId ? ' sel' : '')} onClick={() => { setSelId(o.id); setPhoneOpen(true); if (window.innerWidth <= 760) window.scrollTo({ top: 0 }); }}>
                 <span className="od-num">{receiptNo(o)}</span>
-                <span className="od-who"><Coin ch={o.channel} /><span><b>{o.customer_name || o.customer_number || 'Walk-in customer'}</b><small>{when(o.created_at)}</small></span></span>
+                <span className="od-who"><Coin ch={o.channel} /><span><b>{o.customer_name || o.customer_number || 'Walk-in customer'}</b><small>{when(o.created_at)}{o.source === 'auto_draft' ? ' · Drafted by Velo' : ''}</small></span></span>
                 <span className="od-items">{itemsLine(o)}</span>
                 <b className="od-tot">{money(o.total, o.currency)}</b>
                 <span className={'od-st ' + o.status}>{STATUS_SHORT[o.status]}</span>
@@ -191,6 +192,7 @@ export default function Orders() {
           <button type="button" className="nt-back od-back" onClick={() => setPhoneOpen(false)}><Ic n="back" s={18} />All orders</button>
           {!sel ? <div className="od-rcp nt-empty"><b>Pick an order</b><span>Its receipt shows here.</span></div> : (<>
             <Receipt order={sel} shop={shop} logo={logo} />
+            {sel.source === 'auto_draft' && sel.status === 'pending' && <p className="od-note od-draft"><Ic n="spark" s={16} />Velo drafted this when the customer said they wanted to buy. Check the items and price, then send the receipt or mark it paid.</p>}
             {sel.conversation_id && sel.status !== 'cancelled' && (
               <button type="button" className="btn lg od-send" onClick={send} disabled={!!busy}>
                 {busy === 'send' ? <Loader size={17} /> : <Coin ch={sel.channel} s={22} />}{sel.receipt_sent_at ? 'Send receipt again' : 'Send receipt on ' + channelLabel(sel.channel)}

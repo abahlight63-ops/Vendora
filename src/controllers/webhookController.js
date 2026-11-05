@@ -373,7 +373,7 @@ async function handleInbound(req, res) {
         }
       }
     } catch (e) { console.error('paid-cap check error:', e.message); } // guarded: caps must never eat a reply
-    const result = await replyEngine.generateReply(body, business, image, history); // THE AI CALL (model + tier resolved inside!)
+    const result = await replyEngine.generateReply(body, business, image, history, ProfileName); // THE AI CALL (model + tier resolved inside!)
 
     if (result.reply) { // confident answer → deliver + clear any old flag
       let photoUrl = null; // catalog photo to attach (null = text-only, the default!)
@@ -411,6 +411,21 @@ async function handleInbound(req, res) {
         'UPDATE conversations SET last_reply = $1, needs_human = false, flag_reason = NULL, updated_at = now() WHERE id = $2',
         [result.reply, customerId]
       );
+      if (result.order) { // customer decided to buy → pending draft order + owner bell (never blocks the reply)
+        try {
+          const orderService = require('../services/orderService');
+          const d = await orderService.draftFromChat(business.id, customerId, result.order);
+          if (d && d.order) {
+            const o = d.order;
+            const what = (o.items || []).map((l) => `${l.qty} × ${l.name}`).join(', ');
+            await require('../services/notifyService').notify(business.id, {
+              title: `${d.updated ? 'Velo updated a draft order' : 'Velo drafted an order'}: ${ProfileName || 'a customer'}`,
+              body: `${what} · ${orderService.money(o.total, o.currency)}. Check it in Orders, then mark it paid or send the receipt.`,
+              link: '/orders',
+            });
+          }
+        } catch (e) { console.error('auto draft order error:', e.message); }
+      }
       } // end delivered branch (failed branch above already flagged + paged)
     } else if (result.needsHuman) { // unsure → flag + polite handoff + owner alert (the trust engine)
       await db.query(

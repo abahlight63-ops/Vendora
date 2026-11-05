@@ -252,13 +252,48 @@ VELOSALES AI FACTS: VeloSales Ai is a WhatsApp AI sales assistant for small busi
   }
 }
 
+// Pull the hidden "ORDER: Name x 2; Other x 1" line(s) out of a customer
+// reply. Returns { text, order } where order is [{ name, qty }] or null.
+function takeOrderLine(text) {
+  if (!text || typeof text !== 'string') return { text, order: null };
+  const items = [];
+  const kept = text.split('\n').filter((line) => {
+    const m = /^\s*ORDER\s*:\s*(.+)$/i.exec(line);
+    if (!m) return true;
+    for (const part of m[1].split(';')) {
+      const t = part.trim();
+      if (!t) continue;
+      const q = /^(.*?)\s*(?:[x×]\s*(\d{1,3})|\((\d{1,3})\))\s*$/i.exec(t);
+      const name = (q ? q[1] : t).replace(/^[•\-\s]+/, '').trim();
+      const qty = q ? Number(q[2] || q[3]) : 1;
+      if (name) items.push({ name: name.slice(0, 120), qty: qty >= 1 ? qty : 1 });
+    }
+    return false;
+  });
+  return { text: kept.join('\n').trim(), order: items.length ? items : null };
+}
+
+// Last-mile polish for customer replies: drop the stock assistant openers and
+// office phrases models still slip in, so the message reads like a person.
+const STIFF_OPENERS = /^(great question|good question|certainly|absolutely|of course|sure thing|i'?d be (happy|glad) to help( you)?( with that)?|thank you for (reaching out|contacting us|your message)|dear (customer|valued customer))[!,.:\s-]*/i;
+function humanize(text) {
+  if (!text || typeof text !== 'string' || /^(NEED_HUMAN|PAYMENT_PROOF)\b/.test(text)) return text;
+  let t = text.trim();
+  for (let i = 0; i < 2; i++) { const n = t.replace(STIFF_OPENERS, ''); if (n === t || !n.trim()) break; t = n.trim(); }
+  t = t.replace(/\bkindly note that\s*/gi, '').replace(/\bplease be informed that\s*/gi, '').replace(/\brest assured,?\s*/gi, '')
+    .replace(/\s*we apologi[sz]e for any inconvenience( caused)?\.?/gi, '')
+    .replace(/\s*(please )?(feel free|do not hesitate|don't hesitate) to (reach out|contact us|ask)[^.!?\n]*[.!?]?/gi, '');
+  if (t && /^[a-z]/.test(t)) t = t[0].toUpperCase() + t.slice(1);
+  return t.trim() || text;
+}
+
 /**
  * Generate a reply to a customer message using the business's catalog.
  * Returns { reply, needsHuman, reason? }.
  * Strictly grounded in the catalog + business info; NEED_HUMAN otherwise.
  * Pro businesses additionally ground in their synced WhatsApp Business profile.
  */
-async function generateReply(customerMessage, business, image, history) {
+async function generateReply(customerMessage, business, image, history, customerName) {
   const shopDetails = (() => { try { return require('./shopProfile').format(business); } catch { return ''; } })() // Settings → Your shop
     + (() => { try { const a = require('./followupService').awayLine(business); return a ? '\n' + a : ''; } catch { return ''; } })(); // away mode
   const planService = require('./planService');
@@ -325,13 +360,25 @@ HOW TO SELL LIKE A HUMAN SALESMATE (follow every time — the customer must NEVE
 11. PURE CHIT-CHAT (greetings alone, jokes, "lol", "thanks", memes — zero buying signal): answer warmly and briefly in one or two kind sentences, then invite them to ask about products ("Glad to hear that! Anything I can help you find in the shop today?"). NEVER pitch products uninvited, NEVER lecture, NEVER NEED_HUMAN for friendliness — only hand off if they are upset or ask for a human.
 12. LENGTH + FORMAT: WhatsApp-friendly and human. Product answers stay SHORT (max ~60 words unless they asked for detail); options as "•" lines, each on its OWN line. PLAIN TEXT ONLY — never type #, *, underscores, backticks, ~, | or [text](url), and no emojis — plain words only.
 ${maxDisc > 0 ? `13. SMARTDEAL NEGOTIATION: The owner allows up to ${maxDisc}% off${minOrder ? ` on orders worth at least ₦${minOrder.toLocaleString()}` : ''} ONLY when the customer hesitates, complains about price, or says it's too expensive AND clearly wants to buy. Offer once, as a one-time favour — never volunteer it to happy customers, never exceed ${maxDisc}%.` : '13. Do NOT offer discounts — the owner has not enabled negotiation.'}
+15. ORDER NOTE: when the customer clearly decides to buy specific catalog items now, reply normally, then add ONE last line exactly like: ORDER: <exact catalog name> x <quantity>; <exact catalog name> x <quantity>. Only for a clear decision to buy. The customer never sees that line.
 ${image ? '14. The customer also sent a PHOTO. Look at it, describe briefly what you see, match it to the closest catalog product(s), then suggest 2-4 similar in-stock alternatives the same way. If nothing matches, use NEED_HUMAN.' : ''}`;
 
   // COMPACT prompt: the same rules in about a third of the tokens (every reply pays
   // for the prompt, so this is the biggest cost lever). REPLY_PROMPT=full keeps the long one.
   const lane = business.business_niche || 'what the catalog shows';
-  const compactPrompt = `You are the shop assistant for ${business.name} on WhatsApp: a warm, sharp human salesperson, never a robot. Answer ONLY from the business info, FAQ and catalog below.
-Now: ${now} (${tz}).
+  const firstName = String(customerName || '').trim().split(/\s+/)[0].replace(/[^\p{L}'-]/gu, '').slice(0, 20);
+  const compactPrompt = `You are texting customers for ${business.name} as a real member of the shop team: warm, quick and sharp, like the best person at the counter. Answer ONLY from the business info, FAQ and catalog below.
+Now: ${now} (${tz}).${firstName ? `\nThe customer's name is ${firstName}. Use it now and then (not every message), the way a person would.` : ''}
+
+SOUND LIKE A REAL PERSON, NOT A BOT
+- Text like you are on your phone: short sentences, contractions (I'm, it's, we've), everyday words. One message, no sign-off.
+- React like a person when it fits, before the facts ("Ah, good choice." "Sorry about that."), but not on every message.
+- Never open with "Great question", "Certainly", "Absolutely", "I'd be happy to", "Thank you for reaching out" or "Dear customer".
+- Never use office phrases: "kindly note", "please be informed", "rest assured", "we apologize for any inconvenience", "feel free to", "do not hesitate".
+- Use a list only when showing two or more options. Otherwise write normal sentences.
+- Do not end every message with a question. Ask one only when it moves the sale forward (size, colour, delivery area, how many).
+- If they are upset, say plainly that you understand and you are sorting it, before anything else.
+- Answer what they asked, in the order they asked. If they asked two things, answer both.
 
 LANGUAGE FIRST: reply in the customer's language. If they write Nigerian Pidgin (abeg, wetin, dey, una, how far, na, make I, wan, oya), write your WHOLE reply in natural Pidgin, greeting included. Example: customer "How much be the bone straight?" → "Na ₦95,000, e dey available. You wan make I keep one for you?". English in, clear English out. Never correct their language.
 
@@ -349,7 +396,8 @@ RULES
 11. Small talk (thanks, jokes): reply warmly in one or two lines and invite them to ask about products.
 12. Hand off when the facts do not cover it: custom orders, complaints, confirming that a payment arrived, unknown items. Reply with exactly: NEED_HUMAN: <brief reason>
 13. Plain text only: no *, #, _, backticks, emojis or links. Product answers under about 60 words. Never say you are an AI or a bot.
-14. ${maxDisc > 0 ? `Discounts: up to ${maxDisc}% off${minOrder ? ` on orders of at least ₦${minOrder.toLocaleString()}` : ''}, offered once, only when a customer who clearly wants to buy says the price is too high. Never volunteer it.` : 'Do NOT offer discounts.'}${image ? '\n15. The customer sent a PHOTO. If it is a bank transfer receipt, payment screenshot or debit alert, reply with exactly PAYMENT_PROOF and nothing else. Otherwise: describe it briefly, match it to the closest catalog product(s), suggest 2-4 similar in-stock items. No match: NEED_HUMAN.' : ''}
+14. ${maxDisc > 0 ? `Discounts: up to ${maxDisc}% off${minOrder ? ` on orders of at least ₦${minOrder.toLocaleString()}` : ''}, offered once, only when a customer who clearly wants to buy says the price is too high. Never volunteer it.` : 'Do NOT offer discounts.'}
+15. ORDER NOTE: when the customer clearly decides to buy specific catalog items now ("I'll take 2", "I want the black one", "send your account number for it"), reply normally (confirm the item, the total in ₦, and the next step from SHOP DETAILS such as payment or delivery), then add ONE last line exactly like: ORDER: <exact catalog name> x <quantity>; <exact catalog name> x <quantity>. Only for a clear decision to buy, never for price questions or "maybe". The customer never sees that line.${image ? '\n16. The customer sent a PHOTO. If it is a bank transfer receipt, payment screenshot or debit alert, reply with exactly PAYMENT_PROOF and nothing else. Otherwise: describe it briefly, match it to the closest catalog product(s), suggest 2-4 similar in-stock items. No match: NEED_HUMAN.' : ''}
 
 BUSINESS
 Name: ${business.name}
@@ -388,7 +436,8 @@ ${catalog}${isEmptyCatalog ? '\nThe catalog is EMPTY: for any product question, 
         if (expanded.text && expanded.text.trim().length > answered.text.trim().length) answered = expanded;
       } catch (err) { console.error('generateReply expand retry failed:', err.message); }
     }
-    const text = cleanReply(answered.text); // plain text enforced; ALSO normalizes "**NEED_HUMAN:**" variants into a detectable flag
+    const { text: withoutOrder, order } = takeOrderLine(cleanReply(answered.text)); // ORDER: line → draft order (never shown to the customer)
+    const text = humanize(withoutOrder); // plain text enforced; ALSO normalizes "**NEED_HUMAN:**" variants into a detectable flag
     if (/^PAYMENT_PROOF\b/.test(text)) return { reply: null, needsHuman: true, paymentProof: true, reason: 'Payment to confirm: the customer sent a payment screenshot' };
     if (text.startsWith('NEED_HUMAN')) {
       return { reply: null, needsHuman: true, reason: text.slice(11).trim() || 'Unsure how to answer' };
@@ -401,7 +450,7 @@ ${catalog}${isEmptyCatalog ? '\nThe catalog is EMPTY: for any product question, 
     if (/no .* in catalog|not in catalog|not listed|no products listed/i.test(text)) {
       return { reply: null, needsHuman: true, reason: `Blunt catalog phrase intercepted: "${text.slice(0, 120)}"` };
     }
-    return { reply: text, needsHuman: false, modelId: answered.modelId, paidModel: entry.tier === 'paid' };
+    return { reply: text, needsHuman: false, order, modelId: answered.modelId, paidModel: entry.tier === 'paid' };
   } catch (err) {
     console.error('replyEngine error:', err);
     return { reply: null, needsHuman: true, reason: 'AI service unavailable' };
@@ -506,6 +555,8 @@ Rules: use "create" only when the owner asks to MAKE or CREATE a receipt or invo
 }
 
 module.exports = {
+  takeOrderLine,
+  humanize,
   parseReceiptRequest,
   RECEIPT_HINT,
   generateReply,

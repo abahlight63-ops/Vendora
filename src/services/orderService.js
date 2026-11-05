@@ -75,6 +75,49 @@ async function createOrder(businessId, data = {}) {
   }
 }
 
+// Match a name the AI wrote ("bone straight 20") to one catalog product.
+// Exact (case-insensitive) first, then a unique "contains" match either way.
+// Returns null when unsure: a wrong item on a draft is worse than no draft.
+function matchProduct(name, products) {
+  const n = String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  if (n.length < 2) return null;
+  const exact = products.find((p) => String(p.name).trim().toLowerCase() === n);
+  if (exact) return exact;
+  const hits = products.filter((p) => { const pn = String(p.name).trim().toLowerCase(); return pn.length >= 3 && (pn.includes(n) || n.includes(pn)); });
+  return hits.length === 1 ? hits[0] : null;
+}
+
+// Velo heard a customer decide to buy: make (or refresh) ONE pending draft
+// order for that chat. Prices always come from the catalog. If the chat already
+// has a pending draft from the last 24 hours, its items are replaced (the
+// customer changed their mind: "make it 3"). Returns { order, updated } or null.
+async function draftFromChat(businessId, conversationId, wanted) {
+  const bid = Number(businessId);
+  if (!Array.isArray(wanted) || !wanted.length || !conversationId) return null;
+  const { rows: products } = await db.query('SELECT id, name, price FROM products WHERE business_id = $1', [bid]);
+  const items = [];
+  for (const w of wanted.slice(0, 20)) {
+    const p = matchProduct(w.name, products);
+    if (!p || !(priceOf(p.price) > 0)) return null; // unknown or unpriced item: leave it to the owner
+    const qty = Math.min(999, Math.max(1, Math.round(Number(w.qty) || 1)));
+    const same = items.find((i) => i.productId === Number(p.id));
+    if (same) same.qty = Math.min(999, same.qty + qty); else items.push({ productId: Number(p.id), qty });
+  }
+  const lines = priceLines(items, products);
+  const subtotal = lines.reduce((s, l) => s + l.lineTotal, 0);
+  const { rows: open } = await db.query(
+    `SELECT id FROM orders WHERE business_id = $1 AND conversation_id = $2 AND source = 'auto_draft' AND status = 'pending'
+     AND created_at >= now() - interval '24 hours' ORDER BY created_at DESC LIMIT 1`, [bid, Number(conversationId)]);
+  if (open.length) {
+    const { rows: [order] } = await db.query(
+      `UPDATE orders SET items = $1::jsonb, subtotal = $2, total = $2 + delivery_fee, updated_at = now()
+       WHERE id = $3 AND business_id = $4 RETURNING *`, [JSON.stringify(lines), subtotal, open[0].id, bid]);
+    return order ? { order, updated: true } : null;
+  }
+  const order = await createOrder(bid, { conversationId, items, source: 'auto_draft', status: 'pending', note: 'Drafted by Velo from the chat. Check it before sending the receipt.' });
+  return { order, updated: false };
+}
+
 async function listOrders(businessId, { status, days, conversationId, limit } = {}) {
   const where = ['business_id = $1'];
   const args = [Number(businessId)];
@@ -166,4 +209,4 @@ function formatSales(s) {
   ].join('\n');
 }
 
-module.exports = { formatSales, STATUSES, priceLines, createOrder, listOrders, getOrder, setStatus, receiptText, salesStats, money, priceOf };
+module.exports = { draftFromChat, matchProduct, formatSales, STATUSES, priceLines, createOrder, listOrders, getOrder, setStatus, receiptText, salesStats, money, priceOf };

@@ -263,8 +263,50 @@ export default function Settings({ biz, setMe, embedded = false }) { // biz = th
             </Link>
           </div>
         </div>
+        <DeleteAccount biz={biz} />
 
       </div>
     </>
+  );
+}
+
+// Delete my account (NDPA right to erasure). Password accounts confirm with the
+// password; Google-only accounts type the shop name.
+function DeleteAccount({ biz }) {
+  const [open, setOpen] = useState(false);
+  const [pw, setPw] = useState('');
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  async function go() {
+    setBusy(true);
+    const { ok, data } = await api('/api/me/account/delete', { method: 'POST', body: JSON.stringify({ password: pw, confirmName: name }) });
+    setBusy(false);
+    if (!ok) return pop('err', 'Not deleted', (data && data.error) || 'Try again.');
+    window.location.href = '/';
+  }
+  return (
+    <div className="set-group">
+      <h2>Your data</h2>
+      <div className="set-rows">
+        <div className="set-row wrap">
+          <div className="set-main"><b>Delete my account</b><span>Removes your shop, products, chats, orders and login for good. Payment records are kept without your details, because tax law requires it. To get a copy of your data first, email velosales63@gmail.com.</span></div>
+          {!open && <button type="button" className="btn sm danger" onClick={() => setOpen(true)}>Delete account</button>}
+        </div>
+        {open && (
+          <div className="set-row wrap del-acct">
+            <div className="set-main">
+              <b>This cannot be undone.</b>
+              <span>Enter your password. If you signed up with Google, type your shop name instead: <b>{biz?.name}</b></span>
+              <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Password" autoComplete="current-password" aria-label="Password" />
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Or type your shop name" aria-label="Shop name" />
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button type="button" className="btn sm danger" disabled={busy || (!pw && !name)} onClick={go}>{busy ? 'Deleting…' : 'Delete everything'}</button>
+                <button type="button" className="btn sm ghost" onClick={() => { setOpen(false); setPw(''); setName(''); }}>Keep my account</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

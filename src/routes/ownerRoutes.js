@@ -12,6 +12,7 @@ router.use(requireAuth); // blanket guard: guests get 401 on everything below
 
 router.get('/me', ownerController.getMe); // business profile + tier + ads config
 router.put('/me/business', ownerController.updateBusiness);
+router.post('/me/account/delete', require('../middleware/security').authLimiter, require('../controllers/accountController').remove); // delete my account (password or shop name to confirm)
 router.get('/me/shop-profile', require('../controllers/shopProfileController').get); // Settings → Your shop
 router.put('/me/shop-profile', require('../controllers/shopProfileController').save);
 router.post('/me/shop-profile/fill', require('../middleware/security').aiLimiter, require('../controllers/shopProfileController').fill); // Fill it in for me // PUT = update profile (name, hours, FAQs…)

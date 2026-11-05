@@ -32,6 +32,8 @@ export default function LegalPage({ which, title, sub, icon, short, sections }) 
         <nav aria-label="Legal pages">
           <Link className={which === 'privacy' ? 'on' : ''} to="/privacy">Privacy</Link>
           <Link className={which === 'terms' ? 'on' : ''} to="/terms">Terms</Link>
+          <Link className={which === 'refunds' ? 'on' : ''} to="/refunds">Refunds</Link>
+          <Link className={which === 'cookies' ? 'on' : ''} to="/cookies">Cookies</Link>
           <Link to="/faq">FAQ</Link>
         </nav>
       </header>

@@ -3,13 +3,14 @@
 // Data Protection Act 2023. Layout lives in components/LegalPage.jsx.
 // Keep it true: if a provider or a retention period changes, change it here.
 import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import LegalPage, { CONTACT } from '../components/LegalPage.jsx';
 import { setPageMeta, APP_URL } from '../lib/seo.js';
 
 const S = (id, title, body) => ({ id, title, body });
 const SECTIONS = [
   S('who', 'Who we are', <>
-    <p>VeloSales Ai ("VeloSales", "we", "us") is a business based in Nigeria that provides an AI sales assistant for shops on WhatsApp, Telegram, Facebook Messenger and Instagram (the "Service").</p>
+    <p>VeloSales Ai ("VeloSales", "we", "us") is a business based in Nigeria that provides an AI sales assistant for shops on WhatsApp and Telegram, with Facebook Messenger and Instagram coming later (the "Service"). Contact: <a href={`mailto:${CONTACT}`}>{CONTACT}</a>, Lagos, Nigeria.</p>
     <p>For your account and shop information, we decide how and why it is used, so we are the <b>data controller</b>. For the messages your customers send your shop, <b>you</b> are the controller and we process them only on your instructions, as your <b>data processor</b>.</p>
   </>),
   S('collect', 'What we collect', <>
@@ -28,6 +29,7 @@ const SECTIONS = [
       <li>To bill you for paid plans and send receipts.</li>
       <li>To keep accounts safe, prevent abuse and fix problems.</li>
       <li>To send important account emails, such as sign-in codes, payment receipts and changes to these terms.</li>
+      <li>To send occasional tips and reminders. Every one has a one-click unsubscribe link.</li>
       <li>To improve VeloSales Ai using usage patterns. We do not use your customers' messages to train public AI models.</li>
     </ul>
     <p>Our legal bases are: performing our contract with you, our legitimate interest in running a safe and reliable service, meeting legal obligations, and your consent where we ask for it (for example, phone alerts).</p>
@@ -43,11 +45,13 @@ const SECTIONS = [
   S('share', 'Who we share it with', <>
     <p>We share data only with service providers that help us run VeloSales Ai, under contracts that require them to protect it:</p>
     <ul>
-      <li><b>AI providers</b> (Google Gemini, Groq and OpenRouter) to write replies.</li>
-      <li><b>Meta</b> (WhatsApp, Messenger, Instagram) and <b>Telegram</b> to receive and send messages on the channels you connect.</li>
-      <li><b>Paystack</b> and <b>Flutterwave</b> to process payments.</li>
-      <li><b>Email providers</b> to send account emails.</li>
-      <li><b>Hosting and database providers</b> to run the app and store data.</li>
+      <li><b>AI providers:</b> Google (Gemini), Groq, SambaNova and OpenRouter, to write replies and turn voice notes into text.</li>
+      <li><b>Meta</b> (WhatsApp) and <b>Telegram</b>, to receive and send messages on the channels you connect.</li>
+      <li><b>Paystack</b> and <b>Flutterwave</b>, to process payments.</li>
+      <li><b>Resend</b> and our email host, to send account emails.</li>
+      <li><b>Supabase</b> (database, European Union), <b>Render</b> (app server) and <b>Vercel</b> (web app and website), to run the Service.</li>
+      <li><b>Cloudinary</b>, to store product and profile photos you upload.</li>
+      <li><b>Google</b>, if you choose "Continue with Google", and Google Fonts, which loads the app's typeface.</li>
     </ul>
     <p>We may also share data if the law requires it, to protect people's safety, or as part of a sale or merger of our business, in which case this policy continues to apply.</p>
   </>),
@@ -71,13 +75,13 @@ const SECTIONS = [
       <li>give you your data in a portable format;</li>
       <li>withdraw consent you gave us, at any time.</li>
     </ul>
-    <p>Email <a href={`mailto:${CONTACT}`}>{CONTACT}</a>. We reply within 30 days. If you are not happy with our answer, you can complain to the Nigeria Data Protection Commission.</p>
+    <p>You can delete your account yourself in <b>Settings → Account → Delete my account</b>. For anything else, email <a href={`mailto:${CONTACT}`}>{CONTACT}</a>. We reply within 30 days. If you are not happy with our answer, you can complain to the Nigeria Data Protection Commission.</p>
   </>),
   S('security', 'Security', <>
-    <p>We encrypt data in transit, store passwords only as secure hashes, check that messages and payments really come from Meta, Telegram, Paystack and Flutterwave, and limit who on our side can see your data. No system is perfectly secure; if a breach affects you, we will tell you and the regulator as the law requires.</p>
+    <p>We encrypt data in transit, store passwords only as secure hashes, check that messages and payments really come from Meta, Telegram, Paystack and Flutterwave, and limit who on our side can see your data. No system is perfectly secure. If a breach is likely to put your rights at risk, we will report it to the Nigeria Data Protection Commission within 72 hours of finding out and tell you without delay.</p>
   </>),
   S('cookies', 'Cookies', <>
-    <p>We use only the cookies and browser storage needed to keep you signed in and remember choices such as dark mode. We do not use advertising cookies.</p>
+    <p>We use only the cookies and browser storage needed to keep you signed in and remember choices such as dark mode. We do not use advertising or tracking cookies. See the <Link to="/cookies">Cookie Policy</Link>.</p>
   </>),
   S('children', 'Children', <>
     <p>VeloSales Ai is for businesses and is not meant for anyone under 18. We do not knowingly collect data from children.</p>

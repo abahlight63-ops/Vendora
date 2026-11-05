@@ -380,6 +380,9 @@ CREATE TABLE IF NOT EXISTS admin_audit (
 CREATE INDEX IF NOT EXISTS admin_audit_created_idx ON admin_audit (created_at DESC);
 -- Shop profile: everything Velo knows about the shop beyond the catalog (see shopProfile.js).
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS shop_profile JSONB NOT NULL DEFAULT '{}';
+-- Consent and marketing choices (NDPA).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ; -- when they ticked "18 or older, agree to Terms and Privacy"
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS marketing_opt_out BOOLEAN NOT NULL DEFAULT false; -- unsubscribed from marketing email
 -- Friend or customer (see contactService.js).
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS contact_type TEXT;
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS contact_digest JSONB;

@@ -182,9 +182,10 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
     }
   }
   async function signup() { // SIGN UP flow (same shape, more fields)…
+    if (!agree) return fail('Tick the box to confirm you are 18 or older and agree to the Terms and Privacy Policy.');
     if (busy) return; setBusy(true); setMsg(''); setMsgErr(false);
     try { // try/catch: unreachable server throws — must show why, never hang on "Please wait…"!
-      const { ok, data } = await api('/api/auth/signup', { method: 'POST', body: JSON.stringify({ name: f.name.trim(), whatsapp_number: f.wa.trim(), owner_number: f.wa.trim(), hours: f.hours.trim(), email: f.email.trim(), password: f.password, ...(f.ref.trim() ? { referral_code: f.ref.trim() } : {}) }) }); // owner_number = same as business number initially (editable later in Profile!); password raw; referral code only when typed (absent = organic!)
+      const { ok, data } = await api('/api/auth/signup', { method: 'POST', body: JSON.stringify({ agree: true, name: f.name.trim(), whatsapp_number: f.wa.trim(), owner_number: f.wa.trim(), hours: f.hours.trim(), email: f.email.trim(), password: f.password, ...(f.ref.trim() ? { referral_code: f.ref.trim() } : {}) }) }); // owner_number = same as business number initially (editable later in Profile!); password raw; referral code only when typed (absent = organic!)
       setBusy(false);
       if (ok && data.user) { setMsg('Account created — setting up your assistant…'); setMsgErr(false); afterAuth('/welcome'); return; } // dev auto-login path (no Resend key): user object present → straight in!
       if (ok && data.needsOTP) { setOtpEmail(data.email || f.email.trim()); setOtp(''); setOtpPurpose('verify'); setMsg(''); setMsgErr(false); switchMode('otp'); return; } // OTP path: stash the email, clear code draft, flip to the code screen (NO session yet — unverified gets nothing!)
@@ -205,6 +206,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
     }
   }
   function switchMode(m) { setMode(m); setMsg(''); setMsgErr(false); setNeedsVerify(false); setShowPw(false); } // mode switch RESETS all transient state (no leaking signup errors into login view!)
+  const [agree, setAgree] = useState(false); // sign-up consent (never pre-ticked)
   const [otpEmail, setOtpEmail] = useState(''); // address the code went to (stashed at signup — OTP screen posts with it!)
   const [otp, setOtp] = useState(''); // 6-digit draft (controlled; digits enforced below, not just trusted!)
   const [otpPurpose, setOtpPurpose] = useState('verify'); // 'verify' = prove inbox + sign in · 'reset' = prove inbox + set NEW password (forgot-code path!)
@@ -371,6 +373,9 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
           </div>
           {mode === 'signup' && f.password.length > 0 && ( // strength meter: signup + non-empty only…
             <div className="pw-meter"><i className={pwScore >= 1 ? 'on' : ''} /><i className={pwScore >= 2 ? 'on' : ''} /><i className={pwScore >= 3 ? 'on' : ''} /><span>{pwScore >= 2 ? 'Strong enough' : 'Keep typing…'}</span></div>
+          )}
+          {mode === 'signup' && (
+            <label className="au-consent"><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} /><span>I am 18 or older and I agree to the <a href="/terms" target="_blank" rel="noreferrer">Terms</a> and <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.</span></label>
           )}
           {mode === 'login' && <div className="auth-under"><a onClick={() => switchMode('forgot')}>Forgot password?</a></div>} {/* reference puts this opposite the password row. There is no "remember me" beside it: the session already lasts 7 days, and a checkbox that changes nothing would be a lie. */}
           <button className="btn lg login-cta" disabled={busy} onClick={mode === 'login' ? login : signup}>{busy ? (<><Loader size={15} />Please wait…</>) : mode === 'login' ? 'Sign in' : 'Start my free trial'}</button> {/* disabled while busy (double-submit lock); mini orbit + label (busy? then mode?) */}

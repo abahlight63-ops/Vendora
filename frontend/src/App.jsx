@@ -39,6 +39,8 @@ const SettingsHub = lazy(() => import('./pages/SettingsHub.jsx')); // one Settin
 const VeloSalesAI = lazy(() => import('./pages/VeloSalesAI.jsx')); // general AI chat + model dropdown
 const Privacy = lazy(() => import('./pages/Privacy.jsx')); // public legal (no login needed)
 const Terms = lazy(() => import('./pages/Terms.jsx')); // public legal
+const Refunds = lazy(() => import('./pages/Refunds.jsx')); // public legal
+const Cookies = lazy(() => import('./pages/Cookies.jsx')); // public legal
 const Faq = lazy(() => import('./pages/Faq.jsx')); // public FAQ marketing page
 const NotFound = lazy(() => import('./pages/NotFound.jsx')); // the calm 404 (inside Shell when signed in!)
 // Page chunk still downloading: show the loader ONLY if it takes a while, so a
@@ -111,6 +113,8 @@ export default function App() { // ROOT component (main.jsx renders this)
       <Route path="/admin" element={<Admin />} />
       <Route path="/privacy" element={<Privacy />} /> {/* public legal trio (no Guard — Google + guests must read them!) */}
       <Route path="/terms" element={<Terms />} />
+      <Route path="/refunds" element={<Refunds />} />
+      <Route path="/cookies" element={<Cookies />} />
       <Route path="/faq" element={<Faq />} />
       <Route path="/login" element={loading ? <div className="page"><div className="card"><BrandGate /></div></div> : me ? <Navigate to="/dashboard" replace /> : <Login setMe={setMe} theme={theme} onToggleTheme={toggleTheme} />} /> {/* logged-in visiting /login → dashboard (no login-loop); loading → brand gate so we don't flash the form */}
       <Route path="/reset" element={<Reset />} /> {/* forgot-password landing (public — must NOT be Guarded: no session exists yet!) */}

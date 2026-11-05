@@ -42,13 +42,13 @@ const SECTIONS = [
     <ul>
       <li>The Free plan is free and includes a daily number of replies. When you reach it, customers are told you will reply soon.</li>
       <li>New shops may get a free Pro trial. When it ends, you move to Free unless you choose a paid plan. No card is needed for the trial.</li>
-      <li>Paid plans are billed in advance, monthly or yearly, through Paystack or Flutterwave, at the price shown on <Link to="/billing">Plan and usage</Link> when you pay.</li>
+      <li>Paid plans are paid in advance, for one month or one year at a time, through Paystack or Flutterwave, at the price shown on <Link to="/billing">Plan and usage</Link> when you pay. They do not renew or charge you automatically.</li>
       <li>If we change prices, we will tell you at least 30 days before the change affects you.</li>
     </ul>
   </>),
   S('refunds', 'Cancelling and refunds', <>
-    <p>You can stop paying at any time. You keep your paid plan until the end of the period you paid for, then move to Free, and your data is not deleted.</p>
-    <p>If the Service genuinely failed you, you can ask for a refund of your first payment within 7 days. Accidental double charges are always refunded in full. Write to <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.</p>
+    <p>Paid plans never renew by themselves, so you can stop at any time by not paying again. You keep your paid plan until the end of the period you paid for, then move to Free, and your data is not deleted.</p>
+    <p>If the Service genuinely failed you, you can ask for a refund of your first payment within 7 days. Accidental double charges are always refunded in full. Write to <a href={`mailto:${CONTACT}`}>{CONTACT}</a>. The full rules are in the <Link to="/refunds">Refund Policy</Link>.</p>
   </>),
   S('others', 'Services we depend on', <>
     <p>VeloSales Ai relies on services we do not control, such as WhatsApp, Meta, Telegram, AI providers and payment providers. If one of them changes its rules, fails or blocks an account, parts of the Service may stop working. We will do our best to keep you informed and to restore the Service.</p>
@@ -83,7 +83,7 @@ export default function Terms() {
       short={[
         'Use VeloSales Ai for honest selling only.',
         'You are responsible for your products and prices. Velo only repeats what you add.',
-        'Free stays free. Paid plans renew until you cancel, and you keep them until the end of what you paid for.',
+        'Free stays free. Paid plans never renew by themselves, and you keep them until the end of what you paid for.',
         'Your shop content stays yours.',
       ]}
       sections={SECTIONS}

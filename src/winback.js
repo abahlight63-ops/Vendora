@@ -19,6 +19,7 @@ async function main() {
      FROM businesses b
      WHERE (b.subscription_status IS DISTINCT FROM 'active') -- payers skipped (they hear from support, not nudges!)
        AND (b.winback_sent_at IS NULL OR b.winback_sent_at < now() - make_interval(days => 30)) -- max one nudge per 30 days
+       AND COALESCE(b.marketing_opt_out, false) = false -- unsubscribed shops never get these
        AND COALESCE((SELECT MAX(c.updated_at) FROM conversations c WHERE c.business_id = b.id), b.created_at)
            < now() - make_interval(days => $1) -- last chat (or signup, if never) older than the threshold
      LIMIT 200`, // cap per run (Resend free tier = 100/day — never blow the quota in one go!)
@@ -33,7 +34,7 @@ async function main() {
   for (const r of rows) { // for...of (sequential sends — Resend rate-limits bursts!)
     if (!r.email) continue; // no verified inbox → skip (can't nudge what we can't reach!)
     try {
-      const ok = await mail.sendInactiveEmail(r.email, r.name);
+      const ok = await mail.sendInactiveEmail(r.email, r.name, require('./services/privacyService').unsubscribeUrl(r.id));
       if (ok) {
         await db.query('UPDATE businesses SET winback_sent_at = now() WHERE id = $1', [r.id]); // stamp AFTER success (failures retry next run!)
         sent++;

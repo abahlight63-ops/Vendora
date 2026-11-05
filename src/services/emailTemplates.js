@@ -298,7 +298,7 @@ async function sendWelcomeEmail(email, name) {
 }
 
 // 5) Inactivity nudge (winback script: quiet shops get ONE of these per 30 days).
-async function sendInactiveEmail(email, name) {
+async function sendInactiveEmail(email, name, unsubscribeUrl) {
   return sendEmail({
     to: email,
     subject: `${esc(first(name))}, your customers are still messaging…`,
@@ -312,7 +312,7 @@ async function sendInactiveEmail(email, name) {
         <li><b>Still free</b> — your bot keeps replying from your manual catalog.</li>
       </ul>`,
       ctaLabel: 'Check my inbox', ctaLink: `${baseUrl()}/chats`,
-      foot: 'Want out of these nudges? Reply “stop” and we\'ll only email receipts and security notices.',
+      foot: unsubscribeUrl ? `Don't want these reminders? <a href="${unsubscribeUrl}" style="color:#4F3FC7">Unsubscribe in one click</a>. You will still get receipts and security notices.` : 'Write to velosales63@gmail.com to stop these reminders.',
     }),
   });
 }

@@ -4121,3 +4121,9 @@ body { min-height: 100vh; min-height: 100dvh; } /* the colour field must reach t
   .sp-del { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 40px; } .sp-del > input:first-child { grid-column: 1 / -1; }
   .sp-card { padding: 16px; border-radius: 24px; }
 }
+
+/* Sign-up consent and account deletion */
+.au-consent { display: flex; align-items: flex-start; gap: 10px; margin: 12px 0 4px; font-size: 13.5px; line-height: 1.5; color: inherit; cursor: pointer; }
+.au-consent input { width: 20px; height: 20px; min-height: 0; margin: 1px 0 0; flex: 0 0 20px; accent-color: #ff8a6b; }
+.au-consent a { color: inherit; text-decoration: underline; font-weight: 700; }
+.del-acct input { margin-top: 8px; }

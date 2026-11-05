@@ -82,7 +82,8 @@ async function signup(req, res) {
       // Invalid/foreign code → ignored silently (signup must NEVER fail over a typo'd code!)
     }
 
-    const user = await authService.createUser(business.id, email, password); // hash password + users row (+ verification email or auto-verify)
+    const user = await authService.createUser(business.id, email, password);
+    if (req.body && req.body.agree === true) await db.query('UPDATE users SET terms_accepted_at = now() WHERE id = $1', [user.id]).catch(() => {}); // consent record (NDPA) // hash password + users row (+ verification email or auto-verify)
     const otp = await authService.issueOTP(email); // OTP-first registration: 6-digit code emailed (link is the FALLBACK, not the default!)…
     if (otp.auto) { // …UNLESS dev mode (no Resend key): skip the dance, log straight in (old behavior, local convenience!)
       req.session.userId = user.id; // LOGIN = write ids into the session (store persists them)…

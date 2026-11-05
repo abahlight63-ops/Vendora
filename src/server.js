@@ -236,7 +236,7 @@ function startChannelWatchdog() {
   };
   setInterval(check, 24 * 60 * 60 * 1000); // daily rounds (first round 24h after boot — fresh deploys never spam!)
 }
-// One pass at boot: encrypt Meta access keys that were saved in plain text.
+// One pass at boot: encrypt Meta access keys and Telegram bot tokens saved in plain text.
 async function sealOldKeys() {
   const secret = require('./utils/secret');
   if (!process.env.TOKEN_ENCRYPTION_KEY) return;
@@ -247,6 +247,12 @@ async function sealOldKeys() {
     if (sealed.startsWith(secret.PREFIX)) await db.query('UPDATE businesses SET meta_token = $1 WHERE id = $2 AND meta_token = $3', [sealed, r.id, r.meta_token]);
   }
   if (rows.length) console.log('encrypted', rows.length, 'stored access keys');
+  const { rows: tg } = await db.query(`SELECT id, telegram_bot_token FROM businesses WHERE telegram_bot_token <> '' AND telegram_bot_token NOT LIKE 'enc:%'`);
+  for (const r of tg) {
+    const sealed = secret.seal(r.telegram_bot_token);
+    if (sealed.startsWith(secret.PREFIX)) await db.query('UPDATE businesses SET telegram_bot_token = $1 WHERE id = $2 AND telegram_bot_token = $3', [sealed, r.id, r.telegram_bot_token]);
+  }
+  if (tg.length) console.log('encrypted', tg.length, 'stored Telegram bot tokens');
 }
 const port = process.env.PORT || 3000; // hosts (Render) inject PORT; locally default 3000
 // Release broadcast: when APP_VERSION changes, push WHATS_NEW into every

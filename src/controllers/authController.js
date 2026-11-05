@@ -31,6 +31,19 @@ async function saveSession(req, res) {
   }
 }
 
+// Sign in = brand-new session id (session fixation guard) + saved NOW.
+// Returns true, or sends 500 and returns false (same contract as saveSession).
+async function signIn(req, res, userId, businessId) {
+  try {
+    await require('../utils/freshSession').freshSession(req, { userId, businessId });
+    return true;
+  } catch (e) {
+    console.error('session start failed:', e.message);
+    res.status(500).json({ error: 'Could not keep you signed in — please try again.' });
+    return false;
+  }
+}
+
 // Public referral-code check (signup field live-validates + shows the reward).
 // GET (rate-limited like auth!) — returns { valid, reward } or { valid:false }.
 // Never enumerates beyond the code itself (that's the point of sharing it!).
@@ -86,9 +99,7 @@ async function signup(req, res) {
     if (req.body && req.body.agree === true) await db.query('UPDATE users SET terms_accepted_at = now() WHERE id = $1', [user.id]).catch(() => {}); // consent record (NDPA) // hash password + users row (+ verification email or auto-verify)
     const otp = await authService.issueOTP(email); // OTP-first registration: 6-digit code emailed (link is the FALLBACK, not the default!)…
     if (otp.auto) { // …UNLESS dev mode (no Resend key): skip the dance, log straight in (old behavior, local convenience!)
-      req.session.userId = user.id; // LOGIN = write ids into the session (store persists them)…
-      req.session.businessId = business.id; // …every later request reads these (that's the whole auth system!)
-      if (!(await saveSession(req, res))) return; // persist NOW (else next /api/me bounces!)
+      if (!(await signIn(req, res, user.id, business.id))) return; // fresh session id + persist NOW (else /api/me bounces!)
       return res.status(201).json({ user: { id: user.id, email: user.email }, business, auto: true }); // auto flag tells frontend: no OTP screen needed!
     }
     res.status(201).json({ needsOTP: true, email: user.email }); // NO session yet (unverified users get nothing!) — frontend shows the OTP screen (only safe fields — NEVER password_hash!)
@@ -131,9 +142,7 @@ async function login(req, res) {
   if (!user.verified) { // correct password but email unconfirmed → block with a resend hint…
     return res.status(403).json({ error: 'Please verify your email first — check your inbox for the VeloSales Ai link.', needsVerification: true, email: user.email }); // frontend shows "Resend email" on needsVerification
   }
-  req.session.userId = user.id; // LOGIN: stamp the session…
-  req.session.businessId = user.business_id; // …business id rides along from the JOIN
-  if (!(await saveSession(req, res))) return; // force-write NOW (a DB blip must return 500 here, never a fake success that bounces back to /login!)
+  if (!(await signIn(req, res, user.id, user.business_id))) return; // fresh session id + persist NOW (else /api/me bounces!)
   res.json({ user: { id: user.id, email: user.email, business_name: user.business_name } }); // safe fields only
 }
 
@@ -169,18 +178,14 @@ async function google(req, res) {
     let user = await authService.findUserByEmail(email); // existing account (password OR prior Google)?
     if (user) { // YES → verified users log straight in; UNVERIFIED users prove the inbox via OTP first (same dance as password signup — Google proof alone never mints a session!)
       if (user.verified) {
-        req.session.userId = user.id;
-        req.session.businessId = user.business_id;
-        if (!(await saveSession(req, res))) return; // persist NOW (else /api/me bounces!)
+        if (!(await signIn(req, res, user.id, user.business_id))) return; // fresh session id + persist NOW (else /api/me bounces!)
         const fresh = await authService.findUserByEmail(email); // refetch (business_name for the response!)
         return res.json({ user: { id: fresh.id, email: fresh.email, business_name: fresh.business_name }, businessId: fresh.business_id });
       }
       const otp = await authService.issueOTP(email); // unverified → OTP gate (fresh code, burns any older one!)
       if (otp.auto) { // dev (no mail path): verify silently + log in (local convenience, never production!)
         await db.query('UPDATE users SET verified = true, verify_token = NULL WHERE id = $1', [user.id]);
-        req.session.userId = user.id;
-        req.session.businessId = user.business_id;
-        if (!(await saveSession(req, res))) return;
+        if (!(await signIn(req, res, user.id, user.business_id))) return; // fresh session id + persist NOW (else /api/me bounces!)
         const fresh = await authService.findUserByEmail(email);
         return res.json({ user: { id: fresh.id, email: fresh.email, business_name: fresh.business_name }, businessId: fresh.business_id });
       }
@@ -209,17 +214,13 @@ async function googleSignup(req, res) {
     const existing = await authService.findUserByEmail(email); // race: account created between google() and here?…
     if (existing) { // …then verified users log in, unverified users take the OTP gate (same rule as google() — no bypass via double-submit!)
       if (existing.verified) {
-        req.session.userId = existing.id;
-        req.session.businessId = existing.business_id;
-        if (!(await saveSession(req, res))) return; // persist NOW (else /api/me bounces!)
+        if (!(await signIn(req, res, existing.id, existing.business_id))) return; // fresh session id + persist NOW (else /api/me bounces!)
         return res.json({ user: { id: existing.id, email: existing.email } });
       }
       const raceOtp = await authService.issueOTP(email);
       if (raceOtp.auto) { // dev: verify silently + log in (local convenience!)
         await db.query('UPDATE users SET verified = true, verify_token = NULL WHERE id = $1', [existing.id]);
-        req.session.userId = existing.id;
-        req.session.businessId = existing.business_id;
-        if (!(await saveSession(req, res))) return;
+        if (!(await signIn(req, res, existing.id, existing.business_id))) return; // fresh session id + persist NOW (else /api/me bounces!)
         return res.json({ user: { id: existing.id, email: existing.email } });
       }
       return res.json({ needsOTP: true, email: existing.email }); // NO session yet — OTP screen next!
@@ -263,9 +264,7 @@ async function googleSignup(req, res) {
     if (otp.auto) { // dev: no mail path → verify silently + log straight in (local convenience, never production!)
       await db.query('UPDATE users SET verified = true WHERE id = $1', [user.id]);
       welcomeNewUser(email, business.name); // dev auto-verify → welcome mail straight away (mirrors the old behavior!)
-      req.session.userId = user.id; // log straight in (same stamp!)
-      req.session.businessId = business.id;
-      if (!(await saveSession(req, res))) return; // persist NOW (else /api/me bounces!)
+      if (!(await signIn(req, res, user.id, business.id))) return; // fresh session id + persist NOW (else /api/me bounces!)
       return res.status(201).json({ user: { id: user.id, email: user.email }, business }); // 201 + business (frontend routes to /onboarding like password signup!)
     }
     res.status(201).json({ needsOTP: true, email: user.email }); // NO session yet — frontend shows the OTP screen (only safe fields — NEVER password_hash!)
@@ -283,9 +282,7 @@ async function verifyOtp(req, res) {
   const result = await authService.verifyOTP(email, String(code)); // service: expiry, attempts, hash compare, burn-on-success…
   if (result.already) { // already verified (double-submit / back-button) → just log them in (idempotent!)
     const user = await authService.findUserByEmail(email);
-    req.session.userId = user.id;
-    req.session.businessId = user.business_id;
-    if (!(await saveSession(req, res))) return; // persist NOW (else next /api/me bounces back to login!)
+    if (!(await signIn(req, res, user.id, user.business_id))) return; // fresh session id + persist NOW (else /api/me bounces!)
     return res.json({ user: { id: user.id, email: user.email } });
   }
   if (!result.ok) { // wrong/expired/locked → specific message + attempts left (frontend shows resend/fallback options!)…
@@ -296,9 +293,7 @@ async function verifyOtp(req, res) {
   }
   const user = result.user; // verified user object (returned by the service — no second lookup!)
   authService.findUserByEmail(user.email).then((full) => welcomeNewUser(user.email, full && full.business_name)).catch(() => {}); // fresh OTP verification → welcome mail (the `already` branch above returns early, so this only fires once!)
-  req.session.userId = user.id; // LOGIN on successful verification (same session stamp as login/signup!)…
-  req.session.businessId = user.business_id;
-  if (!(await saveSession(req, res))) return; // persist NOW (this was the signup-OTP bounce: 200 without a saved row → /api/me 401 → back to login!)
+  if (!(await signIn(req, res, user.id, user.business_id))) return; // fresh session id + persist NOW (else /api/me bounces!)
   res.json({ user: { id: user.id, email: user.email } });
 }
 

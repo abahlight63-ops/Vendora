@@ -9,7 +9,8 @@
 //   per-shop: POST /webhook/telegram/:bizId (opaque id + secret header = auth!)
 //   shared:   POST /webhook/telegram/shared (TELEGRAM_SHARED_BOT_TOKEN handles!)
 
-const api = (token) => `https://api.telegram.org/bot${token}`; // base URL builder (token IN the path — Telegram's design, not ours!)
+const { open } = require('../../utils/secret'); // shop bot tokens are stored encrypted (see utils/secret.js); plain tokens pass through
+const api = (token) => `https://api.telegram.org/bot${open(token)}`; // base URL builder (token IN the path — Telegram's design, not ours!)
 
 const HOOK_MS = 15000; // setWebhook/getWebhookInfo cap (cold networks get 15s — same patience as the save-time getMe check!)
 
@@ -124,7 +125,7 @@ async function downloadFile(token, fileId, mime) {
     if (!info.ok) return null; // expired/unknown file_id (Telegram purges un-downloaded files!)
     const { result } = await info.json(); // { file_path: "voice/file_1.oga" }…
     if (!result?.file_path) return null; // ?. guards malformed replies (defensive!)
-    const dl = await fetch(`https://api.telegram.org/file/bot${token}/${result.file_path}`, { method: 'GET' }); // step 2: download via the FILE endpoint (different host path — same token!)
+    const dl = await fetch(`https://api.telegram.org/file/bot${open(token)}/${result.file_path}`, { method: 'GET' }); // step 2: download via the FILE endpoint (different host path — same token!)
     if (!dl.ok) return null;
     const buf = Buffer.from(await dl.arrayBuffer()); // bytes → Buffer…
     if (buf.length === 0 || buf.length > 10 * 1024 * 1024) return null; // empty/huge guard (same 10MB rule as the WhatsApp media path!)

@@ -24,6 +24,7 @@ async function timed(url, opts) { // fetch with an 8s guillotine (AbortControlle
  * no webhook, and Telegram-side errors (all look the same to a shop!).
  */
 async function telegramHealth(token) {
+  token = require('../utils/secret').open(token); // stored shop tokens are encrypted
   if (!token) return { ok: false, reason: 'no-token' };
   try {
     const { res, data } = await timed(

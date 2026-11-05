@@ -95,8 +95,12 @@ async function adminLogin(req, res) {
   if (a.length !== b.length || !require('crypto').timingSafeEqual(a, b)) { // WRONG password → same shape every time (no "user exists" leaks — there's only YOU anyway!)
     return res.status(401).json({ error: 'Wrong password.' }); // 401 (generic message — don't hint at config state!)
   }
-  req.session.isAdmin = true; // stamp the SESSION (PgSessionStore persists it — survives restarts, works multi-server!)
-  req.session.adminAt = Date.now(); // last-activity stamp (sliding 30-min window enforced below!)
+  try { // new session id on admin sign-in (fixation guard); the owner login underneath is carried over
+    await require('../utils/freshSession').freshSession(req, { isAdmin: true, adminAt: Date.now() }, ['userId', 'businessId']);
+  } catch (e) {
+    console.error('admin session start failed:', e.message);
+    return res.status(500).json({ error: 'Could not start the admin session — try again.' });
+  }
   res.json({ ok: true }); // frontend hides the gate, shows the dashboard
 }
 

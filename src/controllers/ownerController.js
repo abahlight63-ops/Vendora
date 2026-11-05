@@ -721,14 +721,14 @@ async function telegramToken(req, res) {
              telegram_shared_on = CASE WHEN $1 <> $2 THEN false ELSE telegram_shared_on END,
              owner_telegram_id = CASE WHEN $1 = $2 THEN owner_telegram_id ELSE $3 END
          WHERE id = $4 RETURNING telegram_bot_token <> $2 AS connected`,
-      [clean, '', '', req.session.businessId]);
+      [require('../utils/secret').seal(clean), '', '', req.session.businessId]); // stored encrypted (like Meta keys); '' stays ''
     rows = (await sharedAware(runUpdate)).rows; // stale backend? legacy shape still saves (shared flag just stays — redeploy to migrate!)
   } catch (e) {
     console.error('telegram token save failed:', (e && e.code) || '-', e.message); // code logged (42703? 53300?) — user gets the same code as ref below!
     return res.status(500).json({ error: dbUserMessage(e), ref: errRef(e) });
   }
   if (!prev.rows.length || !rows.length) return res.status(404).json({ error: 'Shop not found — sign out and sign in again, then retry.' }); // stale session (login without a shop) → HONEST 404, never a fake 200+disconnected that the UI misreads as "rejected"!
-  const oldToken = (prev.rows[0] && prev.rows[0].telegram_bot_token) || '';
+  const oldToken = require('../utils/secret').open((prev.rows[0] && prev.rows[0].telegram_bot_token) || '');
   const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '') || `${req.protocol}://${req.get('host')}`; // explicit host wins (prod!); else this request's host (local dev!)
   if (rows[0] && rows[0].connected) { // bot just linked → referral reward check (first real use!)
     require('../services/referralService').onFirstActive(req.session.businessId)

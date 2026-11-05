@@ -159,7 +159,19 @@ app.get('*', (req, res, next) => {
 // ~60s — "instant answers" arriving in a minute lose sales!). A 9-minute
 // self-ping keeps the dyno warm. Fire-and-log — never throws, never blocks.
 function startKeepAlive() {
-  const port = process.env.PORT || 3000;
+  // One pass at boot: encrypt Meta access keys that were saved in plain text.
+async function sealOldKeys() {
+  const secret = require('./utils/secret');
+  if (!process.env.TOKEN_ENCRYPTION_KEY) return;
+  const db = require('./db');
+  const { rows } = await db.query(`SELECT id, meta_token FROM businesses WHERE meta_token <> '' AND meta_token NOT LIKE 'enc:%'`);
+  for (const r of rows) {
+    const sealed = secret.seal(r.meta_token);
+    if (sealed.startsWith(secret.PREFIX)) await db.query('UPDATE businesses SET meta_token = $1 WHERE id = $2 AND meta_token = $3', [sealed, r.id, r.meta_token]);
+  }
+  if (rows.length) console.log('encrypted', rows.length, 'stored access keys');
+}
+const port = process.env.PORT || 3000;
   const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '') || `http://localhost:${port}`;
   const ping = () => {
     fetch(`${base}/health`).catch(() => {}); // outcome irrelevant (the request IS the warmth!)
@@ -348,6 +360,7 @@ require('./services/configService').ensureSchema()
   .then(() => maybeBroadcastRelease()) // one broadcast per APP_VERSION (bell for every owner!)
   .then(() => { startKeepAlive(); startChannelWatchdog(); }) // lifelines: self-ping + dead-channel bells
   .then(() => app.listen(port, () => {
+    sealOldKeys().catch((e) => console.error('key encryption pass failed:', e.message)); // encrypt access keys saved before encryption
     try { require('./services/contactService').startDigest(); } catch (e) { console.error('contact digest not started:', e.message); } // daily friend-or-customer question // START listening — the callback runs once the socket is open
     console.log(`WhatsApp AI support server running on port ${port}`);
     console.log(`Signup/login: http://localhost:${port}/login`);

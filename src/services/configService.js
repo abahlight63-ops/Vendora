@@ -348,6 +348,7 @@ ALTER TABLE businesses ADD COLUMN IF NOT EXISTS handoff_msg TEXT NOT NULL DEFAUL
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS whatsapp_model TEXT NOT NULL DEFAULT 'gemini-flash-full';
 -- Nov 2026: the model list became velo-* (see aiModels.js ALIASES); move saved picks once.
 ALTER TABLE businesses ALTER COLUMN whatsapp_model SET DEFAULT 'velo-normal';
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_pin TEXT NOT NULL DEFAULT ''; -- WhatsApp two-step PIN, encrypted
 -- Friend or customer (see contactService.js).
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS contact_type TEXT;
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS contact_digest JSONB;

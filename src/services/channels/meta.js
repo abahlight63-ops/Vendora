@@ -17,7 +17,10 @@ function shapeOk(phoneId, token) {
 
 // Validate credentials by asking Meta whose number this is.
 // Returns { phone } (display number) or { error }.
+const { open } = require('../../utils/secret'); // stored keys may be encrypted (see utils/secret.js)
+
 async function checkCredentials(phoneIdRaw, tokenRaw) {
+  tokenRaw = open(tokenRaw);
   const phoneId = String(phoneIdRaw || '').trim();
   const token = String(tokenRaw || '').trim();
   if (!shapeOk(phoneId, token)) return { error: 'That does not look like a Phone Number ID + token (ID is all digits).' };
@@ -41,6 +44,7 @@ async function checkCredentials(phoneIdRaw, tokenRaw) {
 // Returns true = delivered, false = failed (callers that need proof check it;
 // fire-and-forget callers ignore it — same as before!).
 async function sendText(token, phoneId, to, message, mediaUrl) {
+  token = open(token);
   if (!token || !phoneId || !to || !message) return false;
   const body = mediaUrl // photo variant: Meta sends images BY LINK (our /uploads/ URLs are public in prod!)
     ? { messaging_product: 'whatsapp', to, type: 'image', image: { link: mediaUrl, caption: String(message).slice(0, 1000) } }
@@ -107,6 +111,7 @@ function parseInbound(payload) {
 // 24 hours). The template must have one {{1}} in its body for the message.
 // Meta bills template messages to the shop's own WhatsApp account.
 async function sendTemplate(token, phoneId, to, name, lang, text) {
+  token = open(token);
   if (!token || !phoneId || !to || !name) return false;
   try {
     const res = await fetch(`${GRAPH}/${phoneId}/messages`, {
@@ -119,10 +124,53 @@ async function sendTemplate(token, phoneId, to, name, lang, text) {
   } catch (e) { console.error('Meta template error:', e.message); return false; }
 }
 
+// ── After connecting: make sure messages actually flow ──
+// 1. Subscribe our app to the shop's WhatsApp Business Account. Without this,
+//    Meta never sends that shop's customer messages to our webhook.
+// 2. Register the number for sending, but only if it is not on the Cloud API
+//    yet. Numbers that keep the WhatsApp Business app (coexistence) are left alone.
+// Returns { subscribed, registered, notes[] }. Never throws: a connect still
+// succeeds, and the notes explain anything left to do.
+async function graph(method, path, token, body) {
+  const res = await fetch(`${GRAPH}/${path}`, {
+    method,
+    headers: { Authorization: 'Bearer ' + token, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok, data };
+}
+async function finishSetup({ wabaId, phoneId, token, pin }) {
+  token = open(token);
+  const out = { subscribed: false, registered: false, notes: [] };
+  if (!token) return out;
+  try {
+    if (wabaId) {
+      const s = await graph('POST', `${encodeURIComponent(wabaId)}/subscribed_apps`, token);
+      out.subscribed = !!(s.ok && s.data && s.data.success !== false);
+      if (!out.subscribed) out.notes.push('Meta did not confirm the message subscription. Messages may not arrive until you reconnect.');
+    } else out.notes.push('No WhatsApp Business Account id, so the message subscription was skipped.');
+    if (phoneId) {
+      const p = await graph('GET', `${encodeURIComponent(phoneId)}?fields=platform_type,status,code_verification_status`, token);
+      const platform = p.data && p.data.platform_type;
+      if (platform === 'NOT_APPLICABLE' && pin) {
+        const r = await graph('POST', `${encodeURIComponent(phoneId)}/register`, token, { messaging_product: 'whatsapp', pin });
+        out.registered = !!(r.ok && r.data && r.data.success !== false);
+        if (!out.registered) out.notes.push('The number could not be registered for sending yet: ' + String((r.data && r.data.error && r.data.error.message) || 'unknown reason').slice(0, 120));
+      } else out.registered = platform === 'CLOUD_API' || platform == null;
+    }
+  } catch (e) {
+    out.notes.push('Could not finish the Meta setup: ' + e.message.slice(0, 100));
+  }
+  if (out.notes.length) console.warn('meta finishSetup:', out.notes.join(' | '));
+  return out;
+}
+
 // Download a WhatsApp media file (photo or voice note) by its id.
 // Two steps: ask Graph for a short-lived URL, then fetch the bytes with the
 // same token. Returns { mime, base64 } or null (too big, expired, no token).
 async function downloadMedia(tokenRaw, mediaId) {
+  tokenRaw = open(tokenRaw);
   const token = String(tokenRaw || '').trim();
   if (!token || !mediaId) return null;
   try {
@@ -146,6 +194,7 @@ async function downloadMedia(tokenRaw, mediaId) {
 // Pull the shop's WhatsApp business profile for one-tap auto-sync.
 // Returns { profileText } (fed to extractProducts) or { error }.
 async function fetchBusinessProfile(tokenRaw, phoneIdRaw) {
+  tokenRaw = open(tokenRaw);
   const token = String(tokenRaw || '').trim();
   const phoneId = String(phoneIdRaw || '').trim();
   if (!shapeOk(phoneId, token)) return { error: 'Reconnect Meta first (missing details).' };
@@ -192,6 +241,7 @@ async function exchangeCode(codeRaw) {
 // List phone numbers on a WABA (used after code exchange to discover the
 // phone_number_id the user picked). Returns { numbers: [{id, display}] }.
 async function listWabaNumbers(wabaIdRaw, tokenRaw) {
+  tokenRaw = open(tokenRaw);
   const wabaId = String(wabaIdRaw || '').trim();
   const token = String(tokenRaw || '').trim();
   if (!/^\d{5,}$/.test(wabaId) || token.length < 20) return { error: 'Missing business account details — try connecting again.' };
@@ -209,4 +259,4 @@ async function listWabaNumbers(wabaIdRaw, tokenRaw) {
   return { numbers };
 }
 
-module.exports = { sendTemplate, downloadMedia, checkCredentials, sendText, parseInbound, fetchBusinessProfile, shapeOk, exchangeCode, listWabaNumbers, GRAPH };
+module.exports = { finishSetup, sendTemplate, downloadMedia, checkCredentials, sendText, parseInbound, fetchBusinessProfile, shapeOk, exchangeCode, listWabaNumbers, GRAPH };

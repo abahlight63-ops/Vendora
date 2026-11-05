@@ -52,6 +52,7 @@ async function telegramHealth(token) {
  * fails closed as ok:false, which is exactly the bell we want to ring.
  */
 async function metaHealth(phoneId, token) {
+  token = require('../utils/secret').open(token);
   if (!phoneId || !token) return { ok: false, reason: 'not-connected' };
   try {
     const { res, data } = await timed(

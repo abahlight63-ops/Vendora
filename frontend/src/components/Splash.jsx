@@ -8,17 +8,19 @@
 import { useEffect, useState } from 'react';
 import VeloLoader from './VeloLoader.jsx';
 
-export default function Splash({ done }) {
+// ready = the app knows who is signed in. The splash plays at least one full
+// loop, then keeps playing until ready, then fades: one loading screen, never two.
+export default function Splash({ done, ready = true }) {
   const [out, setOut] = useState(false);
+  const [looped, setLooped] = useState(false);
 
+  useEffect(() => { const t = setTimeout(() => setLooped(true), 2700); return () => clearTimeout(t); }, []);
   useEffect(() => {
-    const t1 = setTimeout(() => setOut(true), 2700); // one full loop of the loader, then fade
-    const t2 = setTimeout(done, 3050); // unmount once the fade has finished
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
-  }, [done]);
+    if (!looped || !ready) return undefined;
+    setOut(true);
+    const t = setTimeout(done, 350); // unmount once the fade has finished
+    return () => clearTimeout(t);
+  }, [looped, ready, done]);
 
   return (
     <div className={'splash' + (out ? ' out' : '')}>

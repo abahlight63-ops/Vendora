@@ -49,6 +49,12 @@ async function metaInbound(req, res) {
       for (const change of (entry && entry.changes) || []) { // …each change…
         const value = change && change.value; // …holds metadata + messages…
         const phoneId = value && value.metadata && value.metadata.phone_number_id; // which shop number received this?
+        // Coexistence: the owner replied from the WhatsApp Business app on their phone.
+        // Show it in the Inbox and let the owner lead that chat (Velo pauses there).
+        if (change && change.field === 'smb_message_echoes' && value && Array.isArray(value.message_echoes) && phoneId) {
+          await require('../services/conversationService').ownerEcho(phoneId, value.message_echoes).catch((e) => console.error('echo error:', e.message));
+          continue;
+        }
         const parsed = meta.parseInbound({ object: 'whatsapp_business_account', entry: [{ changes: [change] }] }); // normalize ONE change (null = status ping/non-text → skip!)
         if (!parsed || !phoneId) continue; // nothing to answer (still 200 below — Meta must never retry noise!)
         const { rows } = await db.query('SELECT * FROM businesses WHERE meta_phone_number_id = $1 LIMIT 1', [String(phoneId)]); // phone id → shop (unmapped number = not ours!)

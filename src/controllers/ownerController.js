@@ -956,6 +956,18 @@ async function whatsappModel(req, res) {
   }
 }
 
+// The shop's 6-digit WhatsApp two-step PIN (made once, stored encrypted). Meta
+// asks for it when a number is registered for sending.
+async function metaPin(businessId) {
+  const secret = require('../utils/secret');
+  const { rows } = await db.query('SELECT meta_pin FROM businesses WHERE id = $1', [businessId]);
+  const have = rows[0] && secret.open(rows[0].meta_pin);
+  if (have && /^\d{6}$/.test(have)) return have;
+  const pin = String(require('crypto').randomInt(0, 1000000)).padStart(6, '0');
+  await db.query('UPDATE businesses SET meta_pin = $1 WHERE id = $2', [secret.seal(pin), businessId]);
+  return pin;
+}
+
 // Meta step 1+2 in one: validate ID + token, store, arm the channel.
 // Accepts manual paste OR Embedded Signup results (waba_id included).
 async function metaConnect(req, res) {
@@ -972,13 +984,15 @@ async function metaConnect(req, res) {
         meta_verify_token = COALESCE(NULLIF(meta_verify_token, ''), $4), wa_channel = 'meta',
         meta_connect_via = $6, meta_app_secret = CASE WHEN $7 <> '' THEN $7 ELSE meta_app_secret END
        WHERE id = $5`, // keep an existing verify token (Meta already subscribed? don't break it!) and an existing app secret unless a new one is pasted
-      [String(token).trim(), String(phone_number_id).trim(), String(waba_id || '').trim(), verify, req.session.businessId, via, via === 'manual' ? String(app_secret || '').trim().slice(0, 200) : '']
+      [require('../utils/secret').seal(String(token).trim()), String(phone_number_id).trim(), String(waba_id || '').trim(), verify, req.session.businessId, via, via === 'manual' ? String(app_secret || '').trim().slice(0, 200) : '']
     );
+    // Make messages flow: subscribe our app to the account, register the number if needed.
+    const setup = await meta.finishSetup({ wabaId: String(waba_id || '').trim(), phoneId: String(phone_number_id).trim(), token: String(token).trim(), pin: await metaPin(req.session.businessId) });
     const { rows } = await db.query('SELECT meta_verify_token FROM businesses WHERE id = $1', [req.session.businessId]);
     if (!rows.length) return res.status(404).json({ error: 'Shop not found — sign out and sign in again, then retry.' }); // stale session (missing row read as property-of-undefined used to CRASH here!)
     require('../services/referralService').onFirstActive(req.session.businessId) // channel just went live → referral reward check (referred shops pay out on FIRST REAL USE!)
       .catch((e) => console.error('referral reward error:', e.message)); // rewards never break connects!
-    res.json({ ok: true, phone: checked.phone, verifyToken: rows[0].meta_verify_token, webhookUrl: webhookUrl(req) });
+    res.json({ ok: true, phone: checked.phone, verifyToken: rows[0].meta_verify_token, webhookUrl: webhookUrl(req), subscribed: setup.subscribed, notes: setup.notes });
   } catch (e) {
     console.error('meta connect failed:', (e && e.code) || '-', e.message); // JSON 500, never a process crash (see telegramToken note!)
     res.status(500).json({ error: dbUserMessage(e), ref: errRef(e) });
@@ -1287,7 +1301,7 @@ async function readNotification(req, res) {
   }
 }
 
-module.exports = { chatContact, // every handler the routes file wires up (miss one here = route crashes on boot!)
+module.exports = { metaPin, chatContact, // every handler the routes file wires up (miss one here = route crashes on boot!)
   getMe,
   updateBusiness,
   saveSetup,

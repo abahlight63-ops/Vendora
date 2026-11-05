@@ -9,7 +9,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'; // Routes = switch; 
 import Shell from './components/Shell.jsx'; // app frame (sidebar+topbar) wrapping guarded pages — ALWAYS needed (eager!)
 import Splash from './components/Splash.jsx'; // brand intro (shown first — eager, it's tiny!)
 import Error3D from './components/Error3D.jsx'; // offline / failed-request art (the honest cold-start screen)
-import { BrandGate, useMinDisplay } from './components/Loader.jsx'; // selling-point loading face (page fallback + login wall!) + 1s brand beat
+import { BrandGate } from './components/Loader.jsx'; // selling-point loading face (page fallback + login wall!) + 1s brand beat
 import { api } from './lib/api.js'; // backend fetch helper (session cookie included)
 
 import { useTheme } from './lib/theme.js'; // [theme, toggleTheme] (dark/light, persisted)
@@ -41,9 +41,15 @@ const Privacy = lazy(() => import('./pages/Privacy.jsx')); // public legal (no l
 const Terms = lazy(() => import('./pages/Terms.jsx')); // public legal
 const Faq = lazy(() => import('./pages/Faq.jsx')); // public FAQ marketing page
 const NotFound = lazy(() => import('./pages/NotFound.jsx')); // the calm 404 (inside Shell when signed in!)
-function PageFallback() { // chunk loading placeholder (scatter logo — the brand moment, same family as Splash!)
-  return <div className="page"><div className="card"><BrandGate /></div></div>;
+// Page chunk still downloading: show the loader ONLY if it takes a while, so a
+// fast page never flashes a second loading screen right after the splash.
+function PageFallback() {
+  const [show, setShow] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setShow(true), 450); return () => clearTimeout(t); }, []);
+  return show ? <div className="page"><div className="card"><BrandGate /></div></div> : null;
 }
+// While the splash plays, download the page the person is about to see.
+const PREFETCH = { '/dashboard': () => import('./pages/Dashboard.jsx'), '/chats': () => import('./pages/Chats.jsx'), '/orders': () => import('./pages/Orders.jsx'), '/catalog': () => import('./pages/Catalog.jsx'), '/login': () => import('./pages/Login.jsx'), '/': () => import('./pages/Landing.jsx') };
 
 function useMe() { // CUSTOM HOOK: "who's logged in?" — returns {me, loading, setMe}. Hooks let us reuse stateful logic.
   const [me, setMe] = useState(null); // me = business object or null (guest). null initial = "unknown yet" (loading covers the gap)
@@ -86,8 +92,7 @@ function ConnectionWall({ onRetry }) { // cold start with no network: one calm s
 }
 
 function Guard({ me, loading, theme, onToggleTheme, onLogout, children }) { // login wall: wraps every private page (destructure 6 props)
-  const minDone = useMinDisplay(1000); // brand beat (fast session checks still show the scatter a full second!)
-  if (loading || !minDone) return <div className="page"><div className="card"><BrandGate /></div></div>; // still checking session → scatter logo (no flashing!)
+  if (loading) return <div className="page"><div className="card"><BrandGate /></div></div>; // still checking session → scatter logo (no flashing!)
   if (!me) return <Navigate to="/login" replace />; // guest → redirect to /login (replace = don't keep bad URL in history)
   return <Shell biz={me} theme={theme} onToggleTheme={onToggleTheme} onLogout={onLogout}>{children}</Shell>; // logged in → frame + page (children = the page element; onLogout clears login state on sign-out)
 }
@@ -98,7 +103,8 @@ export default function App() { // ROOT component (main.jsx renders this)
   const [splash, setSplash] = useState(true); // brand intro visible?
   const hideSplash = useCallback(() => setSplash(false), []); // useCallback = stable function identity (Splash's effect dep won't loop)
   const handleLogout = useCallback(() => { setMe(null); }, []); // logout clears login state (next login refetches fresh)
-  if (splash) return <Splash done={hideSplash} />; // EARLY RETURN: splash covers everything until done() fires
+  useEffect(() => { const p = PREFETCH[window.location.pathname] || PREFETCH['/dashboard']; p().catch(() => {}); }, []); // warm the first page during the splash
+  if (splash) return <Splash done={hideSplash} ready={!loading} />; // ONE loading screen: the splash stays until the session check is done too
   if (netError && !me) return <ConnectionWall onRetry={retry} />; // cannot ASK ≠ signed out: offer the truth and a retry
   return ( // after splash: the route table (order matters — first match wins!)
     <Suspense fallback={<PageFallback />}> {/* lazy pages suspend here while their chunk downloads (fallback matches Guard's look!) */}<Routes>

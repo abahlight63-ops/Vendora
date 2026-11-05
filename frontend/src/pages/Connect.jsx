@@ -180,7 +180,8 @@ export default function Connect() {
     try {
       const { ok, status, data } = await api('/api/me/channels/meta/embedded', { method: 'POST', body: JSON.stringify({ code, token, waba_id: wabaId, phone_number_id: pid }) });
       const msg = (data && data.error) || '';
-      if (ok) { setMetaProof(data); setStep(2); load(); pop('ok', 'WhatsApp connected!', `Number ${data.phone || ''} is linked. One paste in Meta, then TEST.`); }
+      if (ok && data.subscribed) { setMetaProof(data); setStep(3); load(); pop('ok', 'WhatsApp connected!', `Number ${data.phone || ''} is linked and customer messages will reach Velo. Send it a test message.`); }
+      else if (ok) { setMetaProof(data); setStep(2); load(); pop('ok', 'WhatsApp connected, one step left', ((data.notes && data.notes[0]) || 'Meta did not confirm the message subscription.') + ' Follow the steps below.'); }
       else if (status === 401) pop('err', 'Signed out', 'Your session expired — sign in again, then retry.');
       else if (status === 404) pop('err', 'Shop not found', 'Your login lost its shop — sign out and sign in again, then retry.');
       else if (status >= 500) pop('err', 'Server error', (msg || 'Our server hiccuped — wait a minute and retry.') + (data && data.ref ? ` (ref: ${data.ref})` : ''));
@@ -294,9 +295,10 @@ export default function Connect() {
     openRoad('meta');
     load(); // fresh channel truth (server already stored the number)
     if (outcome === 'linked') {
-      setStep(2);
+      const live = q.get('meta_sub') === '1'; // the server subscribed our app to the account: nothing to paste
+      setStep(live ? 3 : 2);
       setMetaProof({ verifyToken: q.get('meta_verify') || '' });
-      pop('ok', 'WhatsApp connected!', `Number ${q.get('meta_phone') || ''} is linked. One paste in Meta, then TEST.`);
+      pop('ok', 'WhatsApp connected!', live ? `Number ${q.get('meta_phone') || ''} is linked and customer messages will reach Velo. Send it a test message.` : `Number ${q.get('meta_phone') || ''} is linked. One paste in Meta, then TEST.`);
     } else if (outcome === 'cancelled') {
       pop('err', 'Cancelled', 'You cancelled at Meta — nothing was changed. Tap Continue whenever you are ready.');
     } else {

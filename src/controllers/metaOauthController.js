@@ -77,8 +77,9 @@ async function callback(req, res) {
       `UPDATE businesses SET meta_token = $1, meta_phone_number_id = $2, meta_waba_id = $3,
          meta_verify_token = $4, wa_channel = 'meta', meta_connect_via = 'app'
        WHERE id = $5`,
-      [ex.token, phone.id, waba.wabaId, verify, redeemed.businessId]
+      [require('../utils/secret').seal(ex.token), phone.id, waba.wabaId, verify, redeemed.businessId]
     );
+    const setup = await meta.finishSetup({ wabaId: waba.wabaId, phoneId: phone.id, token: ex.token, pin: await require('./ownerController').metaPin(redeemed.businessId) });
     require('../services/referralService').onFirstActive(redeemed.businessId)
       .catch((e) => console.error('referral reward error:', e.message)); // never breaks a connect
     const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '') || `${req.protocol}://${req.get('host')}`;
@@ -88,6 +89,7 @@ async function callback(req, res) {
       meta_waba: waba.wabaId,
       meta_webhook: `${base}/webhook/whatsapp`,
       meta_verify: verify,
+      meta_sub: setup.subscribed ? '1' : '0',
     });
   } catch (e) {
     console.error('meta oauth callback failed:', (e && e.code) || '-', e.message);

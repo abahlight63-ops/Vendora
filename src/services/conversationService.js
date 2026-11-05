@@ -62,4 +62,25 @@ async function getHistory(conversationId, limit = 10) { // default parameter: ca
   return historyRows.rows.reverse(); // .reverse() flips in place → oldest-first for the prompt
 }
 
-module.exports = { saveMessage, logMessage, logInboundOnce, getHistory }; // the chat-memory API
+// Coexistence echoes: the owner typed a reply in the WhatsApp Business app on
+// their phone. Log it in that chat as the owner's message and pause Velo there,
+// so Velo never talks over the owner (the Inbox shows "You are answering" and
+// "Velo answers" hands it back).
+async function ownerEcho(phoneId, echoes) {
+  const { rows } = await db.query('SELECT id FROM businesses WHERE meta_phone_number_id = $1 LIMIT 1', [String(phoneId)]);
+  if (!rows.length) return;
+  const businessId = rows[0].id;
+  for (const e of echoes.slice(0, 50)) {
+    const to = String((e && e.to) || '').replace(/\D/g, '');
+    if (!to) continue;
+    const text = e.type === 'text' && e.text ? String(e.text.body || '') : `[you sent ${e.type === 'image' ? 'a photo' : 'a message'} from your phone]`;
+    const number = 'whatsapp:+' + to;
+    const found = await db.query('SELECT id FROM conversations WHERE business_id = $1 AND customer_number = $2', [businessId, number]);
+    const id = found.rows.length ? found.rows[0].id
+      : (await db.query('INSERT INTO conversations (business_id, customer_number, last_message) VALUES ($1, $2, $3) RETURNING id', [businessId, number, text])).rows[0].id;
+    await db.query('UPDATE conversations SET last_reply = $1, bot_paused = true, updated_at = now() WHERE id = $2', [text, id]);
+    await logMessage(id, 'out', text, null, 'owner');
+  }
+}
+
+module.exports = { saveMessage, logMessage, logInboundOnce, getHistory, ownerEcho }; // the chat-memory API

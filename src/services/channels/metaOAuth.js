@@ -109,6 +109,7 @@ function authUrl(state, req) {
 // Returns { wabaId, name, error } — an error here is almost always a missing
 // whatsapp_business_management permission (App Review), and we say so.
 async function discoverWaba(tokenRaw) {
+  tokenRaw = require('../../utils/secret').open(tokenRaw);
   const token = String(tokenRaw || '').trim();
   if (token.length < 20) return { error: 'Meta did not return a usable token — try again.' };
   let res;

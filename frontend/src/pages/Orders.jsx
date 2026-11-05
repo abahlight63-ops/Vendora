@@ -14,6 +14,7 @@ import Loader from '../components/Loader.jsx';
 import Ic from '../components/icons.jsx';
 import { CHANNEL_COINS } from '../lib/channelLogos.js';
 import { receiptPng, shareOrDownload } from '../lib/receiptImage.js';
+import { askReview } from '../components/ReviewPrompt.jsx';
 import { STATUS_LABEL, STATUS_SHORT, money, short, receiptNo, channelLabel, itemsLine, when } from '../lib/orders.js';
 
 let coinN = 0;
@@ -109,6 +110,7 @@ export default function Orders() {
     if (!ok) return pop('err', 'Receipt not sent', (data && data.error) || 'Check your connection and try again.');
     setOrders((xs) => xs.map((o) => (o.id === sel.id ? { ...o, receipt_sent_at: new Date().toISOString() } : o)));
     toast('Receipt sent to ' + (sel.customer_name || 'the customer'));
+    askReview('receipt_sent', 'Receipt sent to ' + (sel.customer_name || 'your customer'));
   }
   async function picture() {
     if (!sel || busy) return;
@@ -208,7 +210,7 @@ export default function Orders() {
         </aside>
       </div>
 
-      {creating && <ReceiptSheet onClose={() => setCreating(false)} onSaved={(order) => { setCreating(false); setOrders((xs) => [order, ...(xs || [])]); setSelId(order.id); setPhoneOpen(true); toast('Order ' + receiptNo(order) + ' saved'); load(); }} />}
+      {creating && <ReceiptSheet onClose={() => setCreating(false)} onSaved={(order) => { setCreating(false); setOrders((xs) => [order, ...(xs || [])]); setSelId(order.id); setPhoneOpen(true); toast('Order ' + receiptNo(order) + ' saved'); askReview('order_saved', 'Order ' + receiptNo(order) + ' saved'); load(); }} />}
     </div>
   );
 }

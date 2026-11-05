@@ -4,7 +4,8 @@
 // page content (children). No npm modules beyond react-router-dom.
 // ROUTER LESSON: NavLink = <a> that knows the current route (auto .active
 // class); useLocation = current URL; useNavigate = go somewhere in code.
-import { useEffect, useState } from 'react'; // useState = drawer open flag; useEffect = title + drawer side-effects
+import { useEffect, useState } from 'react';
+import ReviewPrompt from './ReviewPrompt.jsx'; // review pop-up after a win (server decides when) // useState = drawer open flag; useEffect = title + drawer side-effects
 import Logo from './Logo.jsx'; // theme-aware brand mark (blue dark / green light!)
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'; // NavLink (active-aware link), useLocation (current path), useNavigate (code navigation)
 import { api, toast } from '../lib/api.js'; // api() for the logout call (+ version check below)
@@ -190,7 +191,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
                 <button className="btn ghost sm" onClick={() => setUpdateBanner(null)} aria-label="Dismiss">Dismiss</button>
               </div>
             )}
-            <div key={pathname} className="route-in">{children}</div></main> {/* children = THE PAGE (Dashboard/Catalog/…) rendered inside the frame */}        </div>
+            <div key={pathname} className="route-in">{children}</div><ReviewPrompt /></main> {/* children = THE PAGE (Dashboard/Catalog/…) rendered inside the frame */}        </div>
       </div>
       <nav className="mobile-bar"> {/* bottom tab bar: mobile only (CSS), 5 key sections */}
         {mobile.map(([k, label, href]) => (<NavLink key={k} to={href}><Icon k={k} /><span>{label}</span></NavLink>))}

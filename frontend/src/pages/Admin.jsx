@@ -13,7 +13,7 @@ import Loader, { BrandGate, useMinDisplay } from '../components/Loader.jsx'; // 
 
 import LoadFailed from '../components/LoadFailed.jsx'; // failed-tab card + Retry (panels never spin forever!)
 import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures (offline? waking? stale?)
-import { AdminOverview, AdminShops, AdminAiUsage, AdminWaitlist, AdminActivity } from './AdminConsole.jsx'; // the new console panels
+import { AdminOverview, AdminShops, AdminAiUsage, AdminWaitlist, AdminActivity, AdminReviews } from './AdminConsole.jsx'; // the new console panels
 
 const TABS = [['overview', 'Overview', 'chart', 'green'], ['shops', 'Shops', 'store', 'blue'], ['money', 'Money', 'cash', 'gold'], ['growth', 'Growth', 'gift', 'purple'], ['ai', 'AI and costs', 'spark', 'purple'], ['channels', 'Channels', 'plug', 'teal'], ['support', 'Support', 'help', 'red'], ['notices', 'Notices', 'mega', 'orange'], ['activity', 'Activity log', 'clock', 'green']]; // [key, label, icon, accent]
 const STATIC_TABS = ['overview', 'shops', 'ai', 'notices', 'activity']; // panels that load their own data
@@ -147,7 +147,7 @@ export default function Admin() {
             : loadErr ? <div className="ad-card"><LoadFailed title={`Couldn't load ${tab}`} status={loadErr.status} detail={loadErr.detail} tries={0} onRetry={() => load(tab)} backTo="/admin" backLabel="Back" /></div>
             : !d ? <div className="ad-card"><div className="skel" style={{ height: 200 }} /></div>
             : tab === 'money' ? (<div className="ad-page"><div className="ad-head"><div><h1>Money</h1><p>Payments collected, and bank transfers waiting for you to confirm.</p></div></div><div className="ad-card ad-legacy"><Revenue d={d.stats} /></div><div className="ad-card ad-legacy"><Transfers rows={d.transfers} act={act} /></div></div>)
-            : tab === 'growth' ? (<div className="ad-page"><div className="ad-head"><div><h1>Growth</h1><p>Referrals, rewards to pay, the monthly leaderboard and the launch waitlist.</p></div></div><div className="ad-card ad-legacy"><Referrals d={d} act={act} refresh={() => load('growth')} /></div><AdminWaitlist /></div>)
+            : tab === 'growth' ? (<div className="ad-page"><div className="ad-head"><div><h1>Growth</h1><p>Referrals, rewards to pay, reviews from shops, the monthly leaderboard and the launch waitlist.</p></div></div><div className="ad-card ad-legacy"><Referrals d={d} act={act} refresh={() => load('growth')} /></div><AdminReviews /><AdminWaitlist /></div>)
             : tab === 'channels' ? (<div className="ad-page"><div className="ad-head"><div><h1>Channels</h1><p>Every connected WhatsApp and Telegram, checked live each time you open this.</p></div></div><div className="ad-card ad-legacy"><Channels rows={(d && d.rows) || []} refresh={() => load('channels')} /></div></div>)
             : (<div className="ad-page"><div className="ad-head"><div><h1>Support</h1><p>Messages from shop owners, open ones first.</p></div></div><div className="ad-card ad-legacy"><Complaints rows={d} act={act} /></div></div>)}
         </div>

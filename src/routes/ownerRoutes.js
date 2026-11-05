@@ -12,6 +12,10 @@ router.use(requireAuth); // blanket guard: guests get 401 on everything below
 
 router.get('/me', ownerController.getMe); // business profile + tier + ads config
 router.put('/me/business', ownerController.updateBusiness);
+router.get('/me/review/should', require('../controllers/reviewController').should); // ask for a review now? (once per 14 days, after a win)
+router.post('/me/review', require('../controllers/reviewController').save);
+router.post('/me/review/skip', require('../controllers/reviewController').skip);
+router.get('/me/export', require('../middleware/security').authLimiter, require('../controllers/reviewController').exportData); // Download my data (NDPA)
 router.post('/me/account/delete', require('../middleware/security').authLimiter, require('../controllers/accountController').remove); // delete my account (password or shop name to confirm)
 router.get('/me/shop-profile', require('../controllers/shopProfileController').get); // Settings → Your shop
 router.put('/me/shop-profile', require('../controllers/shopProfileController').save);

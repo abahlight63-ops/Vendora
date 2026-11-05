@@ -277,6 +277,18 @@ function DeleteAccount({ biz }) {
   const [pw, setPw] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [dl, setDl] = useState(false);
+  async function download() { // my data as a JSON file (NDPA right of access)
+    setDl(true);
+    try {
+      const r = await fetch((import.meta.env.VITE_API_URL || '').replace(/\/$/, '') + '/api/me/export', { credentials: 'include' });
+      if (!r.ok) throw new Error('status ' + r.status);
+      const blob = await r.blob();
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'velosales-my-data-' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    } catch { pop('err', 'Could not download', 'Check your connection and try again, or email velosales63@gmail.com.'); }
+    setDl(false);
+  }
   async function go() {
     setBusy(true);
     const { ok, data } = await api('/api/me/account/delete', { method: 'POST', body: JSON.stringify({ password: pw, confirmName: name }) });
@@ -288,6 +300,10 @@ function DeleteAccount({ biz }) {
     <div className="set-group">
       <h2>Your data</h2>
       <div className="set-rows">
+        <div className="set-row wrap">
+          <div className="set-main"><b>Download my data</b><span>One file with your shop details, products, orders, customers and chats. Access keys are never included.</span></div>
+          <button type="button" className="btn sm ghost" disabled={dl} onClick={download}>{dl ? 'Preparing…' : 'Download'}</button>
+        </div>
         <div className="set-row wrap">
           <div className="set-main"><b>Delete my account</b><span>Removes your shop, products, chats, orders and login for good. Payment records are kept without your details, because tax law requires it. To get a copy of your data first, email velosales63@gmail.com.</span></div>
           {!open && <button type="button" className="btn sm danger" onClick={() => setOpen(true)}>Delete account</button>}

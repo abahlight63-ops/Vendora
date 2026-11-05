@@ -14,7 +14,8 @@ import LoadFailed from '../components/LoadFailed.jsx'; // branded failed card + 
 import Ic from '../components/icons.jsx'; // icons
 import Loader from '../components/Loader.jsx';
 import ReceiptSheet from '../components/ReceiptSheet.jsx'; // Make receipt for this chat
-import { receiptNo } from '../lib/orders.js'; // mini orbit in the Send button
+import { receiptNo } from '../lib/orders.js';
+import { askReview } from '../components/ReviewPrompt.jsx'; // mini orbit in the Send button
 
 export default function Chats() {
   const [convos, setConvos] = useState(null); // null = loading (skeleton rows); [] = loaded, empty inbox
@@ -187,7 +188,7 @@ export default function Chats() {
             </>
           )}
       </section>
-      {receiptFor && <ReceiptSheet conversation={receiptFor} onClose={() => setReceiptFor(null)} onSaved={(order, r) => { setReceiptFor(null); toast(r.sent ? 'Receipt ' + receiptNo(order) + ' sent' : 'Order ' + receiptNo(order) + ' saved. Find it in Orders.'); if (r.sent && thread && thread.id === order.conversation_id) open(thread); }} />}
+      {receiptFor && <ReceiptSheet conversation={receiptFor} onClose={() => setReceiptFor(null)} onSaved={(order, r) => { setReceiptFor(null); toast(r.sent ? 'Receipt ' + receiptNo(order) + ' sent' : 'Order ' + receiptNo(order) + ' saved. Find it in Orders.'); askReview(r.sent ? 'receipt_sent' : 'order_saved', r.sent ? 'Receipt ' + receiptNo(order) + ' sent' : 'Order ' + receiptNo(order) + ' saved'); if (r.sent && thread && thread.id === order.conversation_id) open(thread); }} />}
     </div>
   );
 }

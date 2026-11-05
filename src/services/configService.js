@@ -380,6 +380,17 @@ CREATE TABLE IF NOT EXISTS admin_audit (
 CREATE INDEX IF NOT EXISTS admin_audit_created_idx ON admin_audit (created_at DESC);
 -- Shop profile: everything Velo knows about the shop beyond the catalog (see shopProfile.js).
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS shop_profile JSONB NOT NULL DEFAULT '{}';
+-- In-app reviews from shop owners (see reviewService.js). Never published.
+CREATE TABLE IF NOT EXISTS app_reviews (
+  id SERIAL PRIMARY KEY,
+  business_id INTEGER REFERENCES businesses(id) ON DELETE CASCADE,
+  rating SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  comment TEXT,
+  action TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_app_reviews_created ON app_reviews (created_at DESC);
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS review_asked_at TIMESTAMPTZ;
 -- Consent and marketing choices (NDPA).
 ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ; -- when they ticked "18 or older, agree to Terms and Privacy"
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS marketing_opt_out BOOLEAN NOT NULL DEFAULT false; -- unsubscribed from marketing email

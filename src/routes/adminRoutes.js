@@ -16,6 +16,7 @@ router.post('/console/shops/:id/action', adminController.requireAdmin, adminCons
 router.get('/console/waitlist', adminController.requireAdmin, adminConsole.waitlist);
 router.get('/console/ai', adminController.requireAdmin, adminConsole.aiUsage);
 router.get('/console/activity', adminController.requireAdmin, adminConsole.activity);
+router.get('/console/reviews', adminController.requireAdmin, adminConsole.reviews);
 
 router.get('/businesses', adminController.listBusinesses); // list every business (support view)
 router.get('/businesses/:id', adminController.getBusiness); // inspect one business

@@ -222,6 +222,21 @@ export function AdminWaitlist() {
   );
 }
 
+// ── Reviews from shop owners ──
+export function AdminReviews() {
+  const [d, err, retry] = useLoad('/api/admin/console/reviews');
+  const [low, setLow] = useState(false);
+  if (err) return <Fail msg={err} retry={retry} />;
+  const rows = ((d && d.rows) || []).filter((r) => !low || r.rating <= 2);
+  return (
+    <section className="ad-card">
+      <div className="ad-tools"><b className="ad-title">Reviews from shops{d ? ` · ${d.count}${d.average ? ' · average ' + d.average + ' ★' : ''}` : ''}</b>{d && d.low > 0 && <button type="button" className={'wx-pill' + (low ? ' on' : '')} onClick={() => setLow(!low)}>Only 1 and 2 stars ({d.low})</button>}</div>
+      {!d ? <Skel h={80} /> : rows.length === 0 ? <p className="ad-note">No reviews yet. Shops are asked after a win, at most once every 14 days.</p>
+        : rows.map((r) => <div key={r.id} className="ad-log"><span className="ad-ic gold" aria-hidden="true">{r.rating}★</span><div><b>{r.shop || 'Deleted shop'}{r.action ? ' · after ' + r.action.toLowerCase() : ''}</b><small>{r.comment || 'No comment'}</small></div><small>{when(r.created_at)}</small></div>)}
+    </section>
+  );
+}
+
 // ── Activity log ──
 export function AdminActivity() {
   const [d, err, retry] = useLoad('/api/admin/console/activity');

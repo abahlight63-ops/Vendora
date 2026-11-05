@@ -10,6 +10,7 @@ import Loader from '../components/Loader.jsx';
 import Ic from '../components/icons.jsx';
 import { CHANNEL_COINS } from '../lib/channelLogos.js';
 import { when } from '../lib/orders.js';
+import { askReview } from '../components/ReviewPrompt.jsx';
 
 let coinN = 0;
 function Coin({ ch, s = 24 }) {
@@ -66,6 +67,7 @@ export default function Broadcasts() {
     setBusy(false);
     if (!ok) return pop('err', 'Broadcast not sent', (data && data.error) || 'Check your connection and try again.');
     toast('Sending to ' + reachNow + (reachNow === 1 ? ' person' : ' people') + '. It shows in each chat too.');
+    askReview('broadcast_sent', 'Broadcast on its way to ' + reachNow + (reachNow === 1 ? ' person' : ' people'));
     setMsg(''); setTpl('');
     loadHistory();
     api(`/api/me/broadcasts/preview?audience=${aud}&channel=${ch}`).then(({ ok: k, data: d }) => { if (k) setPv(d); });

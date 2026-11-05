@@ -15,5 +15,6 @@ module.exports = {
   action: wrap(async (req, res) => res.json({ ok: true, message: await consoleService.action(req.params.id, req.body || {}) })),
   waitlist: wrap(async (req, res) => res.json({ rows: await consoleService.waitlist() })),
   aiUsage: wrap(async (req, res) => res.json(await consoleService.aiUsage(req.query.days))),
+  reviews: wrap(async (req, res) => res.json(await require('../services/reviewService').adminList())),
   activity: wrap(async (req, res) => res.json({ rows: await consoleService.activity() })),
 };

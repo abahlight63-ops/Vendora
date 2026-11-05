@@ -309,6 +309,28 @@ export default function Connect() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ?fix=telegram | ?fix=whatsapp from a notification: land on that channel's
+  // card, highlight it and run its live check so the real problem shows at once.
+  const fixTried = useRef(false);
+  useEffect(() => {
+    if (fixTried.current || !st) return;
+    let which = null;
+    try { which = new URLSearchParams(window.location.search).get('fix'); } catch {}
+    if (which !== 'telegram' && which !== 'whatsapp') return;
+    fixTried.current = true;
+    try { window.history.replaceState({}, '', window.location.pathname); } catch {}
+    setRoad(null);
+    setTimeout(() => {
+      const el = document.getElementById(which === 'telegram' ? 'ch-tg' : 'ch-meta');
+      const card = el && el.closest('.ch-card');
+      if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.classList.add('ch-flash'); setTimeout(() => card.classList.remove('ch-flash'), 4000); }
+    }, 60);
+    if (which === 'telegram' && st.telegram && st.telegram.connected) tgHealthCheck(false);
+    else if (which === 'whatsapp' && st.whatsapp && st.whatsapp.metaConnected) waHealthCheck();
+    else if (which === 'telegram') toast('Telegram is not connected. Pick a way to connect it below.');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [st]);
+
   function back() { // Back button: step back, or road picker at step 1
     if (step > 1) setStep(step - 1);
     else { setRoad(null); setStep(1); }

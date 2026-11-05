@@ -196,8 +196,9 @@ function startChannelWatchdog() {
             if (!m.ok) {
               await notify.notify(s.id, {
                 title: 'Your WhatsApp channel needs attention',
-                body: 'We could not reach your connected number (expired token is the usual cause — paste a fresh permanent token in Connect). Your bot is paused until then.',
-                link: '/connect',
+                body: 'We could not reach your connected WhatsApp number, so customers may not be getting replies. The usual cause is an expired Meta connection. Tap to open Channels and reconnect with Facebook.',
+                link: '/connect?fix=whatsapp',
+                dedupeHours: 72,
               });
             }
           }
@@ -216,7 +217,8 @@ function startChannelWatchdog() {
                 await notify.notify(s.id, { // honest, specific: the outage happened and we fixed it
                   title: 'Telegram connection repaired',
                   body: `Your bot had lost its delivery hook after a server change — we re-registered it. Your bot works again; nothing you typed was lost.`,
-                  link: '/connect',
+                  link: '/connect?fix=telegram',
+                  dedupeHours: 72,
                 });
               }
               continue; // healed or already correct → no alarm
@@ -226,9 +228,10 @@ function startChannelWatchdog() {
               await notify.notify(s.id, {
                 title: 'Your Telegram channel needs attention',
                 body: t.reason === 'token:rejected' || t.reason === 'token'
-                  ? 'Telegram refused your bot token (revoked or regenerated in BotFather). Re-save the token in Connect → Telegram and message the bot to verify.'
-                  : 'We could not re-register your bot\'s delivery hook and Telegram is not reaching the server. Re-save the token in Connect → Telegram, or tell support if it fails again.',
-                link: '/connect',
+                  ? 'Telegram refused your bot token (it was revoked or changed in BotFather). Tap to open Channels, then paste the new token from BotFather (/token) under Telegram.'
+                  : 'We could not re-register your bot\'s delivery hook and Telegram is not reaching the server. Tap to open Channels and press Repair now, or re-save the token.',
+                link: '/connect?fix=telegram',
+                dedupeHours: 72,
               });
             }
           }
@@ -236,7 +239,8 @@ function startChannelWatchdog() {
       }
     } catch (e) { console.error('channel watchdog error:', e.message); }
   };
-  setInterval(check, 24 * 60 * 60 * 1000); // daily rounds (first round 24h after boot — fresh deploys never spam!)
+  setTimeout(check, 15 * 60 * 1000); // first round 15 minutes after boot (a broken channel shows up the same day)
+  setInterval(check, 6 * 60 * 60 * 1000); // then every 6 hours; each warning repeats at most every 3 days (dedupeHours)
 }
 // One pass at boot: encrypt Meta access keys and Telegram bot tokens saved in plain text.
 async function sealOldKeys() {

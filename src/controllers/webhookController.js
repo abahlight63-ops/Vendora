@@ -398,8 +398,8 @@ async function handleInbound(req, res) {
         try {
           await require('../services/notifyService').notify(business.id, {
             title: `Reply failed to send — ${ProfileName || From}`,
-            body: `The AI wrote a reply but ${metaCtx ? 'WhatsApp' : 'Telegram'} rejected it. Open Chats to retry.`,
-            link: '/chats',
+            body: `Velo wrote a reply but ${metaCtx ? 'WhatsApp' : 'Telegram'} did not deliver it. Tap to open the chat and send it yourself. If this keeps happening, check ${metaCtx ? 'WhatsApp' : 'Telegram'} in Channels.`,
+            link: `/chats?c=${customerId}`,
           });
         } catch (e) { console.error('send-fail bell error:', e.message); } // bell failing must never break the webhook!
       } else { // delivered → count + unflag as before
@@ -425,8 +425,8 @@ async function handleInbound(req, res) {
             const what = (o.items || []).map((l) => `${l.qty} × ${l.name}`).join(', ');
             await require('../services/notifyService').notify(business.id, {
               title: `${d.updated ? 'Velo updated a draft order' : 'Velo drafted an order'}: ${ProfileName || 'a customer'}`,
-              body: `${what} · ${orderService.money(o.total, o.currency)}. Check it in Orders, then mark it paid or send the receipt.`,
-              link: '/orders',
+              body: `${what} · ${orderService.money(o.total, o.currency)}. Tap to check it, then mark it paid or send the receipt.`,
+              link: `/orders?o=${o.id}`,
             });
           }
         } catch (e) { console.error('auto draft order error:', e.message); }
@@ -449,8 +449,8 @@ async function handleInbound(req, res) {
       try { // in-app bell (the owner SEES it: gold-flagged chat waiting in Chats + this bell card linking straight there!)
         await require('../services/notifyService').notify(business.id, {
           title: result.paymentProof ? `Payment to confirm — ${ProfileName || From}` : `Customer needs you — ${ProfileName || From}`,
-          body: `"${String(Body || '').slice(0, 140)}" — ${result.reason || 'the AI handed this chat to you'}. Open Chats to reply.`,
-          link: '/chats',
+          body: `"${String(Body || '').slice(0, 140)}" — ${result.reason || 'the AI handed this chat to you'}. Tap to open the chat and reply.`,
+          link: `/chats?c=${customerId}`,
         });
       } catch (e) { console.error('handoff bell error:', e.message); } // bell failing must never break the webhook!
     }

@@ -44,11 +44,23 @@ export default function Chats() {
   useEffect(() => { // mount + retry (tries in deps!) + auto-retry when back online
     let dead = false; // unmount guard (slow networks + fast navigation!)
     load();
-    const onOnline = () => { if (!dead && failed) setTries((t) => t + 1); }; // internet's back? reload without a tap!
+    const onOnline = () => { if (!dead) load(); }; // internet's back? reload without a tap (reads fresh state, never a stale 'failed')
     window.addEventListener('online', onOnline);
     return () => { dead = true; window.removeEventListener('online', onOnline); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tries]);
+  const deepLinked = useRef(false); // ?c=<chat id> from a notification: open that chat once the list is in
+  useEffect(() => {
+    if (deepLinked.current || !Array.isArray(convos)) return;
+    let id = null;
+    try { id = new URLSearchParams(window.location.search).get('c'); } catch {}
+    if (!id) return;
+    deepLinked.current = true;
+    try { window.history.replaceState({}, '', window.location.pathname); } catch {}
+    const c = convos.find((x) => String(x.id) === String(id));
+    if (c) open(c); else toast('That chat is no longer in your inbox.', 'err');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convos]);
   async function open(c) { // open thread: show instantly + spinner messages → fill when fetch lands
     setThread(c); setMsgs(null); setDraft('');
     if (window.innerWidth <= 760) window.scrollTo({ top: 0 }); // phone: the thread starts at its header, not mid-list

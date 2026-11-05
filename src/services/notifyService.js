@@ -27,9 +27,16 @@ function personalize(text, name) {
 
 // One owner. Fire-and-forget safe: failures only log (a notification must
 // never break the payment flow that triggered it).
-async function notify(businessId, { title, body, link, image_url, video_url }) {
+async function notify(businessId, { title, body, link, image_url, video_url, dedupeHours }) {
   if (!businessId) return null;
   try {
+    if (Number(dedupeHours) > 0) { // same problem already told recently? stay quiet (no daily repeats of one warning)
+      const { rows: dup } = await db.query(
+        'SELECT 1 FROM notifications WHERE business_id = $1 AND title = $2 AND created_at >= now() - make_interval(hours => $3) LIMIT 1',
+        [Number(businessId), String(title || '').slice(0, 120), Math.round(Number(dedupeHours))]
+      );
+      if (dup.length) return null;
+    }
     const { rows } = await db.query(
       `INSERT INTO notifications (business_id, title, body, link, image_url, video_url)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, title, body, link, image_url, video_url, is_read, created_at`,

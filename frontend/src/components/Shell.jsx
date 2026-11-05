@@ -12,7 +12,7 @@ import { api, toast } from '../lib/api.js'; // api() for the logout call (+ vers
 import ThemeToggle from './ThemeToggle.jsx'; // sun/moon button (topbar — light mode for sensitive eyes!)
 import Notifications from './Notifications.jsx'; // bell (payment + update alerts)
 import Tour from './Tour.jsx'; // first-run coachmarks (mounted once here = available everywhere)
-const MAIN = [['overview', 'Home', '/dashboard'], ['chats', 'Inbox', '/chats'], ['orders', 'Orders', '/orders'], ['broadcasts', 'Broadcasts', '/broadcasts'], ['catalog', 'Catalog', '/catalog'], ['connect', 'Channels', '/connect'], ['insights', 'Insights', '/insights']]; // the five daily jobs (same words on the phone)
+const MAIN = [['overview', 'Home', '/dashboard'], ['chats', 'Inbox', '/chats'], ['bell', 'Notifications', '/notifications'], ['orders', 'Orders', '/orders'], ['broadcasts', 'Broadcasts', '/broadcasts'], ['catalog', 'Catalog', '/catalog'], ['connect', 'Channels', '/connect'], ['insights', 'Insights', '/insights']]; // the five daily jobs (same words on the phone)
 const MORE = [['billing', 'Plan and usage', '/billing'], ['playground', 'Test Drive', '/playground'], ['velosalesai', 'Chat with Velo', '/velosales-ai'], ['gift', 'Refer & Earn', '/refer-earn'], ['settings', 'Settings', '/settings'], ['help', 'Help Center', '/help']]; // everything else, one tap behind More
 const ALL = [...MAIN, ...MORE]; // all pages in one array (page search)
 const TITLES = { '/dashboard': 'Home', '/chats': 'Inbox', '/orders': 'Orders', '/broadcasts': 'Broadcasts', '/catalog': 'Catalog', '/connect': 'Channels', '/playground': 'Test Drive', '/insights': 'Insights', '/velosales-ai': 'Chat with Velo', '/refer-earn': 'Refer & Earn', '/billing': 'Plan and usage', '/profile': 'Business profile', '/ai-settings': 'AI settings', '/settings': 'Settings', '/help': 'Help Center', '/notifications': 'Notifications', '/contact-sales': 'Business plan', '/onboarding': 'Get started', '/login': 'Sign in' }; // object lookup: path → human title (topbar breadcrumb + document.title)
@@ -36,6 +36,7 @@ function Icon({ k }) { // tiny inline SVG set (stroke = inherits text color; no 
   if (k === 'chev') return (<svg {...p} width="16" height="16"><path d="M6 9l6 6 6-6" /></svg>); // More opens downward
   if (k === 'x') return (<svg {...p}><path d="M18 6L6 18M6 6l12 12" /></svg>); // close (drawer + dialogs — drawn, never a text glyph)
   if (k === 'logout') return (<svg {...p}><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><path d="M10 16l4-4-4-4" /><path d="M14 12H3" /></svg>); // door + arrow leaving it (sign out — never a bare X, which reads "close panel")
+  if (k === 'bell') return (<svg {...p}><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0" /></svg>); // bell (Notifications page)
   if (k === 'gift') return (<svg {...p}><rect x="3" y="8" width="18" height="4" rx="1" /><path d="M12 8v13M5 12v9h14v-9M12 8s-1.5-5-4.5-5S5 8 12 8zM12 8s1.5-5 4.5-5S19 8 12 8z" /></svg>); // gift box (Refer & Earn!)
   return (<svg {...p}><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 0 1 5 .2c0 1.7-2.5 2-2.5 3.6M12 17h.01" /></svg>); // default = help "?" (unknown keys never render broken)
 }
@@ -73,6 +74,8 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
   const [menuOpen, setMenuOpen] = useState(false); // mobile drawer open? (desktop sidebar always visible via CSS)
   const inMore = MORE.some(([, , href]) => href === pathname); // the current page lives under More, so More stays open
   const [moreOpen, setMoreOpen] = useState(false); // the owner opened More by hand
+  const [unread, setUnread] = useState(0); // sidebar badge: the bell broadcasts its unread count (one poll for both)
+  useEffect(() => { const on = (e) => setUnread(Number(e.detail) || 0); window.addEventListener('velo-unread', on); return () => window.removeEventListener('velo-unread', on); }, []);
   const [confirmOut, setConfirmOut] = useState(false); // the sign-out confirmation (one tap away from losing your chat list)
   const [updateBanner, setUpdateBanner] = useState(null); // {version} while the 2-min NEW window is open (null = hidden!)
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine)); // the browser's own network verdict (instant, no polling)
@@ -129,7 +132,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
   } // logout() = server destroy + local clear + go to login (all three, every time)
   const safeName = biz?.name || 'Your business'; // ?. + || : biz may load late — never render "undefined"
   const initial = (safeName.trim()[0] || 'V').toUpperCase(); // avatar letter: first char uppercased ([0] = first character)
-  const mobile = MAIN.filter(([k]) => k !== 'insights' && k !== 'orders' && k !== 'broadcasts'); // bottom bar: four jobs + More (Orders and Insights sit in the drawer on phones)
+  const mobile = MAIN.filter(([k]) => k !== 'insights' && k !== 'orders' && k !== 'broadcasts' && k !== 'bell'); // the bell sits in the phone's topbar already // bottom bar: four jobs + More (Orders and Insights sit in the drawer on phones)
   const showMore = moreOpen || inMore || menuOpen; // the phone's drawer always shows everything
   const moreActive = inMore || pathname === '/insights' || pathname === '/orders' || pathname === '/broadcasts'; // the bar's More lights up for anything behind it
   return (
@@ -140,7 +143,7 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
           <div className="logo"><Logo alt="VeloSales Ai" /><span>VeloSales Ai</span>
             <button className="drawer-close" onClick={() => setMenuOpen(false)} aria-label="Close menu"><Icon k="x" /></button> {/* drawn X, mobile only (CSS) */}
           </div>
-          <nav aria-label="Main">{MAIN.map(([k, label, href]) => (<NavLink key={k} to={href} onClick={() => setMenuOpen(false)}><Icon k={k} /><span>{label}</span></NavLink>))}</nav>
+          <nav aria-label="Main">{MAIN.map(([k, label, href]) => (<NavLink key={k} to={href} onClick={() => setMenuOpen(false)}><Icon k={k} /><span>{label}</span>{k === 'bell' && unread > 0 && <em className="nav-count" aria-label={unread + ' unread'}>{unread > 99 ? '99+' : unread}</em>}</NavLink>))}</nav>
           <button className="nav-more-btn" aria-expanded={showMore} onClick={() => setMoreOpen((v) => !v)}><Icon k="more" /><span>More</span><span className="chev"><Icon k="chev" /></span></button>
           {showMore && <nav aria-label="More">{MORE.map(([k, label, href]) => (<NavLink key={k} to={href} onClick={() => setMenuOpen(false)}><Icon k={k} /><span>{label}</span></NavLink>))}</nav>}
           {biz && biz.tier !== 'plus' && (

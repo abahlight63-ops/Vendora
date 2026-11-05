@@ -20,51 +20,6 @@ import { money } from '../lib/money.js'; // money(n, 'NGN'|'USD') formatter
 import Ic from '../components/icons.jsx'; // check icons
 import Loader from '../components/Loader.jsx'; // mini orbit in the pay button
 
-const PRO_FEATS = [ // Pro tier: the full salesperson (same for monthly + yearly — ONE tier, two prices!)
-  '1,500 AI replies a day, Pidgin + English',
-  'Suggestive selling — up to 5 options per answer',
-  'Product photos inside WhatsApp + Telegram replies',
-  'Instant owner alerts for hot orders',
-  'Full inbox + chat history',
-  'ComeBack follow-ups for abandoned buyers',
-  'Catalog LEARN mode from WhatsApp',
-  'Profile sync + verified products',
-  'Insights: handled %, peak hours',
-];
-
-const PLUS_EXTRAS = [ // Pro Plus: everything in Pro, PLUS these (voice + heavy models + queue jump)
-  'Voice-note transcription (Whisper AI)',
-  '2 heavy-work modes (Smart + Normal)',
-  'Priority support — jump the queue',
-];
-
-const FREE_FEATS = [ // Free forever: the honest starter (bot NEVER pauses — manual catalog keeps replying!)
-  'AI replies from products you add or teach',
-  'Catalog LEARN mode from WhatsApp',
-  'Full inbox + chat history',
-  'Instant owner alerts for hot orders',
-  '50 bot replies per day',
-];
-
-// Compare-plans rows: [label, free, pro, plus] — true = check, false = dash,
-// string = exact cell text. Keep in sync with PRO_FEATS/PLUS_EXTRAS above!
-const COMPARE_ROWS = [
-  ['Price', '₦0 forever', 'Paid monthly/yearly', 'Paid monthly/yearly'],
-  ['AI replies from your manual catalog', true, true, true],
-  ['Teach with LEARN: messages', true, true, true],
-  ['Full inbox + chat history', true, true, true],
-  ['Hot-order owner alerts', true, true, true],
-  ['Bot replies per day', '50', '500', '1,500'],
-  ['Profile sync + verified products', false, true, true],
-  ['Product photos inside replies', false, true, true],
-  ['Suggestive selling (up to 5 options)', false, true, true],
-  ['ComeBack abandoned-buyer follow-ups', false, true, true],
-  ['Insights: handled %, peak hours', false, true, true],
-  ['Voice-note transcription', false, false, true],
-  ['Heavy work modes (Smart + Normal)', false, false, true],
-  ['Priority support', false, false, true],
-];
-
 const FALLBACK_PLANS = { // display defaults while /api/me/billing loads (MUST match server defaults! backend remains the real truth)
   currency: 'NGN',
   pro: {
@@ -172,56 +127,6 @@ export default function Billing() {
   const renewal = status === 'active' ? fmtDate(bill?.expires) : status === 'trialing' ? fmtDate(bill?.trial_ends) : '—'; // what the date actually means depends on where you are
   const allowance = bill?.tier === 'plus' ? '1,500 per day' : bill?.tier === 'pro' ? '500 per day' : '50 per day'; // the real per-tier reply cap (matches the server)
   const history = Array.isArray(bill?.history) ? bill.history : Array.isArray(bill?.invoices) ? bill.invoices : []; // only rows the server truly sent
-
-  const freeCard = () => { // FREE tier card (₦0/$0 — no checkout exists; cancelling = just stop paying!)
-    const label = status === 'active' ? 'Paid plan active — free is your fallback'
-      : status === 'trialing' ? 'Free waits for you after the trial'
-      : 'Current plan'; // expired/never-paid → free IS the plan (bot keeps replying!)
-    return (
-      <div className={'plan' + (bill && !bill.tier ? ' on-plan' : '')}>
-        <span className="plan-badge" style={{ background: 'linear-gradient(135deg,#128c4a,#0b6b38)' }}>FREE FOREVER</span>
-        <h2>Free</h2>
-        <p className="desc">The honest starter — your bot never stops replying.</p>
-        <div className="plan-price">{money(0, cur)}<small>/forever</small></div>
-        <ul className="plan-feats">{FREE_FEATS.map((f) => (<li key={f}><Ic n="checkCircle" s={15} /><span>{f}</span></li>))}</ul>
-        <button className="btn ghost" disabled>{label}</button> {/* disabled = no action to take (free needs no checkout, no cancel button!) */}
-      </div>
-    );
-  };
-
-  const compareCell = (v) => { // true → check icon; false → dash; string → exact text
-    if (v === true) return <Ic n="checkCircle" s={16} />;
-    if (v === false) return <span style={{ color: 'var(--faint)' }}>—</span>;
-    return <span>{v}</span>;
-  };
-
-  const statusLine = !bill ? 'Loading…' // 4-way status message (reads like a human wrote each one):
-    : status === 'active' ? `Pro active until ${fmtDate(bill.expires)}. Profile sync, photos + priority support on.` // backticks interpolate the date
-    : status === 'trialing' ? (trialLeft != null && trialLeft > 0
-      ? `Pro trial: ${trialLeft} day${trialLeft === 1 ? '' : 's'} left (ends ${fmtDate(bill.trial_ends)}). Pick Pro or Pro Plus to keep it — manual catalog stays free forever.`
-      : `Pro trial ends ${fmtDate(bill.trial_ends)}. Pick Pro or Pro Plus to keep it — manual catalog stays free forever.`)
-    : status === 'pending' ? 'Payment received — activation in progress. Check back in a moment.'
-    : 'Free plan — your bot keeps replying from your manual catalog. Upgrade to Pro for profile sync + photos.'; // expired/anything-else → free reassurance (bot NEVER pauses!)
-
-  const tierCard = (tierKey, tier, isHot, badge) => { // ONE renderer for both tiers (tierKey 'pro'|'plus', tier {monthly, yearly})
-    const price = tier[period]; // selected period's price object
-    const planKey = `${tierKey}_${period}`; // backend plan key: pro_monthly, pro_yearly, plus_monthly, plus_yearly
-    const feats = tierKey === 'plus' ? [...PRO_FEATS.slice(0, 4), ...PLUS_EXTRAS, ...PRO_FEATS.slice(4)] : PRO_FEATS; // Plus shows Pro core + extras inline (no "see above" hunting!)
-    const onPlan = !!(bill && bill.tier === tierKey && status === 'active'); // already paying for THIS tier?
-    return (
-      <div className={'plan' + (isHot ? ' hot' : '') + (onPlan ? ' on-plan' : '')}> {/* .hot = highlighted border + badge (CSS); .on-plan = where you already are */}
-        {onPlan ? <span className="plan-badge on">YOUR PLAN</span> : badge && <span className="plan-badge">{badge}</span>}
-        <h2>{tierKey === 'plus' ? 'Pro Plus' : 'Pro'}</h2>
-        <p className="desc">{tierKey === 'plus' ? 'Voice notes, heavy work models, full speed.' : 'The full AI salesperson for your shop.'}</p>
-        <div className="plan-price">{amt(price)}<small>/{period === 'monthly' ? 'month' : 'year'}</small></div>
-        {period === 'yearly' && price?.save_pct != null && ( // save pill ONLY on yearly (monthly has nothing to save vs itself!)
-          <span className="plan-save">Save {money(price.save, cur)} — {price.save_pct}% off monthly</span> // server-computed save + pct (NGN 22%/33%, USD mirrors!)
-        )}
-        <ul className="plan-feats">{feats.map((f) => (<li key={f}><Ic n="checkCircle" s={15} /><span>{f}</span></li>))}</ul>
-        <button className={'btn' + (isHot ? '' : ' ghost')} disabled={!!busy} onClick={() => openCheckout(planKey, c.name, price)}>{busy === planKey ? (<><Loader size={15} />Starting…</>) : status === 'active' ? `Extend ${tierKey === 'plus' ? 'Pro Plus' : 'Pro'} ${period}` : `${amt(price)}/${period === 'monthly' ? 'month' : 'year'} — ${tierKey === 'plus' ? 'Pro Plus' : 'Pro'}`}</button>
-      </div>
-    );
-  };
 
   if (!bill) return (
     <>

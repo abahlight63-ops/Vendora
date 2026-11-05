@@ -37,7 +37,7 @@ export class PageBoundary extends Component {
     if (!this.state.failed) return this.props.children;
     return (
       <div className="page"><div className="lf lf-error" role="alert">
-        <div className="lf-art" aria-hidden="true"><span className="lf-ring" /><span className="lf-ring r2" /><span className="lf-orb" /><svg className="lf-ic" width="40" height="40" viewBox="0 0 24 24"><path fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 9v4M12 17h.01M10.3 3.9 2.2 18a2 2 0 0 0 1.7 3h16.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg></div>
+        <div className="lf-art" aria-hidden="true"><span className="lf-ring" /><span className="lf-tile"><svg className="lf-ic" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 2.2 18a2 2 0 0 0 1.7 3h16.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg></span></div>
         <span className="lf-tag">Something went wrong</span>
         <h2>This page did not open</h2>
         <p>Nothing is lost. Tap Try again; if it keeps happening, tell us from Help and we will fix it.</p>

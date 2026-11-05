@@ -71,7 +71,11 @@ export default function Orders() {
       setFailed(null);
       setOrders(o.data.orders || []);
       if (s.ok) setSum(s.data);
-      setSelId((id) => id || (o.data.orders[0] && o.data.orders[0].id) || null);
+      let want = null; // ?o=<order id> from a notification (Velo drafted an order) selects it
+      try { want = new URLSearchParams(window.location.search).get('o'); } catch {}
+      const hit = want && o.data.orders.find((x) => String(x.id) === String(want));
+      if (hit) { try { window.history.replaceState({}, '', window.location.pathname); } catch {} setSelId(hit.id); setPhoneOpen(true); }
+      else setSelId((id) => id || (o.data.orders[0] && o.data.orders[0].id) || null);
     } catch (e) { setFailed({ status: 0, detail: describeNetError(e) }); setOrders((x) => x || []); }
   }
   useEffect(() => {

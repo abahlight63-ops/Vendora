@@ -1,30 +1,23 @@
 // ── frontend/src/components/Notifications.jsx ────────────────────
-// WHAT: the topbar bell — unread badge + dropdown panel of the latest
-// notifications (payment verifications, app updates). Polls every 60s,
-// toasts on NEW arrivals, marks all read on open. Touch-friendly + mobile
-// bottom-sheet positioned via CSS.
+// WHAT: the topbar bell — unread badge; a tap opens the Notifications page,
+// where each notice takes you straight to the problem it is about.
+// Polls every 60s, toasts on NEW arrivals, and shares the unread count with
+// the sidebar (window event 'velo-unread'). The page fires
+// 'velo-notifs-changed' after it marks things read, so the badge refreshes.
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, toast } from '../lib/api.js';
 import Ic from './icons.jsx'; // drawn bell glyph (never an emoji!)
 
 export default function Notifications() {
-  const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
-  const [open, setOpen] = useState(false);
-  const [, setTick] = useState(0); // re-render ticker: NEW pills expire live without reload!
-  const wrap = useRef(null);
   const seen = useRef(null); // first-load guard: don't toast history as "new"
   const nav = useNavigate();
 
-  const NEW_MS = 2 * 60 * 1000; // NEW tag lifespan (2 minutes from created_at!)
-  function isNew(n) { // fresh enough for the NEW pill? (bad dates → false, never crash!)
-    const t = new Date(n && n.created_at).getTime();
-    return Number.isFinite(t) && (Date.now() - t) < NEW_MS;
-  }
-
   async function load(silent) {
-    const { ok, data } = await api('/api/me/notifications');
+    let res;
+    try { res = await api('/api/me/notifications'); } catch { return; } // offline: keep the last count
+    const { ok, data } = res || {};
     if (!ok || !data) return;
     const list = Array.isArray(data.items) ? data.items : [];
     if (seen.current === null) {
@@ -34,67 +27,26 @@ export default function Notifications() {
       seen.current = list[0].id;
       if (fresh.length) toast(fresh[0].title || 'New notification', 'ok');
     }
-    setItems(list);
-    setUnread(Number(data.unread) || 0);
+    const n = Number(data.unread) || 0;
+    setUnread(n);
+    window.dispatchEvent(new CustomEvent('velo-unread', { detail: n }));
   }
 
   useEffect(() => {
     load(true);
     const t = setInterval(() => { if (!document.hidden) load(false); }, 60000);
-    const tick = setInterval(() => setTick((x) => x + 1), 15000); // expire NEW pills on time (cheap render, no fetch!)
-    return () => { clearInterval(t); clearInterval(tick); };
+    const changed = () => load(true); // the page marked something read → refresh the badge
+    window.addEventListener('velo-notifs-changed', changed);
+    return () => { clearInterval(t); window.removeEventListener('velo-notifs-changed', changed); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (!open) return;
-    function onDoc(e) { if (wrap.current && !wrap.current.contains(e.target)) setOpen(false); }
-    function onKey(e) { if (e.key === 'Escape') setOpen(false); }
-    document.addEventListener('mousedown', onDoc);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
-  }, [open ]);
-
-  async function toggle() {
-    const next = !open;
-    setOpen(next);
-    if (next && unread > 0) {
-      await api('/api/me/notifications/read', { method: 'POST' });
-      setUnread(0);
-      setItems((xs) => xs.map((x) => ({ ...x, is_read: true })));
-    }
-  }
-
-  function go(n) {
-    setOpen(false);
-    nav(`/notifications/${n.id}`); // full page (photo/video + long body + Open button!) — never a bare link jump
-  }
-
   return (
-    <div className="nbell" ref={wrap}>
-      <button className={'nbell-btn' + (unread > 0 ? ' has-unread' : '')} onClick={toggle} aria-label={unread ? `${unread} unread notifications` : 'Notifications'} aria-expanded={open}>
+    <div className="nbell">
+      <button className={'nbell-btn' + (unread > 0 ? ' has-unread' : '')} onClick={() => nav('/notifications')} aria-label={unread ? `${unread} unread notifications` : 'Notifications'}>
         <span className="nbell-ic"><Ic n="bell" s={20} /></span>
         {unread > 0 && <span className="nbell-badge">{unread > 9 ? '9+' : unread}</span>}
       </button>
-      {open && (
-        <div className="nbell-pop" role="dialog" aria-label="Notifications">
-          <div className="nbell-head"><b>Notifications</b>{unread > 0 && <span className="pill info">{unread} new</span>}</div>
-          {items.length === 0 && <div className="nbell-empty">All caught up<span>Payment verifications and app updates will land here.</span></div>}
-          {items.map((n) => (
-            <button key={n.id} className={'nbell-item' + (n.is_read ? '' : ' fresh')} onClick={() => go(n)}>
-              <span className="nbell-dot" />
-              {n.image_url ? <img src={n.image_url} alt="" loading="lazy" width="44" height="44" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 10, flex: '0 0 auto' }} onError={(e) => { e.target.style.display = 'none'; }} /> : null}
-              <span className="nbell-main">
-                <b>{n.title} {isNew(n) && <span className="pill new">NEW</span>}</b>
-                {n.video_url && !n.image_url ? <span className="pill" style={{ fontSize: 11 }}>Has video</span> : null}
-                {n.body ? <span>{String(n.body).slice(0, 140)}{String(n.body).length > 140 ? '… tap to read all' : ''}</span> : null}
-                <i>{new Date(n.created_at).toLocaleString()}</i>
-              </span>
-            </button>
-          ))}
-          {items.length > 0 && <button className="mini-link" style={{ margin: '4px auto 6px', display: 'block' }} onClick={() => { setOpen(false); nav('/notifications'); }}>See all notifications</button>}
-        </div>
-      )}
     </div>
   );
 }

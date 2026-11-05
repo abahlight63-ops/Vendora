@@ -17,7 +17,7 @@ import OtpGlass from '../components/OtpGlass.jsx'; // glassy 6-digit code (type,
 import { setPageMeta, APP_URL } from '../lib/seo.js';
 import { CHANNEL_COINS } from '../lib/channelLogos.js'; // the real WhatsApp logo on the photo // title + description + canonical
 
-function GoogleButton({ busy, setBusy, fail, afterAuth, setMe, setOtpEmail, switchMode, setMsg, setMsgErr }) { // "Continue with Google" (GIS button + full flow: session OR one-tap business form OR OTP screen). Props drilled from Login (shared busy/fail/afterAuth = consistent UX!).
+function GoogleButton({ busy, setBusy, fail, afterAuth, setMe, setOtpEmail, setOtpPurpose, switchMode, setMsg, setMsgErr }) { // "Continue with Google" (GIS button + full flow: session OR one-tap business form OR OTP screen). Props drilled from Login (shared busy/fail/afterAuth = consistent UX!).
   const [gBusy, setGBusy] = useState(false); // google in-flight (separate from form busy — both lock!)
   const [needBiz, setNeedBiz] = useState(null); // null = no form; {email, name, credential} = Google user WITHOUT VeloSales Ai account (one-tap creation form!)
   const [g, setG] = useState({ name: '', wa: '', hours: '', ref: '' }); // mini business form (name + number + hours + optional referral code — email comes from Google!)
@@ -359,7 +359,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
           </div>
           <h1>{mode === 'login' ? 'Welcome back' : 'Create your account'}</h1> {/* ternaries everywhere = one form, two personalities */}
           <p className="switch-note">{mode === 'login' ? 'Sign in to see your chats, catalog and replies.' : 'Free for 7 days with Pro, then keep the free plan. No card needed.'}</p>
-          {(mode === 'login' || mode === 'signup') && <GoogleButton busy={busy} setBusy={setBusy} fail={fail} afterAuth={afterAuth} setMe={setMe} setOtpEmail={setOtpEmail} switchMode={switchMode} setMsg={setMsg} setMsgErr={setMsgErr} />} {/* social login ABOVE the form (reference order: the quick way first, then the long one) */}
+          {(mode === 'login' || mode === 'signup') && <GoogleButton busy={busy} setBusy={setBusy} fail={fail} afterAuth={afterAuth} setMe={setMe} setOtpEmail={setOtpEmail} setOtpPurpose={setOtpPurpose} switchMode={switchMode} setMsg={setMsg} setMsgErr={setMsgErr} />} {/* social login ABOVE the form (reference order: the quick way first, then the long one) */}
           {mode === 'signup' && (<> {/* && conditional BLOCK: signup-only fields (fragment groups 3 field sets without wrapper div!) */}
             <label>Business name</label><input value={f.name} onChange={set('name')} placeholder="Amaka Beauty Studio" autoComplete="organization" /> {/* autoComplete hints = browser autofill + password managers work (UX + a11y!) */}
             <label>Business WhatsApp</label><input value={f.wa} onChange={set('wa')} onBlur={() => { const n = normalizePhone(f.wa); if (n) setF({ ...f, wa: prettyPhone(n) }); }} placeholder="0803 123 4567" spellCheck="false" inputMode="tel" /> {/* onBlur pretty-prints ("0803…" → "0803 123 4567"); inputMode="tel" = phone keyboard on mobile! */}

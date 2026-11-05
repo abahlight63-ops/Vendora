@@ -322,6 +322,12 @@ async function handlePaystackWebhook(req, res) {
   if (event.event === 'charge.failed') { // card declined/abandoned → gentle recovery email (no charge was made!)
     const { business_id, kind } = event.data.metadata || {};
     if (business_id) {
+      require('../services/notifyService').notify(Number(business_id), { // bell too, so it is seen without opening email
+        title: "Your payment didn't go through",
+        body: `No money was taken. ${event.data.gateway_response ? 'Your bank said: ' + String(event.data.gateway_response).slice(0, 120) + '. ' : ''}Tap to try again, or pick another way to pay.`,
+        link: '/billing',
+        dedupeHours: 6,
+      }).catch(() => {});
       const mail = require('../services/emailTemplates');
       mail.ownerContact(business_id).then((c) => {
         if (!c) return null;

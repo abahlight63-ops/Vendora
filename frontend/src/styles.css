@@ -4398,3 +4398,38 @@ svg[fill="none"][stroke="currentColor"]:not(.no-duo) { fill: currentColor; fill-
 .fr-x:hover { background: var(--line-soft, rgba(0,0,0,0.06)); color: var(--ink); }
 .fr-more { margin: 6px 4px 0; }
 .fr-clear { align-self: flex-start; margin-top: 8px; border: 0; background: none; color: var(--danger, #D03C16); font-size: 13px; cursor: pointer; padding: 4px; }
+
+/* Notifications: sidebar count + the card a notification sent you to */
+.nav-count { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--accent, #FF7A59); color: #fff; font-style: normal; font-size: 11.5px; font-weight: 700; display: inline-grid; place-items: center; line-height: 1; }
+.ch-card.ch-flash { animation: chFlash 1.2s ease-in-out 3; }
+@keyframes chFlash { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 122, 89, 0); } 50% { box-shadow: 0 0 0 4px rgba(255, 122, 89, 0.55); } }
+@media (prefers-reduced-motion: reduce) { .ch-card.ch-flash { animation: none; outline: 3px solid rgba(255, 122, 89, 0.7); } }
+
+/* ── Status art, new look (Nov 2026): flat duotone tiles replace the glossy
+   orbs on the "couldn't load" cards and the pop-up messages. A soft tint, a
+   thin ring and a crisp icon in the state's colour; no 3D shading. ── */
+.lf { --lf-c: #d03c16; }
+.lf-offline { --lf-c: #4f3fc7; }
+.lf-waking { --lf-c: #c26a00; }
+.lf-art { display: grid; place-items: center; width: 120px; height: 120px; }
+.lf-orb, .lf-ring.r2 { display: none; }
+.lf-tile { position: relative; display: grid; place-items: center; width: 88px; height: 88px; border-radius: 28px; color: var(--lf-c); background: color-mix(in srgb, var(--lf-c) 12%, transparent); border: 1px solid color-mix(in srgb, var(--lf-c) 28%, transparent); animation: lfFloat 3.2s ease-in-out infinite; }
+.lf-ic { position: static; left: auto; top: auto; animation: none; }
+.lf-ic path { fill: currentColor; fill-opacity: 0.14; }
+.lf-ring { inset: 4px; border-radius: 36px; border-width: 1.5px; color: var(--lf-c); opacity: .22; }
+.lf-offline .lf-ring, .lf-waking .lf-ring, .lf-error .lf-ring { color: var(--lf-c); }
+.lf-waking .lf-tag { color: #8a4b00; }
+:root[data-theme="dark"] .lf-waking .lf-tag { color: #fbbf24; }
+:root[data-theme="dark"] .lf { --lf-c: #ff8a6b; }
+:root[data-theme="dark"] .lf-offline { --lf-c: #a99bff; }
+:root[data-theme="dark"] .lf-waking { --lf-c: #f5b544; }
+@media (max-width: 760px) { .lf-art { width: 104px; height: 104px; } .lf-tile { width: 76px; height: 76px; border-radius: 24px; } .lf-ic { width: 38px; height: 38px; } }
+
+.pop-card { --pop-c: #059669; }
+.pop-card.err { --pop-c: #d03c16; }
+.pop-card.off { --pop-c: #4f3fc7; }
+.pop-card .pop-ic, .pop-card.ok .pop-ic, .pop-card.err .pop-ic, .pop-card.off .pop-ic { width: 76px; height: 76px; border-radius: 24px; background: color-mix(in srgb, var(--pop-c) 12%, transparent); border: 1px solid color-mix(in srgb, var(--pop-c) 28%, transparent); box-shadow: none; }
+.pop-ic svg { width: 40px; height: 40px; stroke: var(--pop-c); stroke-width: 4; }
+:root[data-theme="dark"] .pop-card { --pop-c: #34d399; }
+:root[data-theme="dark"] .pop-card.err { --pop-c: #ff8a6b; }
+:root[data-theme="dark"] .pop-card.off { --pop-c: #a99bff; }

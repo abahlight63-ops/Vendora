@@ -13,11 +13,17 @@ import Ic from '../components/icons.jsx';
 
 const kindOf = (n) => {
   const l = String(n.link || '');
-  if (l.startsWith('/billing') || /payment|paid|receipt|plan/i.test(n.title || '')) return 'pay';
+  if (l.startsWith('/connect') || /needs attention|repaired|failed to send|could not/i.test(n.title || '')) return 'fix';
+  if (l.startsWith('/billing') || /payment|paid|receipt|plan|credit/i.test(n.title || '')) return 'pay';
   if (l.startsWith('/chats')) return 'chat';
+  if (l.startsWith('/orders')) return 'order';
   return 'news';
 };
-const KIND = { pay: ['nt-ic v', 'check'], chat: ['nt-ic c', 'help'], news: ['nt-ic v', 'bolt'] };
+const KIND = { fix: ['nt-ic c', 'warn'], pay: ['nt-ic v', 'cash'], chat: ['nt-ic c', 'chat'], order: ['nt-ic v', 'receipt'], news: ['nt-ic v', 'bolt'] };
+// A notice that points somewhere (a chat, an order, a broken channel) opens
+// THAT place directly. Announcements with a picture, video or a long story
+// open in full here first.
+const opensDirect = (n) => !!n.link && n.link !== '/notifications' && n.link !== '/dashboard' && !n.image_url && !n.video_url && String(n.body || '').length <= 400;
 const isToday = (d) => { const x = new Date(d); const n = new Date(); return x.toDateString() === n.toDateString(); };
 const when = (d) => {
   if (!d) return '';
@@ -70,11 +76,18 @@ export default function Notifications() {
   useEffect(() => {
     if (!id) { setOne(null); return; }
     setOne(null);
-    api(`/api/me/notifications/${id}/read`, { method: 'POST' }).then(({ ok, data }) => setOne(ok ? data : 'missing')).catch(() => setOne('missing'));
+    api(`/api/me/notifications/${id}/read`, { method: 'POST' }).then(({ ok, data }) => { setOne(ok ? data : 'missing'); window.dispatchEvent(new Event('velo-notifs-changed')); }).catch(() => setOne('missing'));
   }, [id]);
 
+  async function openOne(n) {
+    if (!opensDirect(n)) return nav(`/notifications/${n.id}`);
+    setItems((xs) => (xs || []).map((x) => (x.id === n.id ? { ...x, is_read: true } : x)));
+    api(`/api/me/notifications/${n.id}/read`, { method: 'POST' }).then(() => window.dispatchEvent(new Event('velo-notifs-changed'))).catch(() => {});
+    nav(n.link);
+  }
   async function readAll() {
     const { ok } = await api('/api/me/notifications/read', { method: 'POST' });
+    if (ok) window.dispatchEvent(new Event('velo-notifs-changed'));
     if (ok) setItems((xs) => (xs || []).map((x) => ({ ...x, is_read: true })));
     else pop('err', 'Could not mark them as read', 'Check your connection and try again.');
   }
@@ -92,18 +105,18 @@ export default function Notifications() {
                 {one.image_url ? <img src={one.image_url} alt="" loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} /> : null}
                 {one.video_url ? <video src={one.video_url} controls preload="metadata" /> : null}
                 {one.body ? <p>{one.body}</p> : null}
-                {one.link ? <Link className="btn lg" to={one.link}>Open</Link> : null}
+                {one.link && one.link !== '/notifications' ? <Link className="btn lg" to={one.link}>{String(one.link).startsWith('/connect') ? 'Fix it now' : 'Open'}</Link> : null}
               </article>
             )}
       </div>
     );
   }
 
-  const list = (items || []).filter((n) => filter === 'all' || (filter === 'unread' ? !n.is_read : filter === 'pay' ? kindOf(n) === 'pay' : kindOf(n) !== 'pay'));
+  const list = (items || []).filter((n) => filter === 'all' || (filter === 'unread' ? !n.is_read : filter === 'news' ? kindOf(n) === 'news' : kindOf(n) === filter));
   const unread = (items || []).filter((n) => !n.is_read).length;
   const today = list.filter((n) => n.created_at && isToday(n.created_at));
   const earlier = list.filter((n) => !(n.created_at && isToday(n.created_at)));
-  const FILTERS = [['all', 'All'], ['unread', unread ? `Unread ${unread}` : 'Unread'], ['pay', 'Payments'], ['news', 'Updates']];
+  const FILTERS = [['all', 'All'], ['unread', unread ? `Unread ${unread}` : 'Unread'], ['fix', 'Needs fixing'], ['pay', 'Payments'], ['news', 'Updates']];
 
   return (
     <div className="nt">
@@ -111,7 +124,7 @@ export default function Notifications() {
         <div>
           <div className="dg-status on"><i />{unread ? `${unread} unread` : 'All caught up'}</div>
           <h1>Notifications</h1>
-          <p>Payments, chats that need you and news from VeloSales Ai.</p>
+          <p>Problems to fix, payments, chats that need you and news. Tap one to go straight to it.</p>
         </div>
         {unread > 0 && <button type="button" className="btn ghost" onClick={readAll}><Ic n="check" s={18} />Mark all as read</button>}
       </div>
@@ -124,9 +137,9 @@ export default function Notifications() {
             : list.length === 0 ? <div className="nt-empty"><span className="nt-ic v" aria-hidden="true"><Ic n="check" s={22} /></span><b>{filter === 'all' ? 'All caught up' : 'Nothing here'}</b><span>Payments, chats that need you and app news will show up here.</span></div>
               : (<>
                 {today.length > 0 && <div className="nt-group">Today</div>}
-                {today.map((n) => <Row key={n.id} n={n} onOpen={() => nav(`/notifications/${n.id}`)} />)}
+                {today.map((n) => <Row key={n.id} n={n} onOpen={() => openOne(n)} />)}
                 {earlier.length > 0 && <div className="nt-group">Earlier</div>}
-                {earlier.map((n) => <Row key={n.id} n={n} onOpen={() => nav(`/notifications/${n.id}`)} />)}
+                {earlier.map((n) => <Row key={n.id} n={n} onOpen={() => openOne(n)} />)}
               </>)}
       </div>
     </div>

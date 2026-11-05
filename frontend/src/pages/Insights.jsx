@@ -27,6 +27,7 @@ function dayKey(t) {
   return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
 }
 const hourLabel = (h) => new Date(2000, 0, 1, h).toLocaleTimeString('en-GB', { hour: 'numeric', hour12: true }).toUpperCase();
+const naira = (v) => '₦' + Number(v || 0).toLocaleString('en-NG', { maximumFractionDigits: 0 });
 let coinN = 0;
 function Coin({ id, s = 22 }) {
   coinN += 1;
@@ -85,6 +86,8 @@ export default function Insights() {
   const [span, setSpan] = useState(14);
   const [chan, setChan] = useState('all');
   const [showQuiet, setShowQuiet] = useState(false);
+  const [sales, setSales] = useState(null); // recorded orders: money, orders, waiting, best sellers
+  useEffect(() => { api('/api/me/orders/summary', { timeout: 15000 }).then(({ ok, data }) => { if (ok) setSales(data); }).catch(() => {}); }, [tries]);
 
   useEffect(() => {
     let dead = false;
@@ -169,6 +172,21 @@ export default function Insights() {
             <section className="glass in-kpi"><span>Needed you</span><b>{d.needs}</b><em className="ch-chip hot">{d.waiting ? `${d.waiting} waiting now` : 'None waiting'}</em></section>
             <section className="glass in-kpi"><span>Busiest hour</span><b>{hourLabel(d.peakH)}</b><em className="ch-chip ready">Plan to be online</em></section>
           </div>
+
+          {chan === 'all' && sales && (
+            <section className="glass in-card in-sales">
+              <div className="in-card-head"><h2>Sales</h2><span>From the orders you recorded in VeloSales · <Link to="/orders">Open Orders</Link></span></div>
+              {sales.orders.allTime === 0 ? <p className="in-muted">No orders recorded yet. Make a receipt from any chat, or ask Chat with Velo to make one, and your sales show here.</p> : (<>
+                <div className="in-sales-kpis">
+                  <div><span>Paid this week</span><b>{naira(sales.revenue.d7)}</b><em className={'in-delta ' + (sales.revenue.d7 >= sales.revenue.prev7 ? 'up' : 'down')}>{sales.revenue.prev7 ? (sales.revenue.d7 >= sales.revenue.prev7 ? '↑ ' : '↓ ') + Math.abs(Math.round(((sales.revenue.d7 - sales.revenue.prev7) / sales.revenue.prev7) * 100)) + '% on last week' : 'First paid week'}</em></div>
+                  <div><span>Orders this week</span><b>{sales.orders.d7}</b><em className="in-muted">{sales.orders.d30} in 30 days</em></div>
+                  <div><span>Paid in 30 days</span><b>{naira(sales.revenue.d30)}</b><em className="in-muted">paid and delivered</em></div>
+                  <div><span>Waiting for payment</span><b className={sales.pending.count ? 'warn' : ''}>{sales.pending.count}</b><em className="in-muted">{sales.pending.count ? naira(sales.pending.value) + ' owed' : 'Nobody owes you'}</em></div>
+                </div>
+                {sales.topSold30.length > 0 && <div className="in-best"><b>Best sellers this month</b>{sales.topSold30.map((t, i) => <div key={t.name} className="in-best-row"><span className="in-best-n">{i + 1}</span><span className="in-best-name">{t.name}</span><span className="in-best-bar"><i style={{ width: Math.max(6, (t.qty / sales.topSold30[0].qty) * 100) + '%' }} /></span><b>{t.qty} sold</b><span className="in-muted">{naira(t.value)}</span></div>)}</div>}
+              </>)}
+            </section>
+          )}
 
           <div className="in-row2">
             <section className="glass in-card">

@@ -401,3 +401,33 @@ main { display: block; }
 
 /* receipt demo: the shop's own initial, never the VeloSales mark */
 .rc-shop { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 7px; background: linear-gradient(145deg, #ff7650, #d03c16); color: #fff; font-size: 12px; font-weight: 800; flex: 0 0 auto; }
+
+/* Phone sizing (Nov 2026): headings and buttons were too big on small screens. */
+@media (max-width: 640px) {
+  body { font-size: 15px; }
+  .hero h1 { font-size: clamp(34px, 9.4vw, 44px); letter-spacing: -0.04em; }
+  .phero h1 { font-size: clamp(32px, 9vw, 40px); }
+  .head h2, .sec h2, .band h2 { font-size: clamp(26px, 7vw, 32px); }
+  .ftext h3, .ftext h2 { font-size: 24px; }
+  .getapp h2 { font-size: 22px; }
+  .go { min-height: 52px; gap: 12px; padding: 0 6px 0 20px; font-size: 15px; }
+  .pill.big { min-height: 50px; padding: 0 20px; font-size: 15px; }
+  .faq summary { min-height: 54px; font-size: 15px; }
+  p, li { font-size: 15px; }
+}
+
+/* Cookie choice pop-up (app and website) */
+.ck { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 400; display: flex; flex-wrap: wrap; align-items: center; gap: 14px; max-width: 760px; margin: 0 auto; padding: 16px 18px; border-radius: 22px; background: rgba(20, 14, 60, 0.92); color: #fff; border: 1px solid rgba(255, 255, 255, 0.14); box-shadow: 0 24px 60px rgba(10, 6, 40, 0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); animation: ckUp .45s cubic-bezier(.2, .9, .3, 1.1) both; font-family: inherit; }
+@keyframes ckUp { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.ck-ic { display: flex; flex: 0 0 40px; width: 40px; height: 40px; border-radius: 12px; align-items: center; justify-content: center; background: rgba(255, 138, 107, 0.18); color: #ff8a6b; }
+.ck-main { flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ck-main b { font-size: 15px; }
+.ck-main span { font-size: 13.5px; line-height: 1.5; color: #d9d4f7; }
+.ck-main a { color: #fff; font-weight: 700; text-decoration: underline; }
+.ck-btns { display: flex; gap: 8px; flex: 0 0 auto; }
+.ck-btns button { min-height: 44px; padding: 0 18px; border-radius: 999px; font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; }
+.ck-ghost { border: 1.5px solid rgba(255, 255, 255, 0.35); background: transparent; color: #fff; }
+.ck-go { border: 0; background: linear-gradient(135deg, #ff8a6b, #d03c16); color: #fff; }
+.ck-btns button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (max-width: 760px) { .ck { bottom: 92px; } .ck-btns { width: 100%; } .ck-btns button { flex: 1; } }
+@media (prefers-reduced-motion: reduce) { .ck { animation: none; } }

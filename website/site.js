@@ -31,7 +31,7 @@
     tbtn.addEventListener('click', function () {
       var next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
       root.setAttribute('data-theme', next);
-      try { localStorage.setItem('vs-theme', next); } catch (e) { /* private mode: still switches for this visit */ }
+      try { if (localStorage.getItem('vs-cookie') !== 'essential') localStorage.setItem('vs-theme', next); } catch (e) { /* private mode: still switches for this visit */ }
       paint();
     });
   }
@@ -53,4 +53,24 @@
     });
   }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
   for (var j = 0; j < items.length; j++) io.observe(items[j]);
+})();
+
+// Cookie choice (NDPA): shown until the visitor chooses. Same key as the app.
+(function () {
+  var KEY = 'vs-cookie';
+  try { if (localStorage.getItem(KEY)) return; } catch (e) { return; }
+  var box = document.createElement('div');
+  box.className = 'ck';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-label', 'Cookie choice');
+  box.innerHTML = '<div class="ck-ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9 3 3 0 0 0 4 3 3 3 0 0 0 5 6z"/><path d="M8.5 13.5h.01M12 16.5h.01M15 11h.01M10 9h.01"/></svg></div>'
+    + '<div class="ck-main"><b>Cookies on VeloSales Ai</b><span>We use one cookie to keep you signed in. With your OK we also remember choices like dark mode. No advertising or tracking cookies. <a href="https://app.velosalesai.com.ng/cookies">Cookie Policy</a></span></div>'
+    + '<div class="ck-btns"><button type="button" class="ck-ghost" data-v="essential">Essential only</button><button type="button" class="ck-go" data-v="all">Accept all</button></div>';
+  box.addEventListener('click', function (e) {
+    var v = e.target && e.target.getAttribute('data-v');
+    if (!v) return;
+    try { localStorage.setItem(KEY, v); if (v === 'essential') localStorage.removeItem('vs-theme'); } catch (err) {}
+    box.remove();
+  });
+  document.body.appendChild(box);
 })();

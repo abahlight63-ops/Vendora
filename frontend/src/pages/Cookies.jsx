@@ -3,6 +3,7 @@
 // advertising cookies. If that ever changes, add a consent banner first.
 import { useEffect } from 'react';
 import LegalPage, { CONTACT } from '../components/LegalPage.jsx';
+import { openCookieChoice } from '../components/CookieBanner.jsx';
 import { setPageMeta, APP_URL } from '../lib/seo.js';
 
 const S = (id, title, body) => ({ id, title, body });
@@ -17,8 +18,14 @@ const SECTIONS = [
   S('not', 'What we do not use', <>
     <p>No advertising cookies, no tracking pixels and no analytics that follow you around the web. We do not sell or share browsing data.</p>
   </>),
-  S('consent', 'Why there is no cookie pop-up', <>
-    <p>The law asks for your consent before non-essential cookies are used. Everything we use is needed for the app to work or is something you chose, so we do not show a pop-up asking you to accept tracking. If we ever add non-essential cookies, we will ask first and let you say no.</p>
+  S('consent', 'Your choices', <>
+    <p>The first time you visit, a cookie message asks you to choose:</p>
+    <ul>
+      <li><b>Accept all:</b> the sign-in cookie, plus remembering your choices on this device, such as dark mode.</li>
+      <li><b>Essential only:</b> just the sign-in cookie. Your choices are not remembered between visits.</li>
+    </ul>
+    <p>We never use advertising or tracking cookies, whatever you choose. You can change your mind at any time:</p>
+    <p><button type="button" className="btn ghost" onClick={openCookieChoice}>Change my cookie choice</button></p>
   </>),
   S('control', 'Your control', <>
     <p>You can clear cookies and site data in your browser settings at any time. If you clear the sign-in cookie you will be signed out. Questions: <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.</p>
@@ -30,7 +37,7 @@ export default function Cookies() {
   return (
     <LegalPage which="cookies" title="Cookie Policy" sub="Only what the app needs"
       icon={<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 1 1-9-9 3 3 0 0 0 4 3 3 3 0 0 0 5 6zM8 13h.01M12 16h.01M15 11h.01" /></svg>}
-      short={['One sign-in cookie keeps you logged in.', 'Your settings stay on your device.', 'No tracking or advertising cookies.', 'Clear them any time in your browser.']}
+      short={['One sign-in cookie keeps you logged in.', 'You choose whether we remember your settings.', 'No tracking or advertising cookies.', 'Change your choice any time on this page.']}
       sections={SECTIONS} />
   );
 }

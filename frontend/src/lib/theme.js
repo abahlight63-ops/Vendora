@@ -19,7 +19,7 @@ export function useTheme() { // the hook components actually use: const [theme, 
   const [theme, setTheme] = useState(() => getTheme()); // lazy init (reads storage ONCE, not every render)
   useEffect(() => { // effect runs AFTER render whenever `theme` changes (dependency array [theme])
     document.documentElement.dataset.theme = theme; // <html data-theme="…"> → matching CSS rules activate (whole app re-skins, zero re-render!)
-    try { localStorage.setItem('velosales-theme', theme); } catch {} // persist choice (same private-mode guard)
+    try { if (localStorage.getItem('vs-cookie') !== 'essential') localStorage.setItem('velosales-theme', theme); } catch {} // remember it only if cookies were accepted
   }, [theme]); // [theme] = re-run only when theme changes (not every render)
   return [theme, () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))]; // pair: value + flip function
 }

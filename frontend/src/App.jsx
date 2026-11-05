@@ -9,7 +9,8 @@ import { Routes, Route, Navigate } from 'react-router-dom'; // Routes = switch; 
 import Shell from './components/Shell.jsx'; // app frame (sidebar+topbar) wrapping guarded pages — ALWAYS needed (eager!)
 import Splash from './components/Splash.jsx'; // brand intro (shown first — eager, it's tiny!)
 import Error3D from './components/Error3D.jsx'; // offline / failed-request art (the honest cold-start screen)
-import { BrandGate } from './components/Loader.jsx'; // selling-point loading face (page fallback + login wall!) + 1s brand beat
+import { BrandGate } from './components/Loader.jsx';
+import CookieBanner from './components/CookieBanner.jsx'; // cookie choice (NDPA), shown until chosen // selling-point loading face (page fallback + login wall!) + 1s brand beat
 import { api } from './lib/api.js'; // backend fetch helper (session cookie included)
 
 import { useTheme } from './lib/theme.js'; // [theme, toggleTheme] (dark/light, persisted)
@@ -106,10 +107,10 @@ export default function App() { // ROOT component (main.jsx renders this)
   const hideSplash = useCallback(() => setSplash(false), []); // useCallback = stable function identity (Splash's effect dep won't loop)
   const handleLogout = useCallback(() => { setMe(null); }, []); // logout clears login state (next login refetches fresh)
   useEffect(() => { const p = PREFETCH[window.location.pathname] || PREFETCH['/dashboard']; p().catch(() => {}); }, []); // warm the first page during the splash
-  if (splash) return <Splash done={hideSplash} ready={!loading} />; // ONE loading screen: the splash stays until the session check is done too
+  if (splash) return <><Splash done={hideSplash} ready={!loading} /></>; // ONE loading screen: the splash stays until the session check is done too
   if (netError && !me) return <ConnectionWall onRetry={retry} />; // cannot ASK ≠ signed out: offer the truth and a retry
   return ( // after splash: the route table (order matters — first match wins!)
-    <Suspense fallback={<PageFallback />}> {/* lazy pages suspend here while their chunk downloads (fallback matches Guard's look!) */}<Routes>
+    <Suspense fallback={<PageFallback />}> {/* lazy pages suspend here while their chunk downloads (fallback matches Guard's look!) */}<CookieBanner /><Routes>
       <Route path="/admin" element={<Admin />} />
       <Route path="/privacy" element={<Privacy />} /> {/* public legal trio (no Guard — Google + guests must read them!) */}
       <Route path="/terms" element={<Terms />} />

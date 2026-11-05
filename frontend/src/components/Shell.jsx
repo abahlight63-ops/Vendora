@@ -11,15 +11,16 @@ import { api, toast } from '../lib/api.js'; // api() for the logout call (+ vers
 import ThemeToggle from './ThemeToggle.jsx'; // sun/moon button (topbar — light mode for sensitive eyes!)
 import Notifications from './Notifications.jsx'; // bell (payment + update alerts)
 import Tour from './Tour.jsx'; // first-run coachmarks (mounted once here = available everywhere)
-const MAIN = [['overview', 'Home', '/dashboard'], ['chats', 'Inbox', '/chats'], ['orders', 'Orders', '/orders'], ['catalog', 'Catalog', '/catalog'], ['connect', 'Channels', '/connect'], ['insights', 'Insights', '/insights']]; // the five daily jobs (same words on the phone)
+const MAIN = [['overview', 'Home', '/dashboard'], ['chats', 'Inbox', '/chats'], ['orders', 'Orders', '/orders'], ['broadcasts', 'Broadcasts', '/broadcasts'], ['catalog', 'Catalog', '/catalog'], ['connect', 'Channels', '/connect'], ['insights', 'Insights', '/insights']]; // the five daily jobs (same words on the phone)
 const MORE = [['billing', 'Plan and usage', '/billing'], ['playground', 'Test Drive', '/playground'], ['velosalesai', 'Chat with Velo', '/velosales-ai'], ['gift', 'Refer & Earn', '/refer-earn'], ['settings', 'Settings', '/settings'], ['help', 'Help Center', '/help']]; // everything else, one tap behind More
 const ALL = [...MAIN, ...MORE]; // all pages in one array (page search)
-const TITLES = { '/dashboard': 'Home', '/chats': 'Inbox', '/orders': 'Orders', '/catalog': 'Catalog', '/connect': 'Channels', '/playground': 'Test Drive', '/insights': 'Insights', '/velosales-ai': 'Chat with Velo', '/refer-earn': 'Refer & Earn', '/billing': 'Plan and usage', '/profile': 'Business profile', '/ai-settings': 'AI settings', '/settings': 'Settings', '/help': 'Help Center', '/notifications': 'Notifications', '/contact-sales': 'Business plan', '/onboarding': 'Get started', '/login': 'Sign in' }; // object lookup: path → human title (topbar breadcrumb + document.title)
+const TITLES = { '/dashboard': 'Home', '/chats': 'Inbox', '/orders': 'Orders', '/broadcasts': 'Broadcasts', '/catalog': 'Catalog', '/connect': 'Channels', '/playground': 'Test Drive', '/insights': 'Insights', '/velosales-ai': 'Chat with Velo', '/refer-earn': 'Refer & Earn', '/billing': 'Plan and usage', '/profile': 'Business profile', '/ai-settings': 'AI settings', '/settings': 'Settings', '/help': 'Help Center', '/notifications': 'Notifications', '/contact-sales': 'Business plan', '/onboarding': 'Get started', '/login': 'Sign in' }; // object lookup: path → human title (topbar breadcrumb + document.title)
 
 function Icon({ k }) { // tiny inline SVG set (stroke = inherits text color; no icon library installed)
   const p = { viewBox: '0 0 24 24', width: 18, height: 18, fill: 'none', stroke: 'currentColor', strokeWidth: 1.75, strokeLinecap: 'round', strokeLinejoin: 'round' }; // shared props object spread into every <svg> (currentColor = matches surrounding text)
   if (k === 'overview') return (<svg {...p}><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></svg>); // {...p} = spread all shared props; each if = one icon (early returns)
   if (k === 'chats') return (<svg {...p}><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.4 8.6 8.6 0 0 1-3.9-.9L3 21l2-5.3a8.3 8.3 0 0 1-.9-3.7A8.4 8.4 0 0 1 12.5 3a8.4 8.4 0 0 1 9 8.5z" /></svg>); // speech bubble (SVG path = vector drawing commands)
+  if (k === 'broadcasts') return (<svg {...p}><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" /></svg>); // megaphone
   if (k === 'orders') return (<svg {...p}><path d="M6 2h12v20l-3-2-3 2-3-2-3 2zM9 7h6M9 11h6M9 15h4" /></svg>); // receipt
   if (k === 'catalog') return (<svg {...p}><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8" /></svg>); // box/package
   if (k === 'connect') return (<svg {...p}><path d="M9 7V2M15 7V2M7 7h10v4a5 5 0 0 1-10 0zM12 16v5" /></svg>); // plug (Connect page — drawn, never emoji)
@@ -127,9 +128,9 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
   } // logout() = server destroy + local clear + go to login (all three, every time)
   const safeName = biz?.name || 'Your business'; // ?. + || : biz may load late — never render "undefined"
   const initial = (safeName.trim()[0] || 'V').toUpperCase(); // avatar letter: first char uppercased ([0] = first character)
-  const mobile = MAIN.filter(([k]) => k !== 'insights' && k !== 'orders'); // bottom bar: four jobs + More (Orders and Insights sit in the drawer on phones)
+  const mobile = MAIN.filter(([k]) => k !== 'insights' && k !== 'orders' && k !== 'broadcasts'); // bottom bar: four jobs + More (Orders and Insights sit in the drawer on phones)
   const showMore = moreOpen || inMore || menuOpen; // the phone's drawer always shows everything
-  const moreActive = inMore || pathname === '/insights' || pathname === '/orders'; // the bar's More lights up for anything behind it
+  const moreActive = inMore || pathname === '/insights' || pathname === '/orders' || pathname === '/broadcasts'; // the bar's More lights up for anything behind it
   return (
     <> {/* fragment: multiple roots without wrapper div */}
       <div className="shell"> {/* flex row: sidebar + main column (CSS) */}

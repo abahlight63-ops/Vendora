@@ -35,7 +35,7 @@ function limitFor(business) {
 
 // Who would receive it. Returns rows: { id, customer_name, customer_number, channel, fresh } (fresh = wrote in the last 24h).
 async function audience(businessId, aud, channel) {
-  const where = ['c.business_id = $1', 'COALESCE(c.promo_opt_out, false) = false', "COALESCE(c.customer_number, '') <> ''"];
+  const where = ['c.business_id = $1', 'COALESCE(c.promo_opt_out, false) = false', "COALESCE(c.contact_type, '') <> 'personal'", "COALESCE(c.customer_number, '') <> ''"];
   if (channel === 'telegram') where.push("c.customer_number LIKE 'telegram:%'");
   if (channel === 'whatsapp') where.push("c.customer_number NOT LIKE 'telegram:%'");
   if (aud === 'recent') where.push("last_in.at >= now() - interval '30 days'");

@@ -35,6 +35,7 @@ router.get('/me/ai-models', ownerController.aiModels); // dropdown list with loc
 router.get('/me/ai-status', ownerController.aiStatus); // one-tap health ping per provider (owner diagnosis)
 router.post('/me/bot', ownerController.botToggle);
 router.post('/me/conversations/:id/takeover', ownerController.chatTakeover);
+router.post('/me/conversations/:id/contact', ownerController.chatContact); // friend or customer
 router.post('/me/conversations/:id/reply', ownerController.chatReply);
 // Orders and receipts (controllers/orderController.js)
 const orderController = require('../controllers/orderController');

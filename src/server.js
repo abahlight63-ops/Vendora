@@ -347,7 +347,8 @@ require('./services/configService').ensureSchema()
   .then(() => registerSharedWebhook()) // house bot webhook (re-asserted every deploy!)
   .then(() => maybeBroadcastRelease()) // one broadcast per APP_VERSION (bell for every owner!)
   .then(() => { startKeepAlive(); startChannelWatchdog(); }) // lifelines: self-ping + dead-channel bells
-  .then(() => app.listen(port, () => { // START listening — the callback runs once the socket is open
+  .then(() => app.listen(port, () => {
+    try { require('./services/contactService').startDigest(); } catch (e) { console.error('contact digest not started:', e.message); } // daily friend-or-customer question // START listening — the callback runs once the socket is open
     console.log(`WhatsApp AI support server running on port ${port}`);
     console.log(`Signup/login: http://localhost:${port}/login`);
     console.log(`Dashboard:    http://localhost:${port}/dashboard`);

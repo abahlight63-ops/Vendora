@@ -127,6 +127,11 @@ async function handleInbound(req, res) {
     // WHY: the shop number doubles as a personal line — friends chatting must
     // never get product pitches fighting the owner's own conversation.
   const upperBody = Body.trim().toUpperCase(); // normalize once: case + padding proof
+    // ---- Owner answers the daily "friend or customer?" message ("1 F", "2 C") ----
+    if (isOwner) {
+      const answered = await require('../services/contactService').applyOwnerAnswer(business, Body).catch(() => null);
+      if (answered) { await reply(From, answered); return res.status(200).send(''); }
+    }
     if (isOwner && (upperBody === 'PAUSE' || upperBody === 'RESUME' || upperBody.startsWith('PAUSE '))) {
       if (upperBody === 'RESUME') { // resume everything…
         await db.query('UPDATE businesses SET bot_enabled = true WHERE id = $1', [business.id]); // …global switch on…
@@ -263,9 +268,26 @@ async function handleInbound(req, res) {
     // WHY log-then-return (not ignore): the owner still SEES what customers
     // said while away — silence is about REPLIES, never about records.
     const { rows: gate } = await db.query('SELECT bot_enabled FROM businesses WHERE id = $1', [business.id]); // fresh read (owner may have toggled seconds ago!)
-    const { rows: chat } = await db.query('SELECT bot_paused FROM conversations WHERE id = $1', [customerId]);
+    const { rows: chat } = await db.query(
+      `SELECT bot_paused, contact_type, (SELECT COUNT(*)::int FROM messages WHERE conversation_id = $1 AND direction = 'in') AS inbound
+         FROM conversations WHERE id = $1`, [customerId]);
+    // ---- Friend or customer: Velo learns from the words, never sells to family ----
+    const contacts = require('../services/contactService');
+    const verdict = chat[0] ? contacts.classify(chat[0].contact_type, chat[0].inbound, Body) : null;
+    if (verdict === 'personal') { // "it's me" / "na me": a friend, Velo steps back for good
+      if (chat[0].contact_type !== 'personal') await contacts.setType(customerId, 'personal');
+      return res.status(200).send('');
+    }
+    if (verdict === 'customer' && chat[0].contact_type !== 'customer') await contacts.setType(customerId, 'customer');
     if (gate[0] && gate[0].bot_enabled === false) return res.status(200).send(''); // global kill-switch engaged → silent (Meta 200, no retry)
     if (chat[0] && chat[0].bot_paused) return res.status(200).send(''); // owner took over this chat → silent (chat freely!)
+    if (verdict === 'intro') { // sounds personal: say who we are instead of selling; the owner decides later (or never)
+      await contacts.setType(customerId, 'unsure');
+      const hello = contacts.introText(business.name);
+      await reply(From, hello);
+      await conversationService.logMessage(customerId, 'out', hello, null, 'system');
+      return res.status(200).send('');
+    }
     // ---- Per-customer throttle: one chatty stranger can't eat the shop's quota ----
     // Counts TODAY's inbound messages on THIS chat (30/day default). Over the line?
     // Bot rests, message still logged (records never stop — replies do, briefly!).

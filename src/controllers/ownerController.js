@@ -346,12 +346,24 @@ async function deleteProduct(req, res) {
 async function getConversations(req, res) {
   const { rows } = await db.query( // inbox list: previews + flags, newest first, cap 100
     `SELECT id, customer_number, customer_name, last_message, last_reply,
-            needs_human, flag_reason, bot_paused, updated_at, channel
+            needs_human, flag_reason, bot_paused, updated_at, channel, contact_type
      FROM conversations WHERE business_id = $1
      ORDER BY updated_at DESC LIMIT 100`, // DESC = newest first (inbox order); LIMIT = don't dump the whole history; bot_paused drives Take-over badges
     [req.session.businessId]
   );
   res.json(rows);
+}
+
+// Friend or customer, set from the Inbox. Friend = Velo stays quiet and the chat
+// is left out of broadcasts; Customer = Velo answers again.
+async function chatContact(req, res) {
+  try {
+    const type = String((req.body && req.body.type) || '');
+    if (!['personal', 'customer'].includes(type)) return res.status(400).json({ error: 'Choose friend or customer.' });
+    const row = await require('../services/contactService').setType(req.params.id, type, req.session.businessId);
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    res.json(row);
+  } catch (e) { console.error('chat contact failed:', e.message); res.status(500).json({ error: 'Something went wrong. Please try again.' }); }
 }
 
 async function getMessages(req, res) {
@@ -1275,7 +1287,7 @@ async function readNotification(req, res) {
   }
 }
 
-module.exports = { // every handler the routes file wires up (miss one here = route crashes on boot!)
+module.exports = { chatContact, // every handler the routes file wires up (miss one here = route crashes on boot!)
   getMe,
   updateBusiness,
   saveSetup,

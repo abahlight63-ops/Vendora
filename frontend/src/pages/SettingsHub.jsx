@@ -5,7 +5,7 @@
 // The tab lives in the address (?tab=shop|voice|account), so old links and the
 // Help Center guides can open the right one.
 import { useSearchParams } from 'react-router-dom';
-import Profile from './Profile.jsx';
+import ShopProfile from './ShopProfile.jsx'; // Your shop: the Shop profile (replaced the old Profile form)
 import AiSettings from './AiSettings.jsx';
 import Settings from './Settings.jsx';
 
@@ -36,7 +36,7 @@ export default function SettingsHub({ biz, setMe }) {
         </div>
       </div>
       <div className="sh-body" role="tabpanel">
-        {tab === 'shop' && <Profile biz={biz} embedded />}
+        {tab === 'shop' && <ShopProfile biz={biz} />}
         {tab === 'voice' && <AiSettings biz={biz} embedded />}
         {tab === 'account' && <Settings biz={biz} setMe={setMe} embedded />}
       </div>

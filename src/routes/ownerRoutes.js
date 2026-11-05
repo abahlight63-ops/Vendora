@@ -11,7 +11,10 @@ const router = express.Router(); // the mini-app
 router.use(requireAuth); // blanket guard: guests get 401 on everything below
 
 router.get('/me', ownerController.getMe); // business profile + tier + ads config
-router.put('/me/business', ownerController.updateBusiness); // PUT = update profile (name, hours, FAQs…)
+router.put('/me/business', ownerController.updateBusiness);
+router.get('/me/shop-profile', require('../controllers/shopProfileController').get); // Settings → Your shop
+router.put('/me/shop-profile', require('../controllers/shopProfileController').save);
+router.post('/me/shop-profile/fill', require('../middleware/security').aiLimiter, require('../controllers/shopProfileController').fill); // Fill it in for me // PUT = update profile (name, hours, FAQs…)
 router.post('/me/setup', ownerController.saveSetup); // POST = welcome niche + heard-from (no name required!)
 router.get('/me/products', ownerController.getProducts); // list catalog
 router.get('/me/catalog-meta', ownerController.catalogMeta); // niche shelves + hints (mobile parity!)

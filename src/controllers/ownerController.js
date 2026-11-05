@@ -98,13 +98,19 @@ async function updateBusiness(req, res) {
   }
   if (errors.length) return res.status(400).json({ errors });
 
-  const { rows: cur } = await db.query('SELECT whatsapp_number, owner_number, currency, timezone FROM businesses WHERE id = $1', [req.session.businessId]); // read CURRENT values first (needed for smart defaults below)
+  const { rows: cur } = await db.query('SELECT whatsapp_number, owner_number, currency, timezone, hours, faq, tone FROM businesses WHERE id = $1', [req.session.businessId]); // read CURRENT values first (needed for smart defaults below)
   const old = cur[0] || {}; // || {} guards deleted-business edge
   // Currency: explicit choice wins; otherwise re-resolve when numbers change.
   const currency = curRaw || ((ownerRaw && owner !== old.owner_number) // nested ternary: explicit? → use it. Else: owner number CHANGED? → re-resolve from numbers…
     ? planService.resolveCurrency(old.whatsapp_number, owner)
     : (old.currency || 'NGN')); // …else keep what's stored (or NGN default)
   const timezone = (typeof tzRaw === 'string' && tzRaw.trim()) || old.timezone || 'Africa/Lagos'; // trim blanks; chain of fallbacks
+  // Fields not sent keep their saved value (a form that does not show personality must never reset it).
+  const keep = {
+    hours: hours !== undefined ? String(hours || '') : (old.hours || ''),
+    faq: JSON.stringify(faq !== undefined ? (faq || []) : (Array.isArray(old.faq) ? old.faq : [])),
+    tone: tone !== undefined && String(tone).trim() ? String(tone).trim() : (old.tone || 'friendly and helpful'),
+  };
 
   const { rows } = await db.query( // write it all + hand back the fresh row
     `UPDATE businesses SET name = $1, owner_number = $2, hours = $3, faq = $4, tone = $5, currency = $6, timezone = $7
@@ -112,8 +118,8 @@ async function updateBusiness(req, res) {
      WHERE id = $8
      RETURNING id, name, whatsapp_number, owner_number, hours, faq, tone, currency, timezone, personal_contacts, bot_enabled`,
     personal !== null // params array must MATCH the $ placeholders above (conditional 9th param!)
-      ? [name, owner || null, req.body.hours || '', JSON.stringify(faq || []), req.body.tone || 'friendly and helpful', currency, timezone, req.session.businessId, JSON.stringify(personal)]
-      : [name, owner || null, req.body.hours || '', JSON.stringify(faq || []), req.body.tone || 'friendly and helpful', currency, timezone, req.session.businessId]
+      ? [name, owner || null, keep.hours, keep.faq, keep.tone, currency, timezone, req.session.businessId, JSON.stringify(personal)]
+      : [name, owner || null, keep.hours, keep.faq, keep.tone, currency, timezone, req.session.businessId]
   ); // JSON.stringify: faq ARRAY + personal ARRAY → JSONB columns need JSON strings
   if (niche !== null) await db.query('UPDATE businesses SET business_niche = $1 WHERE id = $2', [niche, req.session.businessId]); // lane switch (separate write — keeps the placeholder juggling above untouched!)
   res.json({ ...rows[0], ...(niche !== null ? { business_niche: niche } : {}) }); // frontend Profile page uses the returned row (no refetch needed)
@@ -1150,14 +1156,28 @@ async function ask(req, res) {
     try {
       const productService = require('../services/productService');
       const products = await productService.getProducts(req.session.businessId);
-      const full = productService.formatCatalog(products);
+      const asked = String(req.body && req.body.text || req.body && req.body.message || '');
+      const picked = products.length > 40 ? productService.relevantProducts(products, asked, 40) : products; // big catalogs: only what the question is about
+      const full = productService.formatCatalog(picked) + (picked.length < products.length ? `\n(Showing ${picked.length} of ${products.length} products: the ones this question is about.)` : '');
       shopCtx = {
         name: bizName,
         hours: rows[0]?.hours || '',
         tone: rows[0]?.tone || '',
         faq: Array.isArray(rows[0]?.faq) ? rows[0].faq.slice(0, 10) : [], // first 10 FAQs (prompt budget!)
-        catalog: full.length > 2500 ? full.slice(0, 2500) + '\n…(catalog continues — ask about the rest!)' : full, // cap ~2500 chars (big catalogs stay cheap!)
+        catalog: full.length > 6000 ? full.slice(0, 6000) + '\n…(more products not shown)' : full,
       };
+      const shopProfile = require('../services/shopProfile');
+      shopCtx.profile = shopProfile.format(await shopProfile.load(req.session.businessId) || {});
+      const { rows: recent } = await db.query(
+        `SELECT receipt_no, customer_name, items, total, status, created_at, paid_at FROM orders WHERE business_id = $1 ORDER BY created_at DESC LIMIT 25`, [req.session.businessId]);
+      if (recent.length) shopCtx.orders = recent.map((o) => `#${String(o.receipt_no).padStart(4, '0')} ${new Date(o.created_at).toISOString().slice(0, 16).replace('T', ' ')} | ${o.customer_name || 'no name'} | ${(o.items || []).map((l) => l.name + ' x' + l.qty).join(', ')} | ₦${Number(o.total).toLocaleString()} | ${o.status}${o.paid_at ? ' (paid ' + new Date(o.paid_at).toISOString().slice(0, 10) + ')' : ''}`).join('\n');
+      const { rows: daily } = await db.query(
+        `SELECT to_char((d.day)::date, 'YYYY-MM-DD') AS day,
+                (SELECT COUNT(*) FROM orders o WHERE o.business_id = $1 AND o.status <> 'cancelled' AND (o.created_at AT TIME ZONE 'Africa/Lagos')::date = d.day)::int AS orders,
+                (SELECT COALESCE(SUM(total), 0) FROM orders o WHERE o.business_id = $1 AND o.status IN ('paid', 'delivered') AND (o.created_at AT TIME ZONE 'Africa/Lagos')::date = d.day) AS paid,
+                (SELECT COUNT(DISTINCT c.id) FROM conversations c JOIN messages m ON m.conversation_id = c.id WHERE c.business_id = $1 AND m.direction = 'in' AND (m.created_at AT TIME ZONE 'Africa/Lagos')::date = d.day)::int AS chats
+           FROM generate_series((now() AT TIME ZONE 'Africa/Lagos')::date - 29, (now() AT TIME ZONE 'Africa/Lagos')::date, interval '1 day') AS d(day)`, [req.session.businessId]);
+      shopCtx.daily = daily.filter((d) => d.orders || d.chats || Number(d.paid)).map((d) => `${d.day}: ${d.chats} chats, ${d.orders} orders, ₦${Number(d.paid).toLocaleString()} paid`).join('\n') || 'No chats or orders in the last 30 days.';
     } catch (e) { console.error('ask grounding error:', e.message); } // grounding failed → askGeneral runs ungrounded (never block a chat over context!)
     // SHOP NUMBERS: real chats, customers, apps, busiest times and logged stock, so
     // "how did my shop do this week?" gets true numbers. A failure only drops this block.
@@ -1192,6 +1212,12 @@ async function ask(req, res) {
     );
     if (mrows[0].count >= MODEL_DAILY_CAP) { // this business maxed THIS model today (quota justice: others' share untouched!)…
       return res.status(429).json({ error: `You've used ${resolved.entry.label} 50 times today — try another AI below, fresh quota!` }); // …redirect, don't dead-end (dropdown has 7 more!)
+    }
+    // CORRECTIONS: "No, the 20 inch is ₦90,000 now" → saved as a shop fact Velo
+    // trusts above everything else (customer replies and Chat with Velo).
+    if (text && require('../services/shopProfile').CORRECTION_RE.test(text)) {
+      const fact = await require('../services/shopProfile').learnFact(req.session.businessId, text);
+      if (fact) return res.json({ reply: `Got it, I'll remember that: ${fact}\n\nI'll use it with customers from now on. You can see or remove it in Settings → Your shop.`, via: 'VeloSales Ai', model: resolved.entry.id, fallback: false, requested: null });
     }
     // RECEIPTS: "make a receipt for Tunde, 2 bone straight wigs, delivery 3000" → a real
     // order (prices from the catalog), answered with the receipt itself.

@@ -154,6 +154,9 @@ async function askGeneral(message, history, choiceId, tier, bizName, niche, shop
     if (Array.isArray(shopCtx.faq) && shopCtx.faq.length) {
       bits.push('Owner FAQs:\n' + shopCtx.faq.map((f) => `Q: ${f.question || f.q || ''}\nA: ${f.answer || f.a || ''}`).join('\n'));
     }
+    if (shopCtx.profile) bits.push(`SHOP DETAILS (the owner wrote these; facts the owner confirmed override everything):\n${shopCtx.profile}`);
+    if (shopCtx.orders) bits.push(`RECENT ORDERS (newest first: receipt | date time | customer | items | total | status). Use these to answer questions about a customer or an order:\n${shopCtx.orders}`);
+    if (shopCtx.daily) bits.push(`DAY BY DAY, LAST 30 DAYS (Lagos dates; today is ${new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' })}). Use these for any date range (yesterday, last week, this month); add up the days asked about and say which days you counted:\n${shopCtx.daily}`);
     if (shopCtx.catalog) bits.push(`SHOP CATALOG (single source of truth — quote these exact names/prices, never invent siblings):\n${shopCtx.catalog}`);
     if (bits.length) shopLine = `\nSHOP FACTS (answer shop questions ONLY from these — "${shop}" means THIS shop):\n${bits.join('\n')}`;
     // SHOP NUMBERS (services/shopStats.js): real chats, customers, apps, busy times
@@ -256,6 +259,7 @@ VELOSALES AI FACTS: VeloSales Ai is a WhatsApp AI sales assistant for small busi
  * Pro businesses additionally ground in their synced WhatsApp Business profile.
  */
 async function generateReply(customerMessage, business, image, history) {
+  const shopDetails = (() => { try { return require('./shopProfile').format(business); } catch { return ''; } })(); // Settings → Your shop
   const planService = require('./planService');
   const pro = planService.isPro(business);
   const products = await productService.getProducts(business.id);
@@ -291,7 +295,7 @@ GREETINGS ("hey", "hi", "hello", "good morning", "how far", "abeg", "how are you
 
 Business info:
 - Name: ${business.name}
-- Opening hours: ${business.hours || 'not provided'}
+- Opening hours: ${business.hours || 'not provided'}${shopDetails ? `\n\nSHOP DETAILS (the owner wrote these: true, use them for delivery, payment, location, returns):\n${shopDetails}` : ''}
 - Tone: ${business.tone || 'friendly and helpful'}
 ${business.business_niche ? `- What they sell: ${business.business_niche} (recommend within this lane first!)` : ''}
 
@@ -335,21 +339,21 @@ RULES
 2. ${transcript ? 'This chat is CONTINUING: never greet again, never repeat the shop name, go straight to the answer.' : `FIRST message: greet once by shop name${customGreeting ? ` using the owner's greeting: "${customGreeting}"` : ` ("Hello! Welcome to ${business.name}.")`}, then answer.`} A greeting is never a reason to hand off.
 3. Answer the exact question first, in 1-3 short lines. Prices with ₦ and commas (₦85,000). Say "available" rather than stock counts unless asked or stock is low.
 4. Accept misspellings silently and match the closest item.
-5. NEVER invent products, prices, availability, discounts, delivery times, fees or addresses. Only the catalog and FAQ are true. The shop sells: ${lane}. For things outside that, say so in one warm line and offer what you do have. Never hedge ("we usually have", "might").
+5. NEVER invent products, prices, availability, discounts, delivery times, fees or addresses. Only the catalog, the FAQ and SHOP DETAILS are true. The shop sells: ${lane}. For things outside that, say so in one warm line and offer what you do have. Never hedge ("we usually have", "might").
 6. Out of stock or not found: apologise warmly in one line ("Sorry, that one just finished"), then offer up to 3 alternatives from the same category, one per line as "• Name — ₦Price". Never blunt phrases like "not in catalog" or "not listed".
 7. Suggestions: at most one line of up to 3 different items, only from the SAME category as the question. Never repeat the item you just answered. For "what do you sell?": up to 5 in-stock items, then one question.
 8. End with at most one short, natural question about the item you just answered (never about a suggestion). Vary your words. Never use "Let me know if you need anything else" or "How can I help you further?".
-9. Delivery, location, how to buy: only from the product lines and FAQ. If not given, say what is known and that the owner will confirm the details.
+9. Delivery, location, payment, returns, how to buy: answer from SHOP DETAILS, the product lines and the FAQ (quote fees and times exactly). Share bank details only when the customer is ready to pay or asks how to pay. If something is not given, say what is known and that the owner will confirm the rest.
 10. If the shop is closed now (compare with the hours), say so kindly with the next opening time, and still answer catalog questions.
 11. Small talk (thanks, jokes): reply warmly in one or two lines and invite them to ask about products.
-12. Hand off when the facts do not cover it: custom orders, complaints, payment details or confirmations, unknown items. Reply with exactly: NEED_HUMAN: <brief reason>
+12. Hand off when the facts do not cover it: custom orders, complaints, confirming that a payment arrived, unknown items. Reply with exactly: NEED_HUMAN: <brief reason>
 13. Plain text only: no *, #, _, backticks, emojis or links. Product answers under about 60 words. Never say you are an AI or a bot.
 14. ${maxDisc > 0 ? `Discounts: up to ${maxDisc}% off${minOrder ? ` on orders of at least ₦${minOrder.toLocaleString()}` : ''}, offered once, only when a customer who clearly wants to buy says the price is too high. Never volunteer it.` : 'Do NOT offer discounts.'}${image ? '\n15. The customer sent a PHOTO: describe it briefly, match it to the closest catalog product(s), suggest 2-4 similar in-stock items. No match: NEED_HUMAN.' : ''}
 
 BUSINESS
 Name: ${business.name}
 Hours: ${business.hours || 'not provided'}
-Tone: ${business.tone || 'friendly and helpful'}
+Tone: ${business.tone || 'friendly and helpful'}${shopDetails ? `\n\nSHOP DETAILS (written by the owner)\n${shopDetails}` : ''}
 
 FAQ
 ${(business.faq || []).map((f) => `Q: ${f.question}\nA: ${f.answer}`).join('\n') || '(none)'}

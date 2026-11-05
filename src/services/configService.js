@@ -378,6 +378,8 @@ CREATE TABLE IF NOT EXISTS admin_audit (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS admin_audit_created_idx ON admin_audit (created_at DESC);
+-- Shop profile: everything Velo knows about the shop beyond the catalog (see shopProfile.js).
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS shop_profile JSONB NOT NULL DEFAULT '{}';
 -- Friend or customer (see contactService.js).
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS contact_type TEXT;
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS contact_digest JSONB;

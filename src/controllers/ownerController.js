@@ -753,9 +753,17 @@ async function telegramToken(req, res) {
 // Returns the code + deep link; owner taps it → bot binds owner_telegram_id.
 async function telegramLink(req, res) {
   try {
-    const code = 'BIZ' + require('crypto').randomBytes(3).toString('hex').toUpperCase(); // 6 hex chars (unguessable-ish, typable — same generator as the route file!)
-    await db.query('UPDATE businesses SET telegram_link_code = $1 WHERE id = $2', [code, req.session.businessId]); // overwrite (each tap INVALIDATES the old code — leaked links die!)
-    const { rows } = await db.query('SELECT telegram_bot_token FROM businesses WHERE id = $1', [req.session.businessId]);
+    const { rows } = await db.query('SELECT telegram_bot_token, telegram_link_code FROM businesses WHERE id = $1', [req.session.businessId]);
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    // Own-bot shops: fresh code per tap (leaked owner links die). Shared-bot
+    // shops: the same column is the customer code printed on their QR, so it
+    // is never rotated from here.
+    const ownBot = !!(rows[0].telegram_bot_token || '').trim();
+    let code = (rows[0].telegram_link_code || '').trim();
+    if (ownBot || !code) {
+      code = 'BIZ' + require('crypto').randomBytes(3).toString('hex').toUpperCase(); // 6 hex chars (unguessable-ish, typable — same generator as the route file!)
+      await db.query('UPDATE businesses SET telegram_link_code = $1 WHERE id = $2', [code, req.session.businessId]);
+    }
     const botName = (rows[0] && rows[0].telegram_bot_token) ? null : (process.env.TELEGRAM_SHARED_BOT_NAME || null); // per-shop bot: owner opens THEIR bot; shared: needs the shared username (env!)
     res.json({ code, botName, note: botName ? `Open t.me/${botName}?start=link_${code} from your Telegram` : 'Open your shop bot and send: /start link_' + code });
   } catch (e) {
@@ -779,55 +787,67 @@ async function telegramStatus(req, res) {
   }
 }
 
-// Shared-bot connect (Pro ONLY — the no-BotFather road!). The shop rides the
-// house @bot: customers bind via t.me/<bot>?start=<CODE>, routed by
-// telegram_links. No token paste, nothing to revoke. Tier-gated EXACTLY like
-// the brain picker (locked → 402, frontend opens the upgrade card!).
+// Shared-bot connect (every plan — the no-BotFather road). The shop rides the
+// house @bot: customers bind via t.me/<bot>?start=<CODE> (link or QR code),
+// routed by telegram_links. No token paste, nothing to revoke.
+// The customer code is STABLE: it ends up printed on QR posters and stickers,
+// so tapping Connect again reuses it. Only { newCode: true } replaces it
+// (old link + old QR stop working — the owner is warned in the UI first).
+function sharedLinkOut(botName, code, shopName) {
+  return {
+    connected: true, shared: true, code, botName, shopName: shopName || '',
+    deepLink: `https://t.me/${botName}?start=${code}`,
+    note: `Customers open t.me/${botName}?start=${code} once (or scan your QR code), then chat normally. Owner commands stay in your dashboard.`,
+  };
+}
+function sharedBotEnv() {
+  return {
+    botToken: (process.env.TELEGRAM_SHARED_BOT_TOKEN || '').trim(),
+    botName: (process.env.TELEGRAM_SHARED_BOT_NAME || '').trim().replace(/^@/, ''),
+  };
+}
 async function telegramShared(req, res) {
   try {
-    const botToken = (process.env.TELEGRAM_SHARED_BOT_TOKEN || '').trim();
-    const botName = (process.env.TELEGRAM_SHARED_BOT_NAME || '').trim().replace(/^@/, '');
+    const { botToken, botName } = sharedBotEnv();
     if (!botToken || !botName) return res.status(503).json({ error: 'Shared Telegram bot is not set up yet — use your own bot below instead.' }); // owner never configured it (env missing!)
     if (req.body && req.body.off) { // switch shared mode OFF (own-token road untouched!)
       await db.query('UPDATE businesses SET telegram_shared_on = false WHERE id = $1', [req.session.businessId]);
       return res.json({ connected: false, shared: false });
     }
-    const { rows: b } = await db.query(
-      'SELECT subscription_status, subscription_expires, trial_started_at, plan_tier FROM businesses WHERE id = $1',
-      [req.session.businessId]
-    );
+    const { rows: b } = await db.query('SELECT telegram_link_code, name FROM businesses WHERE id = $1', [req.session.businessId]);
     if (!b.length) return res.status(404).json({ error: 'Not found' });
-    const tier = require('../services/planService').effectiveTier({ // 'free' | 'pro' | 'plus' (trial counts as pro — same philosophy as every gate!)
-      subscription_status: b[0].subscription_status, subscription_expires: b[0].subscription_expires,
-      trial_started_at: b[0].trial_started_at, plan_tier: b[0].plan_tier,
-    });
-    const testers = String(process.env.TELEGRAM_SHARED_TESTERS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean); // owner-only test window: login EMAILS and/or business IDs (Admin → Users shows both!) — everyone else still hits the Pro gate below!
-    let isTester = testers.includes(String(req.session.businessId)); // numeric ID match (exact, zero lookups!)
-    if (!isTester && testers.some((t) => t.includes('@'))) { // email entries present → resolve THIS session's email once…
-      try {
-        let email = null;
-        if (req.session.userId) {
-          const { rows: u } = await db.query('SELECT email FROM users WHERE id = $1 LIMIT 1', [req.session.userId]);
-          email = (u[0] && u[0].email) || null;
-        }
-        if (!email) { // session without userId (older logins) → oldest account on the shop…
-          const { rows: u } = await db.query('SELECT email FROM users WHERE business_id = $1 ORDER BY id ASC LIMIT 1', [req.session.businessId]);
-          email = (u[0] && u[0].email) || null;
-        }
-        if (email) isTester = testers.includes(String(email).toLowerCase()); // case-insensitive (caps can't lock you out!)
-      } catch (e) { console.error('tester email lookup error:', e.message); } // lookup failed → NOT a tester (fail closed — paywall never leaks on errors!)
-    }
-    if (isTester && tier === 'free') console.log(`telegram shared tester bypass, business ${req.session.businessId} (remove them from TELEGRAM_SHARED_TESTERS after testing!)`); // Render-log proof the bypass (not a bug) let them in!
-    if (tier === 'free' && !isTester) return res.status(402).json({ error: 'Shared Telegram bot is a Pro feature — upgrade to connect in one tap, no BotFather needed.' });
-    const code = 'BIZ' + require('crypto').randomBytes(3).toString('hex').toUpperCase(); // fresh code (each tap INVALIDATES the old — leaked links die!)
+    let code = (b[0].telegram_link_code || '').trim();
+    if (!code || (req.body && req.body.newCode)) code = 'BIZ' + require('crypto').randomBytes(3).toString('hex').toUpperCase();
     await db.query('UPDATE businesses SET telegram_link_code = $1, telegram_shared_on = true WHERE id = $2', [code, req.session.businessId]);
-    res.json({ // code travels ONLY on explicit generate (status endpoints never leak it!)
-      connected: true, shared: true, code, botName,
-      deepLink: `https://t.me/${botName}?start=${code}`,
-      note: `Customers open t.me/${botName}?start=${code} once — then chat normally. Owner commands stay in your dashboard.`,
-    });
+    if (req.body && req.body.newCode) {
+      // Customers already bound stay bound (telegram_links), only the old link/QR stops opening the shop.
+      console.log(`telegram shared code rotated, business ${req.session.businessId}`);
+    } else {
+      require('../services/referralService').onFirstActive(req.session.businessId).catch((e) => console.error('referral reward error:', e.message));
+    }
+    res.json(sharedLinkOut(botName, code, b[0].name));
   } catch (e) {
     console.error('telegram shared failed:', (e && e.code) || '-', e.message); // JSON 500, never a process crash (see telegramToken note!)
+    res.status(500).json({ error: dbUserMessage(e), ref: errRef(e) });
+  }
+}
+
+// Read the current shared-bot customer link (Connect page shows the link + QR
+// on every visit, not only right after connecting). Owner-only, read-only.
+async function telegramSharedLink(req, res) {
+  try {
+    const { botToken, botName } = sharedBotEnv();
+    const runSelect = (legacy) => db.query(legacy
+      ? 'SELECT telegram_link_code, false AS telegram_shared_on, telegram_bot_token, name FROM businesses WHERE id = $1'
+      : 'SELECT telegram_link_code, telegram_shared_on, telegram_bot_token, name FROM businesses WHERE id = $1', [req.session.businessId]);
+    const { rows } = await sharedAware(runSelect);
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    const r = rows[0];
+    const code = (r.telegram_link_code || '').trim();
+    if (!botToken || !botName || !r.telegram_shared_on || (r.telegram_bot_token || '').trim() || !code) return res.json({ connected: false, shared: false });
+    res.json(sharedLinkOut(botName, code, r.name));
+  } catch (e) {
+    console.error('telegram shared link failed:', (e && e.code) || '-', e.message);
     res.status(500).json({ error: dbUserMessage(e), ref: errRef(e) });
   }
 }
@@ -1361,6 +1381,7 @@ module.exports = { metaPin, chatContact, // every handler the routes file wires 
   telegramLink,
   telegramStatus,
   telegramShared,
+  telegramSharedLink,
   telegramHealthCheck,
   channelsStatus,
   whatsappModel,

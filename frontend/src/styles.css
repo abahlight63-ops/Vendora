@@ -4349,3 +4349,16 @@ svg[fill="none"][stroke="currentColor"]:not(.no-duo) { fill: currentColor; fill-
 .pw-rules li::before { content: ''; width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid currentColor; }
 .pw-rules li.ok { opacity: 1; color: #34d399; font-weight: 700; }
 .pw-rules li.ok::before { background: #34d399; border-color: #34d399; box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.25); }
+
+/* Telegram shared-bot QR card (Connect page) */
+.tg-qr { display: flex; gap: 18px; align-items: center; margin-top: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 18px; background: var(--card); }
+.tg-qr-code { flex: 0 0 auto; padding: 10px; background: #fff; border-radius: 14px; line-height: 0; }
+.tg-qr-code canvas { width: 180px; height: 180px; display: block; }
+.tg-qr-side { display: flex; flex-direction: column; gap: 6px; min-width: 0; color: var(--ink); }
+.tg-qr-link { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 13.5px; overflow-wrap: anywhere; }
+.tg-qr-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+@media (max-width: 560px) {
+  .tg-qr { flex-direction: column; align-items: stretch; text-align: center; }
+  .tg-qr-code { align-self: center; }
+  .tg-qr-actions { justify-content: center; }
+}

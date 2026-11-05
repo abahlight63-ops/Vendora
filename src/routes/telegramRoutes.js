@@ -3,7 +3,7 @@
 //   per-shop: POST /webhook/telegram/:bizId — shop's own BotFather bot.
 //     Customers just message (bot IS the shop — no code needed!). Owner binds
 //     once via /start link_<CODE> (CODE from Profile → owner_telegram_id).
-//   shared:   POST /webhook/telegram/shared — ONE @VeloSalesBot for Pro shops.
+//   shared:   POST /webhook/telegram/shared — ONE @VeloSalesBot for every plan.
 //     Customers bind via /start <CODE>; owner commands OFF here (dashboard!).
 // Routing into the brain: normalize to controller-shape req.body + req.telegram
 // context, then reuse webhookController.handleInbound (ONE brain, two doors!).
@@ -109,7 +109,7 @@ router.post('/telegram/shared', async (req, res) => {
          ON CONFLICT (telegram_id) DO UPDATE SET business_id = EXCLUDED.business_id`, // re-linking SWITCHES shops (one user, one shop — simple mental model!)
         [parsed.fromId, rows[0].id]
       );
-      await tg.sendText(sharedToken, parsed.chatId, `Connected to ${rows[0].name} — send your questions! (Pro shops: smarter models + voice included.)`);
+      await tg.sendText(sharedToken, parsed.chatId, `You're now chatting with ${rows[0].name}. Ask anything: prices, stock, delivery, or place an order.`);
       return res.status(200).send('');
     }
     await tg.sendText(sharedToken, parsed.chatId, 'Welcome to VeloSales Ai! Ask your shop for their link code — it looks like BIZ7X2K. (Shops: find yours in Profile → Telegram.)');

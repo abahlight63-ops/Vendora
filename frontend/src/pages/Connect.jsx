@@ -13,6 +13,7 @@ import Ic from '../components/icons.jsx'; // drawn glyphs (never emoji!)
 import Loader from '../components/Loader.jsx'; // mini orbit in busy buttons (brand consistency!)
 import GlassUpsell from '../components/GlassUpsell.jsx'; // locked-model upgrade card
 import ModelPicker from '../components/ModelPicker.jsx'; // shared brain picker (same look as VeloSalesAI!)
+import TelegramQR from '../components/TelegramQR.jsx'; // shared-bot customer QR + poster download
 import GuideSlides from '../components/GuideSlides.jsx'; // visual how-to slides on the road cards (screenshots drop in tonight!)
 
 function CopyRow({ label, value }) { // tap-anywhere copy row: plain selectable text + Copy button (NEVER a link — nothing navigates away, ever!)
@@ -312,7 +313,7 @@ export default function Connect() {
     if (step > 1) setStep(step - 1);
     else { setRoad(null); setStep(1); }
   }
-  function openRoad(r) { setRoad(r); setStep(1); setMetaProof(null); setTgLink(null); setTgShared(null); setTgHealth(null); setWaHealth(null); setShowManual(false); } // fresh drafts per road!
+  function openRoad(r) { setRoad(r); setStep(1); setMetaProof(null); setTgLink(null); setTgHealth(null); setWaHealth(null); setShowManual(false); } // fresh drafts per road!
 
   // ---- Meta manual connect (retired UI — one-tap only! Endpoint stays live server-side for emergencies.) ----
   async function metaConnect() {
@@ -391,12 +392,19 @@ export default function Connect() {
       setBusy(false);
     }
   }
-  // ---- Shared-bot road (Pro only, no BotFather!) ----
-  async function tgSharedConnect() {
+  // ---- Shared-bot road (every plan, no BotFather!) ----
+  // newCode=true replaces the customer code: the old link and every printed QR stop working.
+  async function tgSharedConnect(newCode) {
+    if (newCode && !window.confirm('Make a new code? Your current link and any QR codes you printed will stop working. Customers who already chat with you are not affected.')) return;
     setBusy(true);
     try {
-      const { ok, status, data } = await api('/api/me/telegram/shared', { method: 'POST', body: '{}' });
-      if (ok && data.connected) { setTgShared(data); setStep(2); load(); pop('ok', 'Shared bot connected!', 'Give customers your link below — they chat, the AI answers.'); }
+      const { ok, status, data } = await api('/api/me/telegram/shared', { method: 'POST', body: JSON.stringify(newCode ? { newCode: true } : {}) });
+      if (ok && data.connected) {
+        const wasOn = !!tgShared;
+        setTgShared(data); setStep(2); load();
+        if (newCode) toast('New code ready. Download your new poster.', 'ok');
+        else if (!wasOn) pop('ok', 'Shared bot connected!', 'Share your link or QR code below. Customers chat, Velo answers.');
+      }
       else if (status === 402) setUpsell(true); // free tier → upgrade card (never a dead error!)
       else if (status === 401) pop('err', 'Signed out', 'Your session expired — sign in again, then retry.');
       else pop('err', 'Shared bot unavailable', ((data && data.error) || 'Try your own bot below instead.') + (data && data.ref ? ` (ref: ${data.ref})` : ''));
@@ -449,6 +457,11 @@ export default function Connect() {
   const tgOn = !!st?.telegram?.connected;
   const tgSharedCard = tgShared || null; // fresh shared result (code travels only on explicit generate!)
   const tgSharedOrOn = !!(tgShared || st?.telegram?.shared); // shared mode active (fresh tap OR earlier session!)
+  // Shared shops: load the customer link + QR on arrival (it is stable, so it is safe to show every visit).
+  useEffect(() => {
+    if (!st?.telegram?.shared || tgShared) return;
+    api('/api/me/telegram/shared').then(({ ok, data }) => { if (ok && data && data.connected) setTgShared(data); }).catch(() => {});
+  }, [st?.telegram?.shared]);
 
   // Silent truth-check on arrival: a token sitting in the database is NOT proof
   // Telegram can still reach us. One cheap read, no toasts, no spinner —
@@ -551,7 +564,7 @@ export default function Connect() {
                   <div className="ch-card-foot">
                     <button type="button" className="btn ghost" disabled={tgChecking || busy} onClick={() => tgHealthCheck(false)}>{tgChecking ? 'Checking' : 'Verify'}</button>
                     {tgHealth && tgHealth.configured && !tgHealth.ok && <button type="button" className="btn" disabled={busy} onClick={() => tgHealthCheck(true)}>{busy ? 'Repairing' : 'Repair now'}</button>}
-                    <button type="button" className="btn ghost" onClick={() => openRoad('telegram')}>Settings</button>
+                    <button type="button" className="btn ghost" onClick={() => { openRoad('telegram'); if (st.telegram.shared) setStep(2); }}>{st.telegram.shared ? 'Link and QR code' : 'Settings'}</button>
                   </div>
                   {tgHealth && tgHealth.configured && !tgHealth.ok && (
                     <p className="ch-note warn">
@@ -562,8 +575,8 @@ export default function Connect() {
                 </>
               ) : (
                 <div className="ch-choose">
-                  <button type="button" className="ch-option" onClick={() => openRoad('telegram')}><b>Your own bot</b><span>Make a free bot with @BotFather and paste its token. About a minute.</span><i>Start →</i></button>
-                  <button type="button" className="ch-option" onClick={() => openRoad('telegram')}><b>Our shared bot <em>Pro</em></b><span>No BotFather. Get a link for your customers in one tap.</span><i>Start →</i></button>
+                  <button type="button" className="ch-option" disabled={busy} onClick={() => { openRoad('telegram'); tgSharedConnect(false); }}><b>Our shared bot <em>Easiest</em></b><span>No BotFather. Get a link and a QR code for your customers in one tap.</span><i>Start →</i></button>
+                  <button type="button" className="ch-option" onClick={() => openRoad('telegram')}><b>Your own bot</b><span>Make a free bot with @BotFather and paste its token. Customers see your shop name as the bot. About a minute.</span><i>Start →</i></button>
                 </div>
               )}
             </section>
@@ -684,22 +697,21 @@ export default function Connect() {
             </div>
             <p className="hint" style={{ marginTop: 8 }}>We check the token with Telegram instantly — a wrong or expired token is rejected right here.</p>
             <div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
-              <h2>Or skip BotFather — shared bot <span className="pill ok">PRO</span></h2>
-              <p className="desc">Pro shops ride our house bot: one tap, no tokens, nothing to revoke. Customers open your link once, then chat normally.</p>
+              <h2>Or skip BotFather: use our shared bot</h2>
+              <p className="desc">Free on every plan. One tap, no tokens, nothing to revoke. You get a link and a QR code; customers open it once, then chat normally.</p>
               <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-                <button className="btn sm" disabled={busy} onClick={tgSharedConnect}>{busy ? (<><Loader size={15} />Connecting…</>) : 'Connect shared bot'}</button>
+                <button className="btn sm" disabled={busy} onClick={() => tgSharedConnect(false)}>{busy ? (<><Loader size={15} />Connecting…</>) : 'Connect shared bot'}</button>
               </div>
-              <p className="hint" style={{ marginTop: 8 }}>Free plan? This button opens the upgrade card instead — your own bot above stays free forever.</p>
             </div>
           </>)}
           {step === 2 && tgSharedOrOn && (<>
-            <h2>Shared bot is live — give customers this link</h2>
-            <p className="desc">Anyone who opens it once is bound to your shop forever. Owner commands (LEARN:, PAUSE) stay in your dashboard.</p>
-            {tgSharedCard && <div className="learn-box light" style={{ marginTop: 10 }}><b>Customer link: {tgSharedCard.deepLink || ('t.me/' + tgSharedCard.botName)}</b><br />Your code: <b>{tgSharedCard.code}</b><br />{tgSharedCard.note}<br /><span className="hint">New code invalidates the old one — regenerate any time.</span></div>}
-            {!tgSharedCard && st?.telegram?.sharedBot && <div className="learn-box light" style={{ marginTop: 10 }}><b>Connected via @{st.telegram.sharedBot}</b><br /><span className="hint">Generate a fresh customer link below.</span></div>}
+            <h2>Shared bot is live: share your link or QR code</h2>
+            <p className="desc">Anyone who opens it once is connected to your shop from then on. Owner commands (LEARN:, PAUSE) stay in your dashboard.</p>
+            {tgSharedCard && tgSharedCard.deepLink && <TelegramQR link={tgSharedCard.deepLink} shopName={tgSharedCard.shopName} code={tgSharedCard.code} />}
+            {!tgSharedCard && <p className="hint" style={{ marginTop: 10 }}><Loader size={15} /> Loading your link…</p>}
             <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
               <button className="btn ghost sm" onClick={back}>Back</button>
-              <button className="btn sm" disabled={busy} onClick={tgSharedConnect}>{busy ? (<><Loader size={15} />Working…</>) : 'Get customer link'}</button>
+              <button className="btn ghost sm" disabled={busy} onClick={() => tgSharedConnect(true)}>{busy ? (<><Loader size={15} />Working…</>) : 'Make a new code'}</button>
               <button className="btn ghost sm" disabled={busy} onClick={tgSharedOff}>Switch off</button>
             </div>
           </>)}

@@ -79,7 +79,8 @@ router.get('/me/telegram/health', ownerController.telegramHealthCheck); // Conne
 router.post('/me/telegram/health', ownerController.telegramHealthCheck); // same check + { repair: true } → re-register a stale hook in place (no token needed!)
 router.post('/me/telegram/token', ownerController.telegramToken);
 router.post('/me/telegram/link', ownerController.telegramLink);
-router.post('/me/telegram/shared', ownerController.telegramShared); // Pro shared-bot road (no BotFather paste!)
+router.post('/me/telegram/shared', ownerController.telegramShared); // shared-bot road, every plan (no BotFather paste!)
+router.get('/me/telegram/shared', ownerController.telegramSharedLink); // current customer link (for the link + QR card)
 router.get('/me/channels', ownerController.channelsStatus); // Connect page: WhatsApp LIVE/OFF + channel + model (secrets never returned!)
 router.put('/me/whatsapp-model', ownerController.whatsappModel); // per-shop WhatsApp brain pick (tier-gated!)
 router.post('/me/channels/meta', ownerController.metaConnect); // Embedded Signup result OR manual paste → validate + arm Meta door

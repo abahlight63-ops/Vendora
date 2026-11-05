@@ -14,7 +14,7 @@ export const GUIDES = [
       { shot: 'connect-1', page: '/dashboard', target: { d: 'nav a[href="/connect"]', p: '.mobile-bar a[href="/connect"]' }, title: 'Open Channels', text: 'Tap Channels in the menu. On a phone it is in the bar at the bottom of the screen.', label: 'Tap Channels' },
       { shot: 'connect-2', page: '/connect', target: '.ch-fb-go', title: 'Tap Continue with Facebook', text: 'In the Meta apps card, tap the big blue button. One Facebook login connects WhatsApp, Messenger and Instagram.', tip: 'Use the Facebook account that runs your business Page.', label: 'Tap here' },
       { shot: 'connect-3', page: '/connect', click: '.ch-fb-go', target: '.ch-guide', title: 'Follow every Meta screen', text: 'A Meta window opens. Choose your business, pick your WhatsApp number and tap Continue on each screen until it closes by itself.', tip: "Window didn't open? Allow pop-ups for this site, then tap again.", label: 'Read these first' },
-      { shot: 'connect-4', page: '/connect', target: '.ch-choose', title: 'Or connect Telegram', text: 'Pick Your own bot (free, about a minute with @BotFather) or Our shared bot on Pro.', label: 'Pick one' },
+      { shot: 'connect-4', page: '/connect', target: '.ch-choose', title: 'Or connect Telegram', text: 'Pick Our shared bot (one tap, with a QR code for your customers) or Your own bot (about a minute with @BotFather). Both are free on every plan.', label: 'Pick one' },
       { shot: 'connect-5', page: '/connect', click: '.ch-option', target: '.ch-guide', title: 'Make your Telegram bot', text: 'Follow the six steps: open @BotFather, send /newbot, name it, copy the token, paste it and tap Connect bot.', label: 'Six short steps' },
     ],
   },

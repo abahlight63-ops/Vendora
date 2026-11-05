@@ -274,6 +274,11 @@ async function handleInbound(req, res) {
     if (chat[0] && chat[0].blocked) return res.status(200).send(''); // blocked by the owner: logged, never answered, no alerts
     // ---- Friend or customer: Velo learns from the words, never sells to family ----
     const contacts = require('../services/contactService');
+    if (chat[0] && chat[0].contact_type !== 'customer' && chat[0].contact_type !== 'personal') { // on the owner's friends and family list → quiet for good
+      try {
+        if (await contacts.isFriend(business.id, From)) { await contacts.setType(customerId, 'personal'); return res.status(200).send(''); }
+      } catch (e) { console.error('friends list check error:', e.message); }
+    }
     const verdict = chat[0] ? contacts.classify(chat[0].contact_type, chat[0].inbound, Body) : null;
     if (verdict === 'personal') { // "it's me" / "na me": a friend, Velo steps back for good
       if (chat[0].contact_type !== 'personal') await contacts.setType(customerId, 'personal');

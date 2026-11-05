@@ -80,6 +80,10 @@ router.post('/me/telegram/health', ownerController.telegramHealthCheck); // same
 router.post('/me/telegram/token', ownerController.telegramToken);
 router.post('/me/telegram/link', ownerController.telegramLink);
 router.post('/me/telegram/shared', ownerController.telegramShared); // shared-bot road, every plan (no BotFather paste!)
+router.get('/me/friends', require('../controllers/friendsController').list); // friends and family list (Velo stays quiet for them)
+router.post('/me/friends', require('../controllers/friendsController').add);
+router.post('/me/friends/clear', require('../controllers/friendsController').clear);
+router.delete('/me/friends/:id', require('../controllers/friendsController').remove);
 router.get('/me/telegram/shared', ownerController.telegramSharedLink); // current customer link (for the link + QR card)
 router.get('/me/channels', ownerController.channelsStatus); // Connect page: WhatsApp LIVE/OFF + channel + model (secrets never returned!)
 router.put('/me/whatsapp-model', ownerController.whatsappModel); // per-shop WhatsApp brain pick (tier-gated!)

@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react'; // useState = the form + the picked
 import { api, pop } from '../lib/api.js'; // api() calls; pop() animated outcomes
 import Select from '../components/Select.jsx';
 import SellingCard from '../components/SellingCard.jsx'; // away mode + follow-ups (saves by itself)
+import FriendsCard from '../components/FriendsCard.jsx'; // friends and family list: Velo stays quiet for them (saves by itself)
 import GlassUpsell from '../components/GlassUpsell.jsx'; // the upgrade card for locked choices // the ONE dropdown control (same as catalog, billing, niche)
 import Ic from '../components/icons.jsx'; // check/tick glyphs
 import { BUCKETS, bucketOf, idFor, modelFor } from '../components/BrainPicker.jsx'; // the ONLY module that knows engines exist
@@ -243,6 +244,7 @@ export default function AiSettings({ biz, embedded = false }) {
       </div>
 
       <SellingCard />
+      <FriendsCard />
 
       <div className="card" data-guide="extras">
         <h2>Extras</h2>

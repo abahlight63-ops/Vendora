@@ -229,6 +229,16 @@ CREATE TABLE IF NOT EXISTS telegram_links ( -- shared-bot routing: telegram user
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Friends and family the owner imported (AI settings): Velo never sells to these numbers.
+CREATE TABLE IF NOT EXISTS personal_contacts (
+  id SERIAL PRIMARY KEY,
+  business_id INTEGER NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  phone TEXT NOT NULL, -- digits only, with country code (2348031234567)
+  name TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (business_id, phone)
+);
+
 -- Revenue ledger: every money event (Paystack success, transfer report/approval)
 CREATE TABLE IF NOT EXISTS payments (
   id SERIAL PRIMARY KEY,

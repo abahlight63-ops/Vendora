@@ -87,10 +87,80 @@ async function applyOwnerAnswer(business, body) {
   return done.length ? `Got it: ${done.join(', ')}. Velo will remember.` : null;
 }
 
+// ---- Friends and family list (imported by the owner in AI settings) ----
+// Phones are stored as digits with the country code; WhatsApp chats are
+// matched on the same digits. Telegram does not share phone numbers, so the
+// list only covers WhatsApp.
+const MAX_FRIENDS = 5000;
+const digitsOf = (raw) => {
+  const n = require('../utils/phone').normalizePhone(raw);
+  return n ? n.replace(/\D/g, '') : null;
+};
+
+async function listFriends(businessId) {
+  const { rows } = await db.query('SELECT id, phone, name, created_at FROM personal_contacts WHERE business_id = $1 ORDER BY LOWER(COALESCE(name, phone)) LIMIT $2', [Number(businessId), MAX_FRIENDS]);
+  return rows;
+}
+
+// contacts: [{ name, phone }]. Returns { added, already, skipped, chatsMarked }.
+async function importFriends(businessId, contacts) {
+  const bid = Number(businessId);
+  if (!Array.isArray(contacts) || !contacts.length) throw Object.assign(new Error('No contacts to add.'), { status: 400 });
+  if (contacts.length > 3000) throw Object.assign(new Error('That is a lot at once: add up to 3,000 contacts at a time.'), { status: 400 });
+  const seen = new Map();
+  let skipped = 0;
+  for (const c of contacts) {
+    const phone = digitsOf(c && c.phone);
+    if (!phone) { skipped++; continue; }
+    if (!seen.has(phone)) seen.set(phone, String((c && c.name) || '').trim().slice(0, 80) || null);
+  }
+  if (!seen.size) return { added: 0, already: 0, skipped, chatsMarked: 0 };
+  const { rows: [{ n }] } = await db.query('SELECT COUNT(*)::int AS n FROM personal_contacts WHERE business_id = $1', [bid]);
+  const phones = [...seen.keys()];
+  const names = phones.map((p) => seen.get(p));
+  const { rows: existing } = await db.query('SELECT phone FROM personal_contacts WHERE business_id = $1 AND phone = ANY($2::text[])', [bid, phones]);
+  const have = new Set(existing.map((r) => r.phone));
+  const fresh = phones.filter((p) => !have.has(p));
+  if (n + fresh.length > MAX_FRIENDS) throw Object.assign(new Error(`Your list can hold ${MAX_FRIENDS.toLocaleString()} people. Remove some first, or add fewer.`), { status: 400 });
+  await db.query(
+    `INSERT INTO personal_contacts (business_id, phone, name)
+     SELECT $1, p, nm FROM unnest($2::text[], $3::text[]) AS t(p, nm)
+     ON CONFLICT (business_id, phone) DO UPDATE SET name = COALESCE(EXCLUDED.name, personal_contacts.name)`,
+    [bid, phones, names]
+  );
+  // Chats already open with these people: mark them friends now (unless the owner already said "customer").
+  const { rows: marked } = await db.query(
+    `UPDATE conversations SET contact_type = 'personal', bot_paused = true
+      WHERE business_id = $1 AND customer_number LIKE 'whatsapp:%'
+        AND regexp_replace(customer_number, '[^0-9]', '', 'g') = ANY($2::text[])
+        AND contact_type IS DISTINCT FROM 'customer' AND contact_type IS DISTINCT FROM 'personal'
+      RETURNING id`, [bid, phones]);
+  return { added: fresh.length, already: phones.length - fresh.length, skipped, chatsMarked: marked.length };
+}
+
+async function removeFriend(businessId, id) {
+  const { rowCount } = await db.query('DELETE FROM personal_contacts WHERE id = $1 AND business_id = $2', [Number(id), Number(businessId)]);
+  return rowCount > 0;
+}
+
+async function clearFriends(businessId) {
+  const { rowCount } = await db.query('DELETE FROM personal_contacts WHERE business_id = $1', [Number(businessId)]);
+  return rowCount;
+}
+
+// Is this WhatsApp sender on the shop's friends list? (From = "whatsapp:+234…")
+async function isFriend(businessId, from) {
+  if (!/^whatsapp:/i.test(String(from || ''))) return false;
+  const phone = String(from).replace(/\D/g, '');
+  if (!phone) return false;
+  const { rows } = await db.query('SELECT 1 FROM personal_contacts WHERE business_id = $1 AND phone = $2 LIMIT 1', [Number(businessId), phone]);
+  return rows.length > 0;
+}
+
 function startDigest() {
   const tick = () => digestRound().catch((e) => console.error('contact digest error:', e.message));
   setTimeout(tick, 10 * 60 * 1000); // first round 10 minutes after boot
   setInterval(tick, 60 * 60 * 1000); // hourly check; each shop hears at most once in 20 hours
 }
 
-module.exports = { classify, introText, setType, digestRound, applyOwnerAnswer, startDigest, SHOP_RE, PERSONAL_RE, ITS_ME_RE };
+module.exports = { classify, introText, setType, digestRound, applyOwnerAnswer, startDigest, listFriends, importFriends, removeFriend, clearFriends, isFriend, MAX_FRIENDS, SHOP_RE, PERSONAL_RE, ITS_ME_RE };

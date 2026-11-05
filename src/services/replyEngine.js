@@ -259,7 +259,8 @@ VELOSALES AI FACTS: VeloSales Ai is a WhatsApp AI sales assistant for small busi
  * Pro businesses additionally ground in their synced WhatsApp Business profile.
  */
 async function generateReply(customerMessage, business, image, history) {
-  const shopDetails = (() => { try { return require('./shopProfile').format(business); } catch { return ''; } })(); // Settings → Your shop
+  const shopDetails = (() => { try { return require('./shopProfile').format(business); } catch { return ''; } })() // Settings → Your shop
+    + (() => { try { const a = require('./followupService').awayLine(business); return a ? '\n' + a : ''; } catch { return ''; } })(); // away mode
   const planService = require('./planService');
   const pro = planService.isPro(business);
   const products = await productService.getProducts(business.id);
@@ -348,7 +349,7 @@ RULES
 11. Small talk (thanks, jokes): reply warmly in one or two lines and invite them to ask about products.
 12. Hand off when the facts do not cover it: custom orders, complaints, confirming that a payment arrived, unknown items. Reply with exactly: NEED_HUMAN: <brief reason>
 13. Plain text only: no *, #, _, backticks, emojis or links. Product answers under about 60 words. Never say you are an AI or a bot.
-14. ${maxDisc > 0 ? `Discounts: up to ${maxDisc}% off${minOrder ? ` on orders of at least ₦${minOrder.toLocaleString()}` : ''}, offered once, only when a customer who clearly wants to buy says the price is too high. Never volunteer it.` : 'Do NOT offer discounts.'}${image ? '\n15. The customer sent a PHOTO: describe it briefly, match it to the closest catalog product(s), suggest 2-4 similar in-stock items. No match: NEED_HUMAN.' : ''}
+14. ${maxDisc > 0 ? `Discounts: up to ${maxDisc}% off${minOrder ? ` on orders of at least ₦${minOrder.toLocaleString()}` : ''}, offered once, only when a customer who clearly wants to buy says the price is too high. Never volunteer it.` : 'Do NOT offer discounts.'}${image ? '\n15. The customer sent a PHOTO. If it is a bank transfer receipt, payment screenshot or debit alert, reply with exactly PAYMENT_PROOF and nothing else. Otherwise: describe it briefly, match it to the closest catalog product(s), suggest 2-4 similar in-stock items. No match: NEED_HUMAN.' : ''}
 
 BUSINESS
 Name: ${business.name}
@@ -388,6 +389,7 @@ ${catalog}${isEmptyCatalog ? '\nThe catalog is EMPTY: for any product question, 
       } catch (err) { console.error('generateReply expand retry failed:', err.message); }
     }
     const text = cleanReply(answered.text); // plain text enforced; ALSO normalizes "**NEED_HUMAN:**" variants into a detectable flag
+    if (/^PAYMENT_PROOF\b/.test(text)) return { reply: null, needsHuman: true, paymentProof: true, reason: 'Payment to confirm: the customer sent a payment screenshot' };
     if (text.startsWith('NEED_HUMAN')) {
       return { reply: null, needsHuman: true, reason: text.slice(11).trim() || 'Unsure how to answer' };
     }

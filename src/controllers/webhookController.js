@@ -269,8 +269,9 @@ async function handleInbound(req, res) {
     // said while away — silence is about REPLIES, never about records.
     const { rows: gate } = await db.query('SELECT bot_enabled FROM businesses WHERE id = $1', [business.id]); // fresh read (owner may have toggled seconds ago!)
     const { rows: chat } = await db.query(
-      `SELECT bot_paused, contact_type, (SELECT COUNT(*)::int FROM messages WHERE conversation_id = $1 AND direction = 'in') AS inbound
+      `SELECT bot_paused, contact_type, blocked, (SELECT COUNT(*)::int FROM messages WHERE conversation_id = $1 AND direction = 'in') AS inbound
          FROM conversations WHERE id = $1`, [customerId]);
+    if (chat[0] && chat[0].blocked) return res.status(200).send(''); // blocked by the owner: logged, never answered, no alerts
     // ---- Friend or customer: Velo learns from the words, never sells to family ----
     const contacts = require('../services/contactService');
     const verdict = chat[0] ? contacts.classify(chat[0].contact_type, chat[0].inbound, Body) : null;
@@ -418,14 +419,16 @@ async function handleInbound(req, res) {
          WHERE id = $2`, // gold flag + reason (Insights aggregates these reasons)
         [result.reason || 'AI could not answer confidently', customerId]
       );
-      const handoffMsg = (business.handoff_msg && String(business.handoff_msg).trim()) // owner's own handoff words (AI settings page!)…
+      const handoffMsg = result.paymentProof
+        ? 'Thank you! I have passed your payment to the owner to confirm. You will hear back shortly.' // never says the money arrived
+        : (business.handoff_msg && String(business.handoff_msg).trim()) // owner's own handoff words (AI settings page!)…
         || 'Thanks for your message! A member of our team will get back to you shortly.'; // …or the built-in polite fallback (customer never left hanging!)
       await reply(From, handoffMsg);
       await conversationService.logMessage(customerId, 'out', handoffMsg);
       await alertOwner(business, From, ProfileName, Body, result.reason); // …and the owner is paged instantly
       try { // in-app bell (the owner SEES it: gold-flagged chat waiting in Chats + this bell card linking straight there!)
         await require('../services/notifyService').notify(business.id, {
-          title: `Customer needs you — ${ProfileName || From}`,
+          title: result.paymentProof ? `Payment to confirm — ${ProfileName || From}` : `Customer needs you — ${ProfileName || From}`,
           body: `"${String(Body || '').slice(0, 140)}" — ${result.reason || 'the AI handed this chat to you'}. Open Chats to reply.`,
           link: '/chats',
         });

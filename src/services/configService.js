@@ -380,6 +380,13 @@ CREATE TABLE IF NOT EXISTS admin_audit (
 CREATE INDEX IF NOT EXISTS admin_audit_created_idx ON admin_audit (created_at DESC);
 -- Shop profile: everything Velo knows about the shop beyond the catalog (see shopProfile.js).
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS shop_profile JSONB NOT NULL DEFAULT '{}';
+-- Selling features (see followupService.js): away mode, follow-ups, blocking.
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS away_until TIMESTAMPTZ;
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS away_note TEXT;
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS followup_enabled BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS followup_hours INTEGER NOT NULL DEFAULT 4;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS blocked BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS followup_sent_at TIMESTAMPTZ;
 -- In-app reviews from shop owners (see reviewService.js). Never published.
 CREATE TABLE IF NOT EXISTS app_reviews (
   id SERIAL PRIMARY KEY,

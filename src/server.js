@@ -363,6 +363,7 @@ require('./services/configService').ensureSchema()
   .then(() => { startKeepAlive(); startChannelWatchdog(); }) // lifelines: self-ping + dead-channel bells
   .then(() => app.listen(port, () => {
     sealOldKeys().catch((e) => console.error('key encryption pass failed:', e.message)); // encrypt access keys saved before encryption
+    try { require('./services/followupService').start(); } catch (e) { console.error('follow-ups not started:', e.message); } // free follow-ups inside 24h
     try { require('./services/contactService').startDigest(); } catch (e) { console.error('contact digest not started:', e.message); } // daily friend-or-customer question // START listening — the callback runs once the socket is open
     console.log(`WhatsApp AI support server running on port ${port}`);
     console.log(`Signup/login: http://localhost:${port}/login`);

@@ -78,6 +78,15 @@ export default function Chats() {
     load();
   }
 
+  async function setBlocked(blocked) { // Velo never answers a blocked number; no alerts
+    if (!thread) return;
+    const { ok } = await api('/api/me/conversations/' + thread.id + '/block', { method: 'POST', body: JSON.stringify({ blocked }) });
+    if (!ok) return toast('Could not update this chat', 'err');
+    setThread({ ...thread, blocked, needs_human: blocked ? false : thread.needs_human });
+    toast(blocked ? 'Blocked. Velo will not answer this number.' : 'Unblocked.');
+    load();
+  }
+
   async function takeover(paused) { // flip THIS chat's bot: true = you talk (bot silent), false = AI resumes.
     if (!thread || !!thread.bot_paused === !!paused) return; // already in that mode — no dead request
     const { ok } = await api('/api/me/conversations/' + thread.id + '/takeover', { method: 'POST', body: JSON.stringify({ paused }) });
@@ -137,7 +146,8 @@ export default function Chats() {
                 <span className="wx-main">
                   <span className="wx-top"><b>{c.customer_name || c.customer_number}</b>{c.needs_human ? <span className="wx-needs">Needs you, {waitedShort(c.updated_at || c.created_at)}</span> : <small>{fmtTime(c.updated_at)}</small>}</span>
                   <span className="wx-sub"><span>{(c.last_message || '').slice(0, 60) || 'No messages yet'}</span></span>
-                  {c.contact_type === 'personal' ? <span className="wx-chan-line">Friend · Velo stays quiet</span>
+                  {c.blocked ? <span className="wx-chan-line is-blocked">Blocked</span>
+                    : c.contact_type === 'personal' ? <span className="wx-chan-line">Friend · Velo stays quiet</span>
                     : c.contact_type === 'unsure' ? <span className="wx-chan-line is-ask">Friend or customer?</span>
                     : c.bot_paused ? <span className="wx-chan-line">You are answering</span> : null}
                 </span>
@@ -165,7 +175,9 @@ export default function Chats() {
                   <button className={'wx-seg' + (thread.bot_paused ? ' on' : '')} aria-pressed={!!thread.bot_paused} onClick={() => takeover(true)}>You answer</button>
                 </div>
               </div>
-              {thread.contact_type === 'unsure' ? (
+              {thread.blocked ? (
+                <div className="wx-who"><span>Blocked: Velo never answers this number and you get no alerts from it.</span><span className="wx-who-btns"><button type="button" onClick={() => setBlocked(false)}>Unblock</button></span></div>
+              ) : thread.contact_type === 'unsure' ? (
                 <div className="wx-who"><span>This might be personal, so Velo only said hello. Who is it?</span><span className="wx-who-btns"><button type="button" onClick={() => markContact('personal')}>Friend</button><button type="button" onClick={() => markContact('customer')}>Customer</button></span></div>
               ) : thread.contact_type === 'personal' ? (
                 <div className="wx-who"><span>Friend: Velo stays quiet here and leaves them out of broadcasts.</span><span className="wx-who-btns"><button type="button" onClick={() => markContact('customer')}>This is a customer</button></span></div>
@@ -174,7 +186,7 @@ export default function Chats() {
                 <div className="wx-flag"><span className="wx-flag-ic"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 16V11a6 6 0 0 0-12 0v5l-2 2h16zM10 21h4" /></svg></span><span><b>Velo needs you.</b> {thread.flag_reason || 'It was not sure how to answer this one.'}</span></div>
               ) : thread.bot_paused && thread.contact_type !== 'personal' ? <p className="wx-note">Velo is paused on this chat, so the customer only hears from you. Hand back anytime. <button type="button" className="wx-friend" onClick={() => markContact('personal')}>Not a customer?</button></p>
               : null}
-              {!thread.bot_paused && thread.contact_type !== 'personal' && thread.contact_type !== 'unsure' ? <p className="wx-note"><button type="button" className="wx-friend" onClick={() => markContact('personal')}>Not a customer? Mark as friend</button></p> : null}
+              {!thread.bot_paused && thread.contact_type !== 'personal' && thread.contact_type !== 'unsure' ? <p className="wx-note"><button type="button" className="wx-friend" onClick={() => markContact('personal')}>Not a customer? Mark as friend</button><span aria-hidden="true"> · </span><button type="button" className="wx-friend is-block" onClick={() => { if (window.confirm('Block this number? Velo will stop answering it and you will get no alerts from it. You can unblock it any time.')) setBlocked(true); }}>Block number</button></p> : null}
               <div className="thread" ref={threadRef}>
                 {msgs === null ? (<div className="skel-grid"><div className="skel" style={{ width: '70%', height: 44, borderRadius: 14 }} /><div className="skel" style={{ width: '60%', height: 44, borderRadius: 14, justifySelf: 'end' }} /><div className="skel" style={{ width: '50%', height: 44, borderRadius: 14 }} /></div>)
                   : msgs.length === 0 ? <p className="hint">No messages.</p>

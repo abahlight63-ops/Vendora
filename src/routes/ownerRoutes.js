@@ -12,6 +12,15 @@ router.use(requireAuth); // blanket guard: guests get 401 on everything below
 
 router.get('/me', ownerController.getMe); // business profile + tier + ads config
 router.put('/me/business', ownerController.updateBusiness);
+router.get('/me/selling', async (req, res) => { try { res.json(await require('../services/followupService').getSettings(req.session.businessId)); } catch (e) { console.error('selling get:', e.message); res.status(500).json({ error: 'Something went wrong.' }); } });
+router.put('/me/selling', async (req, res) => { try { res.json(await require('../services/followupService').saveSettings(req.session.businessId, req.body || {})); } catch (e) { console.error('selling save:', e.message); res.status(500).json({ error: 'Something went wrong.' }); } });
+router.post('/me/conversations/:id/block', async (req, res) => { // block or unblock a number (Velo never answers it, no alerts)
+  try {
+    const { rows } = await require('../db').query('UPDATE conversations SET blocked = $1, needs_human = CASE WHEN $1 THEN false ELSE needs_human END WHERE id = $2 AND business_id = $3 RETURNING id, blocked', [!!(req.body && req.body.blocked), Number(req.params.id), req.session.businessId]);
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    res.json(rows[0]);
+  } catch (e) { console.error('block failed:', e.message); res.status(500).json({ error: 'Something went wrong.' }); }
+});
 router.get('/me/review/should', require('../controllers/reviewController').should); // ask for a review now? (once per 14 days, after a win)
 router.post('/me/review', require('../controllers/reviewController').save);
 router.post('/me/review/skip', require('../controllers/reviewController').skip);

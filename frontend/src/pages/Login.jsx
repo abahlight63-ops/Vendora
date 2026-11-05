@@ -13,6 +13,7 @@ import { api } from '../lib/api.js'; // api() auth calls
 import { normalizePhone, prettyPhone } from '../lib/phone.js'; // WhatsApp input help (validate + pretty-print on blur)
 import Ic from '../components/icons.jsx'; // bolt/spark/hand/check/mail/eye icons
 import Loader from '../components/Loader.jsx'; // mini orbit inside busy buttons (the brand, spinning!)
+import OtpGlass from '../components/OtpGlass.jsx'; // glassy 6-digit code (type, spin, ring, tick)
 import { setPageMeta, APP_URL } from '../lib/seo.js';
 import { CHANNEL_COINS } from '../lib/channelLogos.js'; // the real WhatsApp logo on the photo // title + description + canonical
 
@@ -215,28 +216,38 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
     const t = setTimeout(() => setCool(cool - 1), 1000); // tick…
     return () => clearTimeout(t); // …cleanup (unmount/mode-switch cancels mid-countdown!)
   }, [cool]); // [cool] dep = re-arm every second while counting
+  const [otpPhase, setOtpPhase] = useState('idle'); // glassy code animation: idle | busy (boxes spin) | ok (ring + tick) | error (shake)
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  function otpFailed(message) { // shake red, show why, then clear for another try
+    setOtpPhase('error'); fail(message);
+    setTimeout(() => { setOtpPhase('idle'); setOtp(''); }, 700);
+  }
   async function verifyOtp() { // submit the code…
     const code = otp.replace(/\D/g, '').slice(0, 6); // strip non-digits (paste "12 34 56" still works!) + cap 6
     if (code.length !== 6) return fail('Enter the 6-digit code from your email.'); // client guard (fail() paints red — no wasted request!)
     if (otpPurpose === 'reset') { // FORGOT-CODE path: code + NEW password → one call, then back to sign in!
       if (!rpw || rpw.length < 8) return fail('New password must be at least 8 characters.');
       if (rpw !== rpw2) return fail('Passwords don’t match — retype both.');
-      if (busy) return; setBusy(true); setMsg(''); setMsgErr(false);
+      if (busy) return; setBusy(true); setMsg(''); setMsgErr(false); setOtpPhase('busy');
+      const started = Date.now();
       try {
         const { ok, data } = await api('/api/auth/reset-otp', { method: 'POST', body: JSON.stringify({ email: otpEmail, code, password: rpw }) });
+        await wait(Math.max(0, 1300 - (Date.now() - started))); // let the boxes spin for a moment (the approved animation)
         setBusy(false);
-        if (ok) { setOtpPurpose('verify'); setRpw(''); setRpw2(''); setOtp(''); switchMode('login'); setMsg('Password set — sign in with the new one.'); setMsgErr(false); return; }
-        fail(data.error || 'Wrong code — try again.'); // expired/locked/left-count messages arrive HERE too!
-      } catch { setBusy(false); fail("Can't reach the VeloSales Ai server. Check your internet connection and try again."); }
+        if (ok) { setOtpPhase('ok'); await wait(1700); setOtpPhase('idle'); setOtpPurpose('verify'); setRpw(''); setRpw2(''); setOtp(''); switchMode('login'); setMsg('Password set — sign in with the new one.'); setMsgErr(false); return; }
+        otpFailed(data.error || 'Wrong code — try again.'); // expired/locked/left-count messages arrive HERE too!
+      } catch { setBusy(false); otpFailed("Can't reach the VeloSales Ai server. Check your internet connection and try again."); }
       return;
     }
-    if (busy) return; setBusy(true); setMsg(''); setMsgErr(false);
+    if (busy) return; setBusy(true); setMsg(''); setMsgErr(false); setOtpPhase('busy');
+    const started = Date.now();
     try {
       const { ok, data } = await api('/api/auth/verify-otp', { method: 'POST', body: JSON.stringify({ email: otpEmail, code }) });
+      await wait(Math.max(0, 1300 - (Date.now() - started))); // the boxes spin for at least 1.3s, so the moment is seen
       setBusy(false);
-      if (ok) { setMsg('Verified — setting up your assistant…'); setMsgErr(false); await afterAuth('/welcome'); return; } // verified = logged in (session stamped!) → tour! (await: afterAuth overwrites msg on failure so the user sees WHY, never a silent bounce)
-      fail(data.error || 'Wrong code — try again.'); // expired/locked/left-count messages arrive HERE (backend crafts each one!)
-    } catch { setBusy(false); fail("Can't reach the VeloSales Ai server. Check your internet connection and try again."); } // unreachable → plain message (same guard as login/signup!)
+      if (ok) { setOtpPhase('ok'); await wait(1900); await afterAuth('/welcome'); return; } // ring closes, tick pops, then the app opens (afterAuth shows WHY on failure)
+      otpFailed(data.error || 'Wrong code — try again.'); // expired/locked/left-count messages arrive HERE (backend crafts each one!)
+    } catch { setBusy(false); otpFailed("Can't reach the VeloSales Ai server. Check your internet connection and try again."); } // unreachable → plain message (same guard as login/signup!)
   }
   async function resendCode() { // fresh code (burns the old one server-side!)…
     if (busy || cool > 0) return; // locked while busy OR cooling down (double-tap protection + cost control!)
@@ -302,15 +313,13 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
           <span className="au-brand"><Logo size={22} alt="" />VeloSales Ai</span>
         </header>
         <div className="auth-pane" key={mode}> {/* RIGHT: the form. key={mode} = React REMOUNTS on mode switch (fresh animations + no stale input focus — key change = new element!) */}
-          {mode === 'otp' ? (<> {/* OTP screen: verify path signs in · reset path sets a NEW password (purpose flag switches it!) */}
-            <span className="au-badge mail" aria-hidden="true"><svg width="38" height="38" viewBox="0 0 24 24"><path fill="none" stroke="#fff" strokeWidth="2" strokeLinejoin="round" d="M3 5h18v14H3zM4 7l8 6 8-6" /></svg></span>
-            <h1 className="au-center">{otpPurpose === 'reset' ? 'Set a new password' : 'Check your email'}</h1>
-            <p className="switch-note au-center">We sent a 6-digit code to<br /><b>{otpEmail}</b>{otpPurpose === 'reset' ? '. Enter it with your new password below.' : ''}</p>
-            <label className="au-sr" htmlFor="otp-in">6-digit code</label>
-            <div className="otp-boxes" aria-hidden="true" onClick={() => document.getElementById('otp-in')?.focus()}>
-              {[0, 1, 2, 3, 4, 5].map((k) => <span key={k} className={(otp.length === k ? 'cur' : '') + (otp[k] ? ' full' : '')}>{otp[k] || ''}</span>)}
-            </div>
-            <input id="otp-in" className="otp-input otp-hidden" autoFocus value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="••••••" inputMode="numeric" autoComplete="one-time-code" maxLength={6} onKeyDown={(e) => { if (e.key === 'Enter') verifyOtp(); }} /> {/* replace(/\D/g) strips non-digits AS YOU TYPE (paste-friendly!); autoComplete="one-time-code" = phones offer SMS-style autofill! */}
+          {mode === 'otp' ? (<div className={'au-glass' + (otpPhase === 'ok' ? ' is-ok' : '')}> {/* OTP screen: verify path signs in · reset path sets a NEW password (purpose flag switches it!) */}
+            <span className="au-badge mail" aria-hidden="true">{otpPhase === 'ok'
+              ? <svg width="34" height="34" viewBox="0 0 24 24"><path fill="none" stroke="#34d399" strokeWidth="2" strokeLinejoin="round" d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM8.5 12l2.5 2.5 4.5-5" /></svg>
+              : <svg width="38" height="38" viewBox="0 0 24 24"><path fill="none" stroke="#fff" strokeWidth="2" strokeLinejoin="round" d="M3 5h18v14H3zM4 7l8 6 8-6" /></svg>}</span>
+            <h1 className="au-center" aria-live="polite">{otpPhase === 'ok' ? (otpPurpose === 'reset' ? <>Password <em>saved</em></> : <>Verified <em>successfully</em></>) : otpPurpose === 'reset' ? <>Set a new <em>password</em></> : <>Check your <em>email</em></>}</h1>
+            <p className="switch-note au-center">{otpPhase === 'ok' ? (otpPurpose === 'reset' ? 'Sign in with your new password.' : 'Your email is confirmed. Opening your shop…') : (<>We sent a 6-digit code to<br /><b>{otpEmail}</b>{otpPurpose === 'reset' ? '. Enter it with your new password below.' : ''}</>)}</p>
+            <OtpGlass value={otp} onChange={setOtp} phase={otpPhase} autoSubmit={otpPurpose !== 'reset'} onComplete={() => verifyOtp()} /> {/* glassy boxes: type → spin → ring → tick (paste + phone autofill still work) */}
             {otpPurpose === 'reset' && (<> {/* reset path: new password lives WITH the code (one submit, no token juggling!) */}
               <label>New password</label>
               <input type="password" value={rpw} onChange={(e) => setRpw(e.target.value)} placeholder="8+ characters" autoComplete="new-password" onKeyDown={(e) => { if (e.key === 'Enter') verifyOtp(); }} />
@@ -318,14 +327,14 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
               <input type="password" value={rpw2} onChange={(e) => setRpw2(e.target.value)} placeholder="Same password again" autoComplete="new-password" onKeyDown={(e) => { if (e.key === 'Enter') verifyOtp(); }} />
             </>)}
             <p className="otp-tip"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="#FCD34D" strokeWidth="2" strokeLinejoin="round" d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /></svg><span>Check Spam or Promotions too. The code works for 10 minutes.</span></p>
-            <button className="btn lg login-cta" disabled={busy} onClick={verifyOtp}>{busy ? (<><Loader size={15} />Checking</>) : otpPurpose === 'reset' ? 'Set password' : 'Verify'}</button>
+            <button className="btn lg login-cta" disabled={busy || otpPhase === 'ok'} onClick={verifyOtp}>{otpPhase === 'ok' ? (otpPurpose === 'reset' ? 'Password saved' : 'Signed in') : busy ? (<><Loader size={15} />Verifying code…</>) : otpPurpose === 'reset' ? 'Set password' : 'Verify and continue'}</button>
             <div className="otp-fallback">
               <button type="button" className="btn ghost" disabled={busy || cool > 0} onClick={resendCode}>{cool > 0 ? `Resend code in ${cool}s` : 'Resend code'}</button>
               <button type="button" className="btn ghost" disabled={busy} onClick={sendLink}>Send a verification link instead</button>
             </div>
             <p className="hint" style={{ textAlign: 'center', marginTop: 8 }}>The link does the same job as the code — pick whichever arrives first. Both expire; the newest one wins.</p>
             <p className="auth-toggle"><a onClick={() => switchMode('login')}>Back to sign in</a></p>
-          </>) : mode === 'forgot' ? (<> {/* FORGOT screen: email → reset link (always "sent" — enumeration-safe!) */}
+          </div>) : mode === 'forgot' ? (<> {/* FORGOT screen: email → reset link (always "sent" — enumeration-safe!) */}
             <span className="au-badge key" aria-hidden="true"><svg width="38" height="38" viewBox="0 0 24 24"><path fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" d="M8 15a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM11 12h9M17 12v3M20 12v2" /></svg></span>
             <h1 className="au-center">Forgot your password?</h1>
             <p className="switch-note au-center">No wahala. Enter your email and we'll send a code or a link to set a new one.</p>

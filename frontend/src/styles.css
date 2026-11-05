@@ -4023,3 +4023,41 @@ body { min-height: 100vh; min-height: 100dvh; } /* the colour field must reach t
 :root[data-theme="dark"] .ad-kpi small.warn, :root[data-theme="dark"] .ad-tag.warn { color: #fbbf24; }
 :root[data-theme="dark"] .ad-tag.good { color: #34d399; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ad-kpi small.warn, :root:not([data-theme="light"]) .ad-tag.warn { color: #fbbf24; } :root:not([data-theme="light"]) .ad-tag.good { color: #34d399; } }
+
+/* Glassy code entry (approved design, from the owner's video) */
+.og { position: relative; margin: 6px 0 4px; cursor: text; }
+.og-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; border: 0; background: transparent; color: transparent; caret-color: transparent; z-index: 2; }
+.og-zone { position: relative; height: 150px; }
+.og-orbit { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+.og-busy .og-orbit { animation: ogSpin 1.6s cubic-bezier(.4, 0, .2, 1) infinite; }
+@keyframes ogSpin { to { transform: rotate(360deg); } }
+.og-box { position: absolute; left: -23px; top: -28px; width: 46px; height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; color: #fff; background: rgba(255, 255, 255, 0.08); border: 1.5px solid rgba(255, 255, 255, 0.24); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: transform .7s cubic-bezier(.2, .8, .2, 1), opacity .45s, border-color .25s, box-shadow .25s, background .25s; }
+.og-box.full { background: rgba(255, 255, 255, 0.15); border-color: rgba(255, 255, 255, 0.42); animation: ogPop .22s ease; }
+@keyframes ogPop { 50% { scale: 1.12; } }
+.og-box.cur { border-color: #ff8a6b; box-shadow: 0 0 0 4px rgba(255, 138, 107, 0.25), 0 0 24px rgba(255, 138, 107, 0.45); }
+.og-box.cur::after { content: ''; width: 2px; height: 24px; background: #ff8a6b; animation: ogBlink 1s steps(2) infinite; }
+@keyframes ogBlink { 50% { opacity: 0; } }
+.og-ok .og-box { opacity: 0; }
+.og-error .og-orbit { animation: ogShake .45s ease; }
+.og-error .og-box { border-color: #f87171; box-shadow: 0 0 18px rgba(248, 113, 113, 0.45); }
+@keyframes ogShake { 20%, 60% { transform: translateX(-10px); } 40%, 80% { transform: translateX(10px); } }
+.og-ring { position: absolute; left: 50%; top: 50%; width: 96px; height: 96px; margin: -48px 0 0 -48px; border-radius: 50%; border: 3px solid rgba(52, 211, 153, 0.22); opacity: 0; transform: scale(.4); transition: all .5s; pointer-events: none; }
+.og-ring circle { stroke-dasharray: 283; stroke-dashoffset: 283; transition: stroke-dashoffset .8s ease .15s; }
+.og-ok .og-ring { opacity: 1; transform: none; }
+.og-ok .og-ring circle { stroke-dashoffset: 0; }
+.og-ring svg { position: absolute; inset: -3px; }
+.og-tick { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 18px; display: flex; align-items: center; justify-content: center; background: rgba(52, 211, 153, 0.18); border: 2px solid #34d399; opacity: 0; transform: scale(.3) rotate(-20deg); transition: all .45s cubic-bezier(.2, 1.4, .4, 1) .7s; pointer-events: none; }
+.og-ok .og-tick { opacity: 1; transform: none; }
+.au-glass { padding: 26px 22px 22px; border-radius: 30px; background: linear-gradient(150deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.04)); border: 1.5px solid rgba(255, 255, 255, 0.22); box-shadow: 0 30px 80px rgba(5, 2, 25, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); transition: background .6s, border-color .6s; }
+.au-glass.is-ok { background: linear-gradient(150deg, rgba(52, 211, 153, 0.22), rgba(255, 255, 255, 0.04)); border-color: rgba(52, 211, 153, 0.45); }
+.au-glass h1 em { font-style: normal; color: #ff8a6b; transition: color .5s; }
+.au-glass.is-ok h1 em { color: #34d399; }
+.au-glass.is-ok .login-cta { background: linear-gradient(135deg, #34d399, #059669) !important; box-shadow: 0 14px 30px rgba(5, 150, 105, 0.35); }
+.au-glass.is-ok .au-badge { background: rgba(52, 211, 153, 0.2); }
+@media (prefers-reduced-motion: reduce) { .og-busy .og-orbit, .og-error .og-orbit, .og-box.full { animation: none; } }
+
+/* Code screen polish: the button stays bright while verifying; extras hide after success */
+.au-glass .login-cta:disabled { opacity: 1; }
+.au-glass.is-ok .login-cta::after { display: none; }
+.au-glass.is-ok .login-cta { justify-content: center; }
+.au-glass.is-ok .otp-tip, .au-glass.is-ok .otp-fallback, .au-glass.is-ok .hint, .au-glass.is-ok .auth-toggle { display: none; }

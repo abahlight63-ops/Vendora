@@ -360,14 +360,14 @@ CREATE INDEX IF NOT EXISTS idx_businesses_meta_phone ON businesses (meta_phone_n
 -- API (Supabase does), nobody can read or write rows through it. The app's own
 -- connection owns the tables, so it is not affected. Only tables this role owns
 -- (or when it may bypass RLS) are switched on, so the app can never lock itself out.
-DO $ DECLARE r record; BEGIN
+DO $$ DECLARE r record; BEGIN
   FOR r IN SELECT tablename FROM pg_tables
             WHERE schemaname = 'public'
               AND (tableowner = current_user OR (SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user))
   LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', r.tablename);
   END LOOP;
-END $;
+END $$;
 -- Admin activity log: every admin change, who-what-when (see adminConsole.auditLog).
 CREATE TABLE IF NOT EXISTS admin_audit (
   id SERIAL PRIMARY KEY,

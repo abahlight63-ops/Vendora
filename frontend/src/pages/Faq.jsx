@@ -66,7 +66,7 @@ export default function Faq() {
         <span className="lg-tag"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01" /></svg>Help</span>
         <h1>Questions, answered</h1>
         <label className="fq-search">
-          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="#4F3FC7" strokeWidth="2.2" strokeLinecap="round" d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-4.3-4.3" /></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="#6d4aff" strokeWidth="2.2" strokeLinecap="round" d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-4.3-4.3" /></svg>
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search: free plan, LEARN, Pidgin, refund" aria-label="Search questions" />
           {query && <button type="button" onClick={() => setQuery('')} aria-label="Clear search">×</button>}
         </label>

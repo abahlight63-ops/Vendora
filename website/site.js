@@ -25,7 +25,7 @@
   var paint = function () {
     var light = root.getAttribute('data-theme') === 'light';
     if (tbtn) tbtn.setAttribute('aria-label', light ? 'Switch to dark mode' : 'Switch to light mode');
-    if (meta) meta.setAttribute('content', light ? '#FFF1EC' : '#07041F');
+    if (meta) meta.setAttribute('content', light ? '#f1edff' : '#07041F');
   };
   if (tbtn) {
     tbtn.addEventListener('click', function () {

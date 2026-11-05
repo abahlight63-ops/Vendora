@@ -182,6 +182,8 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
     }
   }
   async function signup() { // SIGN UP flow (same shape, more fields)…
+    if (f.password.length < 8) return fail('Your password is too short. Use at least 8 characters.');
+    if (!/[a-zA-Z]/.test(f.password) || !/[0-9]/.test(f.password)) return fail('Make your password stronger: use letters and at least one number.');
     if (!agree) return fail('Tick the box to confirm you are 18 or older and agree to the Terms and Privacy Policy.');
     if (busy) return; setBusy(true); setMsg(''); setMsgErr(false);
     try { // try/catch: unreachable server throws — must show why, never hang on "Please wait…"!
@@ -322,6 +324,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
             <h1 className="au-center" aria-live="polite">{otpPhase === 'ok' ? (otpPurpose === 'reset' ? <>Password <em>saved</em></> : <>Verified <em>successfully</em></>) : otpPurpose === 'reset' ? <>Set a new <em>password</em></> : <>Check your <em>email</em></>}</h1>
             <p className="switch-note au-center">{otpPhase === 'ok' ? (otpPurpose === 'reset' ? 'Sign in with your new password.' : 'Your email is confirmed. Opening your shop…') : (<>We sent a 6-digit code to<br /><b>{otpEmail}</b>{otpPurpose === 'reset' ? '. Enter it with your new password below.' : ''}</>)}</p>
             <OtpGlass value={otp} onChange={setOtp} phase={otpPhase} autoSubmit={otpPurpose !== 'reset'} onComplete={() => verifyOtp()} /> {/* glassy boxes: type → spin → ring → tick (paste + phone autofill still work) */}
+            {msg && otpPhase !== 'ok' && <p className={'og-msg' + (msgErr ? ' err' : '')} role={msgErr ? 'alert' : 'status'}>{msgErr && <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M12 8v5M12 16.5h.01M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z" /></svg>}{msg}</p>}
             {otpPurpose === 'reset' && (<> {/* reset path: new password lives WITH the code (one submit, no token juggling!) */}
               <label>New password</label>
               <input type="password" value={rpw} onChange={(e) => setRpw(e.target.value)} placeholder="8+ characters" autoComplete="new-password" onKeyDown={(e) => { if (e.key === 'Enter') verifyOtp(); }} />
@@ -342,6 +345,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
             <p className="switch-note au-center">No wahala. Enter your email and we'll send a code or a link to set a new one.</p>
             <label>Email</label>
             <input value={f.email} onChange={set('email')} type="email" placeholder="you@business.com" autoComplete="email" onKeyDown={(e) => { if (e.key === 'Enter') forgotSend(); }} />
+            {msg && <p className={'og-msg' + (msgErr ? ' err' : '')} role={msgErr ? 'alert' : 'status'}>{msg}</p>}
             <button className="btn lg login-cta" disabled={busy} onClick={forgotSend}>{busy ? (<><Loader size={15} />Sending…</>) : 'Send reset link'}</button>
             <div className="otp-fallback">
               <button type="button" className="btn ghost" disabled={busy} onClick={forgotCode}>Send a code instead</button>
@@ -371,6 +375,12 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
             <input value={f.password} onChange={set('password')} type={showPw ? 'text' : 'password'} placeholder="••••••••" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} onKeyDown={(e) => { if (e.key === 'Enter') mode === 'login' ? login() : signup(); }} /> {/* type flips text/password (the "eye" trick!); Enter submits (nested ternary picks the action); autoComplete values tell password managers what's happening */}
             <button type="button" className="pw-eye" onClick={() => setShowPw(!showPw)} title={showPw ? 'Hide password' : 'Show password'} aria-label={showPw ? 'Hide password' : 'Show password'}><Ic n={showPw ? 'eyeOff' : 'eye'} s={18} /></button> {/* type="button" (not submit!), icon flips eye/eyeOff, title + aria-label (hover + screen reader) */}
           </div>
+          {mode === 'signup' && f.password.length > 0 && (
+            <ul className="pw-rules">
+              <li className={f.password.length >= 8 ? 'ok' : ''}>At least 8 characters</li>
+              <li className={/[a-zA-Z]/.test(f.password) && /[0-9]/.test(f.password) ? 'ok' : ''}>Letters and at least one number</li>
+            </ul>
+          )}
           {mode === 'signup' && f.password.length > 0 && ( // strength meter: signup + non-empty only…
             <div className="pw-meter"><i className={pwScore >= 1 ? 'on' : ''} /><i className={pwScore >= 2 ? 'on' : ''} /><i className={pwScore >= 3 ? 'on' : ''} /><span>{pwScore >= 2 ? 'Strong enough' : 'Keep typing…'}</span></div>
           )}

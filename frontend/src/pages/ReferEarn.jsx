@@ -117,7 +117,7 @@ export default function ReferEarn() {
         </section>
         <section className="glass re2-card re2-next">
           <div className="re2-ring">
-            <svg viewBox="0 0 56 56" width="120" height="120" aria-hidden="true"><defs><linearGradient id="re2-rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#4F3FC7" /><stop offset="1" stopColor="#D03C16" /></linearGradient></defs><circle cx="28" cy="28" r="22" fill="none" stroke="var(--ring-track)" strokeWidth="6" /><circle cx="28" cy="28" r="22" fill="none" stroke="url(#re2-rg)" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(towards / safeMilestone) * ring} ${ring}`} transform="rotate(-90 28 28)" /></svg>
+            <svg viewBox="0 0 56 56" width="120" height="120" aria-hidden="true"><defs><linearGradient id="re2-rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#6d4aff" /><stop offset="1" stopColor="#6d4aff" /></linearGradient></defs><circle cx="28" cy="28" r="22" fill="none" stroke="var(--ring-track)" strokeWidth="6" /><circle cx="28" cy="28" r="22" fill="none" stroke="url(#re2-rg)" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(towards / safeMilestone) * ring} ${ring}`} transform="rotate(-90 28 28)" /></svg>
             <b>{towards}/{safeMilestone}</b>
           </div>
           <div><span className="re2-lbl">{Number(s.airtimeDue) > 0 ? 'Airtime on the way' : 'Next airtime'}</span><strong>{Number(s.airtimeDue) > 0 ? naira(s.airtimeDue) : prize}</strong><p>{left} more paying {left === 1 ? 'friend' : 'friends'} to go.</p></div>

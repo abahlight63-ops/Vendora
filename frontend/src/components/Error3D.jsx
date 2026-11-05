@@ -23,7 +23,7 @@ export default function Error3D({ tone = 'error' }) {
       <defs>
         <linearGradient id="e3-face" x1="0" y1="0" x2="0.9" y2="1">
           <stop offset="0" stopColor="#7566EA" />
-          <stop offset="0.52" stopColor="#4F3FC7" />
+          <stop offset="0.52" stopColor="#6d4aff" />
           <stop offset="1" stopColor="#352A7F" />
         </linearGradient>
         <linearGradient id="e3-gloss" x1="0" y1="0" x2="0.3" y2="1">

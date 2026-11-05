@@ -201,7 +201,7 @@ export default function Insights() {
               <div className="in-who">
                 <div className="in-ring">
                   <svg viewBox="0 0 56 56" width="170" height="170" aria-hidden="true">
-                    <defs><linearGradient id="in-rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#4F3FC7" /><stop offset="1" stopColor="#D03C16" /></linearGradient></defs>
+                    <defs><linearGradient id="in-rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#6d4aff" /><stop offset="1" stopColor="#6d4aff" /></linearGradient></defs>
                     <circle cx="28" cy="28" r="22" fill="none" stroke="var(--ring-track)" strokeWidth="7" />
                     <circle cx="28" cy="28" r="22" fill="none" stroke="url(#in-rg)" strokeWidth="7" strokeLinecap="round" strokeDasharray={`${(d.rate / 100) * ring} ${ring}`} transform="rotate(-90 28 28)" />
                   </svg>

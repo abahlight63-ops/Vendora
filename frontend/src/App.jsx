@@ -4,7 +4,9 @@
 // Also owns: theme state (useTheme), splash gate, login state (useMe).
 // ROUTER LESSON: <Routes> picks the FIRST matching <Route path>. element =
 // what renders. <Navigate> = redirect. Guard = our login-wall wrapper.
-import { Suspense, lazy, useCallback, useEffect, useState } from 'react'; // Suspense+lazy = code-split pages (phones download ONLY the opened page!); useCallback memoizes hideSplash; useEffect = /api/me fetch
+import { Suspense, useCallback, useEffect, useState } from 'react';
+import { lazyPage, PageBoundary } from './components/PageGuard.jsx'; // no more blank pages: retry missing page files + friendly crash card
+import { useLocation } from 'react-router-dom'; // Suspense+lazy = code-split pages (phones download ONLY the opened page!); useCallback memoizes hideSplash; useEffect = /api/me fetch
 import { Routes, Route, Navigate } from 'react-router-dom'; // Routes = switch; Route = path→element; Navigate = redirect element
 import Shell from './components/Shell.jsx'; // app frame (sidebar+topbar) wrapping guarded pages — ALWAYS needed (eager!)
 import Splash from './components/Splash.jsx'; // brand intro (shown first — eager, it's tiny!)
@@ -15,35 +17,35 @@ import { api } from './lib/api.js'; // backend fetch helper (session cookie incl
 
 import { useTheme } from './lib/theme.js'; // [theme, toggleTheme] (dark/light, persisted)
 // Pages load LAZY (one chunk each — first paint downloads shell + current page only, not all 20!):
-const Login = lazy(() => import('./pages/Login.jsx')); // sign in / sign up / OTP / forgot (public)
-const Reset = lazy(() => import('./pages/Reset.jsx')); // forgot-password landing (?token= — public, token IS the credential!)
-const Landing = lazy(() => import('./pages/Landing.jsx')); // marketing homepage (public, at /)
-const Welcome = lazy(() => import('./pages/Welcome.jsx')); // niche + heard-from setup (tour → here → dashboard)
-const Dashboard = lazy(() => import('./pages/Dashboard.jsx')); // overview: stats + attention + checklist
-const Profile = lazy(() => import('./pages/Profile.jsx')); // business name/number/hours/tone/FAQs/currency/timezone
-const Catalog = lazy(() => import('./pages/Catalog.jsx')); // products + Pro profile-sync
-const Connect = lazy(() => import('./pages/Connect.jsx')); // channel switchboard (WhatsApp Embedded Signup + Telegram + brain pick)
-const Chats = lazy(() => import('./pages/Chats.jsx')); // inbox + threads
-const Orders = lazy(() => import('./pages/Orders.jsx')); // orders + receipts
-const Broadcasts = lazy(() => import('./pages/Broadcasts.jsx')); // one message to many past customers
-const Billing = lazy(() => import('./pages/Billing.jsx')); // plans + status + trial countdown
-const ContactSales = lazy(() => import('./pages/ContactSales.jsx')); // enterprise enquiry form (new-tab from Billing!)
-const Playground = lazy(() => import('./pages/Playground.jsx')); // test-bot (no WhatsApp needed)
-const Insights = lazy(() => import('./pages/Insights.jsx')); // AI-handled % + flag reasons
-const Settings = lazy(() => import('./pages/Settings.jsx')); // account hub: profile photo, plan, notifications, more
-const AiSettings = lazy(() => import('./pages/AiSettings.jsx')); // the assistant's own voice + guardrails (moved off /settings)
-const Help = lazy(() => import('./pages/Help.jsx'));
-const ReferEarn = lazy(() => import('./pages/ReferEarn.jsx')); // full Refer & Earn page (code + rewards + history + leaders!)
-const Notifications = lazy(() => import('./pages/Notifications.jsx')); // full inbox page (bell previews, this shows all!)
-const Admin = lazy(() => import('./pages/Admin.jsx')); // admin console (rarely opened — must NOT weigh first paint!)
-const SettingsHub = lazy(() => import('./pages/SettingsHub.jsx')); // one Settings page: shop, Velo's voice, account
-const VeloSalesAI = lazy(() => import('./pages/VeloSalesAI.jsx')); // general AI chat + model dropdown
-const Privacy = lazy(() => import('./pages/Privacy.jsx')); // public legal (no login needed)
-const Terms = lazy(() => import('./pages/Terms.jsx')); // public legal
-const Refunds = lazy(() => import('./pages/Refunds.jsx')); // public legal
-const Cookies = lazy(() => import('./pages/Cookies.jsx')); // public legal
-const Faq = lazy(() => import('./pages/Faq.jsx')); // public FAQ marketing page
-const NotFound = lazy(() => import('./pages/NotFound.jsx')); // the calm 404 (inside Shell when signed in!)
+const Login = lazyPage(() => import('./pages/Login.jsx')); // sign in / sign up / OTP / forgot (public)
+const Reset = lazyPage(() => import('./pages/Reset.jsx')); // forgot-password landing (?token= — public, token IS the credential!)
+const Landing = lazyPage(() => import('./pages/Landing.jsx')); // marketing homepage (public, at /)
+const Welcome = lazyPage(() => import('./pages/Welcome.jsx')); // niche + heard-from setup (tour → here → dashboard)
+const Dashboard = lazyPage(() => import('./pages/Dashboard.jsx')); // overview: stats + attention + checklist
+const Profile = lazyPage(() => import('./pages/Profile.jsx')); // business name/number/hours/tone/FAQs/currency/timezone
+const Catalog = lazyPage(() => import('./pages/Catalog.jsx')); // products + Pro profile-sync
+const Connect = lazyPage(() => import('./pages/Connect.jsx')); // channel switchboard (WhatsApp Embedded Signup + Telegram + brain pick)
+const Chats = lazyPage(() => import('./pages/Chats.jsx')); // inbox + threads
+const Orders = lazyPage(() => import('./pages/Orders.jsx')); // orders + receipts
+const Broadcasts = lazyPage(() => import('./pages/Broadcasts.jsx')); // one message to many past customers
+const Billing = lazyPage(() => import('./pages/Billing.jsx')); // plans + status + trial countdown
+const ContactSales = lazyPage(() => import('./pages/ContactSales.jsx')); // enterprise enquiry form (new-tab from Billing!)
+const Playground = lazyPage(() => import('./pages/Playground.jsx')); // test-bot (no WhatsApp needed)
+const Insights = lazyPage(() => import('./pages/Insights.jsx')); // AI-handled % + flag reasons
+const Settings = lazyPage(() => import('./pages/Settings.jsx')); // account hub: profile photo, plan, notifications, more
+const AiSettings = lazyPage(() => import('./pages/AiSettings.jsx')); // the assistant's own voice + guardrails (moved off /settings)
+const Help = lazyPage(() => import('./pages/Help.jsx'));
+const ReferEarn = lazyPage(() => import('./pages/ReferEarn.jsx')); // full Refer & Earn page (code + rewards + history + leaders!)
+const Notifications = lazyPage(() => import('./pages/Notifications.jsx')); // full inbox page (bell previews, this shows all!)
+const Admin = lazyPage(() => import('./pages/Admin.jsx')); // admin console (rarely opened — must NOT weigh first paint!)
+const SettingsHub = lazyPage(() => import('./pages/SettingsHub.jsx')); // one Settings page: shop, Velo's voice, account
+const VeloSalesAI = lazyPage(() => import('./pages/VeloSalesAI.jsx')); // general AI chat + model dropdown
+const Privacy = lazyPage(() => import('./pages/Privacy.jsx')); // public legal (no login needed)
+const Terms = lazyPage(() => import('./pages/Terms.jsx')); // public legal
+const Refunds = lazyPage(() => import('./pages/Refunds.jsx')); // public legal
+const Cookies = lazyPage(() => import('./pages/Cookies.jsx')); // public legal
+const Faq = lazyPage(() => import('./pages/Faq.jsx')); // public FAQ marketing page
+const NotFound = lazyPage(() => import('./pages/NotFound.jsx')); // the calm 404 (inside Shell when signed in!)
 // Page chunk still downloading: show the loader ONLY if it takes a while, so a
 // fast page never flashes a second loading screen right after the splash.
 function PageFallback() {
@@ -102,7 +104,8 @@ function Guard({ me, loading, theme, onToggleTheme, onLogout, children }) { // l
 
 export default function App() { // ROOT component (main.jsx renders this)
   const { me, loading, setMe, netError, retry } = useMe(); // login state (Login page calls setMe after auth → instant UI update, no reload!)
-  const [theme, toggleTheme] = useTheme(); // dark/light (persisted, applied to <html>)
+  const [theme, toggleTheme] = useTheme();
+  const location = useLocation(); // the crash card resets when the page changes // dark/light (persisted, applied to <html>)
   const [splash, setSplash] = useState(true); // brand intro visible?
   const hideSplash = useCallback(() => setSplash(false), []); // useCallback = stable function identity (Splash's effect dep won't loop)
   const handleLogout = useCallback(() => { setMe(null); }, []); // logout clears login state (next login refetches fresh)
@@ -110,7 +113,7 @@ export default function App() { // ROOT component (main.jsx renders this)
   if (splash) return <><Splash done={hideSplash} ready={!loading} /></>; // ONE loading screen: the splash stays until the session check is done too
   if (netError && !me) return <ConnectionWall onRetry={retry} />; // cannot ASK ≠ signed out: offer the truth and a retry
   return ( // after splash: the route table (order matters — first match wins!)
-    <Suspense fallback={<PageFallback />}> {/* lazy pages suspend here while their chunk downloads (fallback matches Guard's look!) */}<CookieBanner /><Routes>
+    <Suspense fallback={<PageFallback />}> {/* lazy pages suspend here while their chunk downloads (fallback matches Guard's look!) */}<CookieBanner /><PageBoundary resetKey={location.pathname}><Routes>
       <Route path="/admin" element={<Admin />} />
       <Route path="/privacy" element={<Privacy />} /> {/* public legal trio (no Guard — Google + guests must read them!) */}
       <Route path="/terms" element={<Terms />} />
@@ -141,6 +144,6 @@ export default function App() { // ROOT component (main.jsx renders this)
       <Route path="/velosales-ai" element={<Guard me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}><VeloSalesAI biz={me} /></Guard>} />
       <Route path="/" element={loading ? <div className="page"><div className="card"><BrandGate /></div></div> : me ? <Navigate to="/dashboard" replace /> : <Landing theme={theme} onToggleTheme={toggleTheme} />} /> {/* / = smart root: loading→brand gate, logged-in→dashboard, guest→marketing landing (ternary chain) */}
       <Route path="*" element={<NotFound me={me} loading={loading} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout} />} /> {/* path="*" = catch-all 404 (MUST be last — Routes picks first match!); keeps the nav when signed in */}
-    </Routes></Suspense>
+    </Routes></PageBoundary></Suspense>
   );
 }

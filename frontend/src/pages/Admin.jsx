@@ -13,9 +13,10 @@ import Loader, { BrandGate, useMinDisplay } from '../components/Loader.jsx'; // 
 
 import LoadFailed from '../components/LoadFailed.jsx'; // failed-tab card + Retry (panels never spin forever!)
 import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures (offline? waking? stale?)
+import { AdminOverview, AdminShops, AdminAiUsage, AdminWaitlist, AdminActivity } from './AdminConsole.jsx'; // the new console panels
 
-const TABS = [['stats', 'Overview', 'chart', 'green'], ['users', 'Users', 'profile', 'blue'], ['revenue', 'Income', 'cash', 'gold'], ['transfers', 'Transfers', 'send', 'orange'], ['referrals', 'Referrals', 'gift', 'purple'], ['channels', 'Channels', 'plug', 'teal'], ['complaints', 'Complaints', 'help', 'red'], ['templates', 'Templates', 'copy', 'gold'], ['broadcast', 'Broadcast', 'mega', 'orange'], ['warn', 'Warn user', 'warn', 'red'], ['ai', 'AI health', 'spark', 'purple']]; // [key, label, icon, accent] quads — EVERY console page is a tab (one page visible at a time, never stacked!)
-const STATIC_TABS = ['templates', 'broadcast', 'warn', 'ai']; // self-loading panels (no endpoint — render immediately, no skeleton!)
+const TABS = [['overview', 'Overview', 'chart', 'green'], ['shops', 'Shops', 'store', 'blue'], ['money', 'Money', 'cash', 'gold'], ['growth', 'Growth', 'gift', 'purple'], ['ai', 'AI and costs', 'spark', 'purple'], ['channels', 'Channels', 'plug', 'teal'], ['support', 'Support', 'help', 'red'], ['notices', 'Notices', 'mega', 'orange'], ['activity', 'Activity log', 'clock', 'green']]; // [key, label, icon, accent]
+const STATIC_TABS = ['overview', 'shops', 'ai', 'notices', 'activity']; // panels that load their own data
 
 function isFresh(ts) { // "NEW" pill window: created within the last 24h (new users, fresh transfers, new referrals light up!)
   const t = new Date(ts).getTime();
@@ -25,7 +26,9 @@ function isFresh(ts) { // "NEW" pill window: created within the last 24h (new us
 export default function Admin() {
   const [gate, setGate] = useState('checking'); // 'checking' | 'locked' | 'open' (three gate states — never flash the console to strangers!)
   const [pw, setPw] = useState(''); // password draft (controlled input, never stored beyond this submit!)
-  const [tab, setTab] = useState('stats'); // active tab key
+  const [tab, setTab] = useState('overview'); // active tab key
+  const [badges, setBadges] = useState({}); // menu counters (transfers, rewards, support)
+  const [notice, setNotice] = useState('broadcast'); // Notices sub-page: broadcast | warn | templates
   const [navOpen, setNavOpen] = useState(false); // mobile drawer (hamburger → slide-in page list!)
   const [d, setD] = useState(null); // tab data (shape depends on tab — single state, reused!)
   const [blastSeed, setBlastSeed] = useState(null); // template → broadcast prefill ({t,b,link,image,video,n})
@@ -57,20 +60,28 @@ export default function Admin() {
     if (!pw) return toast('Enter the admin password', 'err'); // guard: blank submit
     const { ok, data } = await api('/api/admin/login', { method: 'POST', body: JSON.stringify({ password: pw }) }); // session.isAdmin set server-side on success…
     setPw(''); // clear the field EITHER way (never leave a password in the DOM!)
-    if (ok) { setGate('open'); load('stats'); toast('Welcome back, boss.'); } // …in → load first tab (toast, not pop — minor moment!)
+    if (ok) { setGate('open'); load('overview'); loadBadges(); toast('Welcome back, boss.'); } // …in → load first tab (toast, not pop — minor moment!)
     else toast(data.error || 'Wrong password', 'err'); // generic backend message (never leaks config state!)
   }
 
   async function load(t) { // tab loader: one endpoint per DATA tab (switch re-fetches = always fresh!)…
     if (STATIC_TABS.includes(t)) { setTab(t); setD({}); setLoadErr(null); return; } // static page (templates/forms/health load themselves — no endpoint, no skeleton!)
     setTab(t); setD(null); setLoadErr(null); // set tab + null data (null renders skeletons — consistent loading UX!)
+    if (t === 'money') {
+      const [st, tr] = await Promise.all([api('/api/admin/stats'), api('/api/admin/transfers')]);
+      if (st.status === 401 || tr.status === 401) { setGate('locked'); toast('Admin session expired — sign in again', 'err'); return; }
+      if (st.ok && tr.ok) { setD({ stats: st.data, transfers: tr.data }); return; }
+      setLoadErr({ status: st.status || tr.status, detail: 'Could not load money.' }); return;
+    }
+    if (t === 'growth') t = 'referrals';
     if (t === 'referrals') { // referrals = THREE endpoints at once (overview + airtime queue + leaderboard!)
+      setTab('growth');
       const [o, p, l] = await Promise.all([api('/api/admin/referrals'), api('/api/admin/referrals/pending'), api('/api/admin/referrals/leaders')]);
       if (o.status === 401 || p.status === 401 || l.status === 401) { setGate('locked'); toast('Admin session expired — sign in again', 'err'); return; }
       if (o.ok && p.ok && l.ok) { setD({ overview: o.data.rows || [], pending: p.data.rows || [], leaders: l.data.rows || [] }); return; }
       setLoadErr({ status: o.status || p.status || l.status, detail: 'Could not load referrals.' }); toast('Could not load referrals', 'err'); return;
     }
-    const urls = { stats: '/api/admin/stats', users: '/api/admin/users', revenue: '/api/admin/stats', transfers: '/api/admin/transfers', channels: '/api/admin/channels', complaints: '/api/admin/complaints' }; // tab → endpoint map (revenue reuses stats + payments list below? stats covers totals; transfers tab shows the money ACTIONS)
+    const urls = { support: '/api/admin/complaints', stats: '/api/admin/stats', users: '/api/admin/users', revenue: '/api/admin/stats', transfers: '/api/admin/transfers', channels: '/api/admin/channels', complaints: '/api/admin/complaints' }; // tab → endpoint map (revenue reuses stats + payments list below? stats covers totals; transfers tab shows the money ACTIONS)
     try {
       const { ok, status, data } = await api(urls[t], { timeout: 15000 }); // fetch…
       if (ok) setD(data); // …store (array or object — panels branch on tab, not shape!)
@@ -79,9 +90,14 @@ export default function Admin() {
     } catch (e) { setLoadErr({ status: 0, detail: describeNetError(e) }); toast('Load failed — check connection', 'err'); } // down/timeout → error card (never eternal skeleton!)
   }
 
+  async function loadBadges() { // menu counters from the overview's to-do list
+    const { ok, data } = await api('/api/admin/console/overview?days=1').catch(() => ({}));
+    if (ok && data && data.todo) setBadges({ money: data.todo.transfers, growth: data.todo.airtime, support: data.todo.complaints });
+  }
+
   async function act(url, body, msg) { // generic ACTION helper: POST → pop → reload tab (approve/reject/verify/resolve all flow through here!)
     const { ok, data } = await api(url, { method: 'POST', body: body ? JSON.stringify(body) : '{}' }); // body optional (approve needs none; reply needs {reply})
-    if (ok) { pop('ok', 'Done!', msg || 'Action recorded.'); load(tab); } // success popup + FRESH data (list reflects the change instantly!)
+    if (ok) { pop('ok', 'Done!', msg || 'Action recorded.'); load(tab); loadBadges(); } // success popup + FRESH data (list reflects the change instantly!)
     else pop('err', 'Failed', data.error || 'Try again.'); // backend reason shown (already-touched guards explain themselves!)
   }
 
@@ -106,39 +122,36 @@ export default function Admin() {
     );
   }
 
-  const accent = (TABS.find(([k]) => k === tab) || [, , , 'green'])[3]; // active tab's color (drives header dot + panel tint!)
-  return ( // CONSOLE (gate open)…
-    <div className="admin-liquid">
-      <div className="page-head"><div className="row" style={{ width: '100%', alignItems: 'center' }}><button className="menu-btn" aria-label="Open admin menu" aria-expanded={navOpen} onClick={() => setNavOpen(true)}><span /><span /><span /></button><div><h1><span className={'admin-dot acc-' + accent} />Admin console</h1><p>Private — overview, users, income, transfers, referrals, channels, complaints, templates, broadcast, warnings, AI health. One page at a time.</p></div><button className="btn ghost sm" onClick={signOut}>Sign out</button></div></div>
-      <div className="card admin-tabs"> {/* tab bar — DESKTOP (phones get the hamburger drawer instead!) */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {TABS.map(([k, l, ic, ac]) => ( // destructure quads; icon + label per tab…
-            <button key={k} className={'btn sm ' + (tab === k ? 'acc-' + ac : 'ghost')} onClick={() => load(k)}><Ic n={ic} s={16} />{l}</button>
-          ))}
-        </div>
-      </div>
-      {navOpen && <div className="drawer-backdrop" onClick={() => setNavOpen(false)} />} {/* tap outside closes */}
-      <nav className={'admin-side' + (navOpen ? ' open' : '')} aria-label="Admin pages"> {/* slide-in drawer — PHONES (desktop: display:none!) */}
-        <div className="admin-side-head"><span className={'admin-dot acc-' + accent} /><b>Admin</b><button className="adslot-x" onClick={() => setNavOpen(false)} aria-label="Close menu">✕</button></div>
-        {TABS.map(([k, l, ic, ac]) => (
-          <button key={k} className={'btn sm ' + (tab === k ? 'acc-' + ac : 'ghost')} style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => { setNavOpen(false); load(k); }}><Ic n={ic} s={16} />{l}</button>
+  const go = (k) => { setNavOpen(false); load(k); window.scrollTo({ top: 0 }); };
+  const NOTICES = [['broadcast', 'Message every shop'], ['warn', 'Message one shop'], ['templates', 'Templates']];
+  return ( // CONSOLE (gate open): dark sidebar + one page at a time
+    <div className="ad-wrap">
+      {navOpen && <div className="drawer-backdrop" onClick={() => setNavOpen(false)} />}
+      <nav className={'ad-side' + (navOpen ? ' open' : '')} aria-label="Admin pages">
+        <div className="ad-brand"><b>VeloSales Ai</b><small>Admin console</small><button type="button" className="ad-close" onClick={() => setNavOpen(false)} aria-label="Close menu"><Ic n="x" s={18} /></button></div>
+        {TABS.map(([k, l]) => (
+          <button key={k} type="button" className={'ad-nav' + (tab === k ? ' on' : '')} aria-current={tab === k ? 'page' : undefined} onClick={() => go(k)}><span>{l}</span>{badges[k] ? <b className="ad-badge">{badges[k]}</b> : null}</button>
         ))}
-        <button className="btn ghost sm" style={{ width: '100%', marginTop: 8 }} onClick={signOut}>Sign out</button>
+        <div className="ad-side-foot"><b>Signed in as admin</b>Every change here is saved in the Activity log. The console locks after 30 minutes idle.<button type="button" className="ad-out" onClick={signOut}>Sign out</button></div>
       </nav>
-      <div key={tab} className={'admin-panel acc-' + accent}> {/* key={tab} = remount per tab → entrance animation replays every switch! */}
-      {loadErr ? <div className="card"><LoadFailed title={`Couldn't load ${tab}`} status={loadErr.status} detail={loadErr.detail} tries={0} onRetry={() => load(tab)} backTo="/dashboard" backLabel="Back to Overview" /></div>
-      : !d ? <div className="card"><div className="skel" /></div> : tab === 'stats' ? <Stats d={d} /> // error card / skeleton / ONE panel per page (clicking Users never shows Templates — each page owns the screen!)
-        : tab === 'users' ? <Users rows={d} refresh={() => load('users')} act={act} />
-        : tab === 'revenue' ? <Revenue d={d} />
-        : tab === 'transfers' ? <Transfers rows={d} act={act} />
-        : tab === 'referrals' ? <Referrals d={d} act={act} refresh={() => load('referrals')} />
-        : tab === 'channels' ? <Channels rows={(d && d.rows) || []} refresh={() => load('channels')} />
-        : tab === 'templates' ? <Templates onBroadcast={(t) => { setBlastSeed({ ...t, n: Date.now() }); load('broadcast'); }} onWarn={(t) => { setWarnSeed({ ...t, n: Date.now() }); load('warn'); }} />
-        : tab === 'broadcast' ? <Broadcast act={act} seed={blastSeed} />
-        : tab === 'warn' ? <WarnUser act={act} seed={warnSeed} />
-        : tab === 'ai' ? <AiHealth />
-        : <Complaints rows={d} act={act} />}
-      </div>
+      <main className="ad-main">
+        <div className="ad-top"><button type="button" className="menu-btn ad-menu" aria-label="Open admin menu" aria-expanded={navOpen} onClick={() => setNavOpen(true)}><Ic n="more" s={20} /></button><b>{(TABS.find(([k]) => k === tab) || [, 'Admin'])[1]}</b></div>
+        <div key={tab} className="ad-panel">
+          {tab === 'overview' ? <AdminOverview go={go} />
+            : tab === 'shops' ? <AdminShops />
+            : tab === 'activity' ? <AdminActivity />
+            : tab === 'ai' ? (<div className="ad-page"><div className="ad-head"><div><h1>AI and costs</h1><p>How many replies Velo writes, what they cost, and whether each AI company is answering.</p></div></div><AdminAiUsage /><div className="ad-card"><AiHealth /></div></div>)
+            : tab === 'notices' ? (<div className="ad-page"><div className="ad-head"><div><h1>Notices</h1><p>Messages to shop owners' bells: everyone, or one shop.</p></div></div>
+                <div className="wx-pills">{NOTICES.map(([k, l]) => <button key={k} type="button" className={'wx-pill' + (notice === k ? ' on' : '')} onClick={() => setNotice(k)}>{l}</button>)}</div>
+                <div className="ad-card ad-legacy">{notice === 'templates' ? <Templates onBroadcast={(t) => { setBlastSeed({ ...t, n: Date.now() }); setNotice('broadcast'); }} onWarn={(t) => { setWarnSeed({ ...t, n: Date.now() }); setNotice('warn'); }} /> : notice === 'warn' ? <WarnUser act={act} seed={warnSeed} /> : <Broadcast act={act} seed={blastSeed} />}</div></div>)
+            : loadErr ? <div className="ad-card"><LoadFailed title={`Couldn't load ${tab}`} status={loadErr.status} detail={loadErr.detail} tries={0} onRetry={() => load(tab)} backTo="/admin" backLabel="Back" /></div>
+            : !d ? <div className="ad-card"><div className="skel" style={{ height: 200 }} /></div>
+            : tab === 'money' ? (<div className="ad-page"><div className="ad-head"><div><h1>Money</h1><p>Payments collected, and bank transfers waiting for you to confirm.</p></div></div><div className="ad-card ad-legacy"><Revenue d={d.stats} /></div><div className="ad-card ad-legacy"><Transfers rows={d.transfers} act={act} /></div></div>)
+            : tab === 'growth' ? (<div className="ad-page"><div className="ad-head"><div><h1>Growth</h1><p>Referrals, rewards to pay, the monthly leaderboard and the launch waitlist.</p></div></div><div className="ad-card ad-legacy"><Referrals d={d} act={act} refresh={() => load('growth')} /></div><AdminWaitlist /></div>)
+            : tab === 'channels' ? (<div className="ad-page"><div className="ad-head"><div><h1>Channels</h1><p>Every connected WhatsApp and Telegram, checked live each time you open this.</p></div></div><div className="ad-card ad-legacy"><Channels rows={(d && d.rows) || []} refresh={() => load('channels')} /></div></div>)
+            : (<div className="ad-page"><div className="ad-head"><div><h1>Support</h1><p>Messages from shop owners, open ones first.</p></div></div><div className="ad-card ad-legacy"><Complaints rows={d} act={act} /></div></div>)}
+        </div>
+      </main>
     </div>
   );
 }

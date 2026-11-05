@@ -349,6 +349,16 @@ ALTER TABLE businesses ADD COLUMN IF NOT EXISTS whatsapp_model TEXT NOT NULL DEF
 -- Nov 2026: the model list became velo-* (see aiModels.js ALIASES); move saved picks once.
 ALTER TABLE businesses ALTER COLUMN whatsapp_model SET DEFAULT 'velo-normal';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_pin TEXT NOT NULL DEFAULT ''; -- WhatsApp two-step PIN, encrypted
+-- Admin activity log: every admin change, who-what-when (see adminConsole.auditLog).
+CREATE TABLE IF NOT EXISTS admin_audit (
+  id SERIAL PRIMARY KEY,
+  action TEXT NOT NULL,
+  detail TEXT,
+  ip TEXT,
+  target_business_id INTEGER,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS admin_audit_created_idx ON admin_audit (created_at DESC);
 -- Friend or customer (see contactService.js).
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS contact_type TEXT;
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS contact_digest JSONB;

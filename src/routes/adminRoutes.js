@@ -6,6 +6,16 @@ const express = require('express'); // Router class
 const adminController = require('../controllers/adminController'); // CRUD + ad stats handlers
 
 const router = express.Router(); // the mini-app
+const adminConsole = require('../controllers/adminConsoleController'); // new console (overview, shops, growth, AI, activity)
+router.use(require('../services/adminConsole').auditLog); // every admin change lands in the Activity log
+
+router.get('/console/overview', adminController.requireAdmin, adminConsole.overview);
+router.get('/console/shops', adminController.requireAdmin, adminConsole.shops);
+router.get('/console/shops/:id', adminController.requireAdmin, adminConsole.shop);
+router.post('/console/shops/:id/action', adminController.requireAdmin, adminConsole.action);
+router.get('/console/waitlist', adminController.requireAdmin, adminConsole.waitlist);
+router.get('/console/ai', adminController.requireAdmin, adminConsole.aiUsage);
+router.get('/console/activity', adminController.requireAdmin, adminConsole.activity);
 
 router.get('/businesses', adminController.listBusinesses); // list every business (support view)
 router.get('/businesses/:id', adminController.getBusiness); // inspect one business

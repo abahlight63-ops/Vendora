@@ -6,12 +6,12 @@
 // class); useLocation = current URL; useNavigate = go somewhere in code.
 import { useEffect, useState } from 'react';
 import ReviewPrompt from './ReviewPrompt.jsx'; // review pop-up after a win (server decides when) // useState = drawer open flag; useEffect = title + drawer side-effects
-import Logo from './Logo.jsx'; // theme-aware brand mark (blue dark / green light!)
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'; // NavLink (active-aware link), useLocation (current path), useNavigate (code navigation)
 import { api, toast } from '../lib/api.js'; // api() for the logout call (+ version check below)
 import ThemeToggle from './ThemeToggle.jsx'; // sun/moon button (topbar — light mode for sensitive eyes!)
 import Notifications from './Notifications.jsx'; // bell (payment + update alerts)
-import Tour from './Tour.jsx'; // first-run coachmarks (mounted once here = available everywhere)
+import Tour from './Tour.jsx';
+import GlassSidebar from './GlassSidebar.jsx'; // the liquid-glass sidebar // first-run coachmarks (mounted once here = available everywhere)
 const MAIN = [['overview', 'Home', '/dashboard'], ['chats', 'Inbox', '/chats'], ['bell', 'Notifications', '/notifications'], ['orders', 'Orders', '/orders'], ['broadcasts', 'Broadcasts', '/broadcasts'], ['catalog', 'Catalog', '/catalog'], ['connect', 'Channels', '/connect'], ['insights', 'Insights', '/insights']]; // the five daily jobs (same words on the phone)
 const MORE = [['billing', 'Plan and usage', '/billing'], ['playground', 'Test Drive', '/playground'], ['velosalesai', 'Chat with Velo', '/velosales-ai'], ['gift', 'Refer & Earn', '/refer-earn'], ['settings', 'Settings', '/settings'], ['help', 'Help Center', '/help']]; // everything else, one tap behind More
 const ALL = [...MAIN, ...MORE]; // all pages in one array (page search)
@@ -37,6 +37,10 @@ function Icon({ k }) { // tiny inline SVG set (stroke = inherits text color; no 
   if (k === 'x') return (<svg {...p}><path d="M18 6L6 18M6 6l12 12" /></svg>); // close (drawer + dialogs — drawn, never a text glyph)
   if (k === 'logout') return (<svg {...p}><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><path d="M10 16l4-4-4-4" /><path d="M14 12H3" /></svg>); // door + arrow leaving it (sign out — never a bare X, which reads "close panel")
   if (k === 'bell') return (<svg {...p}><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0" /></svg>); // bell (Notifications page)
+  if (k === 'search') return (<svg {...p}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>);
+  if (k === 'moon') return (<svg {...p}><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" /></svg>);
+  if (k === 'sun') return (<svg {...p}><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>);
+  if (k === 'chevR') return (<svg {...p} width="16" height="16"><path d="M9 6l6 6-6 6" /></svg>);
   if (k === 'gift') return (<svg {...p}><rect x="3" y="8" width="18" height="4" rx="1" /><path d="M12 8v13M5 12v9h14v-9M12 8s-1.5-5-4.5-5S5 8 12 8zM12 8s1.5-5 4.5-5S19 8 12 8z" /></svg>); // gift box (Refer & Earn!)
   return (<svg {...p}><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 0 1 5 .2c0 1.7-2.5 2-2.5 3.6M12 17h.01" /></svg>); // default = help "?" (unknown keys never render broken)
 }
@@ -73,7 +77,6 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
   const navigate = useNavigate(); // navigate('/login') = go there in code (after logout)
   const [menuOpen, setMenuOpen] = useState(false); // mobile drawer open? (desktop sidebar always visible via CSS)
   const inMore = MORE.some(([, , href]) => href === pathname); // the current page lives under More, so More stays open
-  const [moreOpen, setMoreOpen] = useState(false); // the owner opened More by hand
   const [unread, setUnread] = useState(0); // sidebar badge: the bell broadcasts its unread count (one poll for both)
   useEffect(() => { const on = (e) => setUnread(Number(e.detail) || 0); window.addEventListener('velo-unread', on); return () => window.removeEventListener('velo-unread', on); }, []);
   const [confirmOut, setConfirmOut] = useState(false); // the sign-out confirmation (one tap away from losing your chat list)
@@ -133,31 +136,12 @@ export default function Shell({ biz, children, theme = 'light', onToggleTheme = 
   const safeName = biz?.name || 'Your business'; // ?. + || : biz may load late — never render "undefined"
   const initial = (safeName.trim()[0] || 'V').toUpperCase(); // avatar letter: first char uppercased ([0] = first character)
   const mobile = MAIN.filter(([k]) => k !== 'insights' && k !== 'orders' && k !== 'broadcasts' && k !== 'bell'); // the bell sits in the phone's topbar already // bottom bar: four jobs + More (Orders and Insights sit in the drawer on phones)
-  const showMore = moreOpen || inMore || menuOpen; // the phone's drawer always shows everything
   const moreActive = inMore || pathname === '/insights' || pathname === '/orders' || pathname === '/broadcasts'; // the bar's More lights up for anything behind it
   return (
     <> {/* fragment: multiple roots without wrapper div */}
       <div className="shell"> {/* flex row: sidebar + main column (CSS) */}
         {menuOpen && <div className="drawer-backdrop" onClick={() => setMenuOpen(false)} />} {/* && conditional: backdrop ONLY when open; click = close */}
-        <aside className={'sidebar' + (menuOpen ? ' open' : '')}> {/* .open slides the drawer in (CSS transform, mobile only) */}
-          <div className="logo"><Logo alt="VeloSales Ai" /><span>VeloSales Ai</span>
-            <button className="drawer-close" onClick={() => setMenuOpen(false)} aria-label="Close menu"><Icon k="x" /></button> {/* drawn X, mobile only (CSS) */}
-          </div>
-          <nav aria-label="Main">{MAIN.map(([k, label, href]) => (<NavLink key={k} to={href} onClick={() => setMenuOpen(false)}><Icon k={k} /><span>{label}</span>{k === 'bell' && unread > 0 && <em className="nav-count" aria-label={unread + ' unread'}>{unread > 99 ? '99+' : unread}</em>}</NavLink>))}</nav>
-          <button className="nav-more-btn" aria-expanded={showMore} onClick={() => setMoreOpen((v) => !v)}><Icon k="more" /><span>More</span><span className="chev"><Icon k="chev" /></span></button>
-          {showMore && <nav aria-label="More">{MORE.map(([k, label, href]) => (<NavLink key={k} to={href} onClick={() => setMenuOpen(false)}><Icon k={k} /><span>{label}</span></NavLink>))}</nav>}
-          {biz && biz.tier !== 'plus' && (
-            <div className="nav-upsell">
-              <b>{biz.tier === 'pro' ? 'Add voice notes' : 'Get more replies'}</b>
-              <p>{biz.tier === 'pro' ? 'Pro adds voice notes and our smartest AI.' : 'Go from 50 to 500 replies a day, with product photos.'}</p>
-              <NavLink to="/billing" onClick={() => setMenuOpen(false)}>{biz.tier === 'pro' ? 'Upgrade to Pro' : 'Upgrade to Plus'}</NavLink>
-            </div>
-          )}
-          <div className="foot">
-            <div className="foot-note">© 2026 VeloSales Ai</div>
-            <button className="drawer-signout" onClick={() => { setMenuOpen(false); setConfirmOut(true); }}><Icon k="logout" /><span>Sign out</span></button> {/* mobile-only: the topbar has no room for it on a phone, so the drawer carries it */}
-          </div> {/* margin-top:auto in CSS pins this block to the bottom of the drawer */}
-        </aside>
+        <GlassSidebar biz={biz} pathname={pathname} menuOpen={menuOpen} setMenuOpen={setMenuOpen} unread={unread} theme={theme} onToggleTheme={onToggleTheme} onSignOut={() => setConfirmOut(true)} MAIN={MAIN} MORE={MORE} Icon={Icon} /> {/* liquid-glass sidebar: rail or panel on desktop, drawer on phones */}
         <div className="main-col"> {/* right column: topbar + scrolling page */}
           <header className="topbar"> {/* sticky header (CSS position:sticky) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}> {/* inline style object (camelCase CSS!) for one-off layout */}

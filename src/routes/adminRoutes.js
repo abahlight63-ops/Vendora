@@ -17,6 +17,7 @@ router.get('/console/waitlist', adminController.requireAdmin, adminConsole.waitl
 router.get('/console/ai', adminController.requireAdmin, adminConsole.aiUsage);
 router.get('/console/activity', adminController.requireAdmin, adminConsole.activity);
 router.get('/console/reviews', adminController.requireAdmin, adminConsole.reviews);
+router.get('/console/features', adminController.requireAdmin, adminConsole.features); // every app function: set up? used?
 router.get('/console/security', adminController.requireAdmin, adminConsole.security); // suspicious activity (security_events)
 router.get('/console/payments', adminController.requireAdmin, adminConsole.payments); // every recent payment vs its plan price
 

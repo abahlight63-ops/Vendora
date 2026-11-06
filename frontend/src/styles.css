@@ -4507,3 +4507,31 @@ svg[fill="none"][stroke="currentColor"]:not(.no-duo) { fill: currentColor; fill-
 .sec-kinds { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-bottom: 8px; }
 .sec-kinds::-webkit-scrollbar { display: none; }
 .sec-kinds .wx-pill { flex: 0 0 auto; }
+
+/* Admin → App functions */
+.af-kpi { text-align: left; border: 1.5px solid transparent; cursor: pointer; font: inherit; color: inherit; }
+.af-kpi.on { border-color: var(--accent, #4f3fc7); }
+.af-tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin: 4px 0 6px; }
+.af-pills { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+.af-pills::-webkit-scrollbar { display: none; }
+.af-pills .wx-pill { flex: 0 0 auto; }
+.af-group { margin-top: 18px; }
+.af-gtitle { margin: 0 0 10px; font-size: 18px; }
+.af-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.af-card { display: flex; flex-direction: column; gap: 10px; margin: 0; border-left: 5px solid var(--af-c, #9c8ffa); }
+.af-working { --af-c: #10b981; } .af-idle { --af-c: #9c8ffa; } .af-setup { --af-c: #f59e0b; } .af-off { --af-c: #94a3b8; }
+.af-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.af-top b { font-size: 16px; line-height: 1.3; }
+.af-chip { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; color: var(--af-c); background: color-mix(in srgb, var(--af-c) 14%, transparent); white-space: nowrap; }
+.af-what { margin: 0; font-size: 13.5px; color: var(--muted, #3a506b); line-height: 1.5; }
+.af-nums { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.af-nums div { padding: 8px 10px; border-radius: 12px; background: var(--line-soft, rgba(79,63,199,.06)); }
+.af-nums dt { font-size: 12px; color: var(--muted, #3a506b); }
+.af-nums dd { margin: 2px 0 0; font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.af-hint { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 8px 10px; border-radius: 12px; font-size: 13px; line-height: 1.45; background: color-mix(in srgb, var(--af-c) 10%, transparent); }
+.af-hint svg { flex: 0 0 auto; margin-top: 2px; }
+.af-foot { margin-top: 18px; }
+@media (max-width: 560px) { .af-grid { grid-template-columns: 1fr; } .af-tools .od-search { width: 100%; } }
+/* App functions cards: a simple fade-in on open, never the scroll-linked one (a long checklist must never show blank cards) */
+.ad-card.af-card { animation: mvRise .4s var(--ease-out, ease) both; animation-timeline: auto; animation-range: normal; }
+@media (prefers-reduced-motion: reduce) { .ad-card.af-card { animation: none; } }

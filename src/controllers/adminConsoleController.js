@@ -17,6 +17,7 @@ module.exports = {
   aiUsage: wrap(async (req, res) => res.json(await consoleService.aiUsage(req.query.days))),
   reviews: wrap(async (req, res) => res.json(await require('../services/reviewService').adminList())),
   activity: wrap(async (req, res) => res.json({ rows: await consoleService.activity() })),
+  features: wrap(async (req, res) => res.json(await require('../services/adminFeatures').features(req.query.days))),
   security: wrap(async (req, res) => res.json(await require('../services/securityLog').summary(req.query.days))),
   payments: wrap(async (req, res) => res.json(await require('../services/paymentCheck').recent(req.query.limit))),
 };

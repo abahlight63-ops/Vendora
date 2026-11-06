@@ -19,7 +19,7 @@ import '../theme.dart';
 import '../widgets/brand_ui.dart';
 
 final _webBilling = ApiClient.billingUrl;
-const _fallbackSalesEmail = 'velosales63@gmail.com';
+const _fallbackSalesEmail = 'support@velosalesai.com.ng';
 
 const _proFeats = [
   'Unlimited AI replies, Pidgin + English',

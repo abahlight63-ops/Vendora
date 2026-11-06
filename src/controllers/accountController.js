@@ -8,7 +8,7 @@ async function remove(req, res) {
   } catch (e) {
     if (e && e.status) return res.status(e.status).json({ error: e.message });
     console.error('account delete failed:', e.message);
-    res.status(500).json({ error: 'Something went wrong. Please try again or email velosales63@gmail.com.' });
+    res.status(500).json({ error: 'Something went wrong. Please try again or email support@velosalesai.com.ng.' });
   }
 }
 module.exports = { remove };

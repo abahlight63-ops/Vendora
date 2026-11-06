@@ -8,7 +8,7 @@ import { Link } from 'react-router-dom';
 import Logo from './Logo.jsx';
 import SiteFooter from './SiteFooter.jsx';
 
-export const CONTACT = 'velosales63@gmail.com';
+export const CONTACT = 'support@velosalesai.com.ng';
 export const EFFECTIVE = '3 November 2026';
 
 export default function LegalPage({ which, title, sub, icon, short, sections }) {

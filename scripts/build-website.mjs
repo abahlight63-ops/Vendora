@@ -19,7 +19,7 @@ const SITE = 'https://velosalesai.com.ng';
 const APP = 'https://app.velosalesai.com.ng';
 const SIGNUP = APP + '/login?mode=signup';
 const SIGNIN = APP + '/login';
-const EMAIL = 'velosales63@gmail.com';
+const EMAIL = 'support@velosalesai.com.ng';
 const VERIFY = 'BFuzp4Yg1ikNpWscJ6hz8A04ymD2OiGZCsjeoDPr4P8';
 const UPDATED = '2026-11-03c';
 const SOON = '<span class="soon">Coming soon</span>';
@@ -175,7 +175,7 @@ ${body}
   <div class="foot-brand"><a class="brand" href="/">${MARK(26)}<span>VeloSales Ai</span></a><p>The AI sales assistant for shops in Nigeria. A business based in Nigeria.</p><a href="mailto:${EMAIL}">${EMAIL}</a></div>
   <div><h2>Product</h2><a href="/how-it-works/">How it works</a><a href="/pricing/">Pricing</a><a href="/free-plan/">Free plan</a><a href="/pro-trial/">7-day Pro trial</a></div>
   <div><h2>Help</h2><a href="/faq/">FAQ</a><a href="/contact/">Contact us</a><a href="${SIGNIN}">Sign in</a><a href="${SIGNUP}">Create account</a></div>
-  <div><h2>Legal</h2><a href="${APP}/privacy">Privacy Policy</a><a href="${APP}/terms">Terms of Service</a><a href="${APP}/refunds">Refund Policy</a><a href="${APP}/cookies">Cookie Policy</a><a href="mailto:velosales63@gmail.com">velosales63@gmail.com</a></div>
+  <div><h2>Legal</h2><a href="${APP}/privacy">Privacy Policy</a><a href="${APP}/terms">Terms of Service</a><a href="${APP}/refunds">Refund Policy</a><a href="${APP}/cookies">Cookie Policy</a><a href="mailto:support@velosalesai.com.ng">support@velosalesai.com.ng</a></div>
   <p class="foot-fine">© 2026 VeloSales Ai. Built in Nigeria for shops everywhere.</p>
 </footer>
 <script src="/site.js?v=${UPDATED}" defer></script>

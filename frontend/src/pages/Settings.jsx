@@ -286,7 +286,7 @@ function DeleteAccount({ biz }) {
       const blob = await r.blob();
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'velosales-my-data-' + new Date().toISOString().slice(0, 10) + '.json';
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    } catch { pop('err', 'Could not download', 'Check your connection and try again, or email velosales63@gmail.com.'); }
+    } catch { pop('err', 'Could not download', 'Check your connection and try again, or email support@velosalesai.com.ng.'); }
     setDl(false);
   }
   async function go() {
@@ -305,7 +305,7 @@ function DeleteAccount({ biz }) {
           <button type="button" className="btn sm ghost" disabled={dl} onClick={download}>{dl ? 'Preparing…' : 'Download'}</button>
         </div>
         <div className="set-row wrap">
-          <div className="set-main"><b>Delete my account</b><span>Removes your shop, products, chats, orders and login for good. Payment records are kept without your details, because tax law requires it. To get a copy of your data first, email velosales63@gmail.com.</span></div>
+          <div className="set-main"><b>Delete my account</b><span>Removes your shop, products, chats, orders and login for good. Payment records are kept without your details, because tax law requires it. To get a copy of your data first, email support@velosalesai.com.ng.</span></div>
           {!open && <button type="button" className="btn sm danger" onClick={() => setOpen(true)}>Delete account</button>}
         </div>
         {open && (

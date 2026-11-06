@@ -59,7 +59,7 @@ function Body({ signedIn }) {
       </nav>
 
       <p className="nf-help">
-        Still stuck? <a href="mailto:velosales63@gmail.com">Tell us the link</a> and we’ll point you the right way.
+        Still stuck? <a href="mailto:support@velosalesai.com.ng">Tell us the link</a> and we’ll point you the right way.
       </p>
     </div>
   );

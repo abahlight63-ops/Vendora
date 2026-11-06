@@ -58,7 +58,7 @@ export default function ContactSales() {
             <div className="cs-price">From ₦39,999<small> / month</small></div>
             {PERKS.map((p) => <div key={p} className="cs-perk"><i aria-hidden="true"><Ic n="check" s={13} /></i>{p}</div>)}
           </div>
-          <a className="cs-mail" href="mailto:velosales63@gmail.com?subject=Business%20plan"><Ic n="mail" s={22} /><span><b>Prefer email?</b>velosales63@gmail.com</span></a>
+          <a className="cs-mail" href="mailto:support@velosalesai.com.ng?subject=Business%20plan"><Ic n="mail" s={22} /><span><b>Prefer email?</b>support@velosalesai.com.ng</span></a>
         </div>
       </div>
     </div>

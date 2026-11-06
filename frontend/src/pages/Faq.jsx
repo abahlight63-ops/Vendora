@@ -36,8 +36,8 @@ export const FAQ_TOPICS = [
   ]],
   ['data', 'Your data', [
     ['Is my data private?', 'Yes. Your catalog and chats are used only to answer your customers. We never sell data, show ads, or train public AI models on your content. See the Privacy Policy for details.'],
-    ['How do I delete my account?', 'Write to velosales63@gmail.com from your account email. We delete your data within 30 days, except what the law makes us keep.'],
-    ['How do I reach support?', 'Use the Help Center inside the app, or email velosales63@gmail.com. Include your shop name and a screenshot and we will sort it faster.'],
+    ['How do I delete my account?', 'Write to support@velosalesai.com.ng from your account email. We delete your data within 30 days, except what the law makes us keep.'],
+    ['How do I reach support?', 'Use the Help Center inside the app, or email support@velosalesai.com.ng. Include your shop name and a screenshot and we will sort it faster.'],
   ]],
 ];
 
@@ -81,7 +81,7 @@ export default function Faq() {
         </aside>
         <div className="lg-body fq-body">
           {shown.length === 0 && (
-            <div className="lg-short"><b>No answers match “{query}”</b><p>Try fewer words, or email <a href="mailto:velosales63@gmail.com">velosales63@gmail.com</a>.</p></div>
+            <div className="lg-short"><b>No answers match “{query}”</b><p>Try fewer words, or email <a href="mailto:support@velosalesai.com.ng">support@velosalesai.com.ng</a>.</p></div>
           )}
           {shown.map(([id, name, rows]) => (
             <section key={id} id={'fq-' + id} className="fq-sec">
@@ -102,7 +102,7 @@ export default function Faq() {
             </section>
           ))}
           <div className="fq-cta">
-            <div><b>Still have a question?</b><p>Start free and ask us from the Help Center, or email velosales63@gmail.com.</p></div>
+            <div><b>Still have a question?</b><p>Start free and ask us from the Help Center, or email support@velosalesai.com.ng.</p></div>
             <Link className="btn lg" to="/login">Start free</Link>
           </div>
         </div>

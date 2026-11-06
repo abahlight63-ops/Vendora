@@ -73,7 +73,7 @@ class _LegalScreenState extends State<LegalScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Write to velosales63@gmail.com from the email on your account, '
+                'Write to support@velosalesai.com.ng from the email on your account, '
                 'or open Help in the app. We answer within 7 days.',
                 style: TextStyle(
                   fontSize: 13,
@@ -588,7 +588,7 @@ const List<_Section> _privacy = [
     p: 'For privacy inquiries, data subject requests (access, correction, '
         'export, or deletion), or complaints regarding our processing of personal '
         'data, please contact us via the Help page in your dashboard or at '
-        'velosales63@gmail.com, providing your business name and registered '
+        'support@velosalesai.com.ng, providing your business name and registered '
         'email address. We respond to all requests within 7 days.',
   ),
 ];

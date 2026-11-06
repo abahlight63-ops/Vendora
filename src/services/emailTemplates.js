@@ -16,7 +16,7 @@ function baseUrl() {
 }
 
 function supportEmail() {
-  return process.env.SUPPORT_EMAIL || process.env.SALES_EMAIL || 'velosales63@gmail.com'; // dedicated support inbox → sales fallback → default
+  return process.env.SUPPORT_EMAIL || process.env.SALES_EMAIL || 'support@velosalesai.com.ng'; // dedicated support inbox → sales fallback → default
 }
 
 function fromAddress() {
@@ -312,7 +312,7 @@ async function sendInactiveEmail(email, name, unsubscribeUrl) {
         <li><b>Still free</b> — your bot keeps replying from your manual catalog.</li>
       </ul>`,
       ctaLabel: 'Check my inbox', ctaLink: `${baseUrl()}/chats`,
-      foot: unsubscribeUrl ? `Don't want these reminders? <a href="${unsubscribeUrl}" style="color:#4F3FC7">Unsubscribe in one click</a>. You will still get receipts and security notices.` : 'Write to velosales63@gmail.com to stop these reminders.',
+      foot: unsubscribeUrl ? `Don't want these reminders? <a href="${unsubscribeUrl}" style="color:#4F3FC7">Unsubscribe in one click</a>. You will still get receipts and security notices.` : 'Write to support@velosalesai.com.ng to stop these reminders.',
     }),
   });
 }

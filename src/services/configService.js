@@ -229,6 +229,21 @@ CREATE TABLE IF NOT EXISTS telegram_links ( -- shared-bot routing: telegram user
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Security log (admin console → Security): suspicious and security-relevant events, kept 90 days.
+CREATE TABLE IF NOT EXISTS security_events (
+  id SERIAL PRIMARY KEY,
+  kind TEXT NOT NULL,
+  level TEXT NOT NULL DEFAULT 'medium',
+  ip TEXT,
+  path TEXT,
+  agent TEXT,
+  detail TEXT,
+  business_id INTEGER,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_security_events_time ON security_events(created_at DESC);
+ALTER TABLE security_events ENABLE ROW LEVEL SECURITY; -- server (table owner) only; Supabase's public API roles get nothing
+
 -- Friends and family the owner imported (AI settings): Velo never sells to these numbers.
 CREATE TABLE IF NOT EXISTS personal_contacts (
   id SERIAL PRIMARY KEY,

@@ -13,10 +13,11 @@ import Loader, { BrandGate, useMinDisplay } from '../components/Loader.jsx'; // 
 
 import LoadFailed from '../components/LoadFailed.jsx'; // failed-tab card + Retry (panels never spin forever!)
 import { describeNetError } from '../lib/netDetail.js'; // one voice for load failures (offline? waking? stale?)
-import { AdminOverview, AdminShops, AdminAiUsage, AdminWaitlist, AdminActivity, AdminReviews } from './AdminConsole.jsx'; // the new console panels
+import { AdminOverview, AdminShops, AdminAiUsage, AdminWaitlist, AdminActivity, AdminReviews } from './AdminConsole.jsx';
+import AdminSecurity from './AdminSecurity.jsx'; // suspicious activity + payment check // the new console panels
 
-const TABS = [['overview', 'Overview', 'chart', 'green'], ['shops', 'Shops', 'store', 'blue'], ['money', 'Money', 'cash', 'gold'], ['growth', 'Growth', 'gift', 'purple'], ['ai', 'AI and costs', 'spark', 'purple'], ['channels', 'Channels', 'plug', 'teal'], ['support', 'Support', 'help', 'red'], ['notices', 'Notices', 'mega', 'orange'], ['activity', 'Activity log', 'clock', 'green']]; // [key, label, icon, accent]
-const STATIC_TABS = ['overview', 'shops', 'ai', 'notices', 'activity']; // panels that load their own data
+const TABS = [['overview', 'Overview', 'chart', 'green'], ['shops', 'Shops', 'store', 'blue'], ['money', 'Money', 'cash', 'gold'], ['growth', 'Growth', 'gift', 'purple'], ['ai', 'AI and costs', 'spark', 'purple'], ['channels', 'Channels', 'plug', 'teal'], ['support', 'Support', 'help', 'red'], ['notices', 'Notices', 'mega', 'orange'], ['security', 'Security', 'shield', 'red'], ['activity', 'Activity log', 'clock', 'green']]; // [key, label, icon, accent]
+const STATIC_TABS = ['overview', 'shops', 'ai', 'notices', 'activity', 'security']; // panels that load their own data
 
 function isFresh(ts) { // "NEW" pill window: created within the last 24h (new users, fresh transfers, new referrals light up!)
   const t = new Date(ts).getTime();
@@ -92,7 +93,11 @@ export default function Admin() {
 
   async function loadBadges() { // menu counters from the overview's to-do list
     const { ok, data } = await api('/api/admin/console/overview?days=1').catch(() => ({}));
-    if (ok && data && data.todo) setBadges({ money: data.todo.transfers, growth: data.todo.airtime, support: data.todo.complaints });
+    const sec = await api('/api/admin/console/security?days=1').catch(() => ({})); // serious security events in the last 24h → badge on Security
+    const high = sec && sec.ok && sec.data && sec.data.last24 ? Number(sec.data.last24.high) || 0 : 0;
+    if (high) toast(`${high} serious security event${high === 1 ? '' : 's'} today. Open Security.`, 'err');
+    if (ok && data && data.todo) setBadges({ money: data.todo.transfers, growth: data.todo.airtime, support: data.todo.complaints, security: high });
+    else setBadges((b) => ({ ...b, security: high }));
   }
 
   async function act(url, body, msg) { // generic ACTION helper: POST → pop → reload tab (approve/reject/verify/resolve all flow through here!)
@@ -140,6 +145,7 @@ export default function Admin() {
           {tab === 'overview' ? <AdminOverview go={go} />
             : tab === 'shops' ? <AdminShops />
             : tab === 'activity' ? <AdminActivity />
+            : tab === 'security' ? <AdminSecurity />
             : tab === 'ai' ? (<div className="ad-page"><div className="ad-head"><div><h1>AI and costs</h1><p>How many replies Velo writes, what they cost, and whether each AI company is answering.</p></div></div><AdminAiUsage /><div className="ad-card"><AiHealth /></div></div>)
             : tab === 'notices' ? (<div className="ad-page"><div className="ad-head"><div><h1>Notices</h1><p>Messages to shop owners' bells: everyone, or one shop.</p></div></div>
                 <div className="wx-pills">{NOTICES.map(([k, l]) => <button key={k} type="button" className={'wx-pill' + (notice === k ? ' on' : '')} onClick={() => setNotice(k)}>{l}</button>)}</div>

@@ -17,6 +17,8 @@ router.get('/console/waitlist', adminController.requireAdmin, adminConsole.waitl
 router.get('/console/ai', adminController.requireAdmin, adminConsole.aiUsage);
 router.get('/console/activity', adminController.requireAdmin, adminConsole.activity);
 router.get('/console/reviews', adminController.requireAdmin, adminConsole.reviews);
+router.get('/console/security', adminController.requireAdmin, adminConsole.security); // suspicious activity (security_events)
+router.get('/console/payments', adminController.requireAdmin, adminConsole.payments); // every recent payment vs its plan price
 
 router.get('/businesses', adminController.listBusinesses); // list every business (support view)
 router.get('/businesses/:id', adminController.getBusiness); // inspect one business

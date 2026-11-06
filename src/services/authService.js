@@ -20,6 +20,18 @@ async function sendVerificationEmail(email, token) {
  * LESSON: NEVER store plain passwords. Hash = one-way fingerprint. Even we
  * can't reverse it — login just re-hashes the attempt and compares.
  */
+// Links in emails carry a random token; the database keeps only its SHA-256
+// fingerprint, so a database leak never exposes a working reset/verify link.
+function tokenHash(token) { return crypto.createHash('sha256').update(String(token || '')).digest('hex'); }
+
+// Sign a user out everywhere (after a password change or reset): every saved
+// session for this user is deleted. keepSid keeps the current device signed in.
+async function endSessions(userId, keepSid) {
+  try {
+    await db.query("DELETE FROM sessions WHERE sess->>'userId' = $1 AND sid <> $2", [String(userId), String(keepSid || '')]);
+  } catch (e) { console.error('end sessions error:', e.message); }
+}
+
 function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex'); // salt = 16 random bytes → unique per user (defeats rainbow tables)
   const hash = crypto.scryptSync(password, salt, 64).toString('hex'); // scrypt(password, salt, 64-byte output) → hex string. Sync version is fine (fast enough, runs once per signup/login)
@@ -55,7 +67,7 @@ async function createUser(businessId, email, password) {
     `INSERT INTO users (business_id, email, password_hash, verified, verify_token)
      VALUES ($1, $2, $3, $4, $5)
      RETURNING id, email, business_id, verified`, // RETURNING gives back the new row (no second query)
-    [businessId, email.toLowerCase(), hashPassword(password), verified, emailSent ? verifyToken : null] // store lowercase email (login consistency); token only if email actually sent
+    [businessId, email.toLowerCase(), hashPassword(password), verified, emailSent ? tokenHash(verifyToken) : null] // store lowercase email (login consistency); token only if email actually sent
   );
   return rows[0]; // the new user object
 }
@@ -63,9 +75,9 @@ async function createUser(businessId, email, password) {
 async function verifyByToken(token) {
   const { rows } = await db.query( // UPDATE…RETURNING = flip the flag AND get the email in one round-trip…
     `UPDATE users SET verified = true, verify_token = NULL -- NULL the token so the link can't be reused (one-time use!)
-     WHERE verify_token = $1 AND verified = false -- AND guards: only unverified accounts with THIS token
+     WHERE verify_token = $1 AND verified = false -- AND guards: only unverified accounts with THIS token (stored as its SHA-256)
      RETURNING email`,
-    [token]
+    [tokenHash(token)]
   );
   return rows[0] || null; // null = bad/expired/used token → controller shows error page
 }
@@ -75,7 +87,7 @@ async function resendVerification(email) {
   if (!user) return null; // unknown email → controller sends 404
   if (user.verified) return { already: true }; // idempotent: already done is still "success"
   const token = crypto.randomBytes(32).toString('hex'); // fresh token (old links die)
-  await db.query('UPDATE users SET verify_token = $1 WHERE id = $2', [token, user.id]); // overwrite stored token
+  await db.query('UPDATE users SET verify_token = $1 WHERE id = $2', [tokenHash(token), user.id]); // overwrite stored token (fingerprint only)
   const sent = await sendVerificationEmail(email, token); // try sending again
   return { sent }; // controller picks the message from this flag
 }
@@ -112,10 +124,12 @@ async function issueOTP(email, opts) { // create + send a fresh code (invalidate
 async function verifyOTP(email, code) { // check a submitted code…
   const user = await findUserByEmail(email);
   if (!user) return { ok: false }; // unknown (same shape as wrong — no enumeration!)
-  if (user.verified) return { ok: true, already: true }; // already done (idempotent!)
+  // SECURITY: the code is checked for EVERY account, verified or not. (It used
+  // to answer ok for any verified email without looking at the code, which let
+  // anyone sign in to, or reset the password of, a verified account.)
   const { rows } = await db.query('SELECT otp_hash, otp_expires, otp_attempts FROM users WHERE id = $1', [user.id]); // fresh read (attempts change per try!)
   const r = rows[0];
-  if (!r || !r.otp_hash || !r.otp_expires) return { ok: false }; // no active code (never issued / already burned)
+  if (!r || !r.otp_hash || !r.otp_expires) return user.verified ? { ok: false, already: true } : { ok: false }; // no active code: verified users are told to sign in with their password — never signed in from here
   if (new Date(r.otp_expires) < new Date()) return { ok: false, expired: true }; // past 10-min window (frontend offers resend!)
   if (Number(r.otp_attempts) >= 5) return { ok: false, locked: true }; // 5 wrong tries = burned (brute-force guard: 6 digits = 1M combos, 5 tries ≈ 0% chance!)
   if (!verifyPassword(String(code).trim(), r.otp_hash)) { // wrong code? (trim whitespace — mobile keyboards add spaces!)
@@ -131,12 +145,12 @@ async function issueReset(email) { // create a reset token (always "succeeds" pu
   const user = await findUserByEmail(email);
   if (!user) return { sent: true }; // unknown email: PRETEND success (don't reveal who has accounts — enumeration defense!)
   const token = crypto.randomBytes(32).toString('hex'); // 256-bit unguessable token (same strength as verify links!)
-  await db.query('UPDATE users SET reset_token = $1, reset_expires = now() + make_interval(hours => 1) WHERE id = $2', [token, user.id]); // 1-hour window (short-lived secrets!)
+  await db.query('UPDATE users SET reset_token = $1, reset_expires = now() + make_interval(hours => 1) WHERE id = $2', [tokenHash(token), user.id]); // 1-hour window; only the fingerprint is stored
   if (!mail.isMailConfigured()) {
     // Dev mode: hand the token back ONLY outside production (local testing
     // without email). In production missing mail must NEVER leak tokens —
     // users just see "sent" and the admin must configure SMTP or Resend.
-    return process.env.NODE_ENV === 'production' ? { sent: true } : { sent: true, devToken: token };
+    return require('../utils/isProd')() ? { sent: true } : { sent: true, devToken: token };
   }
   const sent = await mail.sendResetEmail(email, token); // branded template (logo header, support footer)
   if (!sent) console.error('Resend reset failed (see log above)'); // log only (public response stays "sent" — enumeration defense even on failure!)
@@ -144,17 +158,18 @@ async function issueReset(email) { // create a reset token (always "succeeds" pu
 }
 
 async function resetPassword(token, password) { // consume a reset token + set new password…
-  if (!token || !password || password.length < 8) return { ok: false }; // validate BOTH (length rule matches signup!)
-  const { rows } = await db.query('SELECT id FROM users WHERE reset_token = $1 AND reset_expires > now() LIMIT 1', [token]); // token must exist AND be unexpired (SQL-side expiry = no timezone bugs!)
+  if (!token || !password || typeof password !== 'string' || password.length < 8 || password.length > 200) return { ok: false }; // validate BOTH (length rule matches signup!)
+  const { rows } = await db.query('SELECT id FROM users WHERE reset_token = $1 AND reset_expires > now() LIMIT 1', [tokenHash(token)]); // token must exist AND be unexpired (SQL-side expiry = no timezone bugs!)
   if (rows.length === 0) return { ok: false }; // bad/expired/used (all look identical — no enumeration!)
   await db.query('UPDATE users SET password_hash = $1, reset_token = NULL, reset_expires = NULL WHERE id = $2', [hashPassword(password), rows[0].id]); // new hash + BURN token (one-time use — replay attacks dead!)
+  await endSessions(rows[0].id); // anyone signed in with the old password is signed out
   { // security notice (best-effort: password already changed — mail failing changes nothing!)
     const uid = rows[0].id;
     db.query('SELECT u.email, b.name FROM users u JOIN businesses b ON b.id = u.business_id WHERE u.id = $1 LIMIT 1', [uid])
       .then(({ rows: r }) => (r[0] && r[0].email ? mail.sendPasswordChanged(r[0].email, r[0].name) : null))
       .catch((e) => console.error('password-changed email error:', e.message));
   }
-  return { ok: true };
+  return { ok: true, userId: rows[0].id };
 }
 
-module.exports = { hashPassword, verifyPassword, findUserByEmail, createUser, verifyByToken, resendVerification, makeOTP, sendOTPEmail, issueOTP, verifyOTP, issueReset, resetPassword }; // export all six for controllers
+module.exports = { tokenHash, endSessions, hashPassword, verifyPassword, findUserByEmail, createUser, verifyByToken, resendVerification, makeOTP, sendOTPEmail, issueOTP, verifyOTP, issueReset, resetPassword }; // export all six for controllers

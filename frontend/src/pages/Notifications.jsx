@@ -83,7 +83,7 @@ export default function Notifications() {
     if (!opensDirect(n)) return nav(`/notifications/${n.id}`);
     setItems((xs) => (xs || []).map((x) => (x.id === n.id ? { ...x, is_read: true } : x)));
     api(`/api/me/notifications/${n.id}/read`, { method: 'POST' }).then(() => window.dispatchEvent(new Event('velo-notifs-changed'))).catch(() => {});
-    nav(n.link);
+    if (/^https:\/\//i.test(n.link)) window.location.assign(n.link); else if (n.link.startsWith('/')) nav(n.link);
   }
   async function readAll() {
     const { ok } = await api('/api/me/notifications/read', { method: 'POST' });
@@ -105,7 +105,8 @@ export default function Notifications() {
                 {one.image_url ? <img src={one.image_url} alt="" loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} /> : null}
                 {one.video_url ? <video src={one.video_url} controls preload="metadata" /> : null}
                 {one.body ? <p>{one.body}</p> : null}
-                {one.link && one.link !== '/notifications' ? <Link className="btn lg" to={one.link}>{String(one.link).startsWith('/connect') ? 'Fix it now' : 'Open'}</Link> : null}
+                {one.link && one.link !== '/notifications' && one.link.startsWith('/') ? <Link className="btn lg" to={one.link}>{String(one.link).startsWith('/connect') ? 'Fix it now' : 'Open'}</Link> : null}
+                {one.link && /^https:\/\//i.test(one.link) ? <a className="btn lg" href={one.link} target="_blank" rel="noopener noreferrer">Open</a> : null}
               </article>
             )}
       </div>

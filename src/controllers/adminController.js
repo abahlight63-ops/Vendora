@@ -93,6 +93,7 @@ async function adminLogin(req, res) {
   const a = Buffer.from(password); // Buffers for timing-safe compare (same anti-timing-attack habit as webhooks!)
   const b = Buffer.from(expected);
   if (a.length !== b.length || !require('crypto').timingSafeEqual(a, b)) { // WRONG password → same shape every time (no "user exists" leaks — there's only YOU anyway!)
+    require('../services/securityLog').log('admin_login_failed', req, 'wrong admin password');
     return res.status(401).json({ error: 'Wrong password.' }); // 401 (generic message — don't hint at config state!)
   }
   try { // new session id on admin sign-in (fixation guard); the owner login underneath is carried over
@@ -101,6 +102,7 @@ async function adminLogin(req, res) {
     console.error('admin session start failed:', e.message);
     return res.status(500).json({ error: 'Could not start the admin session — try again.' });
   }
+  require('../services/securityLog').log('admin_login', req, 'admin signed in');
   res.json({ ok: true }); // frontend hides the gate, shows the dashboard
 }
 
@@ -125,7 +127,8 @@ function requireAdmin(req, res, next) {
     return next();
   }
   const expected = process.env.ADMIN_API_KEY; // …or API path (scripts/integrations)…
-  if (expected && require('../middleware/security').safeEqual(req.get('x-admin-key'), expected)) return next();
+  if (expected && expected.length >= 24 && require('../middleware/security').safeEqual(req.get('x-admin-key'), expected)) return next(); // short keys are refused (too guessable)
+  if (req.get('x-admin-key')) require('../services/securityLog').log('admin_key_failed', req, 'wrong admin key');
   return res.status(401).json({ error: 'Admin only.' }); // everyone else (including logged-in OWNERS) → 401
 }
 

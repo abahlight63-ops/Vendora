@@ -64,7 +64,7 @@ async function metaInbound(req, res) {
         // that does not match = forged or broken → skip it (still 200: no retries).
         const sig = require('../services/channels/metaSignature');
         const v = sig.verdict(business, req.rawBody, req.get('x-hub-signature-256'));
-        if (v === 'bad') { console.warn('meta webhook: bad signature for shop', business.id, '- message dropped'); continue; }
+        if (v === 'bad') { console.warn('meta webhook: bad signature for shop', business.id, '- message dropped'); require('../services/securityLog').log('webhook_rejected', req, 'WhatsApp: bad signature', business.id); continue; }
         if (v === 'unchecked') sig.warnUnchecked(business.id);
         // Photos and voice notes: fetch the bytes now (the brain takes them ready-made).
         let body = parsed.body || '';

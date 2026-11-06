@@ -27,7 +27,23 @@ function personalize(text, name) {
 
 // One owner. Fire-and-forget safe: failures only log (a notification must
 // never break the payment flow that triggered it).
+// Links and media in a notice may only point inside the app ("/chats") or to
+// https addresses — never javascript:, data: or other schemes (XSS guard).
+function safeLink(v) {
+  const s = String(v || '').trim();
+  if (s.startsWith('/') && !s.startsWith('//') && !s.startsWith('/\\')) return s.slice(0, 200);
+  if (/^https:\/\/[^\s"'<>]+$/i.test(s)) return s.slice(0, 200);
+  return '';
+}
+function safeMedia(v) {
+  const s = String(v || '').trim();
+  return /^https:\/\/[^\s"'<>]+$/i.test(s) || /^\/uploads\/[\w./-]+$/.test(s) ? s.slice(0, 2000) : null;
+}
+
 async function notify(businessId, { title, body, link, image_url, video_url, dedupeHours }) {
+  link = safeLink(link);
+  image_url = safeMedia(image_url);
+  video_url = safeMedia(video_url);
   if (!businessId) return null;
   try {
     if (Number(dedupeHours) > 0) { // same problem already told recently? stay quiet (no daily repeats of one warning)
@@ -110,4 +126,4 @@ async function markOneRead(businessId, id) {
   return rows[0] || null;
 }
 
-module.exports = { notify, broadcast, list, markAllRead, markOneRead };
+module.exports = { safeLink, safeMedia, notify, broadcast, list, markAllRead, markOneRead };

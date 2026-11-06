@@ -32,12 +32,17 @@ const { secureHeaders } = require('./middleware/security'); // locks (headers + 
 // Production MUST have its own session secret — the dev fallback signs every
 // cookie with a PUBLIC string (anyone could forge sessions!). Crash loudly
 // instead of running hackable: set SESSION_SECRET on Railway/Render.
-if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+if (require('./utils/isProd')() && !process.env.SESSION_SECRET) { // live server: never run with the public fallback secret
   console.error('FATAL: SESSION_SECRET is not set. Set a long random string and restart.');
   process.exit(1); // exit 1 = refuse to boot hackable (hosts show the log line above!)
 }
+if (require('./utils/isProd')() && String(process.env.SESSION_SECRET).length < 24) { // too short to be safe: run, but warn loudly
+  console.error('SECURITY: SESSION_SECRET is shorter than 24 characters. Replace it with a long random value.');
+  setTimeout(() => require('./services/alertService').report('weak-session-secret', new Error('SESSION_SECRET is shorter than 24 characters. Replace it with a long random value on Render.')), 5000);
+}
 
 // Middleware — functions EVERY request passes through, in order:
+app.use(require('./middleware/security').forceHttps); // production: http → https (before anything is read)
 app.use(secureHeaders); // locks FIRST (every response carries them, even errors!)
 app.use(express.urlencoded({ extended: false })); // parse HTML form bodies (Paystack/Flutterwave posts + legacy forms!)
 app.use( // parse JSON bodies…
@@ -70,7 +75,7 @@ app.use(
     saveUninitialized: false, // don't create sessions for guests (saves DB rows)
     cookie: isSplit
       ? { httpOnly: true, secure: true, sameSite: 'none', maxAge: 7 * 24 * 60 * 60 * 1000 } // SPLIT: cross-site cookies REQUIRE Secure + SameSite=None (HTTPS only — Render/Vercel both are!)
-      : { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 }, // SAME-ORIGIN: Lax is safer (CSRF-resistant) + works on http://localhost
+      : { httpOnly: true, secure: 'auto', sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 }, // SAME-ORIGIN: Lax (CSRF-resistant); Secure on https automatically, still works on http://localhost
   })
 );
 
@@ -114,11 +119,8 @@ app.post('/webhook/flutterwave', require('./middleware/security').webhookLimiter
 app.use('/api', (req, res, next) => {
   const expected = process.env.ADMIN_API_KEY; // the secret from .env
   if (expected && require('./middleware/security').safeEqual(req.get('x-admin-key'), expected)) return next(); // key matches → in (constant-time compare)
-  if (req.session && req.session.isAdmin) return next(); // …or the admin password session (full /api/admin/* + legacy businesses access)…
-  if (req.session && req.session.businessId) { // …or a logged-in owner…
-    if (req.path.startsWith('/me')) return next(); // …but only for their OWN /me routes
-  }
-  return res.status(401).json({ error: 'Unauthorized' }); // everyone else → 401
+  if (req.session && req.session.businessId && req.path.startsWith('/me')) return next(); // a logged-in owner, only for their OWN /me routes
+  return require('./controllers/adminController').requireAdmin(req, res, next); // admin session (30-minute idle lock) — everyone else gets 401, logged
 }, adminRoutes); // Express runs middleware THEN the router (chain!)
 
 // Central API error handler — catches next(e) from async controllers
@@ -317,6 +319,20 @@ function envAudit() {
       console.warn('MAIL CHECK: no mail path (no SMTP, no RESEND_API_KEY) — accounts auto-verify and OTPs only work in dev. Set Gmail SMTP or Resend before launch.');
     }
   } catch {}
+  { // SECURITY settings check: names only, never values. One combined email when anything is weak.
+    const env = (k) => String(process.env[k] || '').trim();
+    const issues = [];
+    if (!env('TOKEN_ENCRYPTION_KEY')) issues.push('TOKEN_ENCRYPTION_KEY is missing: WhatsApp and Telegram tokens are stored unencrypted.');
+    if (!env('TELEGRAM_WEBHOOK_SECRET')) issues.push('TELEGRAM_WEBHOOK_SECRET is missing: anyone can send fake Telegram messages to the server.');
+    if (!env('META_APP_SECRET')) issues.push('META_APP_SECRET is missing: WhatsApp message signatures cannot be checked.');
+    if (env('ADMIN_PASSWORD') && env('ADMIN_PASSWORD').length < 12) issues.push('ADMIN_PASSWORD is shorter than 12 characters.');
+    if (env('ADMIN_API_KEY') && env('ADMIN_API_KEY').length < 24) issues.push('ADMIN_API_KEY is shorter than 24 characters, so it is refused.');
+    if (env('PAYSTACK_SECRET_KEY').startsWith('sk_test_') && require('./utils/isProd')()) issues.push('PAYSTACK_SECRET_KEY is a TEST key on the live server: no real money is collected.');
+    if (env('FLW_SECRET_KEY') && !env('FLW_SECRET_HASH')) issues.push('FLW_SECRET_HASH is missing: Flutterwave payments cannot be confirmed by webhook.');
+    if (!env('ALERT_EMAIL') && !env('SUPPORT_EMAIL')) issues.push('ALERT_EMAIL is missing: security and crash alerts go nowhere.');
+    for (const i of issues) console.warn('SECURITY CHECK: ' + i);
+    if (issues.length && require('./utils/isProd')()) setTimeout(() => require('./services/alertService').report('security-settings', new Error(issues.join('\n'))), 8000);
+  }
   { // shared-bot half-config check (token without name = Pro road 503s!)
     const t = (process.env.TELEGRAM_SHARED_BOT_TOKEN || '').trim();
     const n = (process.env.TELEGRAM_SHARED_BOT_NAME || '').trim();
@@ -376,6 +392,7 @@ require('./services/configService').ensureSchema()
   .then(() => app.listen(port, () => {
     sealOldKeys().catch((e) => console.error('key encryption pass failed:', e.message)); // encrypt access keys saved before encryption
     try { require('./services/followupService').start(); } catch (e) { console.error('follow-ups not started:', e.message); } // free follow-ups inside 24h
+    try { require('./services/securityLog').startPrune(); } catch (e) { console.error('security log prune not started:', e.message); }
     try { require('./services/contactService').startDigest(); } catch (e) { console.error('contact digest not started:', e.message); } // daily friend-or-customer question // START listening — the callback runs once the socket is open
     console.log(`WhatsApp AI support server running on port ${port}`);
     console.log(`Signup/login: http://localhost:${port}/login`);

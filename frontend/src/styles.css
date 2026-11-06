@@ -4500,3 +4500,10 @@ svg[fill="none"][stroke="currentColor"]:not(.no-duo) { fill: currentColor; fill-
   .upgrade-pill::after { display: none; }
   .top-right { gap: 6px; }
 }
+
+/* Admin → Security */
+.ad-ic.green { background: linear-gradient(145deg, #34d399, #059669); }
+.sec-title { display: block; margin-bottom: 8px; font-size: 15px; }
+.sec-kinds { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-bottom: 8px; }
+.sec-kinds::-webkit-scrollbar { display: none; }
+.sec-kinds .wx-pill { flex: 0 0 auto; }

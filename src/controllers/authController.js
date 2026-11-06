@@ -59,9 +59,12 @@ async function signup(req, res) {
   const number = normalizePhone(numberRaw); // → 'whatsapp:+234…' or null (accepts 0803…, spaces…)
   const owner = normalizePhone(ownerRaw); // owner's personal number (LEARN rights + alerts)
   const errors = []; // collect ALL input problems (better forms than one-at-a-time)
-  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) errors.push('Valid email required'); // simple email shape check
+  if (!email || typeof email !== 'string' || email.length > 200 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) errors.push('Valid email required'); // shape + type + length check
   if (!password || password.length < 8) errors.push('Password must be at least 8 characters'); // length gate (scrypt hashing happens in the service)
-  if (!name || typeof name !== 'string') errors.push('Business name required');
+  if (password && password.length > 200) errors.push('Password is too long (200 characters at most)');
+  if (!name || typeof name !== 'string' || !name.trim()) errors.push('Business name required');
+  else if (name.trim().length > 80) errors.push('Business name is too long (80 characters at most)');
+  if (password && typeof password !== 'string') errors.push('Password must be text');
   if (!number) errors.push('Enter a valid WhatsApp number (e.g. 0803 123 4567)'); // normalizePhone already validated — null = bad
   if (ownerRaw && !owner) errors.push('Enter a valid personal WhatsApp number (e.g. 0803 123 4567)'); // owner optional, but IF given must parse
   if (errors.length) return res.status(400).json({ errors }); // 400 = client, fix your input
@@ -134,11 +137,20 @@ async function resendVerification(req, res) {
 async function login(req, res) {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' }); // missing fields first…
+  if (typeof email !== 'string' || typeof password !== 'string' || email.length > 200 || password.length > 200) return res.status(400).json({ error: 'Invalid email or password' });
 
+  const sec = require('../services/securityLog');
+  if (sec.isLocked(email)) { // too many wrong passwords/codes for this account recently (works across many IPs)
+    sec.log('account_locked', req, `sign-in refused for ${String(email).slice(0, 80)}`);
+    return res.status(429).json({ error: 'Too many wrong attempts for this account. Wait 15 minutes, or reset your password.' });
+  }
   const user = await authService.findUserByEmail(email); // …then lookup (JOIN gives business_name too)…
   if (!user || !authService.verifyPassword(password, user.password_hash)) { // !user short-circuits (never call verifyPassword on null); SAME error for bad-email AND bad-password (don't leak which one — user enumeration defense!)
+    if (sec.noteFailedLogin(email)) sec.log('account_locked', req, `locked after 10 wrong attempts: ${String(email).slice(0, 80)}`, user && user.business_id);
+    sec.log('login_failed', req, String(email).slice(0, 80), user && user.business_id);
     return res.status(401).json({ error: 'Invalid email or password' }); // 401 = bad credentials
   }
+  sec.clearFailedLogins(email);
   if (!user.verified) { // correct password but email unconfirmed → block with a resend hint…
     return res.status(403).json({ error: 'Please verify your email first — check your inbox for the VeloSales Ai link.', needsVerification: true, email: user.email }); // frontend shows "Resend email" on needsVerification
   }
@@ -279,11 +291,12 @@ async function googleSignup(req, res) {
 async function verifyOtp(req, res) {
   const { email, code } = req.body || {}; // both required (guarded below)…
   if (!email || !code) return res.status(400).json({ error: 'Email and code required.' });
+  const sec = require('../services/securityLog');
+  if (sec.isLocked(email)) return res.status(429).json({ error: 'Too many wrong attempts for this account. Wait 15 minutes and try again.', locked: true });
   const result = await authService.verifyOTP(email, String(code)); // service: expiry, attempts, hash compare, burn-on-success…
-  if (result.already) { // already verified (double-submit / back-button) → just log them in (idempotent!)
-    const user = await authService.findUserByEmail(email);
-    if (!(await signIn(req, res, user.id, user.business_id))) return; // fresh session id + persist NOW (else /api/me bounces!)
-    return res.json({ user: { id: user.id, email: user.email } });
+  if (!result.ok && !result.already) { if (sec.noteFailedLogin(email)) sec.log('account_locked', req, `code guessing on ${String(email).slice(0, 80)}`); sec.log('login_failed', req, `wrong code for ${String(email).slice(0, 80)}`); }
+  if (result.already) { // no active code and the email is verified: sign in with the password instead (NEVER a session from here without a correct code)
+    return res.status(400).json({ error: 'This email is already verified. Sign in with your password.', already: true });
   }
   if (!result.ok) { // wrong/expired/locked → specific message + attempts left (frontend shows resend/fallback options!)…
     if (result.expired) return res.status(400).json({ error: 'Code expired — request a new one.', expired: true });
@@ -324,6 +337,7 @@ async function forgot(req, res) {
   const { email } = req.body || {};
   if (!email) return res.status(400).json({ error: 'Email required.' });
   const result = await authService.issueReset(email); // unknown emails ALSO get {sent:true} (don't leak the user list!)
+  require('../services/securityLog').log('password_reset_requested', req, String(email).slice(0, 80));
   res.json({ sent: true, ...(result.devToken ? { devToken: result.devToken } : {}) }); // spread devToken ONLY in dev (real users just see "sent"!)
 }
 
@@ -345,11 +359,13 @@ async function resetOtp(req, res) {
   const { email, code, password } = req.body || {};
   if (!email || !code) return res.status(400).json({ error: 'Email and code required.' });
   if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+  if (password.length > 200) return res.status(400).json({ error: 'That password is too long (200 characters at most).' });
+  const sec = require('../services/securityLog');
+  if (sec.isLocked(email)) return res.status(429).json({ error: 'Too many wrong attempts for this account. Wait 15 minutes and try again.', locked: true });
   const result = await authService.verifyOTP(email, String(code)); // same verify machinery (expiry, attempts, burn-on-success…)
-  if (result.already) {
-    // Code already burned by an earlier success (double-submit): the inbox is
-    // proven — set the password idempotently instead of erroring.
-  } else if (!result.ok) { // wrong/expired/locked → same specific messages as the OTP screen!
+  if (!result.ok && !result.already) { if (sec.noteFailedLogin(email)) sec.log('account_locked', req, `reset-code guessing on ${String(email).slice(0, 80)}`); sec.log('login_failed', req, `wrong reset code for ${String(email).slice(0, 80)}`); }
+  if (!result.ok) { // wrong/expired/locked/no code → no password change, ever (the code must be correct)
+    if (result.already) return res.status(400).json({ error: 'That code was already used or has expired. Request a new one.', expired: true });
     if (result.expired) return res.status(400).json({ error: 'Code expired — request a new one.', expired: true });
     if (result.locked) return res.status(400).json({ error: 'Too many wrong tries — request a new code.', locked: true });
     if (typeof result.left === 'number') return res.status(400).json({ error: `Wrong code — ${result.left} ${result.left === 1 ? 'try' : 'tries'} left.`, left: result.left });
@@ -358,6 +374,9 @@ async function resetOtp(req, res) {
   const user = result.user || await authService.findUserByEmail(email); // verified user (fresh object or refetch for the already-branch!)
   if (!user) return res.status(400).json({ error: 'Wrong code — try again.' }); // unknown email (verifyOTP said !ok above — belt & braces, same message!)
   await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [authService.hashPassword(password), user.id]); // code-burn already happened inside verifyOTP (single-use!)
+  await authService.endSessions(user.id); // every device signed in with the old password is signed out
+  sec.clearFailedLogins(email);
+  sec.log('password_changed', req, 'reset with an email code', user.business_id);
   res.json({ ok: true }); // frontend routes to /login ("password set — sign in!")
 }
 
@@ -366,6 +385,7 @@ async function reset(req, res) {
   const { token, password } = req.body || {};
   const result = await authService.resetPassword(token, password); // bad/expired/weak → {ok:false} (all identical — no enumeration!)
   if (!result.ok) return res.status(400).json({ error: 'Link invalid, expired, or password too short (8+ characters).' }); // one message covers all three (deliberately vague = secure!)
+  require('../services/securityLog').log('password_changed', req, 'reset with an email link');
   res.json({ ok: true }); // frontend routes to /login ("password set — sign in!")
 }
 

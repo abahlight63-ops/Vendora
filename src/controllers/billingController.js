@@ -254,6 +254,21 @@ async function flutterwaveInit(req, res) {
   }
 }
 
+// Paid enough for this plan? Plan price in the paid currency, minus the
+// Refer & Earn credit agreed at checkout (never more than the price). A
+// short or wrong-currency payment never activates a plan; it is logged as
+// payment_mismatch (admin console → Security) and alerted.
+function paystackAmountOk(kind, currency, paidMinor, creditMinor) {
+  const plan = PLANS[kind];
+  if (!plan) return false;
+  const cur = String(currency || '').toUpperCase();
+  if (cur !== 'NGN' && cur !== 'USD') return false;
+  const price = Math.round(Number(plan[cur]) * 100);
+  const minCharge = cur === 'USD' ? 100 : 10000; // a card payment always covers at least this (credit that covers everything never goes to the card)
+  const credit = Math.min(Math.max(0, Number(creditMinor) || 0), Math.max(0, price - minCharge));
+  return Number(paidMinor) >= price - credit;
+}
+
 // Shared activation (BOTH webhooks land here after THEIR OWN verification).
 // Extends expiry from the later of (existing expiry, now) — early renewals
 // never lose days. Resets trial flags (a buyer is no longer "trialing"!).
@@ -315,6 +330,7 @@ async function handlePaystackWebhook(req, res) {
   const a = Buffer.from(signature); // Buffers for…
   const b = Buffer.from(expected); // …timingSafeEqual (constant-time compare)
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    require('../services/securityLog').log('webhook_rejected', req, 'Paystack: bad signature');
     return res.status(403).end(); // forged → silent reject (don't hint why)
   }
 
@@ -344,6 +360,11 @@ async function handlePaystackWebhook(req, res) {
     if (business_id) { // ONE shared activation (tier stamp + ledger + bell inside!)
       const amt = event.data.amount || 0; // Paystack sends amount in MINOR units already (kobo/cents — store as-is!)
       const cur = (event.data.currency || 'NGN').toUpperCase(); // 'NGN' | 'USD' (upstream value, uppercased defensively)
+      if (!paystackAmountOk(kind, cur, amt, creditUsed)) {
+        console.error(`Paystack amount mismatch: got ${amt} ${cur} for ${kind} (business ${business_id})`);
+        require('../services/securityLog').log('payment_mismatch', req, `Paystack ${event.data.reference}: paid ${amt / 100} ${cur} for ${kind}`, business_id);
+        return res.status(200).end(); // acknowledged, NOT activated
+      }
       await activateSubscription(business_id, kind, days, event.data.reference || event.data.customer?.customer_code || null, 'paystack', amt, cur, Number(creditUsed) || 0); // reference first: unique per payment, so the dedupe and the credit spend run once
     }
   }
@@ -359,7 +380,10 @@ async function handlePaystackWebhook(req, res) {
 async function handleFlutterwaveWebhook(req, res) {
   const secretHash = process.env.FLW_SECRET_HASH;
   if (!secretHash) return res.status(503).end(); // not configured → refuse (loud in logs, silent on wire!)
-  if ((req.get('verif-hash') || '') !== secretHash) return res.status(403).end(); // forged → silent reject (don't hint why!)
+  if (!require('../middleware/security').safeEqual(req.get('verif-hash') || '', secretHash)) { // constant-time compare
+    require('../services/securityLog').log('webhook_rejected', req, 'Flutterwave: bad hash');
+    return res.status(403).end(); // forged → silent reject (don't hint why!)
+  }
 
   const event = req.body || {};
   if (event.event !== 'charge.completed' || !event.data || event.data.status !== 'successful') return res.status(200).end(); // only successful charges (anything else: ack + ignore!)
@@ -380,6 +404,7 @@ async function handleFlutterwaveWebhook(req, res) {
     const expected = Math.max(0, ((PLANS[kind] && PLANS[kind].USD) || 0) - creditUsed / 100); // USD majors ($5, $47…) after credit — Flutterwave verify returns majors too!
     if (Number(d.amount) < expected || String(d.currency).toUpperCase() !== 'USD') { // underpaid or wrong currency → NO activation (log + ack!)
       console.error(`Flutterwave amount mismatch: got ${d.amount} ${d.currency}, want ${expected} USD for ${kind}`);
+      require('../services/securityLog').log('payment_mismatch', req, `Flutterwave ${d.tx_ref}: paid ${d.amount} ${d.currency} for ${kind}`, meta.business_id);
       if (meta.business_id) { // verified buyer known → tell them (best-effort, never blocks the ack!)
         const mail = require('../services/emailTemplates');
         mail.ownerContact(meta.business_id).then((c) => {
@@ -443,6 +468,10 @@ async function verifyReturn(req, res) {
     await saveCard(meta.business_id, d.authorization);
     if (kind === 'card_check') { await refundCardCheck(d.reference || reference); return res.json({ ok: true, card: true }); }
     const days = Number(meta.days) || (PLANS[kind] ? PLANS[kind].days : Number(process.env.SUBSCRIPTION_DAYS || 30));
+    if (!paystackAmountOk(kind, d.currency || 'NGN', Number(d.amount) || 0, meta.credit_used)) {
+      require('../services/securityLog').log('payment_mismatch', req, `Paystack ${d.reference || reference}: paid ${(Number(d.amount) || 0) / 100} ${d.currency} for ${kind}`, meta.business_id);
+      return res.status(402).json({ error: 'The amount paid does not match the plan price. Contact support from Help.' });
+    }
     await activateSubscription(meta.business_id, kind, days, d.reference || reference, 'paystack', Number(d.amount) || 0, String(d.currency || 'NGN').toUpperCase(), Number(meta.credit_used) || 0);
     return res.json({ ok: true });
   } catch (e) {
@@ -451,4 +480,4 @@ async function verifyReturn(req, res) {
   }
 }
 
-module.exports = { _creditSplit: creditSplit, addCard, initialize, flutterwaveInit, reportTransfer, handlePaystackWebhook, handleFlutterwaveWebhook, verifyReturn, PLANS, planFor, SALES_EMAIL }; // routes + ownerController.getBilling import from here
+module.exports = { _paystackAmountOk: paystackAmountOk, _creditSplit: creditSplit, addCard, initialize, flutterwaveInit, reportTransfer, handlePaystackWebhook, handleFlutterwaveWebhook, verifyReturn, PLANS, planFor, SALES_EMAIL }; // routes + ownerController.getBilling import from here

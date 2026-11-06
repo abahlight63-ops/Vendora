@@ -71,7 +71,7 @@ async function handleParsed(business, botToken, parsed, req, res) {
 
 // ---- Per-shop bot: POST /webhook/telegram/:bizId ----
 router.post('/telegram/:bizId', async (req, res) => {
-  if (!tg.verifySecret(req)) return res.status(403).end(); // wrong/missing secret (anyone can POST — prove you're Telegram!)
+  if (!tg.verifySecret(req)) { require('../services/securityLog').log('webhook_rejected', req, 'Telegram: wrong secret (shop bot)'); return res.status(403).end(); } // wrong/missing secret (anyone can POST — prove you're Telegram!)
   const business = await shopById(req.params.bizId); // shop + token check…
   if (!business) return res.status(200).send(''); // unknown/unconnected (200 anyway — don't feed retry loops!)
   const parsed = tg.parseInbound(req.body); // normalize (null = edits/bots/stickers-noise → ignore!)
@@ -94,7 +94,7 @@ router.post('/telegram/:bizId', async (req, res) => {
 
 // ---- Shared bot: POST /webhook/telegram/shared ----
 router.post('/telegram/shared', async (req, res) => {
-  if (!tg.verifySecret(req)) return res.status(403).end(); // same secret gate (one secret, all bots!)
+  if (!tg.verifySecret(req)) { require('../services/securityLog').log('webhook_rejected', req, 'Telegram: wrong secret (shared bot)'); return res.status(403).end(); } // same secret gate (one secret, all bots!)
   const sharedToken = process.env.TELEGRAM_SHARED_BOT_TOKEN; // the ONE @VeloSalesBot token (empty = shared mode off!)
   if (!sharedToken) return res.status(200).send(''); // unconfigured (200, no retries!)
   const parsed = tg.parseInbound(req.body);

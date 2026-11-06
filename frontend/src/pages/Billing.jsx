@@ -201,7 +201,7 @@ export default function Billing() {
             </>
           )}
           {status === 'active' && <p className="pu-note">Renews on <b>{fmtDate(bill.expires)}</b>.</p>}
-          {Number(bill?.credit) > 0 && <p className="pu-note pu-credit-note"><Ic n="gift" s={16} />You have <b>{money(bill.credit, cur)}</b> Refer &amp; Earn credit. It comes off your next payment by itself.</p>}
+          {Number(bill?.credit) > 0 && <p className="pu-note pu-credit-note"><Ic n="gift" s={16} /><span>You have <b>{money(bill.credit, cur)}</b> Refer &amp; Earn credit. It comes off your next payment by itself.</span></p>}
         </div>
         {bill?.tier !== 'plus' && (
           <div className="pu-push">

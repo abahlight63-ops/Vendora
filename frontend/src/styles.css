@@ -4433,3 +4433,70 @@ svg[fill="none"][stroke="currentColor"]:not(.no-duo) { fill: currentColor; fill-
 :root[data-theme="dark"] .pop-card { --pop-c: #34d399; }
 :root[data-theme="dark"] .pop-card.err { --pop-c: #ff8a6b; }
 :root[data-theme="dark"] .pop-card.off { --pop-c: #a99bff; }
+
+/* Sign-in on phones: give the header and the chat bubbles room (they overlapped) */
+@media (max-width: 899px) {
+  .au-photo { height: 310px; }
+  .au-top { top: calc(-282px + 14px + env(safe-area-inset-top)); left: 14px; right: 14px; gap: 10px; } /* panel starts 28px above the photo's bottom (310 - 28 = 282) */
+  .au-back { width: 40px; height: 40px; flex: 0 0 auto; }
+  .au-brand { padding: 7px 14px 7px 8px; border-radius: 999px; background: rgba(11, 6, 48, 0.42); border: 1px solid rgba(255, 255, 255, 0.18); backdrop-filter: blur(14px); font-size: 15px; white-space: nowrap; }
+  .au-pill-a { --top: 104px; scale: 0.9; transform-origin: left center; }
+  .au-pill-b { --top: 186px; scale: 0.9; transform-origin: right center; }
+}
+@media (max-width: 360px) { .au-pill-a, .au-pill-b { scale: 0.84; } }
+
+/* AI settings save bar: only floats over the page when something is unsaved */
+.ai-save:not(.is-dirty) { position: static; box-shadow: none; background: transparent; border-color: transparent; padding: 8px 4px; }
+.ai-save:not(.is-dirty) .btn { opacity: .55; }
+@media (max-width: 520px) {
+  .ai-save { flex-wrap: nowrap; gap: 10px; padding: 8px 8px 8px 16px; border-radius: 999px; }
+  .ai-save .btn { width: auto; margin-left: auto; min-height: 44px; padding: 0 18px; white-space: nowrap; }
+  .ai-save-note { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+@media (max-width: 960px) { .ai-save.is-dirty { bottom: calc(96px + env(safe-area-inset-bottom)); } }
+
+/* Settings → Shop: "Velo knows X%" card. Chips get their own full-width row. */
+.sp-miss { flex-basis: 100%; margin-top: 0; }
+.sp-miss .sp-more { background: transparent; border-style: dashed; }
+@media (max-width: 640px) {
+  .sp-meter { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px 14px; padding: 16px; border-radius: 24px; }
+  .sp-meter .sp-ring { width: 64px; height: 64px; }
+  .sp-meter-main { min-width: 0; }
+  .sp-meter-main b { font-size: 17px; line-height: 1.25; }
+  .sp-meter-main > span { font-size: 13px; }
+  .sp-miss, .btn.sp-fill { grid-column: 1 / -1; }
+  .sp-miss { gap: 6px; }
+  .sp-miss button { min-height: 34px; padding: 0 12px; font-size: 13px; }
+}
+
+/* Setup screens: shop details (where and when, delivery and payment) */
+.ob2-lbl { display: block; margin: 14px 2px 6px; font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.ob2-lbl em { font-style: normal; font-weight: 500; color: var(--glass-ink); margin-left: 6px; }
+.ob2-step .ob2-input { width: 100%; }
+.ob2-step .ob2-pills + .ob2-input { margin-top: 8px; }
+.ob2-ta { min-height: 88px; padding-top: 14px; resize: vertical; }
+.ob2-del { display: grid; grid-template-columns: 1.3fr 1fr 1fr auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+.ob2-del .ob2-input { min-width: 0; }
+.ob2-x { width: 40px; height: 40px; border-radius: 50%; border: 0; background: transparent; color: var(--glass-ink); display: grid; place-items: center; cursor: pointer; }
+.ob2-add { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 4px; border: 0; background: none; color: var(--coral-ink, #d03c16); font: inherit; font-weight: 700; cursor: pointer; }
+.ob2-bank { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.ob2-bank .ob2-input:last-child { grid-column: 1 / -1; }
+.ob2-step .ob2-note { margin-top: 14px; }
+@media (max-width: 560px) {
+  .ob2-del { grid-template-columns: 1fr 1fr; padding: 10px; border-radius: 18px; border: 1px solid var(--line); }
+  .ob2-del .ob2-input:first-child { grid-column: 1 / -1; }
+  .ob2-del .ob2-x { grid-column: 2; justify-self: end; }
+  .ob2-bank { grid-template-columns: 1fr; }
+}
+
+/* Crowding fixes found at 360px phone width */
+.pu-credit-note { flex-wrap: nowrap; align-items: flex-start; }
+.pu-credit-note svg { flex: 0 0 auto; margin-top: 3px; }
+.nt .wx-pills { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+.nt .wx-pills::-webkit-scrollbar { display: none; }
+.nt .wx-pills .wx-pill { flex: 0 0 auto; }
+@media (max-width: 400px) {
+  .upgrade-pill { min-height: 38px; padding: 0 12px; }
+  .upgrade-pill::after { display: none; }
+  .top-right { gap: 6px; }
+}

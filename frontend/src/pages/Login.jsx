@@ -51,7 +51,7 @@ function GoogleButton({ busy, setBusy, fail, afterAuth, setMe, setOtpEmail, setO
       if (ok && data.needsOTP) { setOtpEmail(data.email || ''); setOtpPurpose('verify'); setMsg('Code sent — check your inbox to finish signing in.'); setMsgErr(false); setNeedBiz(null); switchMode('otp'); return; } // unverified Google account → OTP screen (same gate as password signup — NO session yet!)
       if (ok) {
         const me = await api('/api/me'); // confirm the session cookie stuck before leaving (split-deploy CORS/cookie can drop it!)
-        if (me.ok && me.data && me.data.business) { setMe(me.data.business); window.location.href = '/dashboard'; return; } // full reload: guarantees fresh App state + cookie
+        if (me.ok && me.data && me.data.business) { setMe(me.data.business); window.location.href = me.data.business.business_niche ? '/dashboard' : '/welcome'; return; } // full reload; unfinished setup (Google sign-up closed mid-way) goes back to the setup screens
         return fail('Google signed in, but your session did not stick. Check the API URL / connection and try again.'); // stay here with a reason — never bounce to login silently
       }
       if (data.needsSignup) { setNeedBiz({ email: data.email, name: data.name || '', credential }); setG({ name: data.name || '', wa: '', hours: '' }); return; } // 404 needsSignup → open the ONE-TAP business form (credential KEPT for the signup call!)
@@ -157,7 +157,7 @@ export default function Login({ setMe }) { // setMe prop = App's state setter (l
       const me = await api('/api/me'); // refetch (single source of truth — never trust the login response alone!)
       if (me.ok && me.data && me.data.business) {
         setMe(me.data.business); // lift business into App state (whole app re-renders as logged-in!)
-        nav(path); // ONLY navigate when the session actually stuck (prevents login → dashboard → login bounce!)
+        nav(path === '/dashboard' && !me.data.business.business_niche ? '/welcome' : path); // setup never finished (closed the app mid-way)? back to the setup screens. ONLY navigate when the session actually stuck
         return true;
       }
       if (me.status === 401) fail('Signed in, but the session cookie was blocked (browser rejected it). Allow cookies for this site, or open the app at its backend URL, then try again.'); // 401 = login saved but /me arrived cookieless (third-party-cookie blocking / CORS mismatch) — stay here with the real reason

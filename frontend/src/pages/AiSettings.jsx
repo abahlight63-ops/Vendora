@@ -265,7 +265,7 @@ export default function AiSettings({ biz, embedded = false }) {
 
       {/* the save bar follows you down the page: the page is long, and an
           unsaved tone that scrolls out of sight is an invisible bug. */}
-      <div className="ai-save">
+      <div className={'ai-save' + (dirty ? ' is-dirty' : '')}>
         <span className={'ai-save-note' + (dirty ? ' dirty' : '')}>{dirty ? 'Unsaved changes' : 'Everything saved'}</span>
         <button className="btn lg" onClick={save} disabled={busy || !dirty}>{busy ? 'Saving' : 'Save changes'}</button>
       </div>

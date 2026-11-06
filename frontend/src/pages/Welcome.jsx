@@ -21,6 +21,8 @@ import { avatarsFor } from '../lib/avatars.js';
 import { CHANNEL_COINS } from '../lib/channelLogos.js'; // check icons
 
 const OTHER = 'Other / Custom Business'; // the free-text niche (reveals the input below the grid!)
+const PAY = ['Bank transfer', 'Pay on delivery', 'Paystack link', 'POS', 'USSD', 'Cash']; // same list the server accepts (services/shopProfile.js)
+const HOURS = ['Mon to Sat, 9am to 7pm', 'Every day, 8am to 8pm', 'Mon to Fri, 9am to 5pm', 'Open 24 hours'];
 
 // Q2–Q4 option decks: value (stored) + title + sub (the ENCOURAGEMENT — each
 // pick tells them what the app will do with it, so answers feel powerful!).
@@ -52,7 +54,15 @@ export default function Welcome() {
   const [channels, setChannels] = useState([]); // Q3 values (multi-pick array!)
   const [volume, setVolume] = useState(''); // Q4 value ('' = skipped)
   const [heard, setHeard] = useState('');
-  const [plan, setPlan] = useState('free'); // the plan picked on step 5 (free first) // Q5 pick ('' = skipped)
+  const [plan, setPlan] = useState('free'); // the plan picked on the plan step (free first)
+  // Shop details (the same facts as Settings → Shop, asked once here so Velo can answer from day one)
+  const [about, setAbout] = useState('');
+  const [address, setAddress] = useState('');
+  const [hours, setHours] = useState('');
+  const [pickup, setPickup] = useState(''); // '' | 'yes' | 'no'
+  const [deliv, setDeliv] = useState([{ area: '', fee: '', time: '' }]);
+  const [pays, setPays] = useState([]);
+  const [bank, setBank] = useState({ bank: '', account: '', accountName: '' });
   const [busy, setBusy] = useState(false); // save lock (double-tap protection!)
   const [checking, setChecking] = useState(true); // true until /api/me answers (no flashing!)
   const minDone = useMinDisplay(1000); // brand beat (fast checks still show the scatter a full second!)
@@ -70,53 +80,58 @@ export default function Welcome() {
     setChannels((c) => (c.includes(v) ? c.filter((x) => x !== v) : [...c, v].slice(0, 5))); // includes? remove : add (slice guards the cap!)
   }
 
-  async function save() { // FINAL save: one write for all five answers (step 4 → dashboard!)
-    if (!finalNiche) { setStep(0); return pop('err', 'Pick one first', 'Tell us what you sell so VeloSales Ai speaks your hustle.'); } // safety net (Q1 is the ONE required answer!)
-    setBusy(true); // lock (slow networks + double-taps!)
-    const { ok, data } = await api('/api/me/setup', {
-      method: 'POST',
-      body: JSON.stringify({ business_niche: finalNiche, catalog_size: size, channels, daily_volume: volume, heard_from: heard || '' }),
-    });
-    setBusy(false); // unlock either way (failure must not brick the page!)
-    if (ok) nav('/dashboard', { replace: true }); // saved → dashboard (answers now drive checklist + hints!)
-    else pop('err', 'Could not save', data.error || 'Check your connection and try again.');
-  }
-
-  function next() { // advance (Q1 gates — the rest skip freely!)
-    if (step === 0 && !finalNiche) return pop('err', 'Pick one first', 'Tell us what you sell so VeloSales Ai speaks your hustle.');
-    if (step >= 4) return save(); // last step → SAVE (single write!)
-    setStep(step + 1); // forward (key={step} below replays the entrance animation!)
-  }
   function back() { if (step > 0) setStep(step - 1); } // back keeps every draft (state lives outside the step!)
 
   if (checking || !minDone) return <div className="page"><div className="card"><BrandGate /></div></div>; // session check + brand beat (no flashing!)
 
-  // ── the new flow: 0 sell · 1 size · 2 channels + chats · 3 heard · 4 plan · 5 all set ──
-  const TOTAL = 6;
+  // ── the flow: 0 sell · 1 size · 2 channels + chats · 3 where and when · 4 delivery and payment · 5 heard · 6 plan · 7 all set ──
+  const TOTAL = 8;
+  const HEARD = 5, PLAN = 6, DONE = 7;
+  const setRow = (i, k, v) => setDeliv((rows) => rows.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
+  async function saveShopDetails() { // only what was filled in; a failure never blocks sign-up (it can be done in Settings)
+    const profile = {};
+    if (about.trim()) profile.about = about.trim();
+    if (address.trim()) profile.address = address.trim();
+    if (pickup) profile.pickup = pickup === 'yes' ? 'Yes, customers can pick up from the shop' : 'No pickup, delivery only';
+    const rows = deliv.filter((r) => r.area.trim() || r.fee.trim());
+    if (rows.length) profile.delivery = rows;
+    if (pays.length) profile.payment = { methods: pays, ...(pays.includes('Bank transfer') ? bank : {}) };
+    if (!Object.keys(profile).length && !hours.trim()) return true;
+    try {
+      const { ok } = await api('/api/me/shop-profile', { method: 'PUT', body: JSON.stringify({ profile, ...(hours.trim() ? { hours: hours.trim() } : {}) }) });
+      return ok;
+    } catch { return false; }
+  }
   const NICHE_EMOJI = (n) => (avatarsFor(n)[0] || '✨');
   const tops = NICHES.filter((n) => n !== OTHER);
   async function saveThenPlan() {
     if (!finalNiche) { setStep(0); return pop('err', 'Pick one first', 'Tell us what you sell so Velo speaks your business.'); }
     setBusy(true);
-    const { ok, data } = await api('/api/me/setup', { method: 'POST', body: JSON.stringify({ business_niche: finalNiche, catalog_size: size, channels, daily_volume: volume, heard_from: heard || '' }) });
+    let res;
+    try { res = await api('/api/me/setup', { method: 'POST', body: JSON.stringify({ business_niche: finalNiche, catalog_size: size, channels, daily_volume: volume, heard_from: heard || '' }) }); }
+    catch { setBusy(false); return pop('err', 'Could not save', 'Check your connection and try again.'); }
+    const { ok, data } = res;
+    if (!ok) { setBusy(false); return pop('err', 'Could not save', (data && data.error) || 'Check your connection and try again.'); }
+    const detailsOk = await saveShopDetails(); // after the niche is saved, so Velo's shop profile is complete
     setBusy(false);
-    if (ok) setStep(4);
-    else pop('err', 'Could not save', (data && data.error) || 'Check your connection and try again.');
+    if (!detailsOk) pop('err', 'Shop details not saved', 'Everything else is saved. You can add these later in Settings → Shop.');
+    setStep(PLAN);
   }
   const go2 = () => {
     if (step === 0 && !finalNiche) return pop('err', 'Pick one first', 'Tell us what you sell so Velo speaks your business.');
-    if (step === 3) return saveThenPlan();
-    if (step === 4) { if (plan === 'free') return setStep(5); return nav('/billing?pick=' + plan + '_monthly', { replace: true }); }
-    if (step === 5) return nav('/catalog', { replace: true });
+    if (step === HEARD) return saveThenPlan();
+    if (step === PLAN) { if (plan === 'free') return setStep(DONE); return nav('/billing?pick=' + plan + '_monthly', { replace: true }); }
+    if (step === DONE) return nav('/catalog', { replace: true });
     return setStep(step + 1);
   };
-  const label = step === 3 ? (busy ? 'Saving' : 'Continue') : step === 4 ? (plan === 'free' ? 'Start with Free' : `Continue to pay`) : step === 5 ? 'Add my first product' : 'Continue';
-  const eyebrow = ['About your shop', 'About your shop', 'Your customers', 'Almost done', 'Your plan', ''][step];
+  const label = step === HEARD ? (busy ? 'Saving' : 'Continue') : step === PLAN ? (plan === 'free' ? 'Start with Free' : `Continue to pay`) : step === DONE ? 'Add my first product' : 'Continue';
+  const eyebrow = ['About your shop', 'About your shop', 'Your customers', 'Your shop details', 'Your shop details', 'Almost done', 'Your plan', ''][step];
+  const skippable = step === 3 || step === 4 || step === HEARD;
   const first = '';
   return (
     <div className="ob2">
       <div className="ob2-in">
-        {step < 5 && (
+        {step < DONE && (
           <div className="ob2-top">
             <button type="button" className="ob2-back" disabled={step === 0 || busy} onClick={back} aria-label="Back"><Ic n="back" s={20} /></button>
             <div className="ob2-prog" aria-hidden="true">{Array.from({ length: TOTAL }, (_, i) => <i key={i} className={i <= step ? 'on' : ''} />)}</div>
@@ -158,11 +173,48 @@ export default function Welcome() {
             <div className="wx-pills ob2-vol" role="group" aria-label="Chats a day">{VOLUMES.map((o) => <button key={o.v} type="button" className={'wx-pill' + (volume === o.v ? ' on' : '')} aria-pressed={volume === o.v} onClick={() => setVolume(o.v)}>{o.t}</button>)}</div>
           </>)}
           {step === 3 && (<>
+            <h1>Where can customers find you?</h1>
+            <p className="ob2-lede">Velo answers "where are you?" and "are you open?" for you. Skip anything you'd rather add later.</p>
+            <label className="ob2-lbl" htmlFor="ob-addr">Address or area</label>
+            <input id="ob-addr" className="ob2-input" value={address} maxLength={200} onChange={(e) => setAddress(e.target.value)} placeholder="12 Allen Avenue, Ikeja, Lagos" />
+            <span className="ob2-lbl">Opening hours</span>
+            <div className="ob2-pills">{HOURS.map((h) => <button key={h} type="button" className={'wx-pill' + (hours === h ? ' on' : '')} aria-pressed={hours === h} onClick={() => setHours(hours === h ? '' : h)}>{h}</button>)}</div>
+            <input className="ob2-input" aria-label="Opening hours" value={hours} maxLength={120} onChange={(e) => setHours(e.target.value)} placeholder="Or type your own hours" />
+            <span className="ob2-lbl">Can customers pick up from you?</span>
+            <div className="ob2-pills">{[['yes', 'Yes, they can pick up'], ['no', 'No, delivery only']].map(([k, t]) => <button key={k} type="button" className={'wx-pill' + (pickup === k ? ' on' : '')} aria-pressed={pickup === k} onClick={() => setPickup(pickup === k ? '' : k)}>{t}</button>)}</div>
+            <label className="ob2-lbl" htmlFor="ob-about">About your shop <em>optional</em></label>
+            <textarea id="ob-about" className="ob2-input ob2-ta" value={about} maxLength={1000} onChange={(e) => setAbout(e.target.value)} placeholder="What you sell and who buys from you, in a sentence or two." />
+          </>)}
+          {step === 4 && (<>
+            <h1>Delivery and payment</h1>
+            <p className="ob2-lede">So Velo can quote delivery fees and tell customers how to pay, instead of asking you.</p>
+            <span className="ob2-lbl">Where you deliver</span>
+            {deliv.map((r, i) => (
+              <div key={i} className="ob2-del">
+                <input className="ob2-input" aria-label="Area" value={r.area} maxLength={80} onChange={(e) => setRow(i, 'area', e.target.value)} placeholder="Area, e.g. Lekki" />
+                <input className="ob2-input" aria-label="Fee" value={r.fee} maxLength={30} onChange={(e) => setRow(i, 'fee', e.target.value)} placeholder="Fee, e.g. ₦3k" />
+                <input className="ob2-input" aria-label="How long" value={r.time} maxLength={40} onChange={(e) => setRow(i, 'time', e.target.value)} placeholder="Time, e.g. 1 day" />
+                {deliv.length > 1 && <button type="button" className="ob2-x" aria-label="Remove this area" onClick={() => setDeliv((rows) => rows.filter((_, j) => j !== i))}><Ic n="x" s={16} /></button>}
+              </div>
+            ))}
+            {deliv.length < 5 && <button type="button" className="ob2-add" onClick={() => setDeliv((rows) => [...rows, { area: '', fee: '', time: '' }])}><Ic n="plus" s={16} />Add another area</button>}
+            <span className="ob2-lbl">How customers pay you</span>
+            <div className="ob2-pills">{PAY.map((m) => <button key={m} type="button" className={'wx-pill' + (pays.includes(m) ? ' on' : '')} aria-pressed={pays.includes(m)} onClick={() => setPays((xs) => (xs.includes(m) ? xs.filter((x) => x !== m) : [...xs, m]))}>{m}</button>)}</div>
+            {pays.includes('Bank transfer') && (
+              <div className="ob2-bank">
+                <input className="ob2-input" aria-label="Bank" value={bank.bank} maxLength={60} onChange={(e) => setBank({ ...bank, bank: e.target.value })} placeholder="Bank" />
+                <input className="ob2-input" aria-label="Account number" inputMode="numeric" value={bank.account} maxLength={20} onChange={(e) => setBank({ ...bank, account: e.target.value.replace(/\D/g, '') })} placeholder="Account number" />
+                <input className="ob2-input" aria-label="Account name" value={bank.accountName} maxLength={80} onChange={(e) => setBank({ ...bank, accountName: e.target.value })} placeholder="Account name" />
+              </div>
+            )}
+            <p className="ob2-note"><Ic n="shield" s={18} /><span>Velo shares bank details only when a customer is ready to pay. It never says a payment arrived: you confirm that.</span></p>
+          </>)}
+          {step === HEARD && (<>
             <h1>How did you hear about us?</h1>
             <p className="ob2-lede">Optional. It helps us reach sellers like you.</p>
             <div className="ob2-pills">{HEARD_FROM.map((h) => <button key={h} type="button" className={'wx-pill' + (heard === h ? ' on' : '')} aria-pressed={heard === h} onClick={() => setHeard(heard === h ? '' : h)}>{h}</button>)}</div>
           </>)}
-          {step === 4 && (<>
+          {step === PLAN && (<>
             <h1>Start free, or get more replies</h1>
             <div className="ob2-plans">
               {[['free', 'Free', '₦0', '', '50 replies a day · WhatsApp and Telegram · Free forever', 'Recommended to start'], ['pro', 'Plus', '₦7,499', ' / month', '500 replies a day · Product photos · Catalog import', ''], ['plus', 'Pro', '₦14,999', ' / month', '1,500 replies a day · Voice notes · Smartest AI', 'Best value']].map(([k, n, p, per, d, tag]) => (
@@ -174,7 +226,7 @@ export default function Welcome() {
             </div>
             <p className="ob2-note"><Ic n="spark" s={18} /><span>Every new shop gets <b>7 days of Pro free</b>. No card needed.</span></p>
           </>)}
-          {step === 5 && (<div className="ob2-done">
+          {step === DONE && (<div className="ob2-done">
             <div className="ob2-badge"><Logo size={60} alt="" /><span><Ic n="check" s={20} /></span></div>
             <h1>You're all set{first}!</h1>
             <p className="ob2-lede">Three quick steps and Velo starts selling for you.</p>
@@ -186,8 +238,8 @@ export default function Welcome() {
         </div>
         <div className="ob2-foot">
           <button type="button" className="btn lg ob2-go" disabled={busy} onClick={go2}>{busy ? (<><Loader size={17} />{label}</>) : label}</button>
-          {step === 3 && <button type="button" className="ob2-skip" disabled={busy} onClick={() => { setHeard(''); saveThenPlan(); }}>Skip</button>}
-          {step === 5 && <button type="button" className="ob2-skip" onClick={() => nav('/dashboard', { replace: true })}>Go to Home</button>}
+          {skippable && <button type="button" className="ob2-skip" disabled={busy} onClick={() => { if (step === HEARD) { setHeard(''); saveThenPlan(); } else setStep(step + 1); }}>Skip for now</button>}
+          {step === DONE && <button type="button" className="ob2-skip" onClick={() => nav('/dashboard', { replace: true })}>Go to Home</button>}
         </div>
       </div>
     </div>

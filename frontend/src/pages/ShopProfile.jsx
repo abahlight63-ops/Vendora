@@ -41,6 +41,7 @@ export default function ShopProfile({ biz }) {
   const [saving, setSaving] = useState(''); // '' | 'saving' | 'saved'
   const [filling, setFilling] = useState(false);
   const [fillOut, setFillOut] = useState(null); // { suggestions, picked:Set }
+  const [showAll, setShowAll] = useState(false); // missing-item chips: first three, then "+N more"
   const [acct, setAcct] = useState({ owner: biz?.owner_number || '', currency: biz?.currency || 'NGN', timezone: biz?.timezone || 'Africa/Lagos', personal: (() => { try { const v = typeof biz?.personal_contacts === 'string' ? JSON.parse(biz.personal_contacts) : biz?.personal_contacts; return (v || []).join('\n'); } catch { return ''; } })() });
   const timer = useRef(null);
   const pending = useRef(null);
@@ -103,9 +104,12 @@ export default function ShopProfile({ biz }) {
         <Ring pct={m.pct} />
         <div className="sp-meter-main">
           <b>{m.pct >= 100 ? 'Velo knows your shop well' : `Velo knows ${m.pct}% of your shop`}</b>
-          <span>{m.missing.length ? `The more it knows, the fewer chats need you. ${m.missing.length === 1 ? 'One thing is' : m.missing.length + ' things are'} missing:` : 'Everything is filled in. Keep it fresh when things change.'}</span>
-          {m.missing.length > 0 && <div className="sp-miss">{m.missing.map((x) => <button key={x.key} type="button" onClick={() => document.getElementById(SECTION_OF[x.key])?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>+ {x.label}</button>)}</div>}
+          <span>{m.missing.length ? `The more it knows, the fewer chats need you. ${m.missing.length === 1 ? 'One thing is' : m.missing.length + ' things are'} missing.` : 'Everything is filled in. Keep it fresh when things change.'}</span>
         </div>
+        {m.missing.length > 0 && <div className="sp-miss">
+          {m.missing.slice(0, showAll ? 99 : 3).map((x) => <button key={x.key} type="button" onClick={() => document.getElementById(SECTION_OF[x.key])?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>+ {x.label}</button>)}
+          {!showAll && m.missing.length > 3 && <button type="button" className="sp-more" onClick={() => setShowAll(true)}>+{m.missing.length - 3} more</button>}
+        </div>}
         <button type="button" className="btn lg sp-fill" onClick={fill} disabled={filling}>{filling ? <Loader size={16} /> : <Ic n="spark" s={18} />}{filling ? 'Reading your shop…' : 'Fill it in for me'}</button>
       </div>
       <div className="sp-save" aria-live="polite">{saving === 'saving' ? 'Saving…' : saving === 'saved' ? 'Saved. Velo uses this on the next message.' : 'Changes save by themselves.'}</div>

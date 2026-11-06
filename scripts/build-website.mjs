@@ -143,9 +143,10 @@ function frame({ path, title, desc, body, ld = [], noindex = false, ogTitle }) {
 <meta name="twitter:title" content="${esc(ogTitle || title)}">
 <meta name="twitter:description" content="${esc(desc)}">
 <meta name="twitter:image" content="${SITE}/assets/og-v3.png">
-<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="/velo-icon-192.png">
+<link rel="icon" type="image/png" sizes="48x48" href="/velo-icon-48.png">
+<link rel="icon" type="image/svg+xml" href="/assets/velo-icon.svg">
 <link rel="icon" href="/favicon.ico" sizes="48x48 32x32 16x16">
-<link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

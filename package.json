@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "node --test test/replies.test.js test/orders.test.js test/core.test.js test/credit.test.js test/contacts.test.js test/security.test.js",
+    "test": "node --test test/replies.test.js test/orders.test.js test/core.test.js test/credit.test.js test/contacts.test.js test/security.test.js test/backup.test.js",
     "frontend:dev": "vite",
     "frontend:build": "vite build",
     "build": "vite build && node scripts/sitemap.mjs",
@@ -18,7 +18,10 @@
     "recovery:send": "node src/recovery.js",
     "winback": "node src/winback.js",
     "push:vapid": "node scripts/vapid.js",
-    "art": "node scripts/art.mjs"
+    "art": "node scripts/art.mjs",
+    "backup": "node scripts/backup-db.js",
+    "backup:verify": "node scripts/backup-verify.js",
+    "restore": "node scripts/restore-db.js"
   },
   "engines": {
     "node": ">=20.19.0"

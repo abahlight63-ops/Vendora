@@ -33,3 +33,6 @@ screenshots/
 # installable builds stay out of git
 *.apk
 *.aab
+# database backups (encrypted, but never in git)
+backups/
+*.vsbak

@@ -381,7 +381,6 @@ CREATE INDEX IF NOT EXISTS idx_conversations_business_updated ON conversations (
 CREATE INDEX IF NOT EXISTS idx_messages_created ON messages (created_at);
 CREATE INDEX IF NOT EXISTS idx_products_business ON products (business_id);
 CREATE INDEX IF NOT EXISTS idx_users_business ON users (business_id);
-CREATE INDEX IF NOT EXISTS idx_businesses_meta_phone ON businesses (meta_phone_number_id);
 -- Row-level security on every table: if the database host exposes a public data
 -- API (Supabase does), nobody can read or write rows through it. The app's own
 -- connection owns the tables, so it is not affected. Only tables this role owns
@@ -457,6 +456,7 @@ ALTER TABLE businesses ADD COLUMN IF NOT EXISTS twilio_account_sid TEXT NOT NULL
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS twilio_auth_token TEXT NOT NULL DEFAULT '';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_token TEXT NOT NULL DEFAULT '';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_phone_number_id TEXT NOT NULL DEFAULT '';
+CREATE INDEX IF NOT EXISTS idx_businesses_meta_phone ON businesses (meta_phone_number_id);
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_verify_token TEXT NOT NULL DEFAULT '';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_waba_id TEXT NOT NULL DEFAULT '';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS meta_app_secret TEXT NOT NULL DEFAULT ''; -- own-Meta-app shops: their app secret, to check webhook signatures (never sent to the browser)
